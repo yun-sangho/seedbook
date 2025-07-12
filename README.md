@@ -1,18 +1,4 @@
-# Turborepo Tailwind CSS starter
-
-This Turborepo starter is maintained by the Turborepo core team.
-
-## Using this example
-
-Run the following command:
-
-```sh
-npx create-turbo@latest -e with-tailwind
-```
-
-## What's inside?
-
-This Turborepo includes the following packages/apps:
+# SeedBook
 
 ### Apps and Packages
 
