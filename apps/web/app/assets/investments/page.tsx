@@ -11,7 +11,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../../components/ui/select";
+} from "@web/components/ui/select";
 
 // ChartJS registration
 ChartJS.register(ArcElement, Tooltip, Legend);

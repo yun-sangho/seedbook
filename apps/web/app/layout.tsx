@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { ThemeProvider } from "@web/components/theme-provider";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -15,8 +16,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={geist.className}>{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <head/>
+      <body className={geist.className}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        
+        {children}
+        </ThemeProvider>
+        
+        </body>
     </html>
   );
 }
