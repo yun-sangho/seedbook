@@ -1,5 +1,5 @@
 {
-  "name": "boogie",
+  "name": "seedbook",
   "private": true,
   "scripts": {
     "build": "turbo run build",
