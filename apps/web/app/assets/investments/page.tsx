@@ -1,9 +1,7 @@
 "use client";
+
 import { useState } from "react";
 import Link from "next/link";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
-import { Pie } from 'react-chartjs-2';
-// Import custom UI components
 import {
   Select,
   SelectContent,
@@ -12,52 +10,57 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@web/components/ui/select";
+import { ArcElement, Chart as ChartJS, Legend, Tooltip } from "chart.js";
+import { Pie } from "react-chartjs-2";
 
 // ChartJS registration
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function InvestmentsPage() {
   const [investments, setInvestments] = useState([
-    { 
-      id: 1, 
+    {
+      id: 1,
       accountName: "투자 계좌 #1", // 기본 계좌 이름으로 설정
-      accountType: "", 
+      accountType: "",
       accountOwner: "본인",
       currency: "KRW",
-      currentValue: "", 
-      note: "" 
-    }
+      currentValue: "",
+      note: "",
+    },
   ]);
-  
+
   // 현재 열려있는 계좌 폼 ID 추적
   const [expandedFormId, setExpandedFormId] = useState<number>(1);
-  
+
   // 계좌 이름 수정 상태 관리
   const [editingNameId, setEditingNameId] = useState<number | null>(null);
   const [tempAccountName, setTempAccountName] = useState<string>("");
-  
+
   // 사용자 정의 소유자 추가 기능
   const [customOwners, setCustomOwners] = useState<string[]>([]);
   const [newCustomOwner, setNewCustomOwner] = useState("");
   const [showCustomOwnerInput, setShowCustomOwnerInput] = useState(false);
 
   const addInvestmentItem = () => {
-    const newId = investments.length > 0 ? Math.max(...investments.map(item => item.id)) + 1 : 1;
-    setInvestments([{ 
-      id: newId,
-      accountName: `투자 계좌 #${newId}`, 
-      accountType: "", 
-      accountOwner: "본인",
-      currency: "KRW",
-      currentValue: "", 
-      note: "" 
-    }, ...investments]);
+    const newId = investments.length > 0 ? Math.max(...investments.map((item) => item.id)) + 1 : 1;
+    setInvestments([
+      {
+        id: newId,
+        accountName: `투자 계좌 #${newId}`,
+        accountType: "",
+        accountOwner: "본인",
+        currency: "KRW",
+        currentValue: "",
+        note: "",
+      },
+      ...investments,
+    ]);
     // 새 계좌 폼을 자동으로 펼침
     setExpandedFormId(newId);
   };
 
   const removeInvestmentItem = (id: number) => {
-    setInvestments(investments.filter(item => item.id !== id));
+    setInvestments(investments.filter((item) => item.id !== id));
   };
 
   const handleChange = (id: number, field: string, value: string) => {
@@ -65,21 +68,21 @@ export default function InvestmentsPage() {
     if (expandedFormId !== id) {
       setExpandedFormId(id);
     }
-    
-    setInvestments(investments.map(item => 
-      item.id === id ? { ...item, [field]: value } : item
-    ));
+
+    setInvestments(
+      investments.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+    );
   };
-  
+
   // 계좌 이름 수정 시작
   const startEditingName = (id: number) => {
-    const account = investments.find(item => item.id === id);
+    const account = investments.find((item) => item.id === id);
     if (account) {
       setTempAccountName(account.accountName);
       setEditingNameId(id);
     }
   };
-  
+
   // 계좌 이름 수정 저장
   const saveAccountName = () => {
     if (editingNameId !== null) {
@@ -87,7 +90,7 @@ export default function InvestmentsPage() {
       setEditingNameId(null);
     }
   };
-  
+
   // 계좌 이름 수정 취소
   const cancelEditingName = () => {
     setEditingNameId(null);
@@ -108,34 +111,40 @@ export default function InvestmentsPage() {
   };
 
   // 계좌 유형
-  const accountTypes = ["일반 투자 계좌", "해외 투자 계좌", "ISA 계좌", "IRP 계좌", "연금저축 계좌"];
-  
+  const accountTypes = [
+    "일반 투자 계좌",
+    "해외 투자 계좌",
+    "ISA 계좌",
+    "IRP 계좌",
+    "연금저축 계좌",
+  ];
+
   // 계좌 소유자 옵션 (기본 + 사용자 추가)
   const accountOwners = ["본인", "배우자", ...customOwners];
-  
+
   // 통화 옵션
   const currencyOptions = ["KRW", "USD"];
 
   // 숫자를 한글로 변환하는 함수 (만원, 억원, 조원 단위 표시)
   const numberToKorean = (num: string): string => {
     if (!num || isNaN(Number(num))) return "";
-    
+
     const number = Number(num);
     if (number === 0) return "0만원";
-    
+
     // 조 단위 (1조 = 100,000억 = 1,000,000만)
     if (number >= 1000000) {
       const jo = Math.floor(number / 1000000); // 조 단위
       const remainder = number % 1000000; // 조 단위 이하
-      
+
       if (remainder === 0) {
         return `${jo}조원`;
       }
-      
+
       // 억 단위 처리
       const eok = Math.floor(remainder / 10000); // 억 단위
       const man = remainder % 10000; // 만 단위
-      
+
       if (eok === 0) {
         return `${jo}조${man}만원`;
       } else if (man === 0) {
@@ -143,24 +152,23 @@ export default function InvestmentsPage() {
       } else {
         return `${jo}조${eok}억${man}만원`;
       }
-    } 
+    }
     // 억 단위 (1억 = 10,000만)
     else if (number >= 10000) {
       const eok = Math.floor(number / 10000); // 억 단위
       const man = number % 10000; // 만 단위
-      
+
       if (man === 0) {
         return `${eok}억원`;
       } else {
         return `${eok}억${man}만원`;
       }
-    } 
+    }
     // 만 단위만 있는 경우
     else {
       return `${number}만원`;
     }
   };
-
 
   console.log("investments data:", investments);
 
@@ -168,9 +176,22 @@ export default function InvestmentsPage() {
     <main className="flex flex-col items-center min-h-screen p-8 md:p-24">
       <div className="w-full max-w-4xl">
         <div className="mb-8">
-          <Link href="/assets" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m15 18-6-6 6-6"/>
+          <Link
+            href="/assets"
+            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m15 18-6-6 6-6" />
             </svg>
             돌아가기
           </Link>
@@ -182,51 +203,52 @@ export default function InvestmentsPage() {
             투자 계좌의 기본 정보와 평가금액을 입력해주세요
           </p>
 
-          
-          {investments.length > 0 && investments.some(item => item.currentValue) && (
+          {investments.length > 0 && investments.some((item) => item.currentValue) && (
             <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm mb-6">
               <h2 className="text-lg font-medium mb-4">투자 계좌 요약</h2>
-              
+
               <div className="grid md:grid-cols-2 gap-6">
-                <div className="relative" style={{ height: '250px' }}>
+                <div className="relative" style={{ height: "250px" }}>
                   <Pie
                     data={{
                       // labels: investments
                       //   .filter(item => item.currentValue)
-                      //                              .sort((a, b) => 
-                      //         parseFloat(b.currentValue.replace(/,/g, "")) - 
+                      //                              .sort((a, b) =>
+                      //         parseFloat(b.currentValue.replace(/,/g, "")) -
                       //         parseFloat(a.currentValue.replace(/,/g, ""))).map(item => item.accountName),
                       datasets: [
                         {
                           data: investments
-                            .filter(item => item.currentValue)
-                           .sort((a, b) => 
-                              parseFloat(b.currentValue.replace(/,/g, "")) - 
-                              parseFloat(a.currentValue.replace(/,/g, ""))).
-                              map(item => parseFloat(item.currentValue.replace(/,/g, ""))),
+                            .filter((item) => item.currentValue)
+                            .sort(
+                              (a, b) =>
+                                parseFloat(b.currentValue.replace(/,/g, "")) -
+                                parseFloat(a.currentValue.replace(/,/g, ""))
+                            )
+                            .map((item) => parseFloat(item.currentValue.replace(/,/g, ""))),
                           backgroundColor: [
-                            'rgba(54, 162, 235, 0.8)',
-                            'rgba(255, 99, 132, 0.8)',
-                            'rgba(255, 206, 86, 0.8)',
-                            'rgba(75, 192, 192, 0.8)',
-                            'rgba(153, 102, 255, 0.8)',
-                            'rgba(255, 159, 64, 0.8)',
-                            'rgba(199, 199, 199, 0.8)',
-                            'rgba(83, 102, 255, 0.8)',
-                            'rgba(40, 159, 64, 0.8)',
-                            'rgba(210, 199, 199, 0.8)',
+                            "rgba(54, 162, 235, 0.8)",
+                            "rgba(255, 99, 132, 0.8)",
+                            "rgba(255, 206, 86, 0.8)",
+                            "rgba(75, 192, 192, 0.8)",
+                            "rgba(153, 102, 255, 0.8)",
+                            "rgba(255, 159, 64, 0.8)",
+                            "rgba(199, 199, 199, 0.8)",
+                            "rgba(83, 102, 255, 0.8)",
+                            "rgba(40, 159, 64, 0.8)",
+                            "rgba(210, 199, 199, 0.8)",
                           ],
                           borderColor: [
-                            'rgba(54, 162, 235, 1)',
-                            'rgba(255, 99, 132, 1)',
-                            'rgba(255, 206, 86, 1)',
-                            'rgba(75, 192, 192, 1)',
-                            'rgba(153, 102, 255, 1)',
-                            'rgba(255, 159, 64, 1)',
-                            'rgba(199, 199, 199, 1)',
-                            'rgba(83, 102, 255, 1)',
-                            'rgba(40, 159, 64, 1)',
-                            'rgba(210, 199, 199, 1)',
+                            "rgba(54, 162, 235, 1)",
+                            "rgba(255, 99, 132, 1)",
+                            "rgba(255, 206, 86, 1)",
+                            "rgba(75, 192, 192, 1)",
+                            "rgba(153, 102, 255, 1)",
+                            "rgba(255, 159, 64, 1)",
+                            "rgba(199, 199, 199, 1)",
+                            "rgba(83, 102, 255, 1)",
+                            "rgba(40, 159, 64, 1)",
+                            "rgba(210, 199, 199, 1)",
                           ],
                           borderWidth: 1,
                         },
@@ -237,67 +259,71 @@ export default function InvestmentsPage() {
                       plugins: {
                         tooltip: {
                           callbacks: {
-                            label: function(context) {
-                              const label = context.label || '';
+                            label: function (context) {
+                              const label = context.label || "";
                               const value = Number(context.raw);
-                              const formattedValue = value >= 10000 
-                                ? numberToKorean(value.toString())
-                                : `${value.toLocaleString()} 만원`;
+                              const formattedValue =
+                                value >= 10000
+                                  ? numberToKorean(value.toString())
+                                  : `${value.toLocaleString()} 만원`;
                               return `${label}: ${formattedValue}`;
-                            }
-                          }
+                            },
+                          },
                         },
                         legend: {
-                          position: 'right',
+                          position: "right",
                           labels: {
                             boxWidth: 15,
-                            padding: 15
-                          }
-                        }
-                      }
+                            padding: 15,
+                          },
+                        },
+                      },
                     }}
                   />
                 </div>
-                
+
                 <div className="space-y-3 self-center">
                   {investments
-                    .filter(item => item.currentValue)
-                    .sort((a, b) => 
-                      parseFloat(b.currentValue.replace(/,/g, "")) - 
-                      parseFloat(a.currentValue.replace(/,/g, ""))
+                    .filter((item) => item.currentValue)
+                    .sort(
+                      (a, b) =>
+                        parseFloat(b.currentValue.replace(/,/g, "")) -
+                        parseFloat(a.currentValue.replace(/,/g, ""))
                     )
                     .map((item, idx) => (
-                      <div key={`summary-${item.id}`} className="flex justify-between items-center p-2 rounded-lg">
+                      <div
+                        key={`summary-${item.id}`}
+                        className="flex justify-between items-center p-2 rounded-lg"
+                      >
                         <div className="flex items-center gap-2">
-                          <div 
-                            className="w-3 h-3 rounded-full" 
-                            style={{ 
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{
                               backgroundColor: [
-                                'rgba(54, 162, 235, 0.8)',
-                                'rgba(255, 99, 132, 0.8)',
-                                'rgba(255, 206, 86, 0.8)',
-                                'rgba(75, 192, 192, 0.8)',
-                                'rgba(153, 102, 255, 0.8)',
-                                'rgba(255, 159, 64, 0.8)',
-                                'rgba(199, 199, 199, 0.8)',
-                                'rgba(83, 102, 255, 0.8)',
-                                'rgba(40, 159, 64, 0.8)',
-                                'rgba(210, 199, 199, 0.8)',
-                              ][idx % 10]
+                                "rgba(54, 162, 235, 0.8)",
+                                "rgba(255, 99, 132, 0.8)",
+                                "rgba(255, 206, 86, 0.8)",
+                                "rgba(75, 192, 192, 0.8)",
+                                "rgba(153, 102, 255, 0.8)",
+                                "rgba(255, 159, 64, 0.8)",
+                                "rgba(199, 199, 199, 0.8)",
+                                "rgba(83, 102, 255, 0.8)",
+                                "rgba(40, 159, 64, 0.8)",
+                                "rgba(210, 199, 199, 0.8)",
+                              ][idx % 10],
                             }}
                           />
                           <span className="font-medium">{item.accountName}</span>
                         </div>
                         <div className="text-right">
-                          {item.currency === "KRW" ? 
-                            (parseInt(item.currentValue.replace(/,/g, "")) >= 10000 ? 
-                              numberToKorean(item.currentValue.replace(/,/g, "")) : 
-                              `${item.currentValue} 만원`)
-                            : `$ ${item.currentValue}`
-                          }
+                          {item.currency === "KRW"
+                            ? parseInt(item.currentValue.replace(/,/g, "")) >= 10000
+                              ? numberToKorean(item.currentValue.replace(/,/g, ""))
+                              : `${item.currentValue} 만원`
+                            : `$ ${item.currentValue}`}
                         </div>
                       </div>
-                  ))}
+                    ))}
                 </div>
               </div>
             </div>
@@ -337,15 +363,15 @@ export default function InvestmentsPage() {
             </div>
           </div>
         )}
-        
+
         <form onSubmit={handleSubmit}>
           {investments.map((item) => {
             const isExpanded = expandedFormId === item.id;
-            
+
             return (
               <div key={item.id} className="mb-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-                <div 
-                  className={`flex justify-between items-center p-6 ${!isExpanded ? 'border-b-0' : 'border-b dark:border-gray-700'}`}
+                <div
+                  className={`flex justify-between items-center p-6 ${!isExpanded ? "border-b-0" : "border-b dark:border-gray-700"}`}
                 >
                   <div className="flex items-center gap-2">
                     <button
@@ -354,19 +380,19 @@ export default function InvestmentsPage() {
                       className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                       aria-label={isExpanded ? "접기" : "펼치기"}
                     >
-                      <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        width="20" 
-                        height="20" 
-                        viewBox="0 0 24 24" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        strokeWidth="2" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className={`transition-transform ${isExpanded ? "rotate-180" : ""}`}
                       >
-                        <path d="m6 9 6 6 6-6"/>
+                        <path d="m6 9 6 6 6-6" />
                       </svg>
                     </button>
                     <div className="flex items-center gap-2">
@@ -379,25 +405,45 @@ export default function InvestmentsPage() {
                             className="p-1 border border-gray-300 dark:border-gray-600 rounded text-base"
                             autoFocus
                             onBlur={saveAccountName}
-                            onKeyDown={(e) => e.key === 'Enter' && saveAccountName()}
+                            onKeyDown={(e) => e.key === "Enter" && saveAccountName()}
                           />
-                          <button 
-                            type="button" 
+                          <button
+                            type="button"
                             onClick={saveAccountName}
                             className="text-blue-500 hover:text-blue-700"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M20 6 9 17l-5-5"/>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M20 6 9 17l-5-5" />
                             </svg>
                           </button>
-                          <button 
-                            type="button" 
+                          <button
+                            type="button"
                             onClick={cancelEditingName}
                             className="text-red-500 hover:text-red-700"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M18 6 6 18"/>
-                              <path d="m6 6 12 12"/>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M18 6 6 18" />
+                              <path d="m6 6 12 12" />
                             </svg>
                           </button>
                         </div>
@@ -411,9 +457,19 @@ export default function InvestmentsPage() {
                               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                               title="계좌 이름 수정"
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                               </svg>
                             </button>
                           </h3>
@@ -426,12 +482,11 @@ export default function InvestmentsPage() {
                               )}
                               {item.currentValue && (
                                 <div className="text-sm font-medium text-green-600 dark:text-green-500">
-                                  {item.currency === "KRW" ? 
-                                    (parseInt(item.currentValue.replace(/,/g, "")) >= 10000 ?
-                                      numberToKorean(item.currentValue.replace(/,/g, "")) :
-                                      `${item.currentValue} 만원`) : 
-                                    `$ ${item.currentValue}`
-                                  }
+                                  {item.currency === "KRW"
+                                    ? parseInt(item.currentValue.replace(/,/g, "")) >= 10000
+                                      ? numberToKorean(item.currentValue.replace(/,/g, ""))
+                                      : `${item.currentValue} 만원`
+                                    : `$ ${item.currentValue}`}
                                 </div>
                               )}
                             </div>
@@ -440,10 +495,10 @@ export default function InvestmentsPage() {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     {investments.length > 1 && (
-                      <button 
+                      <button
                         type="button"
                         onClick={() => removeInvestmentItem(item.id)}
                         className="text-red-500 hover:text-red-700 dark:hover:text-red-400 ml-4"
@@ -470,8 +525,10 @@ export default function InvestmentsPage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectGroup>
-                              {accountTypes.map(type => (
-                                <SelectItem key={type} value={type}>{type}</SelectItem>
+                              {accountTypes.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                  {type}
+                                </SelectItem>
                               ))}
                             </SelectGroup>
                           </SelectContent>
@@ -486,15 +543,19 @@ export default function InvestmentsPage() {
                           <div className="flex-grow">
                             <Select
                               value={item.accountOwner}
-                              onValueChange={(value) => handleChange(item.id, "accountOwner", value)}
+                              onValueChange={(value) =>
+                                handleChange(item.id, "accountOwner", value)
+                              }
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="계좌 소유자 선택" />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectGroup>
-                                  {accountOwners.map(owner => (
-                                    <SelectItem key={owner} value={owner}>{owner}</SelectItem>
+                                  {accountOwners.map((owner) => (
+                                    <SelectItem key={owner} value={owner}>
+                                      {owner}
+                                    </SelectItem>
                                   ))}
                                 </SelectGroup>
                               </SelectContent>
@@ -524,7 +585,7 @@ export default function InvestmentsPage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectGroup>
-                              {currencyOptions.map(currency => (
+                              {currencyOptions.map((currency) => (
                                 <SelectItem key={currency} value={currency}>
                                   {currency === "KRW" ? "원화 (KRW)" : "달러 (USD)"}
                                 </SelectItem>
@@ -560,7 +621,9 @@ export default function InvestmentsPage() {
                                 }
                               }
                             }}
-                            placeholder={item.currency === "KRW" ? "현재 가치 (만원)" : "현재 가치 (달러)"}
+                            placeholder={
+                              item.currency === "KRW" ? "현재 가치 (만원)" : "현재 가치 (달러)"
+                            }
                             className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
                           />
                           <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400">
@@ -569,13 +632,15 @@ export default function InvestmentsPage() {
                         </div>
                         {item.currentValue && item.currency === "KRW" && (
                           <div className="text-sm text-gray-500 dark:text-gray-400 mt-1 pl-1">
-                            <span title={`${parseInt(item.currentValue.replace(/,/g, "")) * 10000}원`}>
+                            <span
+                              title={`${parseInt(item.currentValue.replace(/,/g, "")) * 10000}원`}
+                            >
                               {numberToKorean(item.currentValue.replace(/,/g, ""))}
                             </span>
                           </div>
                         )}
                       </div>
-                      
+
                       <div className="space-y-2 md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                           메모
@@ -606,8 +671,8 @@ export default function InvestmentsPage() {
           </div>
 
           <div className="flex justify-end gap-4">
-            <Link 
-              href="/assets" 
+            <Link
+              href="/assets"
               className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
               취소

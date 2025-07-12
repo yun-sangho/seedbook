@@ -6,9 +6,11 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "check-types": "turbo run check-types",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,css}\""
   },
   "devDependencies": {
+    "@ianvs/prettier-plugin-sort-imports": "^4.5.1",
     "prettier": "^3.6.0",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "turbo": "^2.5.4"
@@ -17,5 +19,4 @@
   "engines": {
     "node": ">=22"
   }
-
 }

@@ -1,25 +1,27 @@
 "use client";
+
 import { useState } from "react";
 import Link from "next/link";
 
 export default function SavingsPage() {
   const [savings, setSavings] = useState([
-    { id: 1, name: "", institution: "", amount: "", interestRate: "", note: "" }
+    { id: 1, name: "", institution: "", amount: "", interestRate: "", note: "" },
   ]);
 
   const addSavingsItem = () => {
-    const newId = savings.length > 0 ? Math.max(...savings.map(item => item.id)) + 1 : 1;
-    setSavings([...savings, { id: newId, name: "", institution: "", amount: "", interestRate: "", note: "" }]);
+    const newId = savings.length > 0 ? Math.max(...savings.map((item) => item.id)) + 1 : 1;
+    setSavings([
+      ...savings,
+      { id: newId, name: "", institution: "", amount: "", interestRate: "", note: "" },
+    ]);
   };
 
   const removeSavingsItem = (id: number) => {
-    setSavings(savings.filter(item => item.id !== id));
+    setSavings(savings.filter((item) => item.id !== id));
   };
 
   const handleChange = (id: number, field: string, value: string) => {
-    setSavings(savings.map(item => 
-      item.id === id ? { ...item, [field]: value } : item
-    ));
+    setSavings(savings.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -32,9 +34,22 @@ export default function SavingsPage() {
     <main className="flex flex-col items-center min-h-screen p-8 md:p-24">
       <div className="w-full max-w-4xl">
         <div className="mb-8">
-          <Link href="/assets" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m15 18-6-6 6-6"/>
+          <Link
+            href="/assets"
+            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m15 18-6-6 6-6" />
             </svg>
             돌아가기
           </Link>
@@ -53,7 +68,7 @@ export default function SavingsPage() {
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium">저축 항목 #{item.id}</h3>
                 {savings.length > 1 && (
-                  <button 
+                  <button
                     type="button"
                     onClick={() => removeSavingsItem(item.id)}
                     className="text-red-500 hover:text-red-700 dark:hover:text-red-400"
@@ -117,7 +132,7 @@ export default function SavingsPage() {
                     className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
                   />
                 </div>
-                
+
                 <div className="space-y-2 md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     메모
@@ -145,8 +160,8 @@ export default function SavingsPage() {
           </div>
 
           <div className="flex justify-end gap-4">
-            <Link 
-              href="/assets" 
+            <Link
+              href="/assets"
               className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
               취소

@@ -7,16 +7,29 @@ export default function DashboardPage() {
     investments: 45000000,
     realAssets: 350000000,
     loans: -120000000,
-    totalNetWorth: 300000000
+    totalNetWorth: 300000000,
   };
 
   return (
     <main className="flex flex-col items-center min-h-screen p-8 md:p-24">
       <div className="w-full max-w-4xl">
         <div className="mb-8">
-          <Link href="/assets" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m15 18-6-6 6-6"/>
+          <Link
+            href="/assets"
+            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m15 18-6-6 6-6" />
             </svg>
             자산 입력으로 돌아가기
           </Link>
@@ -35,7 +48,10 @@ export default function DashboardPage() {
           <div className="mb-6 p-5 bg-gray-50 dark:bg-gray-700 rounded-lg">
             <h3 className="text-lg font-medium mb-4">총 순자산</h3>
             <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-              {new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(assetSummary.totalNetWorth)}
+              {new Intl.NumberFormat("ko-KR", {
+                style: "currency",
+                currency: "KRW",
+              }).format(assetSummary.totalNetWorth)}
             </p>
           </div>
 
@@ -43,14 +59,22 @@ export default function DashboardPage() {
             <div className="p-4 border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-900/20 rounded-lg">
               <h3 className="text-md font-medium mb-2">총 자산</h3>
               <p className="text-xl font-bold text-green-600 dark:text-green-400">
-                {new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(assetSummary.savings + assetSummary.investments + assetSummary.realAssets)}
+                {new Intl.NumberFormat("ko-KR", {
+                  style: "currency",
+                  currency: "KRW",
+                }).format(
+                  assetSummary.savings + assetSummary.investments + assetSummary.realAssets
+                )}
               </p>
             </div>
 
             <div className="p-4 border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 rounded-lg">
               <h3 className="text-md font-medium mb-2">총 부채</h3>
               <p className="text-xl font-bold text-red-600 dark:text-red-400">
-                {new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(Math.abs(assetSummary.loans))}
+                {new Intl.NumberFormat("ko-KR", {
+                  style: "currency",
+                  currency: "KRW",
+                }).format(Math.abs(assetSummary.loans))}
               </p>
             </div>
           </div>
@@ -67,10 +91,18 @@ export default function DashboardPage() {
               </div>
               <div className="flex flex-col items-end">
                 <span className="font-semibold">
-                  {new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(assetSummary.savings)}
+                  {new Intl.NumberFormat("ko-KR", {
+                    style: "currency",
+                    currency: "KRW",
+                  }).format(assetSummary.savings)}
                 </span>
                 <span className="text-sm text-gray-500">
-                  {Math.round(assetSummary.savings / (assetSummary.savings + assetSummary.investments + assetSummary.realAssets) * 100)}%
+                  {Math.round(
+                    (assetSummary.savings /
+                      (assetSummary.savings + assetSummary.investments + assetSummary.realAssets)) *
+                      100
+                  )}
+                  %
                 </span>
               </div>
             </div>
@@ -82,10 +114,18 @@ export default function DashboardPage() {
               </div>
               <div className="flex flex-col items-end">
                 <span className="font-semibold">
-                  {new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(assetSummary.investments)}
+                  {new Intl.NumberFormat("ko-KR", {
+                    style: "currency",
+                    currency: "KRW",
+                  }).format(assetSummary.investments)}
                 </span>
                 <span className="text-sm text-gray-500">
-                  {Math.round(assetSummary.investments / (assetSummary.savings + assetSummary.investments + assetSummary.realAssets) * 100)}%
+                  {Math.round(
+                    (assetSummary.investments /
+                      (assetSummary.savings + assetSummary.investments + assetSummary.realAssets)) *
+                      100
+                  )}
+                  %
                 </span>
               </div>
             </div>
@@ -97,10 +137,18 @@ export default function DashboardPage() {
               </div>
               <div className="flex flex-col items-end">
                 <span className="font-semibold">
-                  {new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(assetSummary.realAssets)}
+                  {new Intl.NumberFormat("ko-KR", {
+                    style: "currency",
+                    currency: "KRW",
+                  }).format(assetSummary.realAssets)}
                 </span>
                 <span className="text-sm text-gray-500">
-                  {Math.round(assetSummary.realAssets / (assetSummary.savings + assetSummary.investments + assetSummary.realAssets) * 100)}%
+                  {Math.round(
+                    (assetSummary.realAssets /
+                      (assetSummary.savings + assetSummary.investments + assetSummary.realAssets)) *
+                      100
+                  )}
+                  %
                 </span>
               </div>
             </div>
@@ -112,7 +160,10 @@ export default function DashboardPage() {
               </div>
               <div className="flex flex-col items-end">
                 <span className="font-semibold text-red-600">
-                  {new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(Math.abs(assetSummary.loans))}
+                  {new Intl.NumberFormat("ko-KR", {
+                    style: "currency",
+                    currency: "KRW",
+                  }).format(Math.abs(assetSummary.loans))}
                 </span>
               </div>
             </div>
@@ -120,8 +171,8 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex justify-center">
-          <Link 
-            href="/assets" 
+          <Link
+            href="/assets"
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             자산 정보 업데이트하기

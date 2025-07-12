@@ -19,8 +19,7 @@ const LINKS = [
   {
     title: "Deploy",
     href: "https://vercel.com/new",
-    description:
-      "Instantly deploy your Turborepo to a shareable URL with Vercel.",
+    description: "Instantly deploy your Turborepo to a shareable URL with Vercel.",
   },
 ];
 
@@ -56,15 +55,10 @@ export default function Page() {
         <div className="font-sans w-auto pb-16 pt-[48px] md:pb-24 lg:pb-32 md:pt-16 lg:pt-20 flex justify-between gap-8 items-center flex-col relative z-0">
           <div className="z-50 flex items-center justify-center w-full">
             <div className="absolute min-w-[614px] min-h-[614px]">
-              <Image
-                alt="Turborepo"
-                height={614}
-                src="circles.svg"
-                width={614}
-              />
+              <Image alt="Turborepo" height={614} src="circles.svg" width={614} />
             </div>
           </div>
-   
+
           <div className="z-50 flex flex-col items-center justify-center gap-5 px-6 text-center lg:gap-6">
             <svg
               className="w-[160px] md:w-[200px] fill-black dark:fill-white"

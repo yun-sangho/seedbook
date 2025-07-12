@@ -12,32 +12,32 @@ export default function AssetsPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <AssetCard 
-            title="저축" 
+          <AssetCard
+            title="저축"
             description="예금, 적금, 현금 등"
             color="bg-blue-100 dark:bg-blue-900/30"
             href="/assets/savings"
             icon={<SavingsIcon />}
           />
-          
-          <AssetCard 
-            title="투자" 
+
+          <AssetCard
+            title="투자"
             description="주식, 채권, 펀드, 가상자산 등"
             color="bg-green-100 dark:bg-green-900/30"
             href="/assets/investments"
             icon={<InvestmentIcon />}
           />
-          
-          <AssetCard 
-            title="실물자산" 
+
+          <AssetCard
+            title="실물자산"
             description="부동산, 자동차, 귀금속 등"
             color="bg-amber-100 dark:bg-amber-900/30"
             href="/assets/real-assets"
             icon={<RealAssetsIcon />}
           />
-          
-          <AssetCard 
-            title="대출" 
+
+          <AssetCard
+            title="대출"
             description="주택담보대출, 신용대출, 카드대출 등"
             color="bg-red-100 dark:bg-red-900/30"
             href="/assets/loans"
@@ -46,7 +46,10 @@ export default function AssetsPage() {
         </div>
 
         <div className="flex justify-center mt-10">
-          <Link href="/dashboard" className="px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors">
+          <Link
+            href="/dashboard"
+            className="px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
+          >
             자산 대시보드 보기
           </Link>
         </div>
@@ -66,11 +69,11 @@ interface AssetCardProps {
 function AssetCard({ title, description, color, href, icon }: AssetCardProps) {
   return (
     <Link href={href} className="block">
-      <div className={`rounded-xl p-6 transition-all hover:shadow-md dark:hover:shadow-gray-800/30 ${color}`}>
+      <div
+        className={`rounded-xl p-6 transition-all hover:shadow-md dark:hover:shadow-gray-800/30 ${color}`}
+      >
         <div className="flex items-start gap-4">
-          <div className="p-3 bg-white rounded-lg dark:bg-gray-800">
-            {icon}
-          </div>
+          <div className="p-3 bg-white rounded-lg dark:bg-gray-800">{icon}</div>
           <div>
             <h2 className="text-xl font-semibold mb-2">{title}</h2>
             <p className="text-gray-600 dark:text-gray-400">{description}</p>
@@ -83,7 +86,17 @@ function AssetCard({ title, description, color, href, icon }: AssetCardProps) {
 
 function SavingsIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M2 17a5 5 0 0 0 10 0c0-2.76-5-5-5-5s-5 2.24-5 5Z" />
       <path d="M12 17a5 5 0 0 0 10 0c0-2.76-5-5-5-5s-5 2.24-5 5Z" />
       <path d="M7 14c0-1.1.9-2 2-2" />
@@ -94,7 +107,17 @@ function SavingsIcon() {
 
 function InvestmentIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
       <polyline points="9 22 9 12 15 12 15 22" />
     </svg>
@@ -103,7 +126,17 @@ function InvestmentIcon() {
 
 function RealAssetsIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <rect width="18" height="18" x="3" y="3" rx="2" />
       <path d="M7 7v10" />
       <path d="M11 7v10" />
@@ -114,7 +147,17 @@ function RealAssetsIcon() {
 
 function LoansIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
       <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
       <path d="M4 22h16" />
