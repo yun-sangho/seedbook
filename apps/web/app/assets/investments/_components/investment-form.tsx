@@ -33,7 +33,6 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
   const investments = useInvestmentStore((state) => state.investments);
   const customOwners = useInvestmentStore((state) => state.customOwners);
   const expandedFormId = useInvestmentStore((state) => state.expandedFormId);
-  const addInvestment = useInvestmentStore((state) => state.addInvestment);
   const removeInvestment = useInvestmentStore((state) => state.removeInvestment);
   const updateInvestment = useInvestmentStore((state) => state.updateInvestment);
   const addCustomOwner = useInvestmentStore((state) => state.addCustomOwner);
@@ -498,15 +497,7 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
           );
         })}
 
-        <div className="mt-6 flex gap-3">
-          <button
-            type="button"
-            onClick={addInvestment}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            + 투자 계좌 추가
-          </button>
-
+        <div className="mt-6 flex justify-end">
           <button
             type="submit"
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"

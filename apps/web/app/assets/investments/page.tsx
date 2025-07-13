@@ -1,14 +1,18 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { prepareChartData } from "@web/features/investments/utils/chart-utils";
+import { AddInvestmentModal } from "./_components/add-investment-modal";
 import { InvestmentDonutChart } from "./_components/investment-donut-chart";
 import { InvestmentForm } from "./_components/investment-form";
 import { InvestmentList } from "./_components/investment-list";
 
 export default function InvestmentsPage() {
+  // 모달 표시 상태
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   // Zustand store에서 상태 가져오기
   const investments = useInvestmentStore((state) => state.investments);
 
@@ -30,6 +34,16 @@ export default function InvestmentsPage() {
     console.log("Submitted investments data:", investments);
     // 데이터가 이미 localStorage에 자동으로 저장됨
     // 여기서는 서버 API로 데이터를 전송하는 로직을 추가할 수 있음
+  };
+
+  // 투자 계좌 추가 모달 열기
+  const openAddAccountModal = () => {
+    setIsModalOpen(true);
+  };
+
+  // 투자 계좌 추가 모달 닫기
+  const closeAddAccountModal = () => {
+    setIsModalOpen(false);
   };
 
   return (
@@ -58,7 +72,16 @@ export default function InvestmentsPage() {
         </div>
 
         <div className="mb-10">
-          <h1 className="text-3xl font-bold mb-4">투자 계좌 정보 입력</h1>
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-3xl font-bold">투자 계좌 정보 입력</h1>
+            <button
+              onClick={openAddAccountModal}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              + 투자 계좌 추가
+            </button>
+          </div>
+
           <p className="text-gray-600 dark:text-gray-400 mb-6">
             투자 계좌의 기본 정보와 평가금액을 입력해주세요
           </p>
@@ -81,6 +104,9 @@ export default function InvestmentsPage() {
         </div>
 
         <InvestmentForm handleSubmit={handleSubmit} />
+
+        {/* 새 투자 계좌 추가 모달 */}
+        <AddInvestmentModal isOpen={isModalOpen} onClose={closeAddAccountModal} />
       </div>
     </main>
   );
