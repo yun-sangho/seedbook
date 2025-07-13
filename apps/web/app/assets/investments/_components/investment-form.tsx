@@ -20,6 +20,7 @@ import { InvestmentItem } from "@web/features/investments/types/types";
 import {
   calculateReturnRate,
   formatReturnRate,
+  numberToKorean,
   parseNumericString,
 } from "@web/utils/number-format";
 
@@ -300,40 +301,15 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
                 <div className="flex items-center">
                   <div className="flex flex-col mr-4">
                     <div className="flex items-center">
-                      <span className="mr-2 text-sm font-medium">평가금액:</span>
                       <span className="text-sm font-bold">
-                        {item.currentValue ? (
-                          item.currency === CurrencyType.KRW ? (
-                            item.currentValue >= 10000 ? (
-                              <span className="text-blue-600 dark:text-blue-400">
-                                {String(item.currentValue).length > 4
-                                  ? Math.floor(item.currentValue / 10000) +
-                                    "억 " +
-                                    (item.currentValue % 10000 !== 0
-                                      ? (item.currentValue % 10000) + "만"
-                                      : "")
-                                  : item.currentValue + "만"}
-                                원
-                              </span>
-                            ) : (
-                              <span className="text-blue-600 dark:text-blue-400">
-                                {item.currentValue}만원
-                              </span>
-                            )
-                          ) : (
-                            <span className="text-green-600 dark:text-green-400">
-                              $ {item.currentValue.toLocaleString()}
-                            </span>
-                          )
-                        ) : (
-                          "미입력"
-                        )}
+                        {item.currentValue
+                          ? numberToKorean(item.currentValue.toString())
+                          : "미입력"}
                       </span>
                     </div>
 
                     {item.currentValue > 0 && (
                       <div className="flex items-center">
-                        <span className="mr-2 text-sm font-medium">수익률:</span>
                         <span
                           className={`text-xs font-bold ${
                             calculateReturnRate(

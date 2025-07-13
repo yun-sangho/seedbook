@@ -1,10 +1,10 @@
 /**
  * 숫자를 한글 금액 단위(만원, 억원, 조원)로 변환하는 함수
  */
-export function numberToKorean(num: string): string {
-  if (!num || isNaN(Number(num))) return "";
+export function numberToKorean(num: string | number): string {
+  if ((!num && num !== 0) || (typeof num === "string" && isNaN(Number(num)))) return "";
 
-  const number = Number(num);
+  const number = typeof num === "string" ? Number(num) : num;
   if (number === 0) return "0만원";
 
   // 조 단위 (1조 = 100,000억 = 1,000,000만)
@@ -65,16 +65,9 @@ export function formatWithCommas(num: number): string {
  * @param initialInvestment 초기 투자금
  * @returns 수익률 (백분율)
  */
-export function calculateReturnRate(
-  currentValue: string | number,
-  initialInvestment: string | number
-): number {
-  const current =
-    typeof currentValue === "string" ? parseNumericString(currentValue) : currentValue;
-  const initial =
-    typeof initialInvestment === "string"
-      ? parseNumericString(initialInvestment)
-      : initialInvestment;
+export function calculateReturnRate(currentValue: number, initialInvestment: number): number {
+  const current = currentValue;
+  const initial = initialInvestment;
 
   if (!initial || initial === 0) return 0;
 

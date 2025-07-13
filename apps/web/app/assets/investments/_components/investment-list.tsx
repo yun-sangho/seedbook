@@ -2,11 +2,7 @@
 
 import { InvestmentItem } from "@web/features/investments/types/types";
 import { chartColors } from "@web/features/investments/utils/chart-utils";
-import {
-  calculateReturnRate,
-  formatReturnRate,
-  numberToKorean,
-} from "@web/features/investments/utils/number-format";
+import { calculateReturnRate, formatReturnRate, numberToKorean } from "@web/utils/number-format";
 
 interface InvestmentListProps {
   investments: InvestmentItem[];

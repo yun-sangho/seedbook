@@ -1,10 +1,10 @@
 "use client";
 
+import { parseNumericString } from "@web/utils/number-format";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { CurrencyType, DefaultOwnerType } from "../types/constants";
 import { InvestmentItem } from "../types/types";
-import { parseNumericString } from "../utils/number-format";
 
 // 초기 투자 계좌
 const DEFAULT_INVESTMENT: InvestmentItem = {
