@@ -83,3 +83,58 @@ export function formatReturnRate(rate: number): string {
   const sign = rate >= 0 ? "+" : "-";
   return `${sign}${Math.abs(rate).toFixed(2)}%`;
 }
+
+/**
+ * 원화 표시된 문자열에서 가장 높은 단위만 남기고 한 자리 소수점으로 표시하는 함수
+ * @param koreanCurrency 원화 단위 문자열 (예: '1억2345만원', '1조3453억1234만원')
+ * @returns 높은 단위만 남긴 문자열 (예: '1.2억원', '1.3조원')
+ */
+export function truncateToHighestDenomination(koreanCurrency: string): string {
+  // 입력이 없거나 유효하지 않은 경우 원래 문자열 반환
+  if (!koreanCurrency) return koreanCurrency;
+
+  try {
+    // 조 단위가 있는 경우
+    if (koreanCurrency.includes("조")) {
+      const joMatch = koreanCurrency.match(/(\d+)조/);
+      if (!joMatch || !joMatch[1]) return koreanCurrency;
+
+      const joValue = parseInt(joMatch[1]!);
+
+      // 억 단위 추출 (소수점 계산용)
+      let decimalPart = 0;
+      const eokMatch = koreanCurrency.match(/(\d+)억/);
+      if (eokMatch && eokMatch[1]) {
+        decimalPart = parseInt(eokMatch[1]!) / 10000;
+      }
+
+      const total = joValue + decimalPart;
+      if (decimalPart === 0) return `${joValue}조원`;
+      return `${total.toFixed(1)}조원`;
+    }
+    // 억 단위가 있는 경우
+    else if (koreanCurrency.includes("억")) {
+      const eokMatch = koreanCurrency.match(/(\d+)억/);
+      if (!eokMatch || !eokMatch[1]) return koreanCurrency;
+
+      const eokValue = parseInt(eokMatch[1]!);
+
+      // 만 단위 추출 (소수점 계산용)
+      let decimalPart = 0;
+      const manMatch = koreanCurrency.match(/(\d+)만/);
+      if (manMatch && manMatch[1]) {
+        decimalPart = parseInt(manMatch[1]!) / 10000;
+      }
+
+      if (decimalPart === 0) return `${eokValue}억원`;
+
+      const total = eokValue + decimalPart;
+      return `${total.toFixed(1)}억원`;
+    }
+  } catch (error) {
+    console.error("Error in truncateToHighestDenomination:", error);
+  }
+
+  // 만 단위만 있거나 다른 형식인 경우 원래 문자열 반환
+  return koreanCurrency;
+}

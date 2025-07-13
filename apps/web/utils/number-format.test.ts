@@ -5,6 +5,7 @@ import {
   formatWithCommas,
   numberToKorean,
   parseNumericString,
+  truncateToHighestDenomination,
 } from "./number-format";
 
 describe("numberToKorean", () => {
@@ -65,5 +66,26 @@ describe("formatReturnRate", () => {
 
   it("should format negative return rates with minus sign", () => {
     expect(formatReturnRate(-20)).toBe("-20.00%");
+  });
+});
+
+describe("truncateToHighestDenomination", () => {
+  it("should truncate to billions (억) with one decimal place", () => {
+    expect(truncateToHighestDenomination("1억2345만원")).toBe("1.2억원");
+    expect(truncateToHighestDenomination("5억9999만원")).toBe("6.0억원");
+    expect(truncateToHighestDenomination("1억원")).toBe("1억원");
+    expect(truncateToHighestDenomination("1억500만원")).toBe("1.1억원");
+  });
+
+  it("should truncate to trillions (조) with one decimal place", () => {
+    expect(truncateToHighestDenomination("1조3453억1234만원")).toBe("1.3조원");
+    expect(truncateToHighestDenomination("2조9999억만원")).toBe("3.0조원");
+    expect(truncateToHighestDenomination("1조원")).toBe("1조원");
+  });
+
+  it("should return original string for invalid or non-matching inputs", () => {
+    expect(truncateToHighestDenomination("")).toBe("");
+    expect(truncateToHighestDenomination("1000만원")).toBe("1000만원");
+    expect(truncateToHighestDenomination("invalid")).toBe("invalid");
   });
 });
