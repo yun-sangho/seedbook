@@ -2,8 +2,8 @@
 
 import { useMemo } from "react";
 import { ChartTooltip } from "@web/components/ui/chart";
-import { Cell, Label, Pie, PieChart, ResponsiveContainer, Text } from "recharts";
-import { numberToKorean } from "../_utils/number-format";
+import { numberToKorean } from "@web/utils/number-format";
+import { Cell, Label, Pie, PieChart, ResponsiveContainer } from "recharts";
 
 interface InvestmentChartProps {
   data: Array<{
@@ -15,7 +15,6 @@ interface InvestmentChartProps {
 }
 
 export function InvestmentDonutChart({ data, totalAmount }: InvestmentChartProps) {
-  // 총 금액 표시를 위한 메모이제이션
   const formattedTotal = useMemo(() => {
     return numberToKorean(totalAmount);
   }, [totalAmount]);
@@ -39,7 +38,7 @@ export function InvestmentDonutChart({ data, totalAmount }: InvestmentChartProps
     <ResponsiveContainer width="100%" height={350}>
       <PieChart>
         <ChartTooltip cursor={false} />
-        <Pie data={data} innerRadius={70} dataKey="value" nameKey={"name"} strokeWidth={5}>
+        <Pie data={data} innerRadius={70} dataKey="value" nameKey={"name"}>
           {data.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={entry.color} />
           ))}

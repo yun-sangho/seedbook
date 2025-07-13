@@ -7,6 +7,7 @@ export interface InvestmentItem {
   accountType: string;
   accountOwner: string;
   currency: string;
-  currentValue: string;
+  currentValue: number;
+  initialInvestment: number | undefined; // 투자원금
   note: string;
 }

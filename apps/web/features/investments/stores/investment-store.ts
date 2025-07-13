@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { CurrencyType, DefaultOwnerType } from "../types/constants";
 import { InvestmentItem } from "../types/types";
+import { parseNumericString } from "../utils/number-format";
 
 // 초기 투자 계좌
 const DEFAULT_INVESTMENT: InvestmentItem = {
@@ -12,7 +13,8 @@ const DEFAULT_INVESTMENT: InvestmentItem = {
   accountType: "",
   accountOwner: DefaultOwnerType.SELF,
   currency: CurrencyType.KRW,
-  currentValue: "",
+  currentValue: 0,
+  initialInvestment: 0, // 투자원금
   note: "",
 };
 
@@ -29,7 +31,7 @@ interface InvestmentState {
   // 액션
   addInvestment: () => void;
   removeInvestment: (id: number) => void;
-  updateInvestment: (id: number, field: keyof InvestmentItem, value: string) => void;
+  updateInvestment: (id: number, field: keyof InvestmentItem, value: string | number) => void;
   addCustomOwner: (owner: string) => void;
   setExpandedFormId: (id: number) => void;
   resetStore: () => void;
@@ -56,7 +58,8 @@ export const useInvestmentStore = create<InvestmentState>()(
               accountType: "",
               accountOwner: DefaultOwnerType.SELF,
               currency: CurrencyType.KRW,
-              currentValue: "",
+              currentValue: 0,
+              initialInvestment: 0,
               note: "",
             },
             ...investments,
@@ -73,13 +76,28 @@ export const useInvestmentStore = create<InvestmentState>()(
       },
 
       updateInvestment: (id, field, value) => {
-        set((state) => ({
-          // 현재 펼쳐진 폼 ID가 현재 수정 중인 ID와 다르면 펼쳐진 폼 ID를 업데이트
-          expandedFormId: state.expandedFormId !== id ? id : state.expandedFormId,
-          investments: state.investments.map((item) =>
-            item.id === id ? { ...item, [field]: value } : item
-          ),
-        }));
+        set((state) => {
+          const updatedInvestments = state.investments.map((item) => {
+            if (item.id !== id) return item;
+
+            let processedValue = value;
+
+            // Convert string values to numbers for numeric fields
+            if (field === "currentValue" && typeof value === "string") {
+              processedValue = value ? parseNumericString(value) : 0;
+            }
+
+            const updatedItem = { ...item, [field]: processedValue };
+
+            return updatedItem;
+          });
+
+          return {
+            // 현재 펼쳐진 폼 ID가 현재 수정 중인 ID와 다르면 펼쳐진 폼 ID를 업데이트
+            expandedFormId: state.expandedFormId !== id ? id : state.expandedFormId,
+            investments: updatedInvestments,
+          };
+        });
       },
 
       addCustomOwner: (owner) => {

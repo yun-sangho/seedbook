@@ -1,8 +1,12 @@
 "use client";
 
-import { chartColors } from "../_utils/chart-utils";
-import { CurrencyType, InvestmentItem } from "../_utils/constants";
-import { numberToKorean } from "../_utils/number-format";
+import { InvestmentItem } from "@web/features/investments/types/types";
+import { chartColors } from "@web/features/investments/utils/chart-utils";
+import {
+  calculateReturnRate,
+  formatReturnRate,
+  numberToKorean,
+} from "@web/features/investments/utils/number-format";
 
 interface InvestmentListProps {
   investments: InvestmentItem[];
@@ -11,11 +15,8 @@ interface InvestmentListProps {
 export function InvestmentList({ investments }: InvestmentListProps) {
   // 금액으로 정렬된 투자 항목
   const sortedInvestments = investments
-    .filter((item) => item.currentValue)
-    .sort(
-      (a, b) =>
-        parseFloat(b.currentValue.replace(/,/g, "")) - parseFloat(a.currentValue.replace(/,/g, ""))
-    );
+    .filter((item) => item.currentValue > 0)
+    .sort((a, b) => b.currentValue - a.currentValue);
 
   return (
     <div className="space-y-3 self-center">
@@ -33,12 +34,27 @@ export function InvestmentList({ investments }: InvestmentListProps) {
             />
             <span className="font-medium">{item.accountName}</span>
           </div>
-          <div className="text-right">
-            {item.currency === CurrencyType.KRW
-              ? parseInt(item.currentValue.replace(/,/g, "")) >= 10000
-                ? numberToKorean(item.currentValue.replace(/,/g, ""))
-                : `${item.currentValue} 만원`
-              : `$ ${item.currentValue}`}
+          <div className="flex flex-col items-end">
+            <div>{numberToKorean(item.currentValue)}</div>
+            {item.currentValue > 0 && (
+              <div
+                className={`text-xs ${
+                  calculateReturnRate(
+                    item.currentValue,
+                    item.initialInvestment || Math.round(item.currentValue * 0.5)
+                  ) >= 0
+                    ? "text-green-600"
+                    : "text-red-600"
+                }`}
+              >
+                {formatReturnRate(
+                  calculateReturnRate(
+                    item.currentValue,
+                    item.initialInvestment || Math.round(item.currentValue * 0.5)
+                  )
+                )}
+              </div>
+            )}
           </div>
         </div>
       ))}

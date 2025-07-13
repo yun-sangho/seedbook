@@ -58,3 +58,35 @@ export function parseNumericString(value: string): number {
 export function formatWithCommas(num: number): string {
   return num.toLocaleString();
 }
+
+/**
+ * 수익률을 계산하는 함수 (%)
+ * @param currentValue 현재 가치
+ * @param initialInvestment 초기 투자금
+ * @returns 수익률 (백분율)
+ */
+export function calculateReturnRate(
+  currentValue: string | number,
+  initialInvestment: string | number
+): number {
+  const current =
+    typeof currentValue === "string" ? parseNumericString(currentValue) : currentValue;
+  const initial =
+    typeof initialInvestment === "string"
+      ? parseNumericString(initialInvestment)
+      : initialInvestment;
+
+  if (!initial || initial === 0) return 0;
+
+  return ((current - initial) / initial) * 100;
+}
+
+/**
+ * 수익률을 포맷팅하는 함수
+ * @param rate 수익률 (백분율)
+ * @returns 포맷팅된 수익률 (예: +12.34% 또는 -5.67%)
+ */
+export function formatReturnRate(rate: number): string {
+  const sign = rate >= 0 ? "+" : "";
+  return `${sign}${rate.toFixed(2)}%`;
+}

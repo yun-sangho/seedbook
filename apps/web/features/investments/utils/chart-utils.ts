@@ -26,10 +26,7 @@ export function prepareChartData(investments: InvestmentItem[]): Array<{
 }> {
   const filteredAndSorted = investments
     .filter((item) => item.currentValue)
-    .sort(
-      (a, b) =>
-        parseFloat(b.currentValue.replace(/,/g, "")) - parseFloat(a.currentValue.replace(/,/g, ""))
-    );
+    .sort((a, b) => b.currentValue - a.currentValue);
 
   return filteredAndSorted.map((item, index) => {
     // 색상 배열 인덱스가 범위를 벗어나면 기본 색상 사용
@@ -38,7 +35,7 @@ export function prepareChartData(investments: InvestmentItem[]): Array<{
 
     return {
       name: item.accountName,
-      value: parseFloat(item.currentValue.replace(/,/g, "")),
+      value: item.currentValue,
       color: color,
     };
   });

@@ -2,12 +2,11 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
+import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
+import { prepareChartData } from "@web/features/investments/utils/chart-utils";
 import { InvestmentDonutChart } from "./_components/investment-donut-chart";
 import { InvestmentForm } from "./_components/investment-form";
 import { InvestmentList } from "./_components/investment-list";
-import { prepareChartData } from "./_utils/chart-utils";
-import { parseNumericString } from "./_utils/number-format";
-import { useInvestmentStore } from "./_utils/store";
 
 export default function InvestmentsPage() {
   // Zustand store에서 상태 가져오기
@@ -17,7 +16,7 @@ export default function InvestmentsPage() {
   const totalInvestmentValue = useMemo(() => {
     return investments
       .filter((item) => item.currentValue)
-      .reduce((sum, item) => sum + parseNumericString(item.currentValue), 0);
+      .reduce((sum, item) => sum + item.currentValue, 0);
   }, [investments]);
 
   // 차트 데이터 준비

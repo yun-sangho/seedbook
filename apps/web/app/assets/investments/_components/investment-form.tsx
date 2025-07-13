@@ -9,15 +9,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@web/components/ui/select";
+import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import {
   ACCOUNT_TYPES,
   CURRENCY_OPTIONS,
   CurrencyType,
   DEFAULT_OWNERS,
-  InvestmentItem,
-} from "../_utils/constants";
-import { formatWithCommas, parseNumericString } from "../_utils/number-format";
-import { useInvestmentStore } from "../_utils/store";
+} from "@web/features/investments/types/constants";
+import { InvestmentItem } from "@web/features/investments/types/types";
+import {
+  calculateReturnRate,
+  formatReturnRate,
+  parseNumericString,
+} from "@web/utils/number-format";
 
 interface InvestmentFormProps {
   handleSubmit: (e: React.FormEvent) => void;
@@ -48,15 +52,17 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
 
   // 필드 값 변경 함수
   const handleChange = (id: number, field: string, value: string) => {
-    // 숫자 포맷팅 처리 (currentValue 필드의 경우)
-    if (field === "currentValue" && value) {
+    // 숫자 필드 처리 (currentValue 또는 initialInvestment 필드의 경우)
+    if ((field === "currentValue" || field === "initialInvestment") && value) {
       try {
         // 콤마 제거 후 숫자로 변환
         const numericValue = parseNumericString(value);
         // 숫자가 아니면 처리하지 않음
         if (isNaN(numericValue)) return;
-        // 콤마 포맷팅 적용
-        value = formatWithCommas(numericValue);
+
+        // 숫자 값을 직접 업데이트
+        updateInvestment(id, field as keyof InvestmentItem, numericValue);
+        return;
       } catch (e) {
         // 숫자 변환 오류 시 그대로 사용
         console.error("Failed to format number", e);
@@ -292,36 +298,61 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
                 </div>
 
                 <div className="flex items-center">
-                  <div className="flex items-center mr-4">
-                    <span className="mr-2 text-sm font-medium">평가금액:</span>
-                    <span className="text-sm font-bold">
-                      {item.currentValue ? (
-                        item.currency === CurrencyType.KRW ? (
-                          parseInt(item.currentValue.replace(/,/g, "")) >= 10000 ? (
-                            <span className="text-blue-600 dark:text-blue-400">
-                              {item.currentValue.replace(/,/g, "").length > 4
-                                ? item.currentValue.replace(/,/g, "").slice(0, -4) +
-                                  "억 " +
-                                  (item.currentValue.replace(/,/g, "").slice(-4) !== "0000"
-                                    ? item.currentValue.replace(/,/g, "").slice(-4) + "만"
-                                    : "")
-                                : item.currentValue + "만"}
-                              원
-                            </span>
+                  <div className="flex flex-col mr-4">
+                    <div className="flex items-center">
+                      <span className="mr-2 text-sm font-medium">평가금액:</span>
+                      <span className="text-sm font-bold">
+                        {item.currentValue ? (
+                          item.currency === CurrencyType.KRW ? (
+                            item.currentValue >= 10000 ? (
+                              <span className="text-blue-600 dark:text-blue-400">
+                                {String(item.currentValue).length > 4
+                                  ? Math.floor(item.currentValue / 10000) +
+                                    "억 " +
+                                    (item.currentValue % 10000 !== 0
+                                      ? (item.currentValue % 10000) + "만"
+                                      : "")
+                                  : item.currentValue + "만"}
+                                원
+                              </span>
+                            ) : (
+                              <span className="text-blue-600 dark:text-blue-400">
+                                {item.currentValue}만원
+                              </span>
+                            )
                           ) : (
-                            <span className="text-blue-600 dark:text-blue-400">
-                              {item.currentValue}만원
+                            <span className="text-green-600 dark:text-green-400">
+                              $ {item.currentValue.toLocaleString()}
                             </span>
                           )
                         ) : (
-                          <span className="text-green-600 dark:text-green-400">
-                            $ {item.currentValue}
-                          </span>
-                        )
-                      ) : (
-                        "미입력"
-                      )}
-                    </span>
+                          "미입력"
+                        )}
+                      </span>
+                    </div>
+
+                    {item.currentValue > 0 && (
+                      <div className="flex items-center">
+                        <span className="mr-2 text-sm font-medium">수익률:</span>
+                        <span
+                          className={`text-xs font-bold ${
+                            calculateReturnRate(
+                              item.currentValue,
+                              item.initialInvestment || Math.round(item.currentValue * 0.5)
+                            ) >= 0
+                              ? "text-green-600 dark:text-green-400"
+                              : "text-red-600 dark:text-red-400"
+                          }`}
+                        >
+                          {formatReturnRate(
+                            calculateReturnRate(
+                              item.currentValue,
+                              item.initialInvestment || Math.round(item.currentValue * 0.5)
+                            )
+                          )}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <button
@@ -446,9 +477,29 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
                       </label>
                       <input
                         type="text"
-                        value={item.currentValue}
+                        value={item.currentValue > 0 ? item.currentValue.toLocaleString() : ""}
                         onChange={(e) => handleChange(item.id, "currentValue", e.target.value)}
                         placeholder={`${item.currency === CurrencyType.KRW ? "만원" : "달러"} 단위로 입력`}
+                        className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
+                      />
+                    </div>
+
+                    {/* 투자 원금 */}
+                    <div>
+                      <label className="block mb-2 text-sm font-medium">
+                        투자 원금 ({item.currency === CurrencyType.KRW ? "만원" : "달러"})
+                      </label>
+                      <input
+                        type="text"
+                        value={
+                          item.initialInvestment ? item.initialInvestment.toLocaleString() : ""
+                        }
+                        onChange={(e) => handleChange(item.id, "initialInvestment", e.target.value)}
+                        placeholder={
+                          item.currentValue
+                            ? `${Math.round(item.currentValue * 0.5).toLocaleString()} (평가금액의 50%)`
+                            : `미입력시 평가금액의 50%`
+                        }
                         className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
                       />
                     </div>
