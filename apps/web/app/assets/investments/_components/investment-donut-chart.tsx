@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { ChartTooltip } from "@web/components/ui/chart";
-import { numberToKorean } from "@web/utils/number-format";
+import { numberToKorean, truncateToHighestDenomination } from "@web/utils/number-format";
 import { Cell, Label, Pie, PieChart, ResponsiveContainer } from "recharts";
 
 interface InvestmentChartProps {
@@ -29,7 +29,7 @@ export function InvestmentDonutChart({ data, totalAmount }: InvestmentChartProps
         dominantBaseline="middle"
         className="fill-current font-medium"
       >
-        {formattedTotal}
+        {truncateToHighestDenomination(formattedTotal)}
       </text>
     );
   };
