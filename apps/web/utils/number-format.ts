@@ -80,6 +80,6 @@ export function calculateReturnRate(currentValue: number, initialInvestment: num
  * @returns 포맷팅된 수익률 (예: +12.34% 또는 -5.67%)
  */
 export function formatReturnRate(rate: number): string {
-  const sign = rate >= 0 ? "+" : "";
-  return `${sign}${rate.toFixed(2)}%`;
+  const sign = rate >= 0 ? "+" : "-";
+  return `${sign}${Math.abs(rate).toFixed(2)}%`;
 }
