@@ -1,32 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { InvestmentDonutChart } from "./_components/investment-donut-chart";
 import { InvestmentForm } from "./_components/investment-form";
 import { InvestmentList } from "./_components/investment-list";
 import { prepareChartData } from "./_utils/chart-utils";
 import { parseNumericString } from "./_utils/number-format";
+import { useInvestmentStore } from "./_utils/store";
 
 export default function InvestmentsPage() {
-  // 투자 계좌 데이터 상태
-  const [investments, setInvestments] = useState([
-    {
-      id: 1,
-      accountName: "투자 계좌 #1", // 기본 계좌 이름으로 설정
-      accountType: "",
-      accountOwner: "본인",
-      currency: "KRW",
-      currentValue: "",
-      note: "",
-    },
-  ]);
-
-  // 현재 열려있는 계좌 폼 ID 추적
-  const [expandedFormId, setExpandedFormId] = useState<number>(1);
-
-  // 사용자 정의 소유자 추가 기능
-  const [customOwners, setCustomOwners] = useState<string[]>([]);
+  // Zustand store에서 상태 가져오기
+  const investments = useInvestmentStore((state) => state.investments);
 
   // 총 투자금액 계산 - 최적화를 위해 useMemo 사용
   const totalInvestmentValue = useMemo(() => {
@@ -40,11 +25,12 @@ export default function InvestmentsPage() {
     return prepareChartData(investments);
   }, [investments]);
 
-  // 폼 제출 핸들러
+  // 폼 제출 핸들러 (Zustand store는 즉시 저장되기 때문에 단순 로깅만 수행)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Submitted investments data:", investments);
-    // Here you would save the data to your backend
+    // 데이터가 이미 localStorage에 자동으로 저장됨
+    // 여기서는 서버 API로 데이터를 전송하는 로직을 추가할 수 있음
   };
 
   return (
@@ -95,15 +81,7 @@ export default function InvestmentsPage() {
           )}
         </div>
 
-        <InvestmentForm
-          investments={investments}
-          setInvestments={setInvestments}
-          expandedFormId={expandedFormId}
-          setExpandedFormId={setExpandedFormId}
-          customOwners={customOwners}
-          setCustomOwners={setCustomOwners}
-          handleSubmit={handleSubmit}
-        />
+        <InvestmentForm handleSubmit={handleSubmit} />
       </div>
     </main>
   );

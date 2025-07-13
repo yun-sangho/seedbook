@@ -9,37 +9,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@web/components/ui/select";
+import {
+  ACCOUNT_TYPES,
+  CURRENCY_OPTIONS,
+  CurrencyType,
+  DEFAULT_OWNERS,
+  InvestmentItem,
+} from "../_utils/constants";
 import { formatWithCommas, parseNumericString } from "../_utils/number-format";
-
-interface InvestmentItem {
-  id: number;
-  accountName: string;
-  accountType: string;
-  accountOwner: string;
-  currency: string;
-  currentValue: string;
-  note: string;
-}
+import { useInvestmentStore } from "../_utils/store";
 
 interface InvestmentFormProps {
-  investments: InvestmentItem[];
-  setInvestments: React.Dispatch<React.SetStateAction<InvestmentItem[]>>;
-  expandedFormId: number;
-  setExpandedFormId: React.Dispatch<React.SetStateAction<number>>;
-  customOwners: string[];
-  setCustomOwners: React.Dispatch<React.SetStateAction<string[]>>;
   handleSubmit: (e: React.FormEvent) => void;
 }
 
-export function InvestmentForm({
-  investments,
-  setInvestments,
-  expandedFormId,
-  setExpandedFormId,
-  customOwners,
-  setCustomOwners,
-  handleSubmit,
-}: InvestmentFormProps) {
+export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
+  // Zustand store에서 상태와 액션 가져오기
+  const investments = useInvestmentStore((state) => state.investments);
+  const customOwners = useInvestmentStore((state) => state.customOwners);
+  const expandedFormId = useInvestmentStore((state) => state.expandedFormId);
+  const addInvestment = useInvestmentStore((state) => state.addInvestment);
+  const removeInvestment = useInvestmentStore((state) => state.removeInvestment);
+  const updateInvestment = useInvestmentStore((state) => state.updateInvestment);
+  const addCustomOwner = useInvestmentStore((state) => state.addCustomOwner);
+  const setExpandedFormId = useInvestmentStore((state) => state.setExpandedFormId);
   // 계좌 이름 수정 상태 관리
   const [editingNameId, setEditingNameId] = useState<number | null>(null);
   const [tempAccountName, setTempAccountName] = useState<string>("");
@@ -50,16 +43,11 @@ export function InvestmentForm({
 
   // 계좌 삭제 함수
   const removeInvestmentItem = (id: number) => {
-    setInvestments(investments.filter((item) => item.id !== id));
+    removeInvestment(id);
   };
 
   // 필드 값 변경 함수
   const handleChange = (id: number, field: string, value: string) => {
-    // 필드를 수정하면 자동으로 해당 폼을 펼침
-    if (expandedFormId !== id) {
-      setExpandedFormId(id);
-    }
-
     // 숫자 포맷팅 처리 (currentValue 필드의 경우)
     if (field === "currentValue" && value) {
       try {
@@ -75,9 +63,7 @@ export function InvestmentForm({
       }
     }
 
-    setInvestments(
-      investments.map((item) => (item.id === id ? { ...item, [field]: value } : item))
-    );
+    updateInvestment(id, field as keyof InvestmentItem, value);
   };
 
   // 계좌 이름 수정 시작
@@ -103,28 +89,16 @@ export function InvestmentForm({
   };
 
   // 사용자 정의 소유자 추가
-  const addCustomOwner = () => {
+  const handleAddCustomOwner = () => {
     if (newCustomOwner.trim() !== "" && !customOwners.includes(newCustomOwner.trim())) {
-      setCustomOwners([...customOwners, newCustomOwner.trim()]);
+      addCustomOwner(newCustomOwner.trim());
       setNewCustomOwner("");
       setShowCustomOwnerInput(false);
     }
   };
 
-  // 계좌 유형 목록
-  const accountTypes = [
-    "일반 투자 계좌",
-    "해외 투자 계좌",
-    "ISA 계좌",
-    "IRP 계좌",
-    "연금저축 계좌",
-  ];
-
   // 계좌 소유자 옵션 (기본 + 사용자 추가)
-  const accountOwners = ["본인", "배우자", ...customOwners];
-
-  // 통화 옵션
-  const currencyOptions = ["KRW", "USD"];
+  const accountOwners = [...DEFAULT_OWNERS, ...customOwners];
 
   return (
     <>
@@ -152,7 +126,7 @@ export function InvestmentForm({
               </button>
               <button
                 type="button"
-                onClick={addCustomOwner}
+                onClick={handleAddCustomOwner}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 추가하기
@@ -169,12 +143,28 @@ export function InvestmentForm({
           return (
             <div key={item.id} className="mb-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
               <div
-                className={`flex justify-between items-center p-6 ${!isExpanded ? "border-b-0" : "border-b dark:border-gray-700"}`}
+                className={`flex justify-between items-center p-6 ${!isExpanded ? "border-b-0" : "border-b dark:border-gray-700"} cursor-pointer`}
+                onClick={(e) => {
+                  // 이벤트 버블링을 방지하기 위해 특정 요소를 클릭했는지 확인
+                  const target = e.target as HTMLElement;
+                  const isEditButton = target.closest('[aria-label="이름 수정"]');
+                  const isDeleteButton = target.closest('[aria-label="삭제"]');
+                  const isCheckButton = target.closest('[aria-label="저장"]');
+                  const isCancelButton = target.closest('[aria-label="취소"]');
+
+                  // 특정 아이콘이나 버튼을 클릭한 경우 토글 동작을 방지
+                  if (!isEditButton && !isDeleteButton && !isCheckButton && !isCancelButton) {
+                    setExpandedFormId(isExpanded ? -1 : item.id);
+                  }
+                }}
               >
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setExpandedFormId(isExpanded ? -1 : item.id)}
+                    onClick={(e) => {
+                      e.stopPropagation(); // 이벤트 버블링 방지
+                      setExpandedFormId(isExpanded ? -1 : item.id);
+                    }}
                     className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                     aria-label={isExpanded ? "접기" : "펼치기"}
                   >
@@ -199,11 +189,19 @@ export function InvestmentForm({
                       <input
                         type="text"
                         value={tempAccountName}
-                        onChange={(e) => setTempAccountName(e.target.value)}
+                        onChange={(e) => {
+                          e.stopPropagation(); // 이벤트 버블링 방지
+                          setTempAccountName(e.target.value);
+                        }}
                         className="p-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
                         autoFocus
-                        onBlur={saveAccountName}
+                        onBlur={(e) => {
+                          e.stopPropagation(); // 이벤트 버블링 방지
+                          saveAccountName();
+                        }}
+                        onClick={(e) => e.stopPropagation()} // 클릭 시 버블링 방지
                         onKeyDown={(e) => {
+                          e.stopPropagation(); // 키 입력 시 버블링 방지
                           if (e.key === "Enter") {
                             e.preventDefault();
                             saveAccountName();
@@ -215,7 +213,10 @@ export function InvestmentForm({
                       <div className="flex ml-2">
                         <button
                           type="button"
-                          onClick={saveAccountName}
+                          onClick={(e) => {
+                            e.stopPropagation(); // 이벤트 버블링 방지
+                            saveAccountName();
+                          }}
                           className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 mr-1"
                           aria-label="저장"
                         >
@@ -235,7 +236,10 @@ export function InvestmentForm({
                         </button>
                         <button
                           type="button"
-                          onClick={cancelEditingName}
+                          onClick={(e) => {
+                            e.stopPropagation(); // 이벤트 버블링 방지
+                            cancelEditingName();
+                          }}
                           className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                           aria-label="취소"
                         >
@@ -261,7 +265,10 @@ export function InvestmentForm({
                       <span className="font-medium">{item.accountName}</span>
                       <button
                         type="button"
-                        onClick={() => startEditingName(item.id)}
+                        onClick={(e) => {
+                          e.stopPropagation(); // 이벤트 버블링 방지
+                          startEditingName(item.id);
+                        }}
                         className="ml-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                         aria-label="이름 수정"
                       >
@@ -289,7 +296,7 @@ export function InvestmentForm({
                     <span className="mr-2 text-sm font-medium">평가금액:</span>
                     <span className="text-sm font-bold">
                       {item.currentValue ? (
-                        item.currency === "KRW" ? (
+                        item.currency === CurrencyType.KRW ? (
                           parseInt(item.currentValue.replace(/,/g, "")) >= 10000 ? (
                             <span className="text-blue-600 dark:text-blue-400">
                               {item.currentValue.replace(/,/g, "").length > 4
@@ -319,7 +326,10 @@ export function InvestmentForm({
 
                   <button
                     type="button"
-                    onClick={() => removeInvestmentItem(item.id)}
+                    onClick={(e) => {
+                      e.stopPropagation(); // 이벤트 버블링 방지
+                      removeInvestmentItem(item.id);
+                    }}
                     className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                     aria-label="삭제"
                   >
@@ -360,7 +370,7 @@ export function InvestmentForm({
                           </SelectTrigger>
                           <SelectContent>
                             <SelectGroup>
-                              {accountTypes.map((type) => (
+                              {ACCOUNT_TYPES.map((type) => (
                                 <SelectItem key={type} value={type}>
                                   {type}
                                 </SelectItem>
@@ -418,7 +428,7 @@ export function InvestmentForm({
                           </SelectTrigger>
                           <SelectContent>
                             <SelectGroup>
-                              {currencyOptions.map((currency) => (
+                              {CURRENCY_OPTIONS.map((currency) => (
                                 <SelectItem key={currency} value={currency}>
                                   {currency}
                                 </SelectItem>
@@ -432,13 +442,13 @@ export function InvestmentForm({
                     {/* 평가 금액 */}
                     <div>
                       <label className="block mb-2 text-sm font-medium">
-                        현재 평가 금액 ({item.currency === "KRW" ? "만원" : "달러"})
+                        현재 평가 금액 ({item.currency === CurrencyType.KRW ? "만원" : "달러"})
                       </label>
                       <input
                         type="text"
                         value={item.currentValue}
                         onChange={(e) => handleChange(item.id, "currentValue", e.target.value)}
-                        placeholder={`${item.currency === "KRW" ? "만원" : "달러"} 단위로 입력`}
+                        placeholder={`${item.currency === CurrencyType.KRW ? "만원" : "달러"} 단위로 입력`}
                         className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
                       />
                     </div>
@@ -464,24 +474,7 @@ export function InvestmentForm({
         <div className="mt-6 flex gap-3">
           <button
             type="button"
-            onClick={() => {
-              const newId =
-                investments.length > 0 ? Math.max(...investments.map((item) => item.id)) + 1 : 1;
-              setInvestments([
-                {
-                  id: newId,
-                  accountName: `투자 계좌 #${newId}`,
-                  accountType: "",
-                  accountOwner: "본인",
-                  currency: "KRW",
-                  currentValue: "",
-                  note: "",
-                },
-                ...investments,
-              ]);
-              // 새 계좌 폼을 자동으로 펼침
-              setExpandedFormId(newId);
-            }}
+            onClick={addInvestment}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             + 투자 계좌 추가
