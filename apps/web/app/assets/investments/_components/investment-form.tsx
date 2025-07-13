@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Input } from "@web/components/ui/input";
+import { Label } from "@web/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -9,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@web/components/ui/select";
+import { Textarea } from "@web/components/ui/textarea";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import {
   ACCOUNT_TYPES,
@@ -114,12 +117,15 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
           <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg w-full max-w-md">
             <h3 className="text-lg font-medium mb-4">새 소유자 추가</h3>
             <div className="mb-4">
-              <input
+              <Label htmlFor="new-owner" className="mb-2">
+                소유자 이름
+              </Label>
+              <Input
+                id="new-owner"
                 type="text"
                 value={newCustomOwner}
                 onChange={(e) => setNewCustomOwner(e.target.value)}
                 placeholder="소유자 이름 입력"
-                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
               />
             </div>
             <div className="flex justify-end gap-2">
@@ -192,14 +198,14 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
 
                   {editingNameId === item.id ? (
                     <div className="flex items-center">
-                      <input
+                      <Input
                         type="text"
                         value={tempAccountName}
                         onChange={(e) => {
                           e.stopPropagation(); // 이벤트 버블링 방지
                           setTempAccountName(e.target.value);
                         }}
-                        className="p-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
+                        className="p-1 w-auto"
                         autoFocus
                         onBlur={(e) => {
                           e.stopPropagation(); // 이벤트 버블링 방지
@@ -365,8 +371,8 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* 계좌 유형 */}
                     <div>
-                      <label className="block mb-2 text-sm font-medium">계좌 유형</label>
-                      <div className="relative">
+                      <Label htmlFor={`account-type-${item.id}`}>계좌 유형</Label>
+                      <div className="relative mt-2">
                         <Select
                           value={item.accountType}
                           onValueChange={(value) => handleChange(item.id, "accountType", value)}
@@ -389,8 +395,8 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
 
                     {/* 계좌 소유자 */}
                     <div>
-                      <label className="block mb-2 text-sm font-medium">계좌 소유자</label>
-                      <div className="relative">
+                      <Label htmlFor={`account-owner-${item.id}`}>계좌 소유자</Label>
+                      <div className="relative mt-2">
                         <Select
                           value={item.accountOwner}
                           onValueChange={(value) => handleChange(item.id, "accountOwner", value)}
@@ -423,8 +429,8 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
 
                     {/* 통화 */}
                     <div>
-                      <label className="block mb-2 text-sm font-medium">통화</label>
-                      <div className="relative">
+                      <Label htmlFor={`currency-${item.id}`}>통화</Label>
+                      <div className="relative mt-2">
                         <Select
                           value={item.currency}
                           onValueChange={(value) => handleChange(item.id, "currency", value)}
@@ -447,24 +453,26 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
 
                     {/* 평가 금액 */}
                     <div>
-                      <label className="block mb-2 text-sm font-medium">
+                      <Label htmlFor={`current-value-${item.id}`}>
                         현재 평가 금액 ({item.currency === CurrencyType.KRW ? "만원" : "달러"})
-                      </label>
-                      <input
+                      </Label>
+                      <Input
+                        id={`current-value-${item.id}`}
                         type="text"
                         value={item.currentValue > 0 ? item.currentValue.toLocaleString() : ""}
                         onChange={(e) => handleChange(item.id, "currentValue", e.target.value)}
                         placeholder={`${item.currency === CurrencyType.KRW ? "만원" : "달러"} 단위로 입력`}
-                        className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
+                        className="mt-2"
                       />
                     </div>
 
                     {/* 투자 원금 */}
                     <div>
-                      <label className="block mb-2 text-sm font-medium">
+                      <Label htmlFor={`initial-investment-${item.id}`}>
                         투자 원금 ({item.currency === CurrencyType.KRW ? "만원" : "달러"})
-                      </label>
-                      <input
+                      </Label>
+                      <Input
+                        id={`initial-investment-${item.id}`}
                         type="text"
                         value={
                           item.initialInvestment ? item.initialInvestment.toLocaleString() : ""
@@ -475,19 +483,20 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
                             ? `${Math.round(item.currentValue * 0.5).toLocaleString()} (평가금액의 50%)`
                             : `미입력시 평가금액의 50%`
                         }
-                        className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
+                        className="mt-2"
                       />
                     </div>
 
                     {/* 메모 */}
                     <div className="md:col-span-2">
-                      <label className="block mb-2 text-sm font-medium">메모</label>
-                      <textarea
+                      <Label htmlFor={`note-${item.id}`}>메모</Label>
+                      <Textarea
+                        id={`note-${item.id}`}
                         value={item.note}
                         onChange={(e) => handleChange(item.id, "note", e.target.value)}
                         placeholder="메모 작성"
                         rows={3}
-                        className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
+                        className="mt-2"
                       />
                     </div>
                   </div>

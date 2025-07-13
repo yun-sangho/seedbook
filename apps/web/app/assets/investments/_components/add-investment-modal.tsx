@@ -17,6 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@web/components/ui/select";
+import { Input } from "@web/components/ui/input";
+import { Label } from "@web/components/ui/label";
+import { Textarea } from "@web/components/ui/textarea";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import {
   ACCOUNT_TYPES,
@@ -128,12 +131,13 @@ export function AddInvestmentModal({ isOpen, onClose }: AddInvestmentModalProps)
           <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg w-full max-w-md">
             <h3 className="text-lg font-medium mb-4">새 소유자 추가</h3>
             <div className="mb-4">
-              <input
+              <Label htmlFor="custom-owner" className="mb-2 block">소유자 이름</Label>
+              <Input
+                id="custom-owner"
                 type="text"
                 value={newCustomOwner}
                 onChange={(e) => setNewCustomOwner(e.target.value)}
                 placeholder="소유자 이름 입력"
-                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
               />
             </div>
             <div className="flex justify-end gap-2">
@@ -170,13 +174,14 @@ export function AddInvestmentModal({ isOpen, onClose }: AddInvestmentModalProps)
             <div className="grid gap-4 py-4">
               {/* 계좌명 */}
               <div>
-                <label className="block mb-2 text-sm font-medium">계좌명</label>
-                <input
+                <Label htmlFor="account-name">계좌명</Label>
+                <Input
+                  id="account-name"
                   type="text"
                   value={formData.accountName}
                   onChange={(e) => handleChange("accountName", e.target.value)}
                   placeholder="계좌명 입력"
-                  className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
+                  className="mt-2"
                 />
               </div>
 
@@ -252,24 +257,26 @@ export function AddInvestmentModal({ isOpen, onClose }: AddInvestmentModalProps)
 
                 {/* 현재 평가 금액 */}
                 <div>
-                  <label className="block mb-2 text-sm font-medium">
+                  <Label htmlFor="current-value">
                     현재 평가 금액 ({formData.currency === CurrencyType.KRW ? "만원" : "달러"})
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="current-value"
                     type="text"
                     value={formData.currentValue > 0 ? formData.currentValue.toLocaleString() : ""}
                     onChange={(e) => handleChange("currentValue", e.target.value)}
                     placeholder={`${formData.currency === CurrencyType.KRW ? "만원" : "달러"} 단위로 입력`}
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
+                    className="mt-2"
                   />
                 </div>
 
                 {/* 투자 원금 */}
                 <div>
-                  <label className="block mb-2 text-sm font-medium">
+                  <Label htmlFor="initial-investment">
                     투자 원금 ({formData.currency === CurrencyType.KRW ? "만원" : "달러"})
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="initial-investment"
                     type="text"
                     value={
                       formData.initialInvestment ? formData.initialInvestment.toLocaleString() : ""
@@ -280,19 +287,20 @@ export function AddInvestmentModal({ isOpen, onClose }: AddInvestmentModalProps)
                         ? `${Math.round(formData.currentValue * 0.5).toLocaleString()} (평가금액의 50%)`
                         : `미입력시 평가금액의 50%`
                     }
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
+                    className="mt-2"
                   />
                 </div>
 
                 {/* 메모 */}
                 <div className="md:col-span-2">
-                  <label className="block mb-2 text-sm font-medium">메모</label>
-                  <textarea
+                  <Label htmlFor="note">메모</Label>
+                  <Textarea
+                    id="note"
                     value={formData.note}
                     onChange={(e) => handleChange("note", e.target.value)}
                     placeholder="메모 작성"
                     rows={3}
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
+                    className="mt-2"
                   />
                 </div>
               </div>
