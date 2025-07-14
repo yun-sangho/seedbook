@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Droplets, Home, Landmark, BadgeDollarSign } from "lucide-react";
 
 export default function AssetsPage() {
   return (
@@ -85,85 +86,17 @@ function AssetCard({ title, description, color, href, icon }: AssetCardProps) {
 }
 
 function SavingsIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M2 17a5 5 0 0 0 10 0c0-2.76-5-5-5-5s-5 2.24-5 5Z" />
-      <path d="M12 17a5 5 0 0 0 10 0c0-2.76-5-5-5-5s-5 2.24-5 5Z" />
-      <path d="M7 14c0-1.1.9-2 2-2" />
-      <path d="M17 14c0-1.1.9-2 2-2" />
-    </svg>
-  );
+  return <Droplets className="w-6 h-6" />;
 }
 
 function InvestmentIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-      <polyline points="9 22 9 12 15 12 15 22" />
-    </svg>
-  );
+  return <Landmark className="w-6 h-6" />;
 }
 
 function RealAssetsIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect width="18" height="18" x="3" y="3" rx="2" />
-      <path d="M7 7v10" />
-      <path d="M11 7v10" />
-      <path d="m15 7 2 10" />
-    </svg>
-  );
+  return <Home className="w-6 h-6" />;
 }
 
 function LoansIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
-      <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-      <path d="M4 22h16" />
-      <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
-      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
-      <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
-    </svg>
-  );
+  return <BadgeDollarSign className="w-6 h-6" />;
 }

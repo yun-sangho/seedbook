@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { prepareChartData } from "@web/features/investments/utils/chart-utils";
 import { AddInvestmentModal } from "./_components/add-investment-modal";
@@ -54,19 +55,7 @@ export default function InvestmentsPage() {
             href="/assets"
             className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="m15 18-6-6 6-6" />
-            </svg>
+            <ChevronLeft className="w-5 h-5" />
             돌아가기
           </Link>
         </div>

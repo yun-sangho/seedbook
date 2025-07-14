@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@web/components/ui/select";
 import { Textarea } from "@web/components/ui/textarea";
+import { ChevronDown, Check, X, Edit, Trash } from "lucide-react";
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
 import { DEFAULT_OWNERS, SAVINGS_TYPES } from "@web/features/savings/types/constants";
 import { SavingsItem } from "@web/features/savings/types/types";
@@ -171,20 +172,9 @@ export function SavingsForm({ handleSubmit }: SavingsFormProps) {
                     className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                     aria-label={isExpanded ? "접기" : "펼치기"}
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className={`transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                    >
-                      <path d="m6 9 6 6 6-6" />
-                    </svg>
+                    <ChevronDown
+                      className={`transition-transform ${isExpanded ? "rotate-180" : ""} w-5 h-5`}
+                    />
                   </button>
 
                   {editingNameId === item.id ? (
@@ -223,19 +213,7 @@ export function SavingsForm({ handleSubmit }: SavingsFormProps) {
                           className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 mr-1"
                           aria-label="저장"
                         >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M20 6 9 17l-5-5" />
-                          </svg>
+                          <Check className="w-4 h-4" />
                         </button>
                         <button
                           type="button"
@@ -246,20 +224,7 @@ export function SavingsForm({ handleSubmit }: SavingsFormProps) {
                           className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                           aria-label="취소"
                         >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M18 6 6 18" />
-                            <path d="m6 6 12 12" />
-                          </svg>
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -275,20 +240,7 @@ export function SavingsForm({ handleSubmit }: SavingsFormProps) {
                         className="ml-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                         aria-label="이름 수정"
                       >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M12 20h9" />
-                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                        </svg>
+                        <Edit className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   )}
@@ -319,23 +271,7 @@ export function SavingsForm({ handleSubmit }: SavingsFormProps) {
                     className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                     aria-label="삭제"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M3 6h18" />
-                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                      <line x1="10" y1="11" x2="10" y2="17" />
-                      <line x1="14" y1="11" x2="14" y2="17" />
-                    </svg>
+                    <Trash className="w-5 h-5" />
                   </button>
                 </div>
               </div>
