@@ -1,33 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useSavingsStore } from "@web/features/savings/stores/savings-store";
+import { prepareChartData } from "@web/features/savings/utils/chart-utils";
+import { AddSavingsModal } from "./_components/add-savings-modal";
+import { SavingsDonutChart } from "./_components/savings-donut-chart";
+import { SavingsForm } from "./_components/savings-form";
+import { SavingsList } from "./_components/savings-list";
 
 export default function SavingsPage() {
-  const [savings, setSavings] = useState([
-    { id: 1, name: "", institution: "", amount: "", interestRate: "", note: "" },
-  ]);
+  // 모달 표시 상태
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const addSavingsItem = () => {
-    const newId = savings.length > 0 ? Math.max(...savings.map((item) => item.id)) + 1 : 1;
-    setSavings([
-      ...savings,
-      { id: newId, name: "", institution: "", amount: "", interestRate: "", note: "" },
-    ]);
-  };
+  // Zustand store에서 상태 가져오기
+  const savings = useSavingsStore((state) => state.savings);
 
-  const removeSavingsItem = (id: number) => {
-    setSavings(savings.filter((item) => item.id !== id));
-  };
+  // 총 저축금액 계산 - 최적화를 위해 useMemo 사용
+  const totalSavingsAmount = useMemo(() => {
+    return savings.filter((item) => item.amount).reduce((sum, item) => sum + item.amount, 0);
+  }, [savings]);
 
-  const handleChange = (id: number, field: string, value: string) => {
-    setSavings(savings.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
-  };
+  // 차트 데이터 준비
+  const chartData = useMemo(() => {
+    return prepareChartData(savings);
+  }, [savings]);
 
+  // 폼 제출 핸들러 (Zustand store는 즉시 저장되기 때문에 단순 로깅만 수행)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Submitted savings data:", savings);
-    // Here you would save the data to your backend
+    // 데이터가 이미 localStorage에 자동으로 저장됨
+    // 여기서는 서버 API로 데이터를 전송하는 로직을 추가할 수 있음
+  };
+
+  // 저축 계좌 추가 모달 열기
+  const openAddAccountModal = () => {
+    setIsModalOpen(true);
+  };
+
+  // 저축 계좌 추가 모달 닫기
+  const closeAddAccountModal = () => {
+    setIsModalOpen(false);
   };
 
   return (
@@ -56,124 +70,25 @@ export default function SavingsPage() {
         </div>
 
         <div className="mb-10">
-          <h1 className="text-3xl font-bold mb-4">저축 정보 입력</h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-3xl font-bold">저축 정보 입력</h1>
+            <button
+              onClick={openAddAccountModal}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              + 저축 계좌 추가
+            </button>
+          </div>
+
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
             예금, 적금, 현금성 자산 정보를 입력해주세요
           </p>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          {savings.map((item) => (
-            <div key={item.id} className="mb-8 p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium">저축 항목 #{item.id}</h3>
-                {savings.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeSavingsItem(item.id)}
-                    className="text-red-500 hover:text-red-700 dark:hover:text-red-400"
-                  >
-                    삭제
-                  </button>
-                )}
-              </div>
+        <SavingsForm handleSubmit={handleSubmit} />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    저축 종류
-                  </label>
-                  <input
-                    type="text"
-                    value={item.name}
-                    onChange={(e) => handleChange(item.id, "name", e.target.value)}
-                    placeholder="예금, 적금, 현금 등"
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    금융 기관
-                  </label>
-                  <input
-                    type="text"
-                    value={item.institution}
-                    onChange={(e) => handleChange(item.id, "institution", e.target.value)}
-                    placeholder="은행이나 금융기관명"
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    금액 (원)
-                  </label>
-                  <input
-                    type="text"
-                    value={item.amount}
-                    onChange={(e) => handleChange(item.id, "amount", e.target.value)}
-                    placeholder="금액"
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    이자율 (%)
-                  </label>
-                  <input
-                    type="text"
-                    value={item.interestRate}
-                    onChange={(e) => handleChange(item.id, "interestRate", e.target.value)}
-                    placeholder="연 이자율"
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
-                  />
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    메모
-                  </label>
-                  <textarea
-                    value={item.note}
-                    onChange={(e) => handleChange(item.id, "note", e.target.value)}
-                    placeholder="추가 정보"
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
-                    rows={2}
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-
-          <div className="mb-8">
-            <button
-              type="button"
-              onClick={addSavingsItem}
-              className="w-full p-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
-            >
-              + 저축 항목 추가하기
-            </button>
-          </div>
-
-          <div className="flex justify-end gap-4">
-            <Link
-              href="/assets"
-              className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              취소
-            </Link>
-            <button
-              type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              저장하기
-            </button>
-          </div>
-        </form>
+        {/* 새 저축 계좌 추가 모달 */}
+        <AddSavingsModal isOpen={isModalOpen} onClose={closeAddAccountModal} />
       </div>
     </main>
   );
