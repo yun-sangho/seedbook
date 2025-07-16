@@ -30,11 +30,6 @@ export function SavingsList({ savings }: SavingsListProps) {
               </div>
               <div className="flex flex-col items-end">
                 <span className="font-bold">{numberToKorean(item.amount.toString())}</span>
-                {item.interestRate > 0 && (
-                  <span className="text-sm text-green-600 dark:text-green-400">
-                    {item.interestRate}%
-                  </span>
-                )}
               </div>
             </div>
           ))

@@ -40,7 +40,6 @@ export function AddSavingsModal({ isOpen, onClose }: AddSavingsModalProps) {
     accountType: "",
     accountOwner: DefaultOwnerType.SELF,
     amount: 0,
-    interestRate: 0,
     note: "",
   });
 
@@ -58,7 +57,7 @@ export function AddSavingsModal({ isOpen, onClose }: AddSavingsModalProps) {
   // 필드 값 변경 함수
   const handleChange = (field: keyof Omit<SavingsItem, "id">, value: string | number) => {
     // 숫자 필드 처리
-    if ((field === "amount" || field === "interestRate") && typeof value === "string") {
+    if (field === "amount" && typeof value === "string") {
       try {
         // 콤마 제거 후 숫자로 변환
         const numericValue = value ? parseNumericString(value) : 0;
@@ -100,7 +99,6 @@ export function AddSavingsModal({ isOpen, onClose }: AddSavingsModalProps) {
     updateSavings(newId, "accountType", formData.accountType);
     updateSavings(newId, "accountOwner", formData.accountOwner);
     updateSavings(newId, "amount", formData.amount);
-    updateSavings(newId, "interestRate", formData.interestRate);
     updateSavings(newId, "note", formData.note);
 
     // 폼 초기화 및 모달 닫기
@@ -109,7 +107,6 @@ export function AddSavingsModal({ isOpen, onClose }: AddSavingsModalProps) {
       accountType: "",
       accountOwner: DefaultOwnerType.SELF,
       amount: 0,
-      interestRate: 0,
       note: "",
     });
 
@@ -243,19 +240,6 @@ export function AddSavingsModal({ isOpen, onClose }: AddSavingsModalProps) {
                     value={formData.amount > 0 ? formData.amount.toLocaleString() : ""}
                     onChange={(e) => handleChange("amount", e.target.value)}
                     placeholder="만원 단위로 입력"
-                    className="mt-2"
-                  />
-                </div>
-
-                {/* 이자율 */}
-                <div>
-                  <Label htmlFor="interest-rate">이자율 (%)</Label>
-                  <Input
-                    id="interest-rate"
-                    type="text"
-                    value={formData.interestRate > 0 ? formData.interestRate.toString() : ""}
-                    onChange={(e) => handleChange("interestRate", e.target.value)}
-                    placeholder="연 이자율"
                     className="mt-2"
                   />
                 </div>

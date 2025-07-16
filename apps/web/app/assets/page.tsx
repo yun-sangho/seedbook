@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Droplets, Home, Landmark, BadgeDollarSign } from "lucide-react";
+import { BadgeDollarSign, Droplets, Home, Landmark } from "lucide-react";
 
 export default function AssetsPage() {
   return (

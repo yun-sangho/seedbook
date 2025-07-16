@@ -12,11 +12,11 @@ import {
   SelectValue,
 } from "@web/components/ui/select";
 import { Textarea } from "@web/components/ui/textarea";
-import { ChevronDown, Check, X, Edit, Trash } from "lucide-react";
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
 import { DEFAULT_OWNERS, SAVINGS_TYPES } from "@web/features/savings/types/constants";
 import { SavingsItem } from "@web/features/savings/types/types";
 import { numberToKorean, parseNumericString } from "@web/utils/number-format";
+import { Check, ChevronDown, Edit, Trash, X } from "lucide-react";
 
 interface SavingsFormProps {
   handleSubmit: (e: React.FormEvent) => void;
@@ -48,7 +48,7 @@ export function SavingsForm({ handleSubmit }: SavingsFormProps) {
   // 필드 값 변경 함수
   const handleChange = (id: number, field: string, value: string) => {
     // 숫자 필드 처리
-    if ((field === "amount" || field === "interestRate") && value) {
+    if (field === "amount" && value) {
       try {
         // 콤마 제거 후 숫자로 변환
         const numericValue = parseNumericString(value);
@@ -253,13 +253,6 @@ export function SavingsForm({ handleSubmit }: SavingsFormProps) {
                         {item.amount ? numberToKorean(item.amount.toString()) : "미입력"}
                       </span>
                     </div>
-                    {item.interestRate > 0 && (
-                      <div className="flex items-center">
-                        <span className="text-xs font-bold text-green-600 dark:text-green-400">
-                          {item.interestRate}%
-                        </span>
-                      </div>
-                    )}
                   </div>
 
                   <button
@@ -343,19 +336,6 @@ export function SavingsForm({ handleSubmit }: SavingsFormProps) {
                         value={item.amount > 0 ? item.amount.toLocaleString() : ""}
                         onChange={(e) => handleChange(item.id, "amount", e.target.value)}
                         placeholder="만원 단위로 입력"
-                        className="mt-2"
-                      />
-                    </div>
-
-                    {/* 이자율 */}
-                    <div>
-                      <Label htmlFor={`interest-rate-${item.id}`}>이자율 (%)</Label>
-                      <Input
-                        id={`interest-rate-${item.id}`}
-                        type="text"
-                        value={item.interestRate > 0 ? item.interestRate.toString() : ""}
-                        onChange={(e) => handleChange(item.id, "interestRate", e.target.value)}
-                        placeholder="연 이자율"
                         className="mt-2"
                       />
                     </div>

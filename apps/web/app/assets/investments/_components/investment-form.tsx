@@ -12,7 +12,6 @@ import {
   SelectValue,
 } from "@web/components/ui/select";
 import { Textarea } from "@web/components/ui/textarea";
-import { ChevronDown, Check, X, Edit, Trash } from "lucide-react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import {
   ACCOUNT_TYPES,
@@ -27,6 +26,7 @@ import {
   numberToKorean,
   parseNumericString,
 } from "@web/utils/number-format";
+import { Check, ChevronDown, Edit, Trash, X } from "lucide-react";
 
 interface InvestmentFormProps {
   handleSubmit: (e: React.FormEvent) => void;

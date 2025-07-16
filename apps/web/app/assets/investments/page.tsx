@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { prepareChartData } from "@web/features/investments/utils/chart-utils";
+import { ChevronLeft } from "lucide-react";
 import { AddInvestmentModal } from "./_components/add-investment-modal";
 import { InvestmentDonutChart } from "./_components/investment-donut-chart";
 import { InvestmentForm } from "./_components/investment-form";
