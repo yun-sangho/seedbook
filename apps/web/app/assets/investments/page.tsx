@@ -47,6 +47,8 @@ export default function InvestmentsPage() {
     setIsModalOpen(false);
   };
 
+  console.log("Total Investment Value:", totalInvestmentValue);
+
   return (
     <main className="flex flex-col items-center min-h-screen p-8 md:p-24">
       <div className="w-full max-w-4xl">
