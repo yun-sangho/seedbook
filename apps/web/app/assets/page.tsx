@@ -147,7 +147,6 @@ function AssetDashboardView({ savings, investments, realAssets, loans }: AssetDa
   // 총 자산 및 순자산 계산
   const totalAssets = totalSavings + totalInvestments + totalRealAssets;
   const netAssets = totalAssets - totalLoans; // 순자산 = 총 자산 - 총 부채
-  console.log("Total Assets:", totalAssets, netAssets);
 
   // 차트 데이터 준비
   const assetsChartData = prepareAssetsChartData(savings, investments, realAssets, loans);
