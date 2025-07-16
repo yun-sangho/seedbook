@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { DonutChart } from "@web/components/ui/donut-chart";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@web/components/ui/chart";
 import { prepareAssetsChartData } from "@web/features/assets/utils/chart-utils";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { InvestmentItem } from "@web/features/investments/types/types";
@@ -13,7 +13,8 @@ import { RealAssetItem } from "@web/features/real-assets/types/types";
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
 import { SavingsItem } from "@web/features/savings/types/types";
 import { numberToKorean } from "@web/utils/number-format";
-import { BadgeDollarSign, ChevronRight, Droplets, Home, Landmark, Plus } from "lucide-react";
+import { BadgeDollarSign, ChevronRight, Droplets, Home, Landmark } from "lucide-react";
+import { Cell, Label, Pie, PieChart } from "recharts";
 
 export default function AssetsPage() {
   // 자산 데이터 로드
@@ -146,6 +147,7 @@ function AssetDashboardView({ savings, investments, realAssets, loans }: AssetDa
   // 총 자산 및 순자산 계산
   const totalAssets = totalSavings + totalInvestments + totalRealAssets;
   const netAssets = totalAssets - totalLoans; // 순자산 = 총 자산 - 총 부채
+  console.log("Total Assets:", totalAssets, netAssets);
 
   // 차트 데이터 준비
   const assetsChartData = prepareAssetsChartData(savings, investments, realAssets, loans);
@@ -163,24 +165,69 @@ function AssetDashboardView({ savings, investments, realAssets, loans }: AssetDa
           <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-xl mb-8">
             <div className="flex flex-col items-center mb-6">
               <h2 className="text-xl font-semibold mb-4">자산 구성</h2>
-              <div className="flex flex-col items-center">
-                <DonutChart
-                  data={activeAssets}
-                  totalAmount={totalAssets}
-                  size={240}
-                  thickness={30}
-                  centerContent={
-                    <div className="flex flex-col items-center">
-                      <span className="text-sm text-gray-500">순자산</span>
-                      <span className="text-xl font-bold">
-                        {numberToKorean(netAssets.toString())}
-                      </span>
-                    </div>
-                  }
-                />
+              <div className="flex justify-center w-full h-100">
+                <ChartContainer
+                  config={activeAssets.reduce(
+                    (acc, asset) => {
+                      acc[asset.name] = { color: asset.color };
+                      return acc;
+                    },
+                    {} as Record<string, { color: string }>
+                  )}
+                  className="aspect-square h-full"
+                >
+                  <PieChart>
+                    <Pie
+                      data={activeAssets}
+                      dataKey="amount"
+                      nameKey="name"
+                      innerRadius={100}
+                      strokeWidth={5}
+                    >
+                      {activeAssets.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                      <Label
+                        content={({ viewBox }) => {
+                          if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                            return (
+                              <text
+                                x={viewBox.cx}
+                                y={viewBox.cy}
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                              >
+                                <tspan
+                                  x={viewBox.cx}
+                                  y={viewBox.cy}
+                                  className="fill-foreground text-2xl font-bold"
+                                >
+                                  {numberToKorean(netAssets.toString())}
+                                </tspan>
+                                <tspan
+                                  x={viewBox.cx}
+                                  y={(viewBox.cy || 0) + 24}
+                                  className="fill-muted-foreground"
+                                >
+                                  순자산
+                                </tspan>
+                              </text>
+                            );
+                          }
+                        }}
+                      />
+                    </Pie>
+                    <ChartTooltip
+                      content={
+                        <ChartTooltipContent
+                          formatter={(value) => numberToKorean(value.toString())}
+                        />
+                      }
+                    />
+                  </PieChart>
+                </ChartContainer>
               </div>
 
-              {/* 차트 범례 */}
               {/* 자산 요약 정보 */}
               <div className="flex justify-between w-full max-w-lg mt-6 mb-2">
                 <div className="text-center">
@@ -331,60 +378,39 @@ function AssetTypeCard({
         {/* 도넛 차트 */}
         <div className="mt-4 md:mt-0">
           {amount > 0 ? (
-            <DonutChart data={chartData} totalAmount={amount} size={120} thickness={30} />
+            <div className="w-[110px] h-[110px]">
+              <ChartContainer
+                config={chartData.reduce(
+                  (acc, item) => {
+                    acc[item.name] = { color: item.color };
+                    return acc;
+                  },
+                  {} as Record<string, { color: string }>
+                )}
+                className="aspect-square h-full"
+              >
+                <PieChart>
+                  <Pie data={chartData} dataKey="amount" nameKey="name" innerRadius={25}>
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) => numberToKorean(value.toString())}
+                      />
+                    }
+                  />
+                </PieChart>
+              </ChartContainer>
+            </div>
           ) : (
-            <div className="w-[120px] h-[120px] flex items-center justify-center rounded-full border-4 border-dashed border-gray-200">
+            <div className="w-[110px] h-[110px] flex items-center justify-center rounded-full border-4 border-dashed border-gray-200">
               <span className="text-gray-400 text-sm">데이터 없음</span>
             </div>
           )}
         </div>
-      </div>
-    </div>
-  );
-}
-
-// 자산 상세 카드 컴포넌트
-interface AssetDetailCardProps<T> {
-  title: string;
-  items: T[];
-  color: string;
-  href: string;
-  renderItem: (item: T) => React.ReactNode;
-}
-
-function AssetDetailCard<T>({ title, items, color, href, renderItem }: AssetDetailCardProps<T>) {
-  return (
-    <div className={`rounded-xl p-6 ${color}`}>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <Link
-          href={href}
-          className="text-blue-600 dark:text-blue-400 flex items-center hover:underline"
-        >
-          <span className="mr-1">편집</span>
-          <Plus className="w-4 h-4" />
-        </Link>
-      </div>
-
-      <div className="space-y-3">
-        {items.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">항목이 없습니다</p>
-        ) : (
-          items.slice(0, 5).map((item, index) => (
-            <div key={index} className="p-3 bg-white dark:bg-gray-800 rounded-lg">
-              {renderItem(item)}
-            </div>
-          ))
-        )}
-
-        {items.length > 5 && (
-          <Link
-            href={href}
-            className="block text-center text-sm text-blue-600 dark:text-blue-400 mt-2 hover:underline"
-          >
-            {items.length - 5}개 더 보기
-          </Link>
-        )}
       </div>
     </div>
   );
