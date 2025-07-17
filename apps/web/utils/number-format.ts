@@ -7,10 +7,10 @@ export function numberToKorean(num: string | number): string {
   const number = typeof num === "string" ? Number(num) : num;
   if (number === 0) return "0만원";
 
-  // 조 단위 (1조 = 100,000억 = 1,000,000만)
-  if (number >= 1000000) {
-    const jo = Math.floor(number / 1000000); // 조 단위
-    const remainder = number % 1000000; // 조 단위 이하
+  // 조 단위 (1조 = 100,000억 = 1,00000000만)
+  if (number >= 100000000) {
+    const jo = Math.floor(number / 100000000); // 조 단위
+    const remainder = number % 100000000; // 조 단위 이하
 
     if (remainder === 0) {
       return `${jo}조원`;

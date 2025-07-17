@@ -25,13 +25,15 @@ describe("numberToKorean", () => {
   it("should format eok (100,000,000) unit correctly", () => {
     expect(numberToKorean(10000)).toBe("1억원");
     expect(numberToKorean(12345)).toBe("1억2345만원");
+    expect(numberToKorean(112345)).toBe("11억2345만원");
+    expect(numberToKorean(1112345)).toBe("111억2345만원");
   });
 
   it("should format jo (1,000,000,000,000) unit correctly", () => {
-    expect(numberToKorean(1000000)).toBe("1조원");
-    expect(numberToKorean(1020000)).toBe("1조2억원");
-    expect(numberToKorean(1002000)).toBe("1조2000만원");
-    expect(numberToKorean(1020300)).toBe("1조2억300만원");
+    expect(numberToKorean(100000000)).toBe("1조원");
+    expect(numberToKorean(100020000)).toBe("1조2억원");
+    expect(numberToKorean(100002000)).toBe("1조2000만원");
+    expect(numberToKorean(100020300)).toBe("1조2억300만원");
   });
 });
 
