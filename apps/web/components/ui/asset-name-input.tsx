@@ -18,12 +18,10 @@ interface AssetNameInputProps {
 
 export function AssetNameInput({
   id,
-  label = "이름",
   value,
   onChange,
   placeholder,
   className = "",
-  labelClassName = "text-sm font-medium text-gray-700 dark:text-gray-300",
   inputClassName = "text-xl font-bold text-gray-900 dark:text-white",
 }: AssetNameInputProps) {
   const [isEditing, setIsEditing] = useState(false);
