@@ -67,6 +67,17 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
   // 계좌 소유자 옵션 (기본 + 사용자 추가)
   const accountOwners = [...DEFAULT_OWNERS, ...customOwners];
 
+  // 총 투자 금액 및 원금 계산
+  const totalCurrentValue = investments.reduce((sum, item) => sum + (item.currentValue || 0), 0);
+  const totalInitialInvestment = investments.reduce(
+    (sum, item) => sum + (item.initialInvestment || 0),
+    0
+  );
+  const totalReturn =
+    totalInitialInvestment > 0
+      ? ((totalCurrentValue - totalInitialInvestment) / totalInitialInvestment) * 100
+      : 0;
+
   return (
     <>
       {/* Custom Owner Input Modal */}
@@ -118,7 +129,7 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
                   <AssetNameInput
                     id={item.id}
                     value={item.accountName}
-                    onChange={(value) => handleChange(item.id, "currentValue", value)}
+                    onChange={(value) => handleChange(item.id, "accountName", value)}
                     className=""
                   />
                   <div className="flex gap-2 flex-wrap justify-between">
@@ -181,10 +192,43 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
                 <AssetValueInput
                   className="w-full"
                   id={item.id}
+                  label="현재 평가 금액"
                   value={item.currentValue}
                   currency={item.currency}
                   onChange={(value) => handleChange(item.id, "currentValue", value)}
                 />
+
+                {/* 투자원금 입력 (중요도 낮은 정보) */}
+                <div className="w-full">
+                  <Label
+                    htmlFor={`initial-investment-${item.id}`}
+                    className="text-sm text-gray-600 dark:text-gray-400"
+                  >
+                    투자원금 ({item.currency === "원" ? "만원" : "달러"})
+                    {!!item.initialInvestment && item.initialInvestment > 0 && (
+                      <span className="text-gray-500 dark:text-gray-500">
+                        수익률:{" "}
+                        {item.currentValue > 0 && item.initialInvestment > 0
+                          ? `${(((item.currentValue - item.initialInvestment) / item.initialInvestment) * 100).toFixed(1)}%`
+                          : "계산 불가"}
+                      </span>
+                    )}
+                  </Label>
+                  <div className="mt-1">
+                    <Input
+                      id={`initial-investment-${item.id}`}
+                      type="text"
+                      value={
+                        item.initialInvestment && item.initialInvestment > 0
+                          ? item.initialInvestment.toLocaleString()
+                          : ""
+                      }
+                      onChange={(e) => handleChange(item.id, "initialInvestment", e.target.value)}
+                      placeholder={`${item.currency === "원" ? "만원" : "달러"} 단위로 입력 (선택)`}
+                      className="text-sm border border-gray-300 dark:border-gray-600 focus:border-gray-500 dark:focus:border-gray-400 text-gray-700 dark:text-gray-300"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           );
