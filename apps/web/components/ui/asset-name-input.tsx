@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Input } from "@web/components/ui/input";
-import { Label } from "@web/components/ui/label";
 import { Check, Edit, X } from "lucide-react";
+import { cn } from "./utils";
 
 interface AssetNameInputProps {
   id: string | number;
@@ -45,63 +45,58 @@ export function AssetNameInput({
   };
 
   return (
-    <div className={`flex-1 ${className}`}>
-      <Label htmlFor={`asset-name-${id}`} className={labelClassName}>
-        {label}
-      </Label>
-      <div className="relative mt-1">
-        {isEditing ? (
-          <div className="flex items-center">
-            <Input
-              type="text"
-              value={tempValue}
-              onChange={(e) => setTempValue(e.target.value)}
-              className={`flex-1 text-lg font-semibold ${inputClassName}`}
-              autoFocus
-              onBlur={saveValue}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  saveValue();
-                } else if (e.key === "Escape") {
-                  cancelEditing();
-                }
-              }}
-              placeholder={placeholder}
-            />
-            <div className="flex ml-2">
-              <button
-                type="button"
-                onClick={saveValue}
-                className="p-1 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md transition-colors"
-                aria-label="저장"
-              >
-                <Check className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={cancelEditing}
-                className="p-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors ml-1"
-                aria-label="취소"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center">
-            <span className={inputClassName}>{value}</span>
+    <div className={cn(className)}>
+      {isEditing ? (
+        <div className="flex items-center">
+          <Input
+            type="text"
+            value={tempValue}
+            onChange={(e) => setTempValue(e.target.value)}
+            className={`flex-1 text-lg font-semibold ${inputClassName}`}
+            autoFocus
+            onBlur={saveValue}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                saveValue();
+              } else if (e.key === "Escape") {
+                cancelEditing();
+              }
+            }}
+            placeholder={placeholder}
+          />
+          <div className="flex ml-2">
             <button
               type="button"
-              onClick={startEditing}
-              className="ml-2 p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
-              aria-label="이름 수정"
+              onClick={saveValue}
+              className="p-1 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md transition-colors"
+              aria-label="저장"
             >
-              <Edit className="w-4 h-4" />
+              <Check className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={cancelEditing}
+              className="p-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors ml-1"
+              aria-label="취소"
+            >
+              <X className="w-4 h-4" />
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="flex items-center">
+          <span className={inputClassName}>{value}</span>
+          <button
+            type="button"
+            onClick={startEditing}
+            className="ml-2 p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
+            aria-label="이름 수정"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

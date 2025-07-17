@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AssetNameInput } from "@web/components/ui/asset-name-input";
+import { AssetValueInput } from "@web/components/ui/asset-value-input";
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
 import {
@@ -13,14 +14,9 @@ import {
   SelectValue,
 } from "@web/components/ui/select";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
-import {
-  ACCOUNT_TYPES,
-  CurrencyType,
-  DEFAULT_OWNERS,
-} from "@web/features/investments/types/constants";
+import { ACCOUNT_TYPES, DEFAULT_OWNERS } from "@web/features/investments/types/constants";
 import { InvestmentItem } from "@web/features/investments/types/types";
-import { numberToKorean, parseNumericString } from "@web/utils/number-format";
-import { Trash } from "lucide-react";
+import { parseNumericString } from "@web/utils/number-format";
 
 interface InvestmentFormProps {
   handleSubmit: (e: React.FormEvent) => void;
@@ -30,7 +26,6 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
   // Zustand store에서 상태와 액션 가져오기
   const investments = useInvestmentStore((state) => state.investments);
   const customOwners = useInvestmentStore((state) => state.customOwners);
-  const removeInvestment = useInvestmentStore((state) => state.removeInvestment);
   const updateInvestment = useInvestmentStore((state) => state.updateInvestment);
   const addCustomOwner = useInvestmentStore((state) => state.addCustomOwner);
 
@@ -69,16 +64,8 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
     }
   };
 
-  // 계좌 삭제 함수
-  const removeInvestmentItem = (id: number) => {
-    removeInvestment(id);
-  };
-
   // 계좌 소유자 옵션 (기본 + 사용자 추가)
   const accountOwners = [...DEFAULT_OWNERS, ...customOwners];
-
-  // 총 투자 금액 계산
-  const totalInvestmentValue = investments.reduce((sum, item) => sum + (item.currentValue || 0), 0);
 
   return (
     <>
@@ -120,45 +107,29 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
       )}
 
       <form onSubmit={handleSubmit}>
-        {/* 총액 표시 헤더 */}
-        <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                총 투자 자산
-              </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {investments.length}개 계좌
-              </p>
-            </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {totalInvestmentValue > 0 ? numberToKorean(totalInvestmentValue.toString()) : "0원"}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">평가 금액</div>
-            </div>
-          </div>
-        </div>
-
         {investments.map((item) => {
           return (
             <div
               key={item.id}
               className="mb-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700"
             >
-              <div className="p-6">
-                <div className="space-y-6">
-                  {/* 계좌 이름 + 계좌 유형 (한 줄로 묶음) */}
-                  <div className="flex items-end gap-4">
-                    {/* 계좌 유형 */}
+              <div className="flex flex-col gap-4 p-6 flex-wrap">
+                <div className="flex gap-2 flex-wrap justify-between">
+                  <AssetNameInput
+                    id={item.id}
+                    value={item.accountName}
+                    onChange={(value) => handleChange(item.id, "currentValue", value)}
+                    className=""
+                  />
+                  <div className="flex gap-2 flex-wrap justify-between">
                     <div className="w-36">
                       <Label
                         htmlFor={`account-type-${item.id}`}
-                        className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                        className="text-sm font-medium text-gray-700 dark:text-white"
                       >
                         계좌 유형
                       </Label>
-                      <div className="relative mt-1">
+                      <div className="mt-2">
                         <Select
                           value={item.accountType}
                           onValueChange={(value) => handleChange(item.id, "accountType", value)}
@@ -178,63 +149,19 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
                         </Select>
                       </div>
                     </div>
-
-                    <AssetNameInput
-                      id={item.id}
-                      label="계좌 이름"
-                      value={item.accountName}
-                      onChange={(value) => handleChange(item.id, "accountName", value)}
-                      placeholder="계좌 이름을 입력하세요"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
-                    {/* 계좌 소유자 (작게) */}
-                    {/* 현재 평가 금액 (강조) */}
-                    <div>
-                      <Label
-                        htmlFor={`current-value-${item.id}`}
-                        className="text-lg font-semibold text-gray-900 dark:text-white"
-                      >
-                        현재 평가 금액 ({item.currency === CurrencyType.KRW ? "만원" : "달러"})
-                      </Label>
-                      <div className="relative mt-2">
-                        <div className="flex items-center">
-                          <div className="flex-1">
-                            <Input
-                              id={`current-value-${item.id}`}
-                              type="text"
-                              value={
-                                item.currentValue > 0 ? item.currentValue.toLocaleString() : ""
-                              }
-                              onChange={(e) =>
-                                handleChange(item.id, "currentValue", e.target.value)
-                              }
-                              placeholder={`${item.currency === CurrencyType.KRW ? "만원" : "달러"} 단위로 입력`}
-                              className="text-xl font-bold text-blue-600 dark:text-blue-400 border-2 border-blue-200 dark:border-blue-800 focus:border-blue-500 dark:focus:border-blue-400"
-                            />
-                            {item.currentValue > 0 && (
-                              <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                                {numberToKorean(item.currentValue.toString())}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="w-20">
+                    <div className="w-36">
                       <Label
                         htmlFor={`account-owner-${item.id}`}
-                        className="text-xs font-medium text-gray-600 dark:text-gray-400"
+                        className="text-sm font-medium text-gray-600 dark:text-white"
                       >
                         소유자
                       </Label>
-                      <div className="relative mt-1">
+                      <div className="relative mt-2">
                         <Select
                           value={item.accountOwner}
                           onValueChange={(value) => handleChange(item.id, "accountOwner", value)}
                         >
-                          <SelectTrigger className="w-full h-8 text-sm">
+                          <SelectTrigger className="w-full">
                             <SelectValue placeholder="선택" />
                           </SelectTrigger>
                           <SelectContent>
@@ -251,6 +178,13 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
                     </div>
                   </div>
                 </div>
+                <AssetValueInput
+                  className="w-full"
+                  id={item.id}
+                  value={item.currentValue}
+                  currency={item.currency}
+                  onChange={(value) => handleChange(item.id, "currentValue", value)}
+                />
               </div>
             </div>
           );
