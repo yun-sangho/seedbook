@@ -13,7 +13,7 @@ import {
 } from "@web/components/ui/select";
 import { Textarea } from "@web/components/ui/textarea";
 import { useRealAssetsStore } from "@web/features/real-assets/stores/real-assets-store";
-import { DEFAULT_OWNERS, REAL_ASSET_TYPES } from "@web/features/real-assets/types/constants";
+import { DEFAULT_OWNERS, RealAssetType } from "@web/features/real-assets/types/constants";
 import { numberToKorean, parseNumericString } from "@web/utils/number-format";
 import { ChevronLeft, Trash2 } from "lucide-react";
 
@@ -65,7 +65,7 @@ export default function RealAssetsPage() {
             <div key={item.id} className="p-6 bg-gray-50 dark:bg-gray-800 rounded-xl">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold">{item.assetName}</h3>
-                {realAssets.length > 1 && (
+                {
                   <button
                     type="button"
                     className="p-2 text-red-500 hover:bg-gray-100 rounded-full dark:hover:bg-gray-700"
@@ -74,13 +74,14 @@ export default function RealAssetsPage() {
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
-                )}
+                }
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor={`type-${item.id}`}>자산 유형</Label>
                   <Select
+                    defaultValue={RealAssetType.REAL_ESTATE}
                     value={item.assetType}
                     onValueChange={(value) => updateRealAsset(item.id, "assetType", value)}
                   >
@@ -88,7 +89,7 @@ export default function RealAssetsPage() {
                       <SelectValue placeholder="자산 유형 선택" />
                     </SelectTrigger>
                     <SelectContent>
-                      {REAL_ASSET_TYPES.map((type) => (
+                      {Object.values(RealAssetType).map((type) => (
                         <SelectItem key={type} value={type}>
                           {type}
                         </SelectItem>

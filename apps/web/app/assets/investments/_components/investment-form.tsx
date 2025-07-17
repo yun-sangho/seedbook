@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AssetNameInput } from "@web/components/ui/asset-name-input";
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
 import {
@@ -11,22 +12,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@web/components/ui/select";
-import { Textarea } from "@web/components/ui/textarea";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import {
   ACCOUNT_TYPES,
-  CURRENCY_OPTIONS,
   CurrencyType,
   DEFAULT_OWNERS,
 } from "@web/features/investments/types/constants";
 import { InvestmentItem } from "@web/features/investments/types/types";
-import {
-  calculateReturnRate,
-  formatReturnRate,
-  numberToKorean,
-  parseNumericString,
-} from "@web/utils/number-format";
-import { Check, ChevronDown, Edit, Trash, X } from "lucide-react";
+import { numberToKorean, parseNumericString } from "@web/utils/number-format";
+import { Trash } from "lucide-react";
 
 interface InvestmentFormProps {
   handleSubmit: (e: React.FormEvent) => void;
@@ -36,23 +30,13 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
   // Zustand store에서 상태와 액션 가져오기
   const investments = useInvestmentStore((state) => state.investments);
   const customOwners = useInvestmentStore((state) => state.customOwners);
-  const expandedFormId = useInvestmentStore((state) => state.expandedFormId);
   const removeInvestment = useInvestmentStore((state) => state.removeInvestment);
   const updateInvestment = useInvestmentStore((state) => state.updateInvestment);
   const addCustomOwner = useInvestmentStore((state) => state.addCustomOwner);
-  const setExpandedFormId = useInvestmentStore((state) => state.setExpandedFormId);
-  // 계좌 이름 수정 상태 관리
-  const [editingNameId, setEditingNameId] = useState<number | null>(null);
-  const [tempAccountName, setTempAccountName] = useState<string>("");
 
   // 사용자 정의 소유자 추가 기능
   const [newCustomOwner, setNewCustomOwner] = useState("");
   const [showCustomOwnerInput, setShowCustomOwnerInput] = useState(false);
-
-  // 계좌 삭제 함수
-  const removeInvestmentItem = (id: number) => {
-    removeInvestment(id);
-  };
 
   // 필드 값 변경 함수
   const handleChange = (id: number, field: string, value: string) => {
@@ -76,28 +60,6 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
     updateInvestment(id, field as keyof InvestmentItem, value);
   };
 
-  // 계좌 이름 수정 시작
-  const startEditingName = (id: number) => {
-    const account = investments.find((item) => item.id === id);
-    if (account) {
-      setTempAccountName(account.accountName);
-      setEditingNameId(id);
-    }
-  };
-
-  // 계좌 이름 수정 저장
-  const saveAccountName = () => {
-    if (editingNameId !== null) {
-      handleChange(editingNameId, "accountName", tempAccountName || `투자 계좌 #${editingNameId}`);
-      setEditingNameId(null);
-    }
-  };
-
-  // 계좌 이름 수정 취소
-  const cancelEditingName = () => {
-    setEditingNameId(null);
-  };
-
   // 사용자 정의 소유자 추가
   const handleAddCustomOwner = () => {
     if (newCustomOwner.trim() !== "" && !customOwners.includes(newCustomOwner.trim())) {
@@ -107,8 +69,16 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
     }
   };
 
+  // 계좌 삭제 함수
+  const removeInvestmentItem = (id: number) => {
+    removeInvestment(id);
+  };
+
   // 계좌 소유자 옵션 (기본 + 사용자 추가)
   const accountOwners = [...DEFAULT_OWNERS, ...customOwners];
+
+  // 총 투자 금액 계산
+  const totalInvestmentValue = investments.reduce((sum, item) => sum + (item.currentValue || 0), 0);
 
   return (
     <>
@@ -150,171 +120,51 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
       )}
 
       <form onSubmit={handleSubmit}>
-        {investments.map((item) => {
-          const isExpanded = expandedFormId === item.id;
-
-          return (
-            <div key={item.id} className="mb-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-              <div
-                className={`flex justify-between items-center p-6 ${!isExpanded ? "border-b-0" : "border-b dark:border-gray-700"} cursor-pointer`}
-                onClick={(e) => {
-                  // 이벤트 버블링을 방지하기 위해 특정 요소를 클릭했는지 확인
-                  const target = e.target as HTMLElement;
-                  const isEditButton = target.closest('[aria-label="이름 수정"]');
-                  const isDeleteButton = target.closest('[aria-label="삭제"]');
-                  const isCheckButton = target.closest('[aria-label="저장"]');
-                  const isCancelButton = target.closest('[aria-label="취소"]');
-
-                  // 특정 아이콘이나 버튼을 클릭한 경우 토글 동작을 방지
-                  if (!isEditButton && !isDeleteButton && !isCheckButton && !isCancelButton) {
-                    setExpandedFormId(isExpanded ? -1 : item.id);
-                  }
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation(); // 이벤트 버블링 방지
-                      setExpandedFormId(isExpanded ? -1 : item.id);
-                    }}
-                    className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                    aria-label={isExpanded ? "접기" : "펼치기"}
-                  >
-                    <ChevronDown
-                      className={`transition-transform ${isExpanded ? "rotate-180" : ""} w-5 h-5`}
-                    />
-                  </button>
-
-                  {editingNameId === item.id ? (
-                    <div className="flex items-center">
-                      <Input
-                        type="text"
-                        value={tempAccountName}
-                        onChange={(e) => {
-                          e.stopPropagation(); // 이벤트 버블링 방지
-                          setTempAccountName(e.target.value);
-                        }}
-                        className="p-1 w-auto"
-                        autoFocus
-                        onBlur={(e) => {
-                          e.stopPropagation(); // 이벤트 버블링 방지
-                          saveAccountName();
-                        }}
-                        onClick={(e) => e.stopPropagation()} // 클릭 시 버블링 방지
-                        onKeyDown={(e) => {
-                          e.stopPropagation(); // 키 입력 시 버블링 방지
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            saveAccountName();
-                          } else if (e.key === "Escape") {
-                            cancelEditingName();
-                          }
-                        }}
-                      />
-                      <div className="flex ml-2">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation(); // 이벤트 버블링 방지
-                            saveAccountName();
-                          }}
-                          className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 mr-1"
-                          aria-label="저장"
-                        >
-                          <Check className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation(); // 이벤트 버블링 방지
-                            cancelEditingName();
-                          }}
-                          className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                          aria-label="취소"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center">
-                      <span className="font-medium">{item.accountName}</span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation(); // 이벤트 버블링 방지
-                          startEditingName(item.id);
-                        }}
-                        className="ml-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                        aria-label="이름 수정"
-                      >
-                        <Edit className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center">
-                  <div className="flex flex-col mr-4">
-                    <div className="flex items-center">
-                      <span className="text-sm font-bold">
-                        {item.currentValue
-                          ? numberToKorean(item.currentValue.toString())
-                          : "미입력"}
-                      </span>
-                    </div>
-
-                    {item.currentValue > 0 && (
-                      <div className="flex items-center">
-                        <span
-                          className={`text-xs font-bold ${
-                            calculateReturnRate(
-                              item.currentValue,
-                              item.initialInvestment || Math.round(item.currentValue * 0.5)
-                            ) >= 0
-                              ? "text-green-600 dark:text-green-400"
-                              : "text-red-600 dark:text-red-400"
-                          }`}
-                        >
-                          {formatReturnRate(
-                            calculateReturnRate(
-                              item.currentValue,
-                              item.initialInvestment || Math.round(item.currentValue * 0.5)
-                            )
-                          )}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation(); // 이벤트 버블링 방지
-                      removeInvestmentItem(item.id);
-                    }}
-                    className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                    aria-label="삭제"
-                  >
-                    <Trash className="w-5 h-5" />
-                  </button>
-                </div>
+        {/* 총액 표시 헤더 */}
+        <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                총 투자 자산
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {investments.length}개 계좌
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {totalInvestmentValue > 0 ? numberToKorean(totalInvestmentValue.toString()) : "0원"}
               </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">평가 금액</div>
+            </div>
+          </div>
+        </div>
 
-              {isExpanded && (
-                <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {investments.map((item) => {
+          return (
+            <div
+              key={item.id}
+              className="mb-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700"
+            >
+              <div className="p-6">
+                <div className="space-y-6">
+                  {/* 계좌 이름 + 계좌 유형 (한 줄로 묶음) */}
+                  <div className="flex items-end gap-4">
                     {/* 계좌 유형 */}
-                    <div>
-                      <Label htmlFor={`account-type-${item.id}`}>계좌 유형</Label>
-                      <div className="relative mt-2">
+                    <div className="w-36">
+                      <Label
+                        htmlFor={`account-type-${item.id}`}
+                        className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        계좌 유형
+                      </Label>
+                      <div className="relative mt-1">
                         <Select
                           value={item.accountType}
                           onValueChange={(value) => handleChange(item.id, "accountType", value)}
                         >
                           <SelectTrigger className="w-full">
-                            <SelectValue placeholder="계좌 유형 선택" />
+                            <SelectValue placeholder="유형 선택" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectGroup>
@@ -329,16 +179,63 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
                       </div>
                     </div>
 
-                    {/* 계좌 소유자 */}
+                    <AssetNameInput
+                      id={item.id}
+                      label="계좌 이름"
+                      value={item.accountName}
+                      onChange={(value) => handleChange(item.id, "accountName", value)}
+                      placeholder="계좌 이름을 입력하세요"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+                    {/* 계좌 소유자 (작게) */}
+                    {/* 현재 평가 금액 (강조) */}
                     <div>
-                      <Label htmlFor={`account-owner-${item.id}`}>계좌 소유자</Label>
+                      <Label
+                        htmlFor={`current-value-${item.id}`}
+                        className="text-lg font-semibold text-gray-900 dark:text-white"
+                      >
+                        현재 평가 금액 ({item.currency === CurrencyType.KRW ? "만원" : "달러"})
+                      </Label>
                       <div className="relative mt-2">
+                        <div className="flex items-center">
+                          <div className="flex-1">
+                            <Input
+                              id={`current-value-${item.id}`}
+                              type="text"
+                              value={
+                                item.currentValue > 0 ? item.currentValue.toLocaleString() : ""
+                              }
+                              onChange={(e) =>
+                                handleChange(item.id, "currentValue", e.target.value)
+                              }
+                              placeholder={`${item.currency === CurrencyType.KRW ? "만원" : "달러"} 단위로 입력`}
+                              className="text-xl font-bold text-blue-600 dark:text-blue-400 border-2 border-blue-200 dark:border-blue-800 focus:border-blue-500 dark:focus:border-blue-400"
+                            />
+                            {item.currentValue > 0 && (
+                              <div className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                                {numberToKorean(item.currentValue.toString())}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="w-20">
+                      <Label
+                        htmlFor={`account-owner-${item.id}`}
+                        className="text-xs font-medium text-gray-600 dark:text-gray-400"
+                      >
+                        소유자
+                      </Label>
+                      <div className="relative mt-1">
                         <Select
                           value={item.accountOwner}
                           onValueChange={(value) => handleChange(item.id, "accountOwner", value)}
                         >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="소유자 선택" />
+                          <SelectTrigger className="w-full h-8 text-sm">
+                            <SelectValue placeholder="선택" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectGroup>
@@ -347,97 +244,14 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
                                   {owner}
                                 </SelectItem>
                               ))}
-                              <button
-                                type="button"
-                                className="flex w-full items-center px-2 py-1.5 text-sm rounded-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-blue-600 dark:text-blue-400"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  setShowCustomOwnerInput(true);
-                                }}
-                              >
-                                + 새 소유자 추가
-                              </button>
                             </SelectGroup>
                           </SelectContent>
                         </Select>
                       </div>
-                    </div>
-
-                    {/* 통화 */}
-                    <div>
-                      <Label htmlFor={`currency-${item.id}`}>통화</Label>
-                      <div className="relative mt-2">
-                        <Select
-                          value={item.currency}
-                          onValueChange={(value) => handleChange(item.id, "currency", value)}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="통화 선택" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              {CURRENCY_OPTIONS.map((currency) => (
-                                <SelectItem key={currency} value={currency}>
-                                  {currency}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* 평가 금액 */}
-                    <div>
-                      <Label htmlFor={`current-value-${item.id}`}>
-                        현재 평가 금액 ({item.currency === CurrencyType.KRW ? "만원" : "달러"})
-                      </Label>
-                      <Input
-                        id={`current-value-${item.id}`}
-                        type="text"
-                        value={item.currentValue > 0 ? item.currentValue.toLocaleString() : ""}
-                        onChange={(e) => handleChange(item.id, "currentValue", e.target.value)}
-                        placeholder={`${item.currency === CurrencyType.KRW ? "만원" : "달러"} 단위로 입력`}
-                        className="mt-2"
-                      />
-                    </div>
-
-                    {/* 투자 원금 */}
-                    <div>
-                      <Label htmlFor={`initial-investment-${item.id}`}>
-                        투자 원금 ({item.currency === CurrencyType.KRW ? "만원" : "달러"})
-                      </Label>
-                      <Input
-                        id={`initial-investment-${item.id}`}
-                        type="text"
-                        value={
-                          item.initialInvestment ? item.initialInvestment.toLocaleString() : ""
-                        }
-                        onChange={(e) => handleChange(item.id, "initialInvestment", e.target.value)}
-                        placeholder={
-                          item.currentValue
-                            ? `${Math.round(item.currentValue * 0.5).toLocaleString()} (평가금액의 50%)`
-                            : `미입력시 평가금액의 50%`
-                        }
-                        className="mt-2"
-                      />
-                    </div>
-
-                    {/* 메모 */}
-                    <div className="md:col-span-2">
-                      <Label htmlFor={`note-${item.id}`}>메모</Label>
-                      <Textarea
-                        id={`note-${item.id}`}
-                        value={item.note}
-                        onChange={(e) => handleChange(item.id, "note", e.target.value)}
-                        placeholder="메모 작성"
-                        rows={3}
-                        className="mt-2"
-                      />
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           );
         })}

@@ -41,7 +41,7 @@ interface InvestmentState {
 export const useInvestmentStore = create<InvestmentState>()(
   persist(
     (set, get) => ({
-      investments: [DEFAULT_INVESTMENT],
+      investments: [],
       customOwners: [],
       lastInvestmentId: 1,
       expandedFormId: 1,
@@ -115,7 +115,7 @@ export const useInvestmentStore = create<InvestmentState>()(
 
       resetStore: () => {
         set({
-          investments: [DEFAULT_INVESTMENT],
+          investments: [],
           customOwners: [],
           lastInvestmentId: 1,
           expandedFormId: 1,

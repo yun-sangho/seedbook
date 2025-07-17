@@ -1,14 +1,9 @@
 /**
  * 실물자산 유형 상수
  */
-export const REAL_ASSET_TYPES = [
-  "부동산",
-  "자동차",
-  "귀금속",
-  "예술품",
-  "가구/가전",
-  "기타",
-] as const;
+export enum RealAssetType {
+  REAL_ESTATE = "부동산",
+}
 
 /**
  * 실물자산 소유자 타입

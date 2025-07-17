@@ -9,6 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@web/components/ui/dialog";
+import { Input } from "@web/components/ui/input";
+import { Label } from "@web/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -17,8 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@web/components/ui/select";
-import { Input } from "@web/components/ui/input";
-import { Label } from "@web/components/ui/label";
 import { Textarea } from "@web/components/ui/textarea";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import {
@@ -131,7 +131,9 @@ export function AddInvestmentModal({ isOpen, onClose }: AddInvestmentModalProps)
           <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg w-full max-w-md">
             <h3 className="text-lg font-medium mb-4">새 소유자 추가</h3>
             <div className="mb-4">
-              <Label htmlFor="custom-owner" className="mb-2 block">소유자 이름</Label>
+              <Label htmlFor="custom-owner" className="mb-2 block">
+                소유자 이름
+              </Label>
               <Input
                 id="custom-owner"
                 type="text"
@@ -232,24 +234,6 @@ export function AddInvestmentModal({ isOpen, onClose }: AddInvestmentModalProps)
                           </SelectItem>
                         ))}
                         <SelectItem value="custom">+ 새 소유자 추가</SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* 화폐 유형 */}
-                <div>
-                  <label className="block mb-2 text-sm font-medium">화폐</label>
-                  <Select
-                    value={formData.currency}
-                    onValueChange={(value) => handleChange("currency", value as CurrencyType)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="화폐 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value={CurrencyType.KRW}>원</SelectItem>
                       </SelectGroup>
                     </SelectContent>
                   </Select>
