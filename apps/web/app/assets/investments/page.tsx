@@ -17,10 +17,7 @@ export default function InvestmentsPage() {
   const investments = useInvestmentStore((state) => state.investments);
 
   const totalInvestmentValue = useMemo(() => {
-    return investments
-      .filter((item) => item.records.length > 0)
-      .map((item) => item.records[0]?.currentValue || 0)
-      .reduce((sum, value) => sum + value, 0);
+    return investments.map((item) => item.currentValue ?? 0).reduce((sum, value) => sum + value, 0);
   }, [investments]);
 
   const chartData = useMemo(() => {
@@ -60,7 +57,7 @@ export default function InvestmentsPage() {
 
         <div className="mb-10">
           <div className="flex justify-between items-center mb-4">
-            <h1 className="text-3xl font-bold">투자 계좌 정보</h1>
+            <h1 className="text-xl font-bold">투자 계좌 정보</h1>
           </div>
           {investments.length > 0 && (
             <div className="grid md:grid-cols-2 gap-6">
@@ -73,12 +70,12 @@ export default function InvestmentsPage() {
           )}
         </div>
 
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3">
           <InvestmentForm handleSubmit={handleSubmit} />
           <Button
             onClick={openAddAccountModal}
             size={"lg"}
-            className=" bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             + 투자 계좌 추가
           </Button>
