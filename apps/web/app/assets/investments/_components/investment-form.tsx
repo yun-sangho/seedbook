@@ -1,22 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { AssetNameInput } from "@web/components/ui/asset-name-input";
-import { AssetValueInput } from "@web/components/ui/asset-value-input";
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@web/components/ui/select";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
-import { ACCOUNT_TYPES, DEFAULT_OWNERS } from "@web/features/investments/types/constants";
-import { InvestmentItem } from "@web/features/investments/types/types";
-import { parseNumericString } from "@web/utils/number-format";
+import { DEFAULT_OWNERS } from "@web/features/investments/types/constants";
+import { InvestmentItem, InvestmentRecord } from "@web/features/investments/types/types";
+import { InvestmentItemComponent } from "./investment-item";
 
 interface InvestmentFormProps {
   handleSubmit: (e: React.FormEvent) => void;
@@ -27,32 +17,38 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
   const investments = useInvestmentStore((state) => state.investments);
   const customOwners = useInvestmentStore((state) => state.customOwners);
   const updateInvestment = useInvestmentStore((state) => state.updateInvestment);
+  const addInvestmentRecord = useInvestmentStore((state) => state.addInvestmentRecord);
+  const updateInvestmentRecord = useInvestmentStore((state) => state.updateInvestmentRecord);
+  const removeInvestmentRecord = useInvestmentStore((state) => state.removeInvestmentRecord);
   const addCustomOwner = useInvestmentStore((state) => state.addCustomOwner);
 
   // 사용자 정의 소유자 추가 기능
   const [newCustomOwner, setNewCustomOwner] = useState("");
   const [showCustomOwnerInput, setShowCustomOwnerInput] = useState(false);
 
-  // 필드 값 변경 함수
+  // 필드 값 변경 함수 (계좌 기본 정보용)
   const handleChange = (id: number, field: string, value: string) => {
-    // 숫자 필드 처리 (currentValue 또는 initialInvestment 필드의 경우)
-    if ((field === "currentValue" || field === "initialInvestment") && value) {
-      try {
-        // 콤마 제거 후 숫자로 변환
-        const numericValue = parseNumericString(value);
-        // 숫자가 아니면 처리하지 않음
-        if (isNaN(numericValue)) return;
-
-        // 숫자 값을 직접 업데이트
-        updateInvestment(id, field as keyof InvestmentItem, numericValue);
-        return;
-      } catch (e) {
-        // 숫자 변환 오류 시 그대로 사용
-        console.error("Failed to format number", e);
-      }
-    }
-
     updateInvestment(id, field as keyof InvestmentItem, value);
+  };
+
+  // 투자 기록 변경 함수
+  const handleRecordChange = (
+    id: number,
+    recordIndex: number,
+    field: keyof InvestmentRecord,
+    value: string
+  ) => {
+    updateInvestmentRecord(id, recordIndex, field, value);
+  };
+
+  // 새 투자 기록 추가
+  const handleAddRecord = (id: number) => {
+    addInvestmentRecord(id);
+  };
+
+  // 투자 기록 삭제
+  const handleRemoveRecord = (id: number, recordIndex: number) => {
+    removeInvestmentRecord(id, recordIndex);
   };
 
   // 사용자 정의 소유자 추가
@@ -66,17 +62,6 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
 
   // 계좌 소유자 옵션 (기본 + 사용자 추가)
   const accountOwners = [...DEFAULT_OWNERS, ...customOwners];
-
-  // 총 투자 금액 및 원금 계산
-  const totalCurrentValue = investments.reduce((sum, item) => sum + (item.currentValue || 0), 0);
-  const totalInitialInvestment = investments.reduce(
-    (sum, item) => sum + (item.initialInvestment || 0),
-    0
-  );
-  const totalReturn =
-    totalInitialInvestment > 0
-      ? ((totalCurrentValue - totalInitialInvestment) / totalInitialInvestment) * 100
-      : 0;
 
   return (
     <>
@@ -118,121 +103,17 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
       )}
 
       <form onSubmit={handleSubmit}>
-        {investments.map((item) => {
-          return (
-            <div
-              key={item.id}
-              className="mb-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700"
-            >
-              <div className="flex flex-col gap-4 p-6 flex-wrap">
-                <div className="flex gap-2 flex-wrap justify-between">
-                  <AssetNameInput
-                    id={item.id}
-                    value={item.accountName}
-                    onChange={(value) => handleChange(item.id, "accountName", value)}
-                    className=""
-                  />
-                  <div className="flex gap-2 flex-wrap justify-between">
-                    <div className="w-36">
-                      <Label
-                        htmlFor={`account-type-${item.id}`}
-                        className="text-sm font-medium text-gray-700 dark:text-white"
-                      >
-                        계좌 유형
-                      </Label>
-                      <div className="mt-2">
-                        <Select
-                          value={item.accountType}
-                          onValueChange={(value) => handleChange(item.id, "accountType", value)}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="유형 선택" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              {ACCOUNT_TYPES.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                  {type}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="w-36">
-                      <Label
-                        htmlFor={`account-owner-${item.id}`}
-                        className="text-sm font-medium text-gray-600 dark:text-white"
-                      >
-                        소유자
-                      </Label>
-                      <div className="relative mt-2">
-                        <Select
-                          value={item.accountOwner}
-                          onValueChange={(value) => handleChange(item.id, "accountOwner", value)}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="선택" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              {accountOwners.map((owner) => (
-                                <SelectItem key={owner} value={owner}>
-                                  {owner}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <AssetValueInput
-                  className="w-full"
-                  id={item.id}
-                  label="현재 평가 금액"
-                  value={item.currentValue}
-                  currency={item.currency}
-                  onChange={(value) => handleChange(item.id, "currentValue", value)}
-                />
-
-                {/* 투자원금 입력 (중요도 낮은 정보) */}
-                <div className="w-full">
-                  <Label
-                    htmlFor={`initial-investment-${item.id}`}
-                    className="text-sm text-gray-600 dark:text-gray-400"
-                  >
-                    투자원금 ({item.currency === "원" ? "만원" : "달러"})
-                    {!!item.initialInvestment && item.initialInvestment > 0 && (
-                      <span className="text-gray-500 dark:text-gray-500">
-                        수익률:{" "}
-                        {item.currentValue > 0 && item.initialInvestment > 0
-                          ? `${(((item.currentValue - item.initialInvestment) / item.initialInvestment) * 100).toFixed(1)}%`
-                          : "계산 불가"}
-                      </span>
-                    )}
-                  </Label>
-                  <div className="mt-1">
-                    <Input
-                      id={`initial-investment-${item.id}`}
-                      type="text"
-                      value={
-                        item.initialInvestment && item.initialInvestment > 0
-                          ? item.initialInvestment.toLocaleString()
-                          : ""
-                      }
-                      onChange={(e) => handleChange(item.id, "initialInvestment", e.target.value)}
-                      placeholder={`${item.currency === "원" ? "만원" : "달러"} 단위로 입력 (선택)`}
-                      className="text-sm border border-gray-300 dark:border-gray-600 focus:border-gray-500 dark:focus:border-gray-400 text-gray-700 dark:text-gray-300"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+        {investments.map((item) => (
+          <InvestmentItemComponent
+            key={item.id}
+            item={item}
+            accountOwners={accountOwners}
+            onUpdateItem={handleChange}
+            onAddRecord={handleAddRecord}
+            onUpdateRecord={handleRecordChange}
+            onRemoveRecord={handleRemoveRecord}
+          />
+        ))}
 
         <div className="mt-6 flex justify-end">
           <button
