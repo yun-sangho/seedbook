@@ -19,7 +19,6 @@ export function InvestmentDonutChart({ data, totalAmount }: InvestmentChartProps
     return numberToKorean(totalAmount);
   }, [totalAmount]);
 
-  // 금액이 길어질 경우 줄바꿈 처리를 위한 로직
   const renderCenterText = () => {
     return (
       <text
@@ -35,10 +34,18 @@ export function InvestmentDonutChart({ data, totalAmount }: InvestmentChartProps
   };
 
   return (
-    <ResponsiveContainer width="100%" height={350}>
+    <ResponsiveContainer width="100%" height={200}>
       <PieChart>
         <ChartTooltip cursor={false} />
-        <Pie data={data} innerRadius={70} dataKey="value" nameKey={"name"}>
+        <Pie
+          data={data}
+          innerRadius={50}
+          dataKey="value"
+          nameKey={"name"}
+          strokeWidth={0}
+          paddingAngle={2}
+          isAnimationActive={false}
+        >
           {data.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={entry.color} />
           ))}

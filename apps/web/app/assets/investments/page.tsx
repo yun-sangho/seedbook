@@ -11,20 +11,17 @@ import { InvestmentForm } from "./_components/investment-form";
 import { InvestmentList } from "./_components/investment-list";
 
 export default function InvestmentsPage() {
-  // 모달 표시 상태
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Zustand store에서 상태 가져오기
   const investments = useInvestmentStore((state) => state.investments);
 
-  // 총 투자금액 계산 - 최적화를 위해 useMemo 사용
   const totalInvestmentValue = useMemo(() => {
     return investments
-      .filter((item) => item.currentValue)
-      .reduce((sum, item) => sum + item.currentValue, 0);
+      .filter((item) => item.records.length > 0)
+      .map((item) => item.records[0]?.currentValue || 0)
+      .reduce((sum, value) => sum + value, 0);
   }, [investments]);
 
-  // 차트 데이터 준비
   const chartData = useMemo(() => {
     return prepareChartData(investments);
   }, [investments]);
@@ -47,10 +44,8 @@ export default function InvestmentsPage() {
     setIsModalOpen(false);
   };
 
-  console.log("Total Investment Value:", totalInvestmentValue);
-
   return (
-    <main className="flex flex-col items-center min-h-screen p-8 md:p-24">
+    <main className="flex flex-col items-center min-h-screen p-8">
       <div className="w-full max-w-4xl">
         <div className="mb-8">
           <Link
@@ -64,7 +59,7 @@ export default function InvestmentsPage() {
 
         <div className="mb-10">
           <div className="flex justify-between items-center mb-4">
-            <h1 className="text-3xl font-bold">투자 계좌 정보 입력</h1>
+            <h1 className="text-3xl font-bold">투자 계좌 정보</h1>
             <button
               onClick={openAddAccountModal}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -72,24 +67,13 @@ export default function InvestmentsPage() {
               + 투자 계좌 추가
             </button>
           </div>
-
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            투자 계좌의 기본 정보와 평가금액을 입력해주세요
-          </p>
-
-          {investments.length > 0 && investments.some((item) => item.currentValue) && (
-            <div className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm mb-6">
-              <h2 className="text-lg font-medium mb-4">투자 계좌 요약</h2>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <InvestmentDonutChart
-                    data={chartData}
-                    totalAmount={totalInvestmentValue.toString()}
-                  />
-                </div>
-                <InvestmentList investments={investments} />
-              </div>
+          {investments.length > 0 && (
+            <div className="grid md:grid-cols-2 gap-6">
+              <InvestmentDonutChart
+                data={chartData}
+                totalAmount={totalInvestmentValue.toString()}
+              />
+              {/* <InvestmentList investments={investments} /> */}
             </div>
           )}
         </div>
