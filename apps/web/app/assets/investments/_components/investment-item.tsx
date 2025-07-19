@@ -36,7 +36,7 @@ export function InvestmentItemComponent({
   return (
     <div
       key={item.id}
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-1 p-3"
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-2 px-3 py-2"
     >
       <div className="flex gap-2 flex-wrap justify-between items-center">
         <AssetNameInput
@@ -89,48 +89,48 @@ export function InvestmentItemComponent({
 
       <div className="w-full flex gap-2 flex-wrap">
         <div className="flex-grow-1">
-          <div className="flex items-center">
-            <Label className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              투자원금 ({item.currency === "원" ? "만원" : "달러"})
-            </Label>
-            <span className="ml-auto text-sm text-gray-600 dark:text-gray-400 mb-2">
-              {item.initialInvestment && item.initialInvestment > 0
-                ? numberToKorean(item.initialInvestment)
-                : "N/A"}
-            </span>
+          <Label className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+            투자원금 ({item.currency === "원" ? "만원" : "달러"})
+          </Label>
+          <div className="relative">
+            <Input
+              type="text"
+              value={
+                item.initialInvestment && item.initialInvestment > 0
+                  ? item.initialInvestment.toLocaleString()
+                  : ""
+              }
+              onChange={(e) => onUpdateItem(item.id, "initialInvestment", e.target.value)}
+              placeholder="투자원금 입력"
+              className="text-sm pr-16"
+            />
+            {item.initialInvestment && item.initialInvestment > 0 && (
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-1 z-10 pointer-events-none">
+                {numberToKorean(item.initialInvestment)}
+              </div>
+            )}
           </div>
-          <Input
-            type="text"
-            value={
-              item.initialInvestment && item.initialInvestment > 0
-                ? item.initialInvestment.toLocaleString()
-                : ""
-            }
-            onChange={(e) => onUpdateItem(item.id, "initialInvestment", e.target.value)}
-            placeholder="투자원금 입력"
-            className="text-sm"
-          />
         </div>
         <div className="flex-grow-1">
-          <div className="flex items-center">
-            <Label className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              평가금액 ({item.currency === "원" ? "만원" : "달러"})
-            </Label>
-            <span className="ml-auto text-sm text-gray-600 dark:text-gray-400 mb-2">
-              {item.currentValue && item.currentValue > 0
-                ? numberToKorean(item.currentValue)
-                : "N/A"}
-            </span>
+          <Label className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+            평가금액 ({item.currency === "원" ? "만원" : "달러"})
+          </Label>
+          <div className="relative">
+            <Input
+              type="text"
+              value={
+                item.currentValue && item.currentValue > 0 ? item.currentValue.toLocaleString() : ""
+              }
+              onChange={(e) => onUpdateItem(item.id, "currentValue", e.target.value)}
+              placeholder="평가금액 입력"
+              className="text-sm pr-16"
+            />
+            {item.currentValue && item.currentValue > 0 && (
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-1 z-10 pointer-events-none">
+                {numberToKorean(item.currentValue)}
+              </div>
+            )}
           </div>
-          <Input
-            type="text"
-            value={
-              item.currentValue && item.currentValue > 0 ? item.currentValue.toLocaleString() : ""
-            }
-            onChange={(e) => onUpdateItem(item.id, "currentValue", e.target.value)}
-            placeholder="평가금액 입력"
-            className="text-sm"
-          />
         </div>
       </div>
 

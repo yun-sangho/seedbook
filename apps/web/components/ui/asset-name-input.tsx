@@ -22,7 +22,7 @@ export function AssetNameInput({
   onChange,
   placeholder,
   className = "",
-  inputClassName = "font-bold text-gray-900 dark:text-white",
+  inputClassName = "text-lg font-bold text-gray-900 dark:text-white",
 }: AssetNameInputProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [tempValue, setTempValue] = useState("");
