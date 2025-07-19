@@ -34,6 +34,7 @@ interface InvestmentState {
     value: string | number
   ) => void;
   removeInvestmentRecord: (id: number, recordIndex: number) => void;
+  removeInvestmentHistoryRecord: (id: number, date: string) => void;
   addCustomOwner: (owner: string) => void;
   setExpandedFormId: (id: number) => void;
   resetStore: () => void;
@@ -60,13 +61,9 @@ export const useInvestmentStore = create<InvestmentState>()(
               accountType: "",
               accountOwner: DefaultOwnerType.SELF,
               currency: CurrencyType.KRW,
-              records: [
-                {
-                  date: getCurrentDate(),
-                  initialInvestment: 0,
-                  currentValue: 0,
-                },
-              ],
+              initialInvestment: 0,
+              currentValue: 0,
+              records: [],
               note: "",
             },
             ...investments,
@@ -88,13 +85,9 @@ export const useInvestmentStore = create<InvestmentState>()(
               accountType: accountType,
               accountOwner: DefaultOwnerType.SELF,
               currency: CurrencyType.KRW,
-              records: [
-                {
-                  date: getCurrentDate(),
-                  initialInvestment: 0,
-                  currentValue: 0,
-                },
-              ],
+              initialInvestment: 0,
+              currentValue: 0,
+              records: [],
               note: "",
             },
             ...investments,
@@ -115,19 +108,51 @@ export const useInvestmentStore = create<InvestmentState>()(
           const updatedInvestments = state.investments.map((item) => {
             if (item.id !== id) return item;
 
-            const processedValue = value;
-
-            // records 필드가 아닌 경우만 직접 업데이트
-            if (field !== "records") {
-              const updatedItem = { ...item, [field]: processedValue };
-              return updatedItem;
+            // 숫자 필드 처리
+            let processedValue = value;
+            if (field === "initialInvestment" || field === "currentValue") {
+              processedValue = typeof value === "string" ? parseNumericString(value) : value;
             }
 
-            return item;
+            const updatedItem = { ...item, [field]: processedValue };
+
+            // 투자원금 또는 평가금액이 변경되었을 때 기록 추가
+            if (
+              (field === "currentValue" && processedValue !== item.currentValue) ||
+              (field === "initialInvestment" && processedValue !== item.initialInvestment)
+            ) {
+              const currentDate = getCurrentDate();
+              const newRecord: InvestmentRecord = {
+                date: currentDate,
+                initialInvestment:
+                  field === "initialInvestment"
+                    ? (processedValue as number)
+                    : item.initialInvestment,
+                currentValue:
+                  field === "currentValue" ? (processedValue as number) : item.currentValue,
+              };
+
+              // 같은 날짜의 기록이 있으면 교체, 없으면 추가
+              const existingRecordIndex = item.records.findIndex(
+                (record) => record.date === currentDate
+              );
+              if (existingRecordIndex >= 0) {
+                // 같은 날짜 기록 교체
+                updatedItem.records = [
+                  ...item.records.slice(0, existingRecordIndex),
+                  newRecord,
+                  ...item.records.slice(existingRecordIndex + 1),
+                ];
+              } else {
+                // 새 기록 추가 (최신순 정렬)
+                updatedItem.records = [newRecord, ...item.records];
+              }
+            }
+
+            return updatedItem;
           });
 
           return {
-            // 현재 펼쳐진 폼 ID가 현재 수정 중인 ID와 다르면 펼쳐진 폼 ID를 업데이트
             expandedFormId: state.expandedFormId !== id ? id : state.expandedFormId,
             investments: updatedInvestments,
           };
@@ -202,6 +227,36 @@ export const useInvestmentStore = create<InvestmentState>()(
             if (item.records.length <= 1) return item;
 
             const updatedRecords = item.records.filter((_, index) => index !== recordIndex);
+
+            return {
+              ...item,
+              records: updatedRecords,
+            };
+          });
+
+          return {
+            investments: updatedInvestments,
+          };
+        });
+      },
+
+      removeInvestmentHistoryRecord: (id, date) => {
+        set((state) => {
+          const updatedInvestments = state.investments.map((item) => {
+            if (item.id !== id) return item;
+
+            // 해당 날짜의 기록을 삭제 (최신 기록이 아닌 경우만)
+            const sortedRecords = item.records.sort(
+              (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+            );
+
+            // 최신 기록 (첫 번째)는 삭제하지 않음
+            const latestRecord = sortedRecords[0];
+            if (latestRecord && latestRecord.date === date) {
+              return item;
+            }
+
+            const updatedRecords = item.records.filter((record) => record.date !== date);
 
             return {
               ...item,

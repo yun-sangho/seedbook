@@ -1,5 +1,5 @@
 /**
- * 투자 금액 기록 인터페이스
+ * 투자 금액 기록 인터페이스 (히스토리용)
  */
 export interface InvestmentRecord {
   date: string; // 기준날짜 (YYYY-MM-DD 형식)
@@ -16,6 +16,8 @@ export interface InvestmentItem {
   accountType: string;
   accountOwner: string;
   currency: string;
-  records: InvestmentRecord[]; // 금액 기록 배열
+  initialInvestment: number; // 현재 투자원금
+  currentValue: number; // 현재 평가금액
+  records: InvestmentRecord[]; // 금액 변경 히스토리
   note: string;
 }
