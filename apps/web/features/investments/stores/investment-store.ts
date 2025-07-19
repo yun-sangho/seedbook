@@ -24,6 +24,7 @@ interface InvestmentState {
   // 액션
   addInvestment: () => void;
   addInvestmentWithType: (accountType: string) => void;
+  addInvestmentWithTypeAndOwner: (accountType: string, accountOwner: string) => void;
   removeInvestment: (id: number) => void;
   updateInvestment: (id: number, field: keyof InvestmentItem, value: string | number) => void;
   addInvestmentRecord: (id: number, record?: Partial<InvestmentRecord>) => void;
@@ -84,6 +85,30 @@ export const useInvestmentStore = create<InvestmentState>()(
               accountName: accountType || `투자 계좌 #${newId}`,
               accountType: accountType,
               accountOwner: DefaultOwnerType.SELF,
+              currency: CurrencyType.KRW,
+              initialInvestment: 0,
+              currentValue: 0,
+              records: [],
+              note: "",
+            },
+            ...investments,
+          ],
+          lastInvestmentId: newId,
+          expandedFormId: newId, // 새로 추가된 폼을 자동으로 펼침
+        });
+      },
+
+      addInvestmentWithTypeAndOwner: (accountType: string, accountOwner: string) => {
+        const { lastInvestmentId, investments } = get();
+        const newId = lastInvestmentId + 1;
+
+        set({
+          investments: [
+            {
+              id: newId,
+              accountName: accountType || `투자 계좌 #${newId}`,
+              accountType: accountType,
+              accountOwner: accountOwner,
               currency: CurrencyType.KRW,
               initialInvestment: 0,
               currentValue: 0,
