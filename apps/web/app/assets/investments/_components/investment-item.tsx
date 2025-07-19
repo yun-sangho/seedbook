@@ -15,6 +15,7 @@ import {
 } from "@web/components/ui/select";
 import { ACCOUNT_TYPES } from "@web/features/investments/types/constants";
 import { InvestmentItem } from "@web/features/investments/types/types";
+import { numberToKorean } from "@web/utils/number-format";
 
 interface InvestmentItemComponentProps {
   item: InvestmentItem;
@@ -35,9 +36,8 @@ export function InvestmentItemComponent({
   return (
     <div
       key={item.id}
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-2 p-4"
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-1 p-3"
     >
-      {/* 계좌 기본 정보 */}
       <div className="flex gap-2 flex-wrap justify-between items-center">
         <AssetNameInput
           id={item.id}
@@ -87,12 +87,18 @@ export function InvestmentItemComponent({
         </div>
       </div>
 
-      {/* 현재 투자 정보 입력 */}
-      <div className="w-full flex gap-4">
-        <div className="flex-1">
-          <Label className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-            투자원금 ({item.currency === "원" ? "만원" : "달러"})
-          </Label>
+      <div className="w-full flex gap-2 flex-wrap">
+        <div className="flex-grow-1">
+          <div className="flex items-center">
+            <Label className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+              투자원금 ({item.currency === "원" ? "만원" : "달러"})
+            </Label>
+            <span className="ml-auto text-sm text-gray-600 dark:text-gray-400 mb-2">
+              {item.initialInvestment && item.initialInvestment > 0
+                ? numberToKorean(item.initialInvestment)
+                : "N/A"}
+            </span>
+          </div>
           <Input
             type="text"
             value={
@@ -105,10 +111,17 @@ export function InvestmentItemComponent({
             className="text-sm"
           />
         </div>
-        <div className="flex-1">
-          <Label className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-            평가금액 ({item.currency === "원" ? "만원" : "달러"})
-          </Label>
+        <div className="flex-grow-1">
+          <div className="flex items-center">
+            <Label className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+              평가금액 ({item.currency === "원" ? "만원" : "달러"})
+            </Label>
+            <span className="ml-auto text-sm text-gray-600 dark:text-gray-400 mb-2">
+              {item.currentValue && item.currentValue > 0
+                ? numberToKorean(item.currentValue)
+                : "N/A"}
+            </span>
+          </div>
           <Input
             type="text"
             value={
@@ -122,7 +135,7 @@ export function InvestmentItemComponent({
       </div>
 
       {item.records.length > 0 && (
-        <div className="w-full space-y-2">
+        <div className="w-full space-y-1">
           <div
             className="flex justify-between items-center"
             onClick={() => setIsRecordsExpanded(!isRecordsExpanded)}

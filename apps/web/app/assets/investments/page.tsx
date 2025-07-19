@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { Button } from "@web/components/ui/button";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { prepareChartData } from "@web/features/investments/utils/chart-utils";
 import { ChevronLeft } from "lucide-react";
@@ -60,12 +61,6 @@ export default function InvestmentsPage() {
         <div className="mb-10">
           <div className="flex justify-between items-center mb-4">
             <h1 className="text-3xl font-bold">투자 계좌 정보</h1>
-            <button
-              onClick={openAddAccountModal}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              + 투자 계좌 추가
-            </button>
           </div>
           {investments.length > 0 && (
             <div className="grid md:grid-cols-2 gap-6">
@@ -78,9 +73,17 @@ export default function InvestmentsPage() {
           )}
         </div>
 
-        <InvestmentForm handleSubmit={handleSubmit} />
+        <div className="space-y-3">
+          <InvestmentForm handleSubmit={handleSubmit} />
+          <Button
+            onClick={openAddAccountModal}
+            size={"lg"}
+            className=" bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            + 투자 계좌 추가
+          </Button>
+        </div>
 
-        {/* 새 투자 계좌 추가 모달 */}
         <AddInvestmentModal isOpen={isModalOpen} onClose={closeAddAccountModal} />
       </div>
     </main>

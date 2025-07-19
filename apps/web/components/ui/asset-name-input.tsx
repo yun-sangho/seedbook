@@ -22,7 +22,7 @@ export function AssetNameInput({
   onChange,
   placeholder,
   className = "",
-  inputClassName = "text-xl font-bold text-gray-900 dark:text-white",
+  inputClassName = "font-bold text-gray-900 dark:text-white",
 }: AssetNameInputProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [tempValue, setTempValue] = useState("");
@@ -50,7 +50,7 @@ export function AssetNameInput({
             type="text"
             value={tempValue}
             onChange={(e) => setTempValue(e.target.value)}
-            className={`flex-1 text-lg font-semibold ${inputClassName}`}
+            className={`flex-1 ${inputClassName}`}
             autoFocus
             onBlur={saveValue}
             onKeyDown={(e) => {
