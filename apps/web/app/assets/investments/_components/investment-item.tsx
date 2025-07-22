@@ -2,31 +2,21 @@
 
 import { useState } from "react";
 import { AssetNameInput } from "@web/components/ui/asset-name-input";
+import { Badge } from "@web/components/ui/badge";
 import { Button } from "@web/components/ui/button";
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@web/components/ui/select";
-import { ACCOUNT_TYPES } from "@web/features/investments/types/constants";
 import { InvestmentItem } from "@web/features/investments/types/types";
 import { numberToKorean } from "@web/utils/number-format";
 
 interface InvestmentItemComponentProps {
   item: InvestmentItem;
-  accountOwners: string[];
   onUpdateItem: (id: number, field: keyof InvestmentItem, value: string) => void;
   onRemoveHistoryRecord: (id: number, date: string) => void;
 }
 
 export function InvestmentItemComponent({
   item,
-  accountOwners,
   onUpdateItem,
   onRemoveHistoryRecord,
 }: InvestmentItemComponentProps) {
@@ -39,113 +29,64 @@ export function InvestmentItemComponent({
       className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-2 px-3 py-2"
     >
       <div className="flex gap-2 flex-wrap justify-between items-center">
+        <Badge variant={"secondary"}>{`${item.accountType} / ${item.accountOwner}`}</Badge>
         <AssetNameInput
           id={item.id}
           value={item.accountName}
           onChange={(value) => onUpdateItem(item.id, "accountName", value)}
           className="flex-grow-1"
         />
-        <div className="flex gap-2 flex-wrap justify-between items-center">
-          <div className="w-36">
-            <Select
-              value={item.accountType}
-              onValueChange={(value) => onUpdateItem(item.id, "accountType", value)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="계좌 유형" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {ACCOUNT_TYPES.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="w-24">
-            <Select
-              value={item.accountOwner}
-              onValueChange={(value) => onUpdateItem(item.id, "accountOwner", value)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="소유자" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {accountOwners.map((owner) => (
-                    <SelectItem key={owner} value={owner}>
-                      {owner}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
+        <div
+          className="flex justify-between items-center"
+          onClick={() => setIsRecordsExpanded(!isRecordsExpanded)}
+        >
+          <Button size={"sm"} variant={"ghost"}>
+            {isRecordsExpanded ? "접기" : "상세 보기"}
+          </Button>
         </div>
       </div>
 
-      <div className="w-full flex gap-2 flex-wrap">
-        <div className="flex-grow-1">
-          <Label className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-            투자원금 ({item.currency === "원" ? "만원" : "달러"})
-          </Label>
-          <div className="relative">
-            <Input
-              type="text"
-              value={
-                item.initialInvestment && item.initialInvestment > 0
-                  ? item.initialInvestment.toLocaleString()
-                  : ""
-              }
-              onChange={(e) => onUpdateItem(item.id, "initialInvestment", e.target.value)}
-              placeholder="투자원금 입력"
-              className="text-sm pr-16"
-            />
-            {item.initialInvestment && item.initialInvestment > 0 && (
-              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-1 z-10 pointer-events-none">
-                {numberToKorean(item.initialInvestment)}
-              </div>
-            )}
-          </div>
+      <div className="w-full flex gap-4 flex-wrap justify-between">
+        <div className="flex items-center gap-2 relative flex-grow-1">
+          <Label className="text-sm text-gray-600 dark:text-gray-400">투자원금</Label>
+          <Input
+            type="text"
+            value={
+              item.initialInvestment && item.initialInvestment > 0
+                ? item.initialInvestment.toLocaleString()
+                : ""
+            }
+            onChange={(e) => onUpdateItem(item.id, "initialInvestment", e.target.value)}
+            placeholder="투자원금 입력"
+            className="text-sm flex-1"
+          />
+          {item.initialInvestment && item.initialInvestment > 0 && (
+            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-1 z-10 pointer-events-none">
+              {numberToKorean(item.initialInvestment)}
+            </div>
+          )}
         </div>
-        <div className="flex-grow-1">
-          <Label className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-            평가금액 ({item.currency === "원" ? "만원" : "달러"})
-          </Label>
-          <div className="relative">
-            <Input
-              type="text"
-              value={
-                item.currentValue && item.currentValue > 0 ? item.currentValue.toLocaleString() : ""
-              }
-              onChange={(e) => onUpdateItem(item.id, "currentValue", e.target.value)}
-              placeholder="평가금액 입력"
-              className="text-sm pr-16"
-            />
-            {item.currentValue && item.currentValue > 0 && (
-              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-1 z-10 pointer-events-none">
-                {numberToKorean(item.currentValue)}
-              </div>
-            )}
-          </div>
+        <div className="flex items-center gap-2 relative flex-grow-1">
+          <Label className="text-sm text-gray-600 dark:text-gray-400">평가금액</Label>
+          <Input
+            type="text"
+            value={
+              item.currentValue && item.currentValue > 0 ? item.currentValue.toLocaleString() : ""
+            }
+            onChange={(e) => onUpdateItem(item.id, "currentValue", e.target.value)}
+            placeholder="평가금액 입력"
+            className="text-sm flex-1"
+          />
+          {item.currentValue && item.currentValue > 0 && (
+            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-1 z-10 pointer-events-none">
+              {numberToKorean(item.currentValue)}
+            </div>
+          )}
         </div>
       </div>
 
       {item.records.length > 0 && (
         <div className="w-full space-y-1">
-          <div
-            className="flex justify-between items-center"
-            onClick={() => setIsRecordsExpanded(!isRecordsExpanded)}
-          >
-            <Label className="text-sm text-gray-600 dark:text-gray-400">변경 히스토리</Label>
-            <Button size={"sm"} variant={"ghost"}>
-              {isRecordsExpanded ? "접기" : "펼치기"}
-            </Button>
-          </div>
-
           {isRecordsExpanded && (
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {item.records
@@ -174,14 +115,8 @@ export function InvestmentItemComponent({
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="flex gap-2 text-sm flex-wrap">
-                          <span>
-                            원금: {record.initialInvestment.toLocaleString()}{" "}
-                            {item.currency === "원" ? "만원" : "달러"}
-                          </span>
-                          <span>
-                            평가: {record.currentValue.toLocaleString()}{" "}
-                            {item.currency === "원" ? "만원" : "달러"}
-                          </span>
+                          <span>원금: {numberToKorean(record.initialInvestment)}</span>
+                          <span>평가: {numberToKorean(record.currentValue)}</span>
                         </div>
                       </div>
                     </div>

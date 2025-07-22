@@ -50,9 +50,7 @@ export function AddInvestmentModal({ isOpen, onClose }: AddInvestmentModalProps)
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>새 투자 계좌 추가</DialogTitle>
-          <DialogDescription>
-            추가할 투자 계좌의 유형과 소유자를 선택해주세요.
-          </DialogDescription>
+          <DialogDescription>추가할 투자 계좌의 유형과 소유자를 선택해주세요.</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-6 py-4">
@@ -100,10 +98,7 @@ export function AddInvestmentModal({ isOpen, onClose }: AddInvestmentModalProps)
             <Button variant="outline" onClick={handleClose}>
               취소
             </Button>
-            <Button
-              onClick={handleAddAccount}
-              disabled={!selectedAccountType || !selectedOwner}
-            >
+            <Button onClick={handleAddAccount} disabled={!selectedAccountType || !selectedOwner}>
               계좌 추가
             </Button>
           </div>
