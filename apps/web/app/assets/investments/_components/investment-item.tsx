@@ -20,7 +20,6 @@ export function InvestmentItemComponent({
   onUpdateItem,
   onRemoveHistoryRecord,
 }: InvestmentItemComponentProps) {
-  // 투자기록 접기/펼치기 상태 관리
   const [isRecordsExpanded, setIsRecordsExpanded] = useState(false);
 
   return (
