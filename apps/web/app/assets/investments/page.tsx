@@ -1,28 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import { InvestmentStackedAreaChart } from "@web/components/investment-stacked-area-chart";
 import { Button } from "@web/components/ui/button";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
-import { prepareChartData } from "@web/features/investments/utils/chart-utils";
 import { ChevronLeft } from "lucide-react";
 import { AddInvestmentModal } from "./_components/add-investment-modal";
-import { InvestmentDonutChart } from "./_components/investment-donut-chart";
 import { InvestmentForm } from "./_components/investment-form";
-import { InvestmentList } from "./_components/investment-list";
 
 export default function InvestmentsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const investments = useInvestmentStore((state) => state.investments);
-
-  const totalInvestmentValue = useMemo(() => {
-    return investments.map((item) => item.currentValue ?? 0).reduce((sum, value) => sum + value, 0);
-  }, [investments]);
-
-  const chartData = useMemo(() => {
-    return prepareChartData(investments);
-  }, [investments]);
 
   // 폼 제출 핸들러 (Zustand store는 즉시 저장되기 때문에 단순 로깅만 수행)
   const handleSubmit = (e: React.FormEvent) => {
@@ -60,12 +50,9 @@ export default function InvestmentsPage() {
             <h1 className="text-xl font-bold">투자 계좌 정보</h1>
           </div>
           {investments.length > 0 && (
-            <div className="grid md:grid-cols-2 gap-6">
-              <InvestmentDonutChart
-                data={chartData}
-                totalAmount={totalInvestmentValue.toString()}
-              />
-              {/* <InvestmentList investments={investments} /> */}
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold mb-4">계좌별 투자 변화 추이</h2>
+              <InvestmentStackedAreaChart investments={investments} />
             </div>
           )}
         </div>
