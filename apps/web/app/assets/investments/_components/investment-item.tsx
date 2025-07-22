@@ -97,14 +97,6 @@ export function InvestmentItemComponent({
         <div className="w-full space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">히스토리</span>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setIsAddHistoryModalOpen(true)}
-              className="text-xs"
-            >
-              + 히스토리 추가
-            </Button>
           </div>
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {item.records
@@ -140,6 +132,16 @@ export function InvestmentItemComponent({
                   </div>
                 );
               })}
+            <div className="flex">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsAddHistoryModalOpen(true)}
+                className="text-xs ml-auto"
+              >
+                + 히스토리 추가
+              </Button>
+            </div>
           </div>
         </div>
       )}
