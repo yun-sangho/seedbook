@@ -18,6 +18,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname),
+      "@web": resolve(__dirname),
     },
   },
 });
