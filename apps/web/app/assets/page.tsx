@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { InvestmentAreaChart } from "@web/components/investment-area-chart";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@web/components/ui/chart";
 import { prepareAssetsChartData } from "@web/features/assets/utils/chart-utils";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
@@ -289,6 +290,7 @@ function AssetDashboardView({ savings, investments, realAssets, loans }: AssetDa
               icon={<InvestmentIcon />}
               itemCount={validInvestments.length}
               chartData={assetsChartData[1]?.items || []}
+              investments={validInvestments}
             />
 
             {/* 실물자산 섹션 */}
@@ -337,6 +339,7 @@ interface AssetTypeCardProps {
   icon: React.ReactNode;
   itemCount: number;
   chartData: { name: string; amount: number; color: string }[];
+  investments?: InvestmentItem[]; // 투자 섹션에만 사용
 }
 
 function AssetTypeCard({
@@ -347,7 +350,10 @@ function AssetTypeCard({
   icon,
   itemCount,
   chartData,
+  investments,
 }: AssetTypeCardProps) {
+  const isInvestmentCard = title === "투자";
+
   return (
     <div
       className={`rounded-xl p-6 transition-all hover:shadow-md dark:hover:shadow-gray-800/30 ${color}`}
@@ -374,9 +380,13 @@ function AssetTypeCard({
           <p className="text-xl font-bold">{numberToKorean(amount.toString())}</p>
         </div>
 
-        {/* 도넛 차트 */}
+        {/* 투자 섹션에는 Area 차트, 다른 섹션에는 도넛 차트 */}
         <div className="mt-4 md:mt-0">
-          {amount > 0 ? (
+          {isInvestmentCard && investments ? (
+            <div className="w-full md:w-[300px]">
+              <InvestmentAreaChart investments={investments} />
+            </div>
+          ) : amount > 0 ? (
             <div className="w-[110px] h-[110px]">
               <ChartContainer
                 config={chartData.reduce(
