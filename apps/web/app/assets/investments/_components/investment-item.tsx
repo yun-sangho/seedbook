@@ -8,19 +8,28 @@ import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
 import { InvestmentItem } from "@web/features/investments/types/types";
 import { numberToKorean } from "@web/utils/number-format";
+import { AddHistoryModal } from "./add-history-modal";
 
 interface InvestmentItemComponentProps {
   item: InvestmentItem;
   onUpdateItem: (id: number, field: keyof InvestmentItem, value: string) => void;
   onRemoveHistoryRecord: (id: number, date: string) => void;
+  onAddHistory: (
+    itemId: number,
+    date: string,
+    initialInvestment: number,
+    currentValue: number
+  ) => void;
 }
 
 export function InvestmentItemComponent({
   item,
   onUpdateItem,
   onRemoveHistoryRecord,
+  onAddHistory,
 }: InvestmentItemComponentProps) {
   const [isRecordsExpanded, setIsRecordsExpanded] = useState(false);
+  const [isAddHistoryModalOpen, setIsAddHistoryModalOpen] = useState(false);
 
   return (
     <div
@@ -85,7 +94,18 @@ export function InvestmentItemComponent({
       </div>
 
       {item.records.length > 0 && isRecordsExpanded && (
-        <div className="w-full space-y-1">
+        <div className="w-full space-y-3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">히스토리</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsAddHistoryModalOpen(true)}
+              className="text-xs"
+            >
+              + 히스토리 추가
+            </Button>
+          </div>
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {item.records
               .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -123,6 +143,13 @@ export function InvestmentItemComponent({
           </div>
         </div>
       )}
+
+      <AddHistoryModal
+        isOpen={isAddHistoryModalOpen}
+        onClose={() => setIsAddHistoryModalOpen(false)}
+        item={item}
+        onAddHistory={onAddHistory}
+      />
     </div>
   );
 }

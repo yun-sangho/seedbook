@@ -14,14 +14,6 @@ export default function InvestmentsPage() {
 
   const investments = useInvestmentStore((state) => state.investments);
 
-  // 폼 제출 핸들러 (Zustand store는 즉시 저장되기 때문에 단순 로깅만 수행)
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Submitted investments data:", investments);
-    // 데이터가 이미 localStorage에 자동으로 저장됨
-    // 여기서는 서버 API로 데이터를 전송하는 로직을 추가할 수 있음
-  };
-
   // 투자 계좌 추가 모달 열기
   const openAddAccountModal = () => {
     setIsModalOpen(true);
@@ -58,7 +50,7 @@ export default function InvestmentsPage() {
         </div>
 
         <div className="flex flex-col gap-3">
-          <InvestmentForm handleSubmit={handleSubmit} />
+          <InvestmentForm />
           <Button
             onClick={openAddAccountModal}
             size={"lg"}

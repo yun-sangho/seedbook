@@ -4,16 +4,13 @@ import { useInvestmentStore } from "@web/features/investments/stores/investment-
 import { InvestmentItem } from "@web/features/investments/types/types";
 import { InvestmentItemComponent } from "./investment-item";
 
-interface InvestmentFormProps {
-  handleSubmit: (e: React.FormEvent) => void;
-}
-
-export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
+export function InvestmentForm() {
   const investments = useInvestmentStore((state) => state.investments);
   const updateInvestment = useInvestmentStore((state) => state.updateInvestment);
   const removeInvestmentHistoryRecord = useInvestmentStore(
     (state) => state.removeInvestmentHistoryRecord
   );
+  const addHistoryRecord = useInvestmentStore((state) => state.addHistoryRecord);
 
   const handleChange = (id: number, field: string, value: string) => {
     updateInvestment(id, field as keyof InvestmentItem, value);
@@ -21,6 +18,15 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
 
   const handleRemoveHistoryRecord = (id: number, date: string) => {
     removeInvestmentHistoryRecord(id, date);
+  };
+
+  const handleAddHistory = (
+    itemId: number,
+    date: string,
+    initialInvestment: number,
+    currentValue: number
+  ) => {
+    addHistoryRecord(itemId, date, initialInvestment, currentValue);
   };
 
   return (
@@ -31,6 +37,7 @@ export function InvestmentForm({ handleSubmit }: InvestmentFormProps) {
           item={item}
           onUpdateItem={handleChange}
           onRemoveHistoryRecord={handleRemoveHistoryRecord}
+          onAddHistory={handleAddHistory}
         />
       ))}
     </div>

@@ -36,6 +36,12 @@ interface InvestmentState {
   ) => void;
   removeInvestmentRecord: (id: number, recordIndex: number) => void;
   removeInvestmentHistoryRecord: (id: number, date: string) => void;
+  addHistoryRecord: (
+    id: number,
+    date: string,
+    initialInvestment: number,
+    currentValue: number
+  ) => void;
   addCustomOwner: (owner: string) => void;
   setExpandedFormId: (id: number) => void;
   resetStore: () => void;
@@ -282,6 +288,46 @@ export const useInvestmentStore = create<InvestmentState>()(
             }
 
             const updatedRecords = item.records.filter((record) => record.date !== date);
+
+            return {
+              ...item,
+              records: updatedRecords,
+            };
+          });
+
+          return {
+            investments: updatedInvestments,
+          };
+        });
+      },
+
+      addHistoryRecord: (id, date, initialInvestment, currentValue) => {
+        set((state) => {
+          const updatedInvestments = state.investments.map((item) => {
+            if (item.id !== id) return item;
+
+            // 새로운 히스토리 레코드 생성
+            const newRecord: InvestmentRecord = {
+              date,
+              initialInvestment,
+              currentValue,
+            };
+
+            // 기존 레코드에서 같은 날짜가 있는지 확인
+            const existingRecordIndex = item.records.findIndex((record) => record.date === date);
+
+            let updatedRecords;
+            if (existingRecordIndex !== -1) {
+              // 같은 날짜가 있으면 덮어쓰기
+              updatedRecords = [...item.records];
+              updatedRecords[existingRecordIndex] = newRecord;
+            } else {
+              // 새로운 날짜면 추가
+              updatedRecords = [...item.records, newRecord];
+            }
+
+            // 날짜순으로 정렬 (최신순)
+            updatedRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
             return {
               ...item,
