@@ -19,6 +19,17 @@ export function InvestmentStackedAreaChart({ investments }: InvestmentStackedAre
   const { data, config } = prepareStackedAreaChartData(investments, selectedRange);
   const hasData = data.length > 0;
 
+  // Y축 최대값 계산 (최대값의 120%)
+  const maxValue = hasData
+    ? Math.max(
+        ...data.map((item) => {
+          const accountKeys = Object.keys(config);
+          return accountKeys.reduce((sum, key) => sum + ((item[key] as number) || 0), 0);
+        })
+      )
+    : 0;
+  const yAxisMax = Math.ceil(maxValue * 1.2);
+
   if (!hasData) {
     return (
       <div className="w-full h-[300px] flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-700 rounded-lg">
@@ -67,17 +78,12 @@ export function InvestmentStackedAreaChart({ investments }: InvestmentStackedAre
               tick={{ fontSize: 10, fill: "#6b7280" }}
             />
             <YAxis
-              axisLine={false}
-              tickLine={false}
+              axisLine={true}
               tick={{ fontSize: 10, fill: "#6b7280" }}
+              tickCount={10}
+              domain={[0, yAxisMax]}
               tickFormatter={(value) => {
-                if (value >= 10000) {
-                  return `${(value / 10000).toFixed(0)}억`;
-                } else if (value >= 1000) {
-                  return `${(value / 1000).toFixed(0)}천`;
-                } else {
-                  return value.toString();
-                }
+                return numberToKorean(value.toString());
               }}
             />
             <ChartTooltip
