@@ -106,7 +106,7 @@ export const useInvestmentStore = create<InvestmentState>()(
           investments: [
             {
               id: newId,
-              accountName: accountType || `투자 계좌 #${newId}`,
+              accountName: `${accountOwner}의 ${accountType}`,
               accountType: accountType,
               accountOwner: accountOwner,
               currency: CurrencyType.KRW,

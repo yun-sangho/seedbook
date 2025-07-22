@@ -25,20 +25,20 @@ export function InvestmentItemComponent({
   return (
     <div
       key={item.id}
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-2 px-3 py-2"
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-3 px-4 py-3"
     >
       <div className="flex gap-2 flex-wrap justify-between items-center">
         <Badge variant={"secondary"}>{`${item.accountType} / ${item.accountOwner}`}</Badge>
-        <AssetNameInput
-          id={item.id}
-          value={item.accountName}
-          onChange={(value) => onUpdateItem(item.id, "accountName", value)}
-          className="flex-grow-1"
-        />
+
         <div
-          className="flex justify-between items-center"
+          className="flex justify-between items-center flex-grow-1 flex-wrap"
           onClick={() => setIsRecordsExpanded(!isRecordsExpanded)}
         >
+          <AssetNameInput
+            id={item.id}
+            value={item.accountName}
+            onChange={(value) => onUpdateItem(item.id, "accountName", value)}
+          />
           <Button size={"sm"} variant={"ghost"}>
             {isRecordsExpanded ? "접기" : "상세 보기"}
           </Button>
@@ -59,7 +59,7 @@ export function InvestmentItemComponent({
             placeholder="투자원금 입력"
             className="text-sm flex-1"
           />
-          {item.initialInvestment && item.initialInvestment > 0 && (
+          {!!item.initialInvestment && item.initialInvestment > 0 && (
             <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-1 z-10 pointer-events-none">
               {numberToKorean(item.initialInvestment)}
             </div>
@@ -76,7 +76,7 @@ export function InvestmentItemComponent({
             placeholder="평가금액 입력"
             className="text-sm flex-1"
           />
-          {item.currentValue && item.currentValue > 0 && (
+          {!!item.currentValue && item.currentValue > 0 && (
             <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-1 z-10 pointer-events-none">
               {numberToKorean(item.currentValue)}
             </div>
@@ -84,45 +84,43 @@ export function InvestmentItemComponent({
         </div>
       </div>
 
-      {item.records.length > 0 && (
+      {item.records.length > 0 && isRecordsExpanded && (
         <div className="w-full space-y-1">
-          {isRecordsExpanded && (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {item.records
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                .map((record, index) => {
-                  const isLatest = index === 0;
-                  return (
-                    <div
-                      key={`${record.date}-${index}`}
-                      className="flex flex-wrap justify-between gap-2 items-center p-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
-                    >
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        {new Date(record.date).toLocaleDateString("ko-KR")}
-                        {isLatest ? (
-                          <span className="ml-1 text-xs text-blue-600 dark:text-blue-400">
-                            (최신)
-                          </span>
-                        ) : (
-                          <span
-                            className="ml-1 text-xs text-gray-500 dark:text-gray-400 cursor-pointer underline"
-                            onClick={() => onRemoveHistoryRecord(item.id, record.date)}
-                          >
-                            삭제
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-2 text-sm flex-wrap">
-                          <span>원금: {numberToKorean(record.initialInvestment)}</span>
-                          <span>평가: {numberToKorean(record.currentValue)}</span>
-                        </div>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {item.records
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+              .map((record, index) => {
+                const isLatest = index === 0;
+                return (
+                  <div
+                    key={`${record.date}-${index}`}
+                    className="flex flex-wrap justify-between gap-2 items-center p-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
+                  >
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {new Date(record.date).toLocaleDateString("ko-KR")}
+                      {isLatest ? (
+                        <span className="ml-1 text-xs text-blue-600 dark:text-blue-400">
+                          (최신)
+                        </span>
+                      ) : (
+                        <span
+                          className="ml-1 text-xs text-gray-500 dark:text-gray-400 cursor-pointer underline"
+                          onClick={() => onRemoveHistoryRecord(item.id, record.date)}
+                        >
+                          삭제
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-2 text-sm flex-wrap">
+                        <span>원금: {numberToKorean(record.initialInvestment)}</span>
+                        <span>평가: {numberToKorean(record.currentValue)}</span>
                       </div>
                     </div>
-                  );
-                })}
-            </div>
-          )}
+                  </div>
+                );
+              })}
+          </div>
         </div>
       )}
     </div>

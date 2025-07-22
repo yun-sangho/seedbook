@@ -22,7 +22,7 @@ export function AssetNameInput({
   onChange,
   placeholder,
   className = "",
-  inputClassName = "text-lg font-bold text-gray-900 dark:text-white",
+  inputClassName = "text-md font-bold text-gray-900 dark:text-white",
 }: AssetNameInputProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [tempValue, setTempValue] = useState("");
@@ -83,11 +83,10 @@ export function AssetNameInput({
           </div>
         </div>
       ) : (
-        <div className="flex items-center">
+        <div className="flex items-center" onClick={startEditing}>
           <span className={inputClassName}>{value}</span>
           <button
             type="button"
-            onClick={startEditing}
             className="ml-2 p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
             aria-label="이름 수정"
           >
