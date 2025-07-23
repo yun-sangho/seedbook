@@ -58,7 +58,19 @@ export default function AssetsPage() {
           <InvestmentCard />
         </div>
 
-        <div className="flex justify-center mt-10">
+        <div className="flex justify-center gap-4 mt-10">
+          <Link
+            href="/asset-plan"
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors"
+          >
+            자산계획 수립하기
+          </Link>
+          <Link
+            href="/asset-plan-list"
+            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 transition-colors"
+          >
+            자산계획 목록 보기
+          </Link>
           <Link
             href="/dashboard"
             className="px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
@@ -151,7 +163,19 @@ function InvestmentDashboardView({ investments }: InvestmentDashboardViewProps) 
           </div>
         </div>
 
-        <div className="flex justify-center mt-10">
+        <div className="flex justify-center gap-4 mt-10">
+          <Link
+            href="/asset-plan"
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors"
+          >
+            자산계획 수립하기
+          </Link>
+          <Link
+            href="/asset-plan-list"
+            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 transition-colors"
+          >
+            자산계획 목록 보기
+          </Link>
           <Link
             href="/dashboard"
             className="px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
