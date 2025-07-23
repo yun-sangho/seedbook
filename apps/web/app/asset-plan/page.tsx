@@ -67,9 +67,9 @@ export default function AssetPlanPage() {
     });
   };
 
-  // 월 환산 납입금 계산 헬퍼 함수
+  // 월 환산 납입금 계산 헬퍼 함수 (만원 단위 유지)
   const getMonthlyContribution = (amount: string, frequency: string): number => {
-    const numericAmount = parseFloat(amount.replace(/,/g, "")) * 10000; // 만원 단위를 원으로 변환
+    const numericAmount = parseFloat(amount.replace(/,/g, "")); // 만원 단위 그대로 사용
     if (isNaN(numericAmount)) return 0;
 
     switch (frequency) {

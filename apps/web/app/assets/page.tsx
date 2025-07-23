@@ -3,6 +3,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { InvestmentAreaChart } from "@web/components/investment-area-chart";
+import { InvestmentPlanComparisonChart } from "@web/components/investment-plan-comparison-chart";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@web/components/ui/select";
+import { useAssetPlanStore } from "@web/features/asset-plan/stores/asset-plan-store";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { InvestmentItem } from "@web/features/investments/types/types";
 import { numberToKorean } from "@web/utils/number-format";
@@ -92,6 +101,14 @@ function InvestmentDashboardView({ investments }: InvestmentDashboardViewProps) 
   // 유효한 투자 항목만 필터링
   const validInvestments = investments.filter((item) => item.currentValue > 0);
 
+  // 자산계획 데이터 가져오기
+  const plans = useAssetPlanStore((state) => state.plans);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
+  const [showComparison, setShowComparison] = useState(false);
+
+  // 선택된 계획 찾기
+  const selectedPlan = plans.find((plan) => plan.id === selectedPlanId);
+
   // 총 투자 금액 계산
   const totalInvestments = validInvestments.reduce((sum, item) => sum + item.currentValue, 0);
 
@@ -130,7 +147,48 @@ function InvestmentDashboardView({ investments }: InvestmentDashboardViewProps) 
 
             {/* 투자 Area 차트 */}
             <div className="w-full">
-              <InvestmentAreaChart investments={validInvestments} />
+              {/* 자산계획 선택 */}
+              {plans.length > 0 && (
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      계획과 비교:
+                    </label>
+                    <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue placeholder="자산계획 선택" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {/* <SelectItem value="">비교하지 않기</SelectItem> */}
+                        {plans.map((plan) => (
+                          <SelectItem key={plan.id} value={plan.id}>
+                            {plan.planName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {selectedPlan && (
+                    <button
+                      onClick={() => setShowComparison(!showComparison)}
+                      className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                    >
+                      {showComparison ? "기본 차트 보기" : "비교 차트 보기"}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* 차트 표시 */}
+              {showComparison && selectedPlan ? (
+                <InvestmentPlanComparisonChart
+                  investments={validInvestments}
+                  selectedPlan={selectedPlan}
+                />
+              ) : (
+                <InvestmentAreaChart investments={validInvestments} />
+              )}
             </div>
           </div>
 
