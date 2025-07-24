@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChartConfig,
   ChartContainer,
@@ -36,6 +36,7 @@ export function InvestmentPlanComparisonChart({
   const [timeRange, setTimeRange] = useState<"30days" | "3months" | "1year" | "full">("full");
   const [zoomLevel, setZoomLevel] = useState(1); // 줌 레벨 (1 = 기본)
   const [scrollPosition, setScrollPosition] = useState(0); // 스크롤 위치 (0-100%)
+  const chartContainerRef = useRef<HTMLDivElement>(null);
 
   const chartData = useMemo(() => {
     if (!selectedPlan) return [];
@@ -53,25 +54,128 @@ export function InvestmentPlanComparisonChart({
     return chartData.slice(startIndex, startIndex + visiblePoints);
   }, [chartData, zoomLevel, scrollPosition]);
 
-  const handleZoomIn = () => {
-    setZoomLevel((prev) => Math.min(prev * 1.5, 5)); // 최대 5배 줌
-  };
+  // 터치 제스처 지원
+  const [touchStart, setTouchStart] = useState<{ x: number; distance?: number } | null>(null);
 
-  const handleZoomOut = () => {
-    setZoomLevel((prev) => Math.max(prev / 1.5, 1)); // 최소 1배 (기본)
-    if (zoomLevel <= 1.5) {
-      setScrollPosition(0); // 줌 아웃 시 스크롤 위치 초기화
+  const handleTouchStart = useCallback((event: React.TouchEvent) => {
+    if (event.touches.length === 1) {
+      // 단일 터치: 팬 시작
+      const touch = event.touches[0];
+      if (touch) {
+        setTouchStart({ x: touch.clientX });
+      }
+    } else if (event.touches.length === 2) {
+      // 두 손가락: 핀치 시작
+      const touch1 = event.touches[0];
+      const touch2 = event.touches[1];
+      if (touch1 && touch2) {
+        const distance = Math.sqrt(
+          Math.pow(touch2.clientX - touch1.clientX, 2) +
+            Math.pow(touch2.clientY - touch1.clientY, 2)
+        );
+        setTouchStart({ x: (touch1.clientX + touch2.clientX) / 2, distance });
+      }
     }
-  };
+  }, []);
 
-  const handleScroll = (direction: "left" | "right") => {
-    const step = 10; // 10% 단위로 스크롤
-    if (direction === "left") {
-      setScrollPosition((prev) => Math.max(prev - step, 0));
-    } else {
-      setScrollPosition((prev) => Math.min(prev + step, 100));
-    }
-  };
+  const handleTouchMove = useCallback(
+    (event: React.TouchEvent) => {
+      if (!touchStart) return;
+
+      // 차트 영역에서의 모든 터치 이벤트를 차단하여 브라우저 스크롤 방지
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (event.touches.length === 1 && !touchStart.distance) {
+        // 단일 터치: 팬 (줌 상태일 때만 실제 동작)
+        if (zoomLevel > 1) {
+          const touch = event.touches[0];
+          if (touch) {
+            const deltaX = touch.clientX - touchStart.x;
+            const scrollStep = (deltaX / 300) * 20; // 터치 민감도 조정
+            const newPosition = Math.max(0, Math.min(100, scrollPosition - scrollStep));
+            setScrollPosition(newPosition);
+          }
+        }
+        // 줌 레벨이 1일 때: 이벤트는 차단하지만 아무 동작 안 함
+      } else if (event.touches.length === 2 && touchStart.distance) {
+        // 두 손가락: 핀치 줌 (항상 동작)
+        const touch1 = event.touches[0];
+        const touch2 = event.touches[1];
+        if (touch1 && touch2) {
+          const currentDistance = Math.sqrt(
+            Math.pow(touch2.clientX - touch1.clientX, 2) +
+              Math.pow(touch2.clientY - touch1.clientY, 2)
+          );
+
+          const scale = currentDistance / touchStart.distance;
+          const newZoomLevel = Math.max(1, Math.min(5, zoomLevel * scale));
+          setZoomLevel(newZoomLevel);
+
+          if (newZoomLevel <= 1.1) {
+            setScrollPosition(0);
+          }
+        }
+      }
+    },
+    [touchStart, zoomLevel, scrollPosition]
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    setTouchStart(null);
+  }, []);
+
+  // DOM에 직접 이벤트 리스너 추가하여 passive: false로 설정
+  useEffect(() => {
+    const chartElement = chartContainerRef.current;
+    if (!chartElement) return;
+
+    const handleWheelDirect = (event: WheelEvent) => {
+      // 강제로 기본 동작 방지
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      // 기존 로직을 직접 실행
+      const { deltaY, ctrlKey, metaKey } = event;
+      const isZoomGesture = ctrlKey || metaKey;
+
+      if (isZoomGesture) {
+        // Ctrl/Cmd + 휠: 줌 인/아웃
+        const zoomFactor = deltaY > 0 ? 1.2 : 1 / 1.2;
+        setZoomLevel((prev) => Math.max(1, Math.min(5, prev * zoomFactor)));
+
+        if (deltaY > 0 && zoomLevel <= 1.2) {
+          setScrollPosition(0); // 줌 아웃 시 스크롤 위치 초기화
+        }
+      } else if (zoomLevel > 1) {
+        // 일반 휠: 수평 스크롤 (줌 상태일 때만)
+        const scrollStep = 5; // 5% 단위로 스크롤
+        const newPosition =
+          deltaY > 0
+            ? Math.min(scrollPosition + scrollStep, 100)
+            : Math.max(scrollPosition - scrollStep, 0);
+        setScrollPosition(newPosition);
+      }
+    };
+
+    const handleTouchMoveDirect = (event: TouchEvent) => {
+      if (touchStart) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+      }
+    };
+
+    // passive: false로 설정하여 preventDefault 동작하도록 함
+    chartElement.addEventListener("wheel", handleWheelDirect, { passive: false });
+    chartElement.addEventListener("touchmove", handleTouchMoveDirect, { passive: false });
+
+    return () => {
+      chartElement.removeEventListener("wheel", handleWheelDirect);
+      chartElement.removeEventListener("touchmove", handleTouchMoveDirect);
+    };
+  }, [zoomLevel, scrollPosition, touchStart]);
 
   if (!selectedPlan) {
     return (
@@ -114,54 +218,32 @@ export function InvestmentPlanComparisonChart({
         ))}
       </div>
 
-      {/* 줌 및 스크롤 컨트롤 */}
-      <div className="flex justify-center items-center gap-4 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600 dark:text-gray-400">기간 조정:</span>
-          <button
-            onClick={handleZoomOut}
-            disabled={zoomLevel <= 1}
-            className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            title="확대 (더 적은 기간 표시)"
-          >
-            -
-          </button>
-          <span className="text-sm text-gray-600 dark:text-gray-400 min-w-[60px] text-center">
-            {zoomLevel === 1 ? "전체" : `${zoomLevel.toFixed(1)}x`}
-          </span>
-          <button
-            onClick={handleZoomIn}
-            disabled={zoomLevel >= 5}
-            className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            title="축소 (더 많은 기간 표시)"
-          >
-            +
-          </button>
+      {/* 줌 및 스크롤 안내 */}
+      <div className="flex justify-center items-center gap-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <div className="text-center">
+          <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            현재 줌 레벨: {zoomLevel === 1 ? "전체" : `${zoomLevel.toFixed(1)}x`}
+          </div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            💡 이 차트 영역에서: Ctrl+휠=줌 | 줌 후 휠=이동 | 모바일: 핀치/스와이프
+          </div>
         </div>
 
-        {/* 스크롤 컨트롤 - 줌 상태일 때만 표시 */}
+        {/* 줌 상태일 때 위치 표시 */}
         {zoomLevel > 1 && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600 dark:text-gray-400">위치:</span>
-            <button
-              onClick={() => handleScroll("left")}
-              disabled={scrollPosition <= 0}
-              className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              title="이전 구간"
-            >
-              ←
-            </button>
-            <span className="text-sm text-gray-600 dark:text-gray-400 min-w-[50px] text-center">
-              {Math.round(scrollPosition)}%
-            </span>
-            <button
-              onClick={() => handleScroll("right")}
-              disabled={scrollPosition >= 100}
-              className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              title="다음 구간"
-            >
-              →
-            </button>
+          <div className="text-center">
+            <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
+              위치: {Math.round(scrollPosition)}%
+            </div>
+            <div className="w-20 h-2 bg-gray-200 dark:bg-gray-600 rounded-full mt-1">
+              <div
+                className="h-full bg-blue-500 rounded-full transition-all duration-200"
+                style={{
+                  width: `${Math.max(20, 100 / zoomLevel)}%`,
+                  marginLeft: `${scrollPosition * (1 - 1 / zoomLevel)}%`,
+                }}
+              />
+            </div>
           </div>
         )}
       </div>
@@ -211,97 +293,116 @@ export function InvestmentPlanComparisonChart({
       </div>
 
       {/* 차트 */}
-      <ChartContainer config={chartConfig} className="h-80 w-full">
-        <AreaChart
-          accessibilityLayer
-          data={visibleData}
-          margin={{
-            left: 12,
-            right: 12,
-            top: 12,
-            bottom: 12,
-          }}
-        >
-          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-
-          <XAxis
-            dataKey="date"
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-            tickFormatter={(value) => {
-              const date = new Date(value);
-              return timeRange === "full"
-                ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
-                : `${date.getMonth() + 1}/${date.getDate()}`;
+      <div
+        ref={chartContainerRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className={`relative ${zoomLevel > 1 ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}
+        style={{
+          touchAction: "none",
+          overscrollBehavior: "none",
+          overscrollBehaviorY: "none",
+          overscrollBehaviorX: "none",
+        }}
+        title={
+          zoomLevel > 1
+            ? "드래그하여 차트를 이동하거나 휠로 스크롤하세요"
+            : "Ctrl+휠로 줌 인/아웃하세요"
+        }
+      >
+        <ChartContainer config={chartConfig} className="h-80 w-full">
+          <AreaChart
+            accessibilityLayer
+            data={visibleData}
+            margin={{
+              left: 12,
+              right: 12,
+              top: 12,
+              bottom: 12,
             }}
-          />
+          >
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
 
-          <YAxis
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-            domain={[0, yAxisMax]}
-            tickFormatter={(value) => {
-              if (value >= 100000000) {
-                return `${(value / 100000000).toFixed(0)}억`;
-              } else if (value >= 10000) {
-                return `${(value / 10000).toFixed(0)}만`;
-              } else {
-                return value.toString();
-              }
-            }}
-          />
+            <XAxis
+              dataKey="date"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              tickFormatter={(value) => {
+                const date = new Date(value);
+                return timeRange === "full"
+                  ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+                  : `${date.getMonth() + 1}/${date.getDate()}`;
+              }}
+            />
 
-          {/* 현재 날짜 구분선 */}
-          <ReferenceLine
-            x={today}
-            stroke="#ef4444"
-            strokeWidth={2}
-            strokeDasharray="4 4"
-            label={{
-              value: "오늘",
-              position: "top",
-              style: { fill: "#ef4444", fontWeight: "bold" },
-            }}
-          />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              domain={[0, yAxisMax]}
+              tickFormatter={(value) => {
+                if (value >= 100000000) {
+                  return `${(value / 100000000).toFixed(0)}억`;
+                } else if (value >= 10000) {
+                  return `${(value / 10000).toFixed(0)}만`;
+                } else {
+                  return value.toString();
+                }
+              }}
+            />
 
-          <ChartTooltip
-            cursor={false}
-            content={<ChartTooltipContent />}
-            labelFormatter={(value) => {
-              const date = new Date(value);
-              return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
-            }}
-            formatter={(value, name) => [
-              numberToKorean(value?.toString() || "0"),
-              chartConfig[name as keyof typeof chartConfig]?.label || name,
-            ]}
-          />
+            {/* 현재 날짜 구분선 */}
+            <ReferenceLine
+              x={today}
+              stroke="#ef4444"
+              strokeWidth={2}
+              strokeDasharray="4 4"
+              label={{
+                value: "오늘",
+                position: "top",
+                style: { fill: "#ef4444", fontWeight: "bold" },
+              }}
+            />
 
-          {/* 실제 투자 성과 영역 */}
-          <Area
-            dataKey="actual"
-            type="monotone"
-            fill={chartConfig.actual.color}
-            fillOpacity={0.6}
-            stroke={chartConfig.actual.color}
-            strokeWidth={3}
-            connectNulls={false}
-          />
+            <ChartTooltip
+              cursor={false}
+              content={<ChartTooltipContent />}
+              labelFormatter={(value) => {
+                const date = new Date(value);
+                return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+              }}
+              formatter={(value, name) => [
+                numberToKorean(value?.toString() || "0"),
+                chartConfig[name as keyof typeof chartConfig]?.label || name,
+              ]}
+            />
 
-          {/* 계획 예상 영역 */}
-          <Area
-            dataKey="planned"
-            type="monotone"
-            fill={chartConfig.planned.color}
-            fillOpacity={0.3}
-            stroke={chartConfig.planned.color}
-            strokeWidth={3}
-            strokeDasharray="6 6"
-          />
-        </AreaChart>
-      </ChartContainer>
+            {/* 실제 투자 성과 영역 */}
+            <Area
+              dataKey="actual"
+              type="monotone"
+              fill={chartConfig.actual.color}
+              fillOpacity={0.6}
+              stroke={chartConfig.actual.color}
+              strokeWidth={3}
+              connectNulls={false}
+            />
+
+            {/* 계획 예상 영역 */}
+            <Area
+              dataKey="planned"
+              type="monotone"
+              fill={chartConfig.planned.color}
+              fillOpacity={0.3}
+              stroke={chartConfig.planned.color}
+              strokeWidth={3}
+              strokeDasharray="6 6"
+            />
+          </AreaChart>
+        </ChartContainer>
+      </div>
 
       {/* 성과 비교 요약 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
