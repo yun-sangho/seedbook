@@ -9,7 +9,7 @@ import {
 } from "@web/components/ui/chart";
 import { AssetPlan } from "@web/features/asset-plan/types/types";
 import { InvestmentItem } from "@web/features/investments/types/types";
-import { numberToKorean } from "@web/utils/number-format";
+import { numberToKorean, truncateToHighestDenomination } from "@web/utils/number-format";
 import { preparePlanComparisonChartData } from "@web/utils/plan-comparison-utils";
 import { Area, AreaChart, CartesianGrid, ReferenceLine, XAxis, YAxis } from "recharts";
 
@@ -34,7 +34,7 @@ export function InvestmentPlanComparisonChart({
   selectedPlan,
 }: InvestmentPlanComparisonChartProps) {
   const [timeRange, setTimeRange] = useState<"30days" | "3months" | "1year" | "full">("full");
-  const [zoomLevel, setZoomLevel] = useState(1); // 줌 레벨 (1 = 기본)
+  const [zoomPeriod, setZoomPeriod] = useState<"full" | "30years" | "10years" | "5years">("full"); // 줌 기간
   const [scrollPosition, setScrollPosition] = useState(0); // 스크롤 위치 (0-100%)
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
@@ -42,6 +42,17 @@ export function InvestmentPlanComparisonChart({
     if (!selectedPlan) return [];
     return preparePlanComparisonChartData(investments, selectedPlan, timeRange);
   }, [investments, selectedPlan, timeRange]);
+
+  // 줌 기간에 따른 줌 레벨 계산
+  const zoomLevel = useMemo(() => {
+    if (!selectedPlan || zoomPeriod === "full") return 1;
+
+    const totalYears = selectedPlan.planPeriod;
+    const targetYears = zoomPeriod === "30years" ? 30 : zoomPeriod === "10years" ? 10 : 5;
+
+    if (totalYears <= targetYears) return 1;
+    return totalYears / targetYears;
+  }, [selectedPlan, zoomPeriod]);
 
   // 줌과 스크롤에 따른 표시할 데이터 범위 계산
   const visibleData = useMemo(() => {
@@ -55,7 +66,7 @@ export function InvestmentPlanComparisonChart({
   }, [chartData, zoomLevel, scrollPosition]);
 
   // 터치 제스처 지원
-  const [touchStart, setTouchStart] = useState<{ x: number; distance?: number } | null>(null);
+  const [touchStart, setTouchStart] = useState<{ x: number } | null>(null);
 
   const handleTouchStart = useCallback((event: React.TouchEvent) => {
     if (event.touches.length === 1) {
@@ -64,18 +75,8 @@ export function InvestmentPlanComparisonChart({
       if (touch) {
         setTouchStart({ x: touch.clientX });
       }
-    } else if (event.touches.length === 2) {
-      // 두 손가락: 핀치 시작
-      const touch1 = event.touches[0];
-      const touch2 = event.touches[1];
-      if (touch1 && touch2) {
-        const distance = Math.sqrt(
-          Math.pow(touch2.clientX - touch1.clientX, 2) +
-            Math.pow(touch2.clientY - touch1.clientY, 2)
-        );
-        setTouchStart({ x: (touch1.clientX + touch2.clientX) / 2, distance });
-      }
     }
+    // 핀치 줌 제거
   }, []);
 
   const handleTouchMove = useCallback(
@@ -86,7 +87,7 @@ export function InvestmentPlanComparisonChart({
       event.preventDefault();
       event.stopPropagation();
 
-      if (event.touches.length === 1 && !touchStart.distance) {
+      if (event.touches.length === 1) {
         // 단일 터치: 팬 (줌 상태일 때만 실제 동작)
         if (zoomLevel > 1) {
           const touch = event.touches[0];
@@ -98,25 +99,8 @@ export function InvestmentPlanComparisonChart({
           }
         }
         // 줌 레벨이 1일 때: 이벤트는 차단하지만 아무 동작 안 함
-      } else if (event.touches.length === 2 && touchStart.distance) {
-        // 두 손가락: 핀치 줌 (항상 동작)
-        const touch1 = event.touches[0];
-        const touch2 = event.touches[1];
-        if (touch1 && touch2) {
-          const currentDistance = Math.sqrt(
-            Math.pow(touch2.clientX - touch1.clientX, 2) +
-              Math.pow(touch2.clientY - touch1.clientY, 2)
-          );
-
-          const scale = currentDistance / touchStart.distance;
-          const newZoomLevel = Math.max(1, Math.min(5, zoomLevel * scale));
-          setZoomLevel(newZoomLevel);
-
-          if (newZoomLevel <= 1.1) {
-            setScrollPosition(0);
-          }
-        }
       }
+      // 핀치 줌 제거 - 버튼으로만 줌 조정
     },
     [touchStart, zoomLevel, scrollPosition]
   );
@@ -136,20 +120,9 @@ export function InvestmentPlanComparisonChart({
       event.stopPropagation();
       event.stopImmediatePropagation();
 
-      // 기존 로직을 직접 실행
-      const { deltaY, ctrlKey, metaKey } = event;
-      const isZoomGesture = ctrlKey || metaKey;
-
-      if (isZoomGesture) {
-        // Ctrl/Cmd + 휠: 줌 인/아웃
-        const zoomFactor = deltaY > 0 ? 1.2 : 1 / 1.2;
-        setZoomLevel((prev) => Math.max(1, Math.min(5, prev * zoomFactor)));
-
-        if (deltaY > 0 && zoomLevel <= 1.2) {
-          setScrollPosition(0); // 줌 아웃 시 스크롤 위치 초기화
-        }
-      } else if (zoomLevel > 1) {
-        // 일반 휠: 수평 스크롤 (줌 상태일 때만)
+      // 휠 스크롤은 줌 상태일 때만 수평 이동으로 처리
+      if (zoomLevel > 1) {
+        const { deltaY } = event;
         const scrollStep = 5; // 5% 단위로 스크롤
         const newPosition =
           deltaY > 0
@@ -157,6 +130,7 @@ export function InvestmentPlanComparisonChart({
             : Math.max(scrollPosition - scrollStep, 0);
         setScrollPosition(newPosition);
       }
+      // 줌 레벨이 1일 때는 이벤트만 차단하고 아무 동작 안 함
     };
 
     const handleTouchMoveDirect = (event: TouchEvent) => {
@@ -196,6 +170,31 @@ export function InvestmentPlanComparisonChart({
 
   return (
     <div className="w-full space-y-4">
+      {/* 줌 레벨 선택 버튼 */}
+      <div className="flex justify-center gap-2 mb-2">
+        {[
+          { key: "full" as const, label: "전체 기간" },
+          { key: "30years" as const, label: "30년" },
+          { key: "10years" as const, label: "10년" },
+          { key: "5years" as const, label: "5년" },
+        ].map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => {
+              setZoomPeriod(key);
+              setScrollPosition(0); // 줌 변경 시 스크롤 위치 초기화
+            }}
+            className={`px-3 py-1 text-sm rounded-md transition-colors ${
+              zoomPeriod === key
+                ? "bg-green-600 text-white"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* 시간 범위 선택 버튼 */}
       <div className="flex justify-center gap-2">
         {[
@@ -222,10 +221,18 @@ export function InvestmentPlanComparisonChart({
       <div className="flex justify-center items-center gap-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
         <div className="text-center">
           <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            현재 줌 레벨: {zoomLevel === 1 ? "전체" : `${zoomLevel.toFixed(1)}x`}
+            현재 줌 레벨:{" "}
+            {zoomPeriod === "full"
+              ? "전체 기간"
+              : zoomPeriod === "30years"
+                ? "30년"
+                : zoomPeriod === "10years"
+                  ? "10년"
+                  : "5년"}
+            {zoomLevel > 1 && ` (${zoomLevel.toFixed(1)}x)`}
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400">
-            💡 이 차트 영역에서: Ctrl+휠=줌 | 줌 후 휠=이동 | 모바일: 핀치/스와이프
+            💡 차트 영역에서: 휠=좌우이동 | 모바일: 스와이프 | 줌=상단 버튼
           </div>
         </div>
 
@@ -307,8 +314,8 @@ export function InvestmentPlanComparisonChart({
         }}
         title={
           zoomLevel > 1
-            ? "드래그하여 차트를 이동하거나 휠로 스크롤하세요"
-            : "Ctrl+휠로 줌 인/아웃하세요"
+            ? "휠 스크롤 또는 드래그하여 차트를 좌우로 이동하세요"
+            : "상단 버튼으로 줌 레벨을 조정하세요"
         }
       >
         <ChartContainer config={chartConfig} className="h-80 w-full">
@@ -343,13 +350,7 @@ export function InvestmentPlanComparisonChart({
               tickMargin={8}
               domain={[0, yAxisMax]}
               tickFormatter={(value) => {
-                if (value >= 100000000) {
-                  return `${(value / 100000000).toFixed(0)}억`;
-                } else if (value >= 10000) {
-                  return `${(value / 10000).toFixed(0)}만`;
-                } else {
-                  return value.toString();
-                }
+                return truncateToHighestDenomination(numberToKorean(value.toString()));
               }}
             />
 
