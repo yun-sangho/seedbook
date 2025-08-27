@@ -56,8 +56,14 @@ export function InvestmentItemComponent({
 
       <div className="w-full flex gap-4 flex-wrap justify-between">
         <div className="flex items-center gap-2 relative flex-grow-1">
-          <Label className="text-sm text-gray-600 dark:text-gray-400">투자원금</Label>
+          <Label
+            htmlFor={`initialInvestment-${item.id}`}
+            className="text-sm text-gray-600 dark:text-gray-400"
+          >
+            투자원금
+          </Label>
           <Input
+            id={`initialInvestment-${item.id}`}
             type="text"
             value={
               item.initialInvestment && item.initialInvestment > 0
@@ -75,8 +81,14 @@ export function InvestmentItemComponent({
           )}
         </div>
         <div className="flex items-center gap-2 relative flex-grow-1">
-          <Label className="text-sm text-gray-600 dark:text-gray-400">평가금액</Label>
+          <Label
+            htmlFor={`currentValue-${item.id}`}
+            className="text-sm text-gray-600 dark:text-gray-400"
+          >
+            평가금액
+          </Label>
           <Input
+            id={`currentValue-${item.id}`}
             type="text"
             value={
               item.currentValue && item.currentValue > 0 ? item.currentValue.toLocaleString() : ""

@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@web/component
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
 import { InvestmentItem } from "@web/features/investments/types/types";
+import { numberToKorean } from "@web/utils/number-format";
 
 interface AddHistoryModalProps {
   isOpen: boolean;
@@ -110,11 +111,11 @@ export function AddHistoryModal({ isOpen, onClose, item, onAddHistory }: AddHist
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="date" className="text-sm font-medium">
+            <Label htmlFor={`history-date-${item.id}`} className="text-sm font-medium">
               날짜 <span className="text-red-500">*</span>
             </Label>
             <Input
-              id="date"
+              id={`history-date-${item.id}`}
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
@@ -125,34 +126,63 @@ export function AddHistoryModal({ isOpen, onClose, item, onAddHistory }: AddHist
           </div>
 
           <div>
-            <Label htmlFor="initialInvestment" className="text-sm font-medium">
+            <Label htmlFor={`history-initialInvestment-${item.id}`} className="text-sm font-medium">
               투자원금
             </Label>
-            <Input
-              id="initialInvestment"
-              type="text"
-              value={initialInvestment}
-              onChange={handleInitialInvestmentChange}
-              placeholder="투자원금 입력 (선택사항)"
-              className="mt-1"
-            />
+            <div className="relative">
+              <Input
+                id={`history-initialInvestment-${item.id}`}
+                type="text"
+                value={initialInvestment}
+                onChange={handleInitialInvestmentChange}
+                placeholder="투자원금 입력 (선택사항)"
+                className="mt-1"
+                data-1p-ignore
+                aria-describedby={
+                  initialInvestment && Number(initialInvestment.replace(/,/g, "")) > 0
+                    ? `history-initialInvestmentHint-${item.id}`
+                    : undefined
+                }
+              />
+              {!!initialInvestment && Number(initialInvestment.replace(/,/g, "")) > 0 && (
+                <div
+                  id={`history-initialInvestmentHint-${item.id}`}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-1 z-10 pointer-events-none"
+                >
+                  {numberToKorean(Number(initialInvestment.replace(/,/g, "")))}
+                </div>
+              )}
+            </div>
             {errors.initialInvestment && (
               <p className="text-red-500 text-xs mt-1">{errors.initialInvestment}</p>
             )}
           </div>
 
           <div>
-            <Label htmlFor="currentValue" className="text-sm font-medium">
+            <Label htmlFor={`history-currentValue-${item.id}`} className="text-sm font-medium">
               평가금액 <span className="text-red-500">*</span>
             </Label>
-            <Input
-              id="currentValue"
-              type="text"
-              value={currentValue}
-              onChange={handleCurrentValueChange}
-              placeholder="평가금액 입력"
-              className="mt-1"
-            />
+            <div className="relative">
+              <Input
+                id={`history-currentValue-${item.id}`}
+                type="text"
+                value={currentValue}
+                onChange={handleCurrentValueChange}
+                placeholder="평가금액 입력"
+                className="mt-1"
+                data-1p-ignore
+                aria-describedby={
+                  currentValue && Number(currentValue.replace(/,/g, "")) > 0
+                    ? `history-currentValueHint-${item.id}`
+                    : undefined
+                }
+              />
+              {!!currentValue && Number(currentValue.replace(/,/g, "")) > 0 && (
+                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-1 z-10 pointer-events-none">
+                  {numberToKorean(Number(currentValue.replace(/,/g, "")))}
+                </div>
+              )}
+            </div>
             {errors.currentValue && (
               <p className="text-red-500 text-xs mt-1">{errors.currentValue}</p>
             )}

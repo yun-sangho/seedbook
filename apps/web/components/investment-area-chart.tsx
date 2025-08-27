@@ -26,7 +26,9 @@ export function InvestmentAreaChart({ investments }: InvestmentAreaChartProps) {
     return (
       <div className="w-full h-[200px] flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-700 rounded-lg">
         <span className="text-gray-400 text-sm mb-2">투자 히스토리 없음</span>
-        <span className="text-xs text-gray-500">평가금액을 변경하면 히스토리가 생성됩니다</span>
+        <span className="text-xs text-gray-500">
+          평가금액을 입력하면 히스토리를 확인하실 수 있습니다.
+        </span>
       </div>
     );
   }
