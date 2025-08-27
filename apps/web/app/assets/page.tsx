@@ -12,47 +12,41 @@ import {
   SelectValue,
 } from "@web/components/ui/select";
 import { useAssetPlanStore } from "@web/features/asset-plan/stores/asset-plan-store";
+import { AssetPlan } from "@web/features/asset-plan/types/types";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { InvestmentItem } from "@web/features/investments/types/types";
 import { numberToKorean } from "@web/utils/number-format";
 import { ChevronRight, Landmark } from "lucide-react";
 
 export default function AssetsPage() {
-  // 투자 데이터만 로드
   const investments = useInvestmentStore((state) => state.investments);
-
-  // 클라이언트 사이드 렌더링을 위한 상태
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // 투자 자산 존재 여부 확인
-  const hasInvestments = () => {
-    return investments.some((item) => item.currentValue > 0);
-  };
-
-  // 클라이언트 사이드에서만 실행되도록 useEffect 사용
   useEffect(() => {
     setIsLoaded(true);
   }, []);
 
-  // 로딩 중에는 비어있는 화면 표시
-  if (!isLoaded) {
-    return (
-      <main className="flex flex-col items-center min-h-screen p-8 md:p-24">
-        <div className="w-full max-w-4xl">
-          <div className="mb-10 text-center">
-            <h1 className="text-3xl font-bold mb-4">로딩 중...</h1>
-          </div>
+  if (!isLoaded) return <LoadingView />;
+
+  const hasInvestments = investments.some((item) => item.currentValue > 0);
+  if (!hasInvestments) return <EmptyInvestmentsView />;
+
+  return <InvestmentDashboardView investments={investments} />;
+}
+
+function LoadingView() {
+  return (
+    <main className="flex flex-col items-center min-h-screen p-8 md:p-24">
+      <div className="w-full max-w-4xl">
+        <div className="mb-10 text-center">
+          <h1 className="text-3xl font-bold mb-4">로딩 중...</h1>
         </div>
-      </main>
-    );
-  }
+      </div>
+    </main>
+  );
+}
 
-  // 투자 자산이 있는 경우 투자 대시보드 표시
-  if (hasInvestments()) {
-    return <InvestmentDashboardView investments={investments} />;
-  }
-
-  // 투자 자산이 없는 경우 투자 입력 페이지 표시
+function EmptyInvestmentsView() {
   return (
     <main className="flex flex-col items-center min-h-screen p-8 md:p-24">
       <div className="w-full max-w-4xl">
@@ -68,156 +62,82 @@ export default function AssetsPage() {
         </div>
 
         <div className="flex justify-center gap-4 mt-10">
-          <Link
-            href="/asset-plan"
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors"
-          >
-            자산계획 수립하기
-          </Link>
-          <Link
-            href="/asset-plan-list"
-            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 transition-colors"
-          >
-            자산계획 목록 보기
-          </Link>
-          <Link
-            href="/dashboard"
-            className="px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
-          >
-            대시보드 보기
-          </Link>
+          <ActionsBar />
         </div>
       </div>
     </main>
   );
 }
 
-// 투자 대시보드 컴포넌트
+function ActionsBar() {
+  return (
+    <>
+      <Link
+        href="/asset-plan"
+        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors"
+      >
+        자산계획 수립하기
+      </Link>
+      <Link
+        href="/asset-plan-list"
+        className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 transition-colors"
+      >
+        자산계획 목록 보기
+      </Link>
+      <Link
+        href="/dashboard"
+        className="px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
+      >
+        대시보드 보기
+      </Link>
+    </>
+  );
+}
+
 interface InvestmentDashboardViewProps {
   investments: InvestmentItem[];
 }
 
 function InvestmentDashboardView({ investments }: InvestmentDashboardViewProps) {
-  // 유효한 투자 항목만 필터링
   const validInvestments = investments.filter((item) => item.currentValue > 0);
-
-  // 자산계획 데이터 가져오기
   const plans = useAssetPlanStore((state) => state.plans);
+
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
   const [showComparison, setShowComparison] = useState(false);
 
-  // 선택된 계획 찾기
-  const selectedPlan = plans.find((plan) => plan.id === selectedPlanId);
-
-  // 총 투자 금액 계산
-  const totalInvestments = validInvestments.reduce((sum, item) => sum + item.currentValue, 0);
+  const selectedPlan = plans.find((p) => p.id === selectedPlanId);
+  const totalInvestments = validInvestments.reduce((s, i) => s + i.currentValue, 0);
 
   return (
     <main className="flex flex-col items-center min-h-screen p-8 md:p-24">
       <div className="w-full max-w-4xl">
         <div className="mb-10">
-          <h1 className="text-3xl font-bold mb-4">투자 자산 현황</h1>
+          <Header title="투자 자산 현황" />
 
-          {/* 투자 자산 카드 */}
           <div className="bg-green-100 dark:bg-green-900/30 rounded-xl p-6 mb-8">
-            <div className="flex justify-between items-start mb-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-white rounded-lg dark:bg-gray-800">
-                  <InvestmentIcon />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-semibold mb-1">투자</h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {validInvestments.length}개 계좌
-                  </p>
-                </div>
-              </div>
-              <Link href="/assets/investments">
-                <div className="flex items-center text-blue-600 dark:text-blue-400 hover:underline">
-                  <span className="font-medium mr-1">관리</span>
-                  <ChevronRight className="w-4 h-4" />
-                </div>
-              </Link>
-            </div>
+            <SummaryCard
+              validInvestments={validInvestments}
+              plans={plans}
+              selectedPlanId={selectedPlanId}
+              setSelectedPlanId={setSelectedPlanId}
+              showComparison={showComparison}
+              setShowComparison={setShowComparison}
+              totalInvestments={totalInvestments}
+              selectedPlan={selectedPlan}
+            />
 
-            <div className="mb-6">
-              <p className="text-gray-600 dark:text-gray-400 mb-2">총 투자 금액</p>
-              <p className="text-3xl font-bold">{numberToKorean(totalInvestments.toString())}</p>
-            </div>
+            <div className="mb-6" />
 
-            {/* 투자 Area 차트 */}
-            <div className="w-full">
-              {/* 자산계획 선택 */}
-              {plans.length > 0 && (
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      계획과 비교:
-                    </label>
-                    <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
-                      <SelectTrigger className="w-48">
-                        <SelectValue placeholder="자산계획 선택" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {/* <SelectItem value="">비교하지 않기</SelectItem> */}
-                        {plans.map((plan) => (
-                          <SelectItem key={plan.id} value={plan.id}>
-                            {plan.planName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {selectedPlan && (
-                    <button
-                      onClick={() => setShowComparison(!showComparison)}
-                      className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-                    >
-                      {showComparison ? "기본 차트 보기" : "비교 차트 보기"}
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* 차트 표시 */}
-              {showComparison && selectedPlan ? (
-                <InvestmentPlanComparisonChart
-                  investments={validInvestments}
-                  selectedPlan={selectedPlan}
-                />
-              ) : (
-                <InvestmentAreaChart investments={validInvestments} />
-              )}
-            </div>
+            <ChartArea
+              validInvestments={validInvestments}
+              showComparison={showComparison}
+              selectedPlan={selectedPlan}
+            />
           </div>
 
-          {/* 투자 계좌 목록 */}
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 mb-8">
             <h3 className="text-lg font-semibold mb-4">투자 계좌 목록</h3>
-            <div className="space-y-3">
-              {validInvestments.map((investment) => (
-                <div
-                  key={investment.id}
-                  className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
-                >
-                  <div>
-                    <h4 className="font-medium">{investment.accountName}</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {investment.accountType} · {investment.accountOwner}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold">
-                      {numberToKorean(investment.currentValue.toString())}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {investment.records.length}개 기록
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <InvestmentList investments={validInvestments} />
           </div>
         </div>
 
@@ -246,7 +166,143 @@ function InvestmentDashboardView({ investments }: InvestmentDashboardViewProps) 
   );
 }
 
-// 투자 카드 컴포넌트
+function Header({ title }: { title: string }) {
+  return (
+    <div className="mb-10">
+      <h1 className="text-3xl font-bold mb-4">{title}</h1>
+    </div>
+  );
+}
+
+interface SummaryCardProps {
+  validInvestments: InvestmentItem[];
+  plans: AssetPlan[];
+  selectedPlanId: string;
+  setSelectedPlanId: (v: string) => void;
+  showComparison: boolean;
+  setShowComparison: (v: boolean) => void;
+  totalInvestments: number;
+  selectedPlan?: AssetPlan | undefined;
+}
+
+function SummaryCard({
+  validInvestments,
+  plans,
+  selectedPlanId,
+  setSelectedPlanId,
+  showComparison,
+  setShowComparison,
+  totalInvestments,
+  selectedPlan,
+}: SummaryCardProps) {
+  return (
+    <>
+      <div className="flex justify-between items-start mb-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-white rounded-lg dark:bg-gray-800">
+            <InvestmentIcon />
+          </div>
+          <div>
+            <h2 className="text-2xl font-semibold mb-1">투자</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {validInvestments.length}개 계좌
+            </p>
+          </div>
+        </div>
+        <Link href="/assets/investments">
+          <div className="flex items-center text-blue-600 dark:text-blue-400 hover:underline">
+            <span className="font-medium mr-1">관리</span>
+            <ChevronRight className="w-4 h-4" />
+          </div>
+        </Link>
+      </div>
+
+      <div className="mb-6">
+        <p className="text-gray-600 dark:text-gray-400 mb-2">총 투자 금액</p>
+        <p className="text-3xl font-bold">{numberToKorean(totalInvestments.toString())}</p>
+      </div>
+
+      {/* 계획 선택 및 차트 토글 */}
+      {plans.length > 0 && (
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              계획과 비교:
+            </label>
+            <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="자산계획 선택" />
+              </SelectTrigger>
+              <SelectContent>
+                {plans.map((plan) => (
+                  <SelectItem key={plan.id} value={plan.id}>
+                    {plan.planName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {selectedPlan && (
+            <button
+              onClick={() => setShowComparison(!showComparison)}
+              className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            >
+              {showComparison ? "기본 차트 보기" : "비교 차트 보기"}
+            </button>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+function ChartArea({
+  validInvestments,
+  showComparison,
+  selectedPlan,
+}: {
+  validInvestments: InvestmentItem[];
+  showComparison: boolean;
+  selectedPlan?: AssetPlan | undefined;
+}) {
+  return (
+    <div className="w-full">
+      {showComparison && selectedPlan ? (
+        <InvestmentPlanComparisonChart investments={validInvestments} selectedPlan={selectedPlan} />
+      ) : (
+        <InvestmentAreaChart investments={validInvestments} />
+      )}
+    </div>
+  );
+}
+
+function InvestmentList({ investments }: { investments: InvestmentItem[] }) {
+  return (
+    <div className="space-y-3">
+      {investments.map((investment) => (
+        <div
+          key={investment.id}
+          className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+        >
+          <div>
+            <h4 className="font-medium">{investment.accountName}</h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {investment.accountType} · {investment.accountOwner}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="font-semibold">{numberToKorean(investment.currentValue.toString())}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {investment.records.length}개 기록
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function InvestmentCard() {
   return (
     <Link href="/assets/investments" className="block">

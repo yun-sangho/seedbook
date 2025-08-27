@@ -21,11 +21,11 @@ export function numberToKorean(num: string | number): string {
     const man = remainder % 10000; // 만 단위
 
     if (eok === 0) {
-      return `${jo}조${man}만원`;
+      return `${jo}조${man.toFixed()}만원`;
     } else if (man === 0) {
       return `${jo}조${eok}억원`;
     } else {
-      return `${jo}조${eok}억${man}만원`;
+      return `${jo}조${eok}억${man.toFixed()}만원`;
     }
   }
   // 억 단위 (1억 = 10,000만)
@@ -36,12 +36,12 @@ export function numberToKorean(num: string | number): string {
     if (man === 0) {
       return `${eok}억원`;
     } else {
-      return `${eok}억${man}만원`;
+      return `${eok}억${man.toFixed()}만원`;
     }
   }
   // 만 단위만 있는 경우
   else {
-    return `${number}만원`;
+    return `${number.toFixed()}만원`;
   }
 }
 
