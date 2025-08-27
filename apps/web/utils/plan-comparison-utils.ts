@@ -1,10 +1,34 @@
 import { AssetPlan } from "@web/features/asset-plan/types/types";
 import { InvestmentItem } from "@web/features/investments/types/types";
 
+// ----------------- Types -----------------
+
+/** Past (or current) point where we have actual observed value */
+export interface PastPlanComparisonPoint {
+  kind: "past" | "present"; // present = monthOffset === 0
+  date: string; // ISO yyyy-mm-dd
+  actual: number; // always concrete for past/present
+  planned: number; // equals actual for past/present
+  month: string; // yyyy-mm
+  monthOffset: number; // 0 = today, negative values for past
+}
+
+/** Future point (projection only, no actual yet) */
+export interface FuturePlanComparisonPoint {
+  kind: "future";
+  date: string;
+  actual: null; // intentionally null – used for chart gaps
+  planned: number; // projected value
+  month: string;
+  monthOffset: number; // 1..N months into future
+}
+
+export type PlanComparisonPoint = PastPlanComparisonPoint | FuturePlanComparisonPoint;
+
 /**
  * 월 환산 납입금 계산 (만원 단위 유지)
  */
-function getMonthlyContribution(amount: string, frequency: string): number {
+export function getMonthlyContribution(amount: string, frequency: string): number {
   const numericAmount = parseFloat(amount.replace(/,/g, "")); // 만원 단위 그대로 사용
   if (isNaN(numericAmount)) return 0;
 
@@ -29,18 +53,8 @@ export function preparePlanComparisonChartData(
   investments: InvestmentItem[],
   plan: AssetPlan,
   timeRange: "30days" | "3months" | "1year" | "full" = "full"
-): Array<{
-  date: string;
-  actual: number | null;
-  planned: number;
-  month: string;
-}> {
-  const combinedData: Array<{
-    date: string;
-    actual: number | null;
-    planned: number;
-    month: string;
-  }> = [];
+): PlanComparisonPoint[] {
+  const combinedData: PlanComparisonPoint[] = [];
 
   // 계획 기간에 따른 월 수 계산
   const totalMonths =
@@ -79,63 +93,68 @@ export function preparePlanComparisonChartData(
   // 과거 실제 데이터를 차트 데이터에 추가
   actualData.forEach((point) => {
     const date = new Date(point.date);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    // monthOffset (negative) relative to today month boundary
+    const monthOffset =
+      (date.getFullYear() - today.getFullYear()) * 12 + (date.getMonth() - today.getMonth());
+    const kind: PastPlanComparisonPoint["kind"] = monthOffset === 0 ? "present" : "past";
     combinedData.push({
+      kind,
       date: point.date,
       actual: point.value,
-      planned: point.value, // 과거는 실제값과 동일
-      month: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
+      planned: point.value, // 과거/현재는 실제값과 동일
+      month: monthKey,
+      monthOffset,
     });
   });
 
   // 미래 계획 데이터 생성
-  const currentTotalValue = investments.reduce((sum, inv) => sum + inv.currentValue, 0);
+  // 현재 총 투자 가치는 과거/현재 실제 데이터 단계에서 이미 반영되므로 미래 계산에는 필요 없음
 
-  for (let month = 0; month <= totalMonths; month++) {
+  // Future projection points (start at +1 month because today already covered in actualData)
+  for (let monthAhead = 1; monthAhead <= totalMonths; monthAhead++) {
     const projectionDate = new Date(today);
-    projectionDate.setMonth(projectionDate.getMonth() + month);
-
+    projectionDate.setMonth(projectionDate.getMonth() + monthAhead);
     const dateStr = projectionDate.toISOString().split("T")[0] || "";
 
-    // 이미 과거 데이터에 있는 날짜는 건너뛰기
+    // 이미 past/ present 데이터에 있는 날짜는 건너뛰기
     if (combinedData.find((d) => d.date === dateStr)) continue;
 
     // 각 계좌별 예상 값 계산
     let totalProjectedValue = 0;
-
     investments.forEach((investment) => {
       const accountPlan = plan.accountPlans[investment.id];
       if (!accountPlan) {
         totalProjectedValue += investment.currentValue;
         return;
       }
-
       const monthlyContribution = getMonthlyContribution(
         accountPlan.contributionAmount,
         accountPlan.contributionFrequency
       );
       const annualReturn = parseFloat(accountPlan.targetAnnualReturn) / 100;
       const monthlyReturn = Math.pow(1 + annualReturn, 1 / 12) - 1;
-
-      // 복리 계산
       const initialValue = investment.currentValue;
-      const growthFromInitial = initialValue * Math.pow(1 + monthlyReturn, month);
-
+      const growthFromInitial = initialValue * Math.pow(1 + monthlyReturn, monthAhead);
       const growthFromContributions =
         monthlyReturn > 0
-          ? monthlyContribution * ((Math.pow(1 + monthlyReturn, month) - 1) / monthlyReturn)
-          : monthlyContribution * month;
-
+          ? monthlyContribution * ((Math.pow(1 + monthlyReturn, monthAhead) - 1) / monthlyReturn)
+          : monthlyContribution * monthAhead;
       totalProjectedValue += growthFromInitial + growthFromContributions;
     });
 
+    const monthOffset = monthAhead; // future points start at +0 (today) but past data may include today already
     combinedData.push({
+      kind: "future",
       date: dateStr,
-      actual: month === 0 ? currentTotalValue : null, // 현재 시점만 실제값
+      actual: null,
       planned: Math.round(totalProjectedValue),
       month: `${projectionDate.getFullYear()}-${String(projectionDate.getMonth() + 1).padStart(2, "0")}`,
+      monthOffset,
     });
   }
 
+  // Sort & ensure uniqueness (already prevented duplicates)
   return combinedData.sort((a, b) => a.date.localeCompare(b.date));
 }
 

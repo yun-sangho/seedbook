@@ -4,27 +4,16 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@web/components/ui/button";
-import {
-  ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@web/components/ui/chart";
-import { Input } from "@web/components/ui/input";
-import { Label } from "@web/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@web/components/ui/select";
 import { useAssetPlanStore } from "@web/features/asset-plan/stores/asset-plan-store";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
-import { numberToKorean } from "@web/utils/number-format";
 import { preparePlanComparisonChartData } from "@web/utils/plan-comparison-utils";
-import { Calculator, Calendar, ChevronLeft, Target, TrendingUp } from "lucide-react";
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { TrendingUp } from "lucide-react";
+import { AccountPlansSection } from "./_components/account-plans-section";
+import { PlanBasicInfoSection } from "./_components/plan-basic-info-section";
+import { PlanHeader } from "./_components/plan-header";
+import { PlanIntro } from "./_components/plan-intro";
+import { PlanPreviewChartSection } from "./_components/plan-preview-chart-section";
+import { PlanSummarySection } from "./_components/plan-summary-section";
 
 export default function AssetPlanPage() {
   const router = useRouter();
@@ -147,14 +136,6 @@ export default function AssetPlanPage() {
     planName,
   ]);
 
-  // 차트 설정
-  const chartConfig = {
-    planned: {
-      label: "예상 자산 가치",
-      color: "#3b82f6", // 파란색
-    },
-  } satisfies ChartConfig;
-
   // 숫자 포맷팅 함수
   const formatNumber = (value: string) => {
     const numericValue = value.replace(/[^0-9.]/g, "");
@@ -186,27 +167,10 @@ export default function AssetPlanPage() {
   };
 
   return (
-    <main className="flex flex-col items-center min-h-screen p-8">
-      <div className="w-full max-w-4xl">
-        <div className="mb-8">
-          <Link
-            href="/assets"
-            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
-          >
-            <ChevronLeft className="w-5 h-5" />
-            자산 현황으로 돌아가기
-          </Link>
-        </div>
-
-        <div className="mb-10">
-          <h1 className="text-3xl font-bold mb-4 flex items-center gap-3">
-            <Calculator className="w-8 h-8 text-blue-600" />
-            자산계획 수립
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            현재 투자 계좌를 기반으로 미래 자산 증가 시뮬레이션을 만들어보세요
-          </p>
-        </div>
+    <main className="flex flex-col items-center h-screen p-8">
+      <div className="w-full max-w-4xl h-full">
+        <PlanHeader />
+        <PlanIntro />
 
         {validInvestments.length === 0 ? (
           <div className="text-center py-12">
@@ -222,278 +186,33 @@ export default function AssetPlanPage() {
             </Link>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* 계획 기본 정보 */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6">
-              <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-                <Target className="w-5 h-5" />
-                계획 기본 정보
-              </h2>
+          <form onSubmit={handleSubmit} className="h-full flex flex-col gap-8">
+            <PlanBasicInfoSection
+              planName={planName}
+              planPeriod={planPeriod}
+              setPlanName={setPlanName}
+              setPlanPeriod={setPlanPeriod}
+            />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label htmlFor="planName">계획 이름</Label>
-                  <Input
-                    id="planName"
-                    value={planName}
-                    onChange={(e) => setPlanName(e.target.value)}
-                    placeholder="예: 은퇴 준비 계획"
-                    className="mt-1"
-                  />
-                </div>
+            <AccountPlansSection
+              investments={validInvestments}
+              accountPlans={accountPlans}
+              updateAccountPlan={updateAccountPlan}
+              formatNumber={formatNumber}
+              getMonthlyContribution={getMonthlyContribution}
+            />
 
-                <div>
-                  <Label htmlFor="planPeriod" className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    계획 기간 (년)
-                  </Label>
-                  <Input
-                    id="planPeriod"
-                    type="number"
-                    min="1"
-                    max="50"
-                    value={planPeriod}
-                    onChange={(e) => setPlanPeriod(e.target.value)}
-                    placeholder="30"
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-            </div>
+            <PlanSummarySection
+              planPeriod={planPeriod}
+              totalMonthlyContribution={totalMonthlyContribution}
+              averageTargetReturn={averageTargetReturn}
+            />
 
-            {/* 계좌별 설정 */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6">
-              <h2 className="text-xl font-semibold mb-6">계좌별 투자 계획</h2>
-
-              <div className="space-y-6">
-                {validInvestments.map((investment) => {
-                  const plan = accountPlans[investment.id] || {
-                    contributionAmount: "",
-                    contributionFrequency: "월",
-                    targetAnnualReturn: "",
-                  };
-
-                  return (
-                    <div
-                      key={investment.id}
-                      className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-700"
-                    >
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="font-semibold">{investment.accountName}</h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {investment.accountType} · {investment.accountOwner}
-                          </p>
-                          <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                            현재 잔액: {numberToKorean(investment.currentValue.toString())}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <Label>추가 납입금 (만원)</Label>
-                          <Input
-                            type="text"
-                            value={plan.contributionAmount}
-                            onChange={(e) => {
-                              const formatted = formatNumber(e.target.value);
-                              updateAccountPlan(investment.id, "contributionAmount", formatted);
-                            }}
-                            placeholder="100"
-                            className="mt-1"
-                          />
-                        </div>
-
-                        <div>
-                          <Label>납입 주기</Label>
-                          <Select
-                            value={plan.contributionFrequency}
-                            onValueChange={(value) =>
-                              updateAccountPlan(investment.id, "contributionFrequency", value)
-                            }
-                          >
-                            <SelectTrigger className="mt-1">
-                              <SelectValue placeholder="납입 주기 선택" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="월">월 납입</SelectItem>
-                              <SelectItem value="분기">분기 납입</SelectItem>
-                              <SelectItem value="반기">반기 납입</SelectItem>
-                              <SelectItem value="년">연 납입</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div>
-                          <Label>목표 연 수익률 (%)</Label>
-                          <Input
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            max="50"
-                            value={plan.targetAnnualReturn}
-                            onChange={(e) =>
-                              updateAccountPlan(investment.id, "targetAnnualReturn", e.target.value)
-                            }
-                            placeholder="7.0"
-                            className="mt-1"
-                          />
-                        </div>
-                      </div>
-
-                      {/* 월 환산 납입금 표시 */}
-                      {plan.contributionAmount && plan.contributionFrequency && (
-                        <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm">
-                          <span className="text-gray-600 dark:text-gray-400">월 환산 납입금: </span>
-                          <span className="font-medium text-blue-600 dark:text-blue-400">
-                            {numberToKorean(
-                              getMonthlyContribution(
-                                plan.contributionAmount,
-                                plan.contributionFrequency
-                              ).toString()
-                            )}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 계획 요약 */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-6">
-              <h2 className="text-xl font-semibold mb-4 text-blue-800 dark:text-blue-200">
-                계획 요약
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {planPeriod}년
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">계획 기간</div>
-                </div>
-
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {numberToKorean(totalMonthlyContribution.toString())}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">월 총 납입금</div>
-                </div>
-
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {averageTargetReturn.toFixed(1)}%
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">평균 목표 수익률</div>
-                </div>
-              </div>
-            </div>
-
-            {/* 실시간 자산 변화 미리보기 차트 */}
-            {previewChartData.length > 0 && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-6">
-                <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
-                  자산 변화 미리보기
-                </h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  현재 설정한 투자 계획에 따른 예상 자산 변화를 확인하세요
-                </p>
-
-                <div className="h-80 w-full">
-                  <ChartContainer config={chartConfig}>
-                    <AreaChart
-                      data={previewChartData}
-                      margin={{
-                        left: 12,
-                        right: 12,
-                        top: 12,
-                        bottom: 12,
-                      }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-
-                      <XAxis
-                        dataKey="date"
-                        tickLine={false}
-                        axisLine={false}
-                        tickMargin={8}
-                        tickFormatter={(value) => {
-                          const date = new Date(value);
-                          return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-                        }}
-                      />
-
-                      <YAxis
-                        tickLine={false}
-                        axisLine={false}
-                        tickMargin={8}
-                        tickFormatter={(value) => {
-                          if (value >= 100000000) {
-                            return `${(value / 100000000).toFixed(0)}억`;
-                          } else if (value >= 10000) {
-                            return `${(value / 10000).toFixed(0)}만`;
-                          } else {
-                            return value.toString();
-                          }
-                        }}
-                      />
-
-                      <ChartTooltip
-                        cursor={false}
-                        content={<ChartTooltipContent />}
-                        labelFormatter={(value) => {
-                          const date = new Date(value);
-                          return `${date.getFullYear()}년 ${date.getMonth() + 1}월`;
-                        }}
-                        formatter={(value) => [
-                          numberToKorean(value?.toString() || "0"),
-                          "예상 자산 가치",
-                        ]}
-                      />
-
-                      <Area
-                        dataKey="planned"
-                        type="monotone"
-                        fill={chartConfig.planned.color}
-                        fillOpacity={0.4}
-                        stroke={chartConfig.planned.color}
-                        strokeWidth={3}
-                      />
-                    </AreaChart>
-                  </ChartContainer>
-                </div>
-
-                {/* 차트 요약 정보 */}
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <div className="text-sm text-blue-700 dark:text-blue-300 mb-1">
-                      현재 총 자산
-                    </div>
-                    <div className="text-xl font-semibold text-blue-800 dark:text-blue-200">
-                      {numberToKorean(
-                        validInvestments.reduce((sum, inv) => sum + inv.currentValue, 0).toString()
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <div className="text-sm text-green-700 dark:text-green-300 mb-1">
-                      {planPeriod}년 후 예상 자산
-                    </div>
-                    <div className="text-xl font-semibold text-green-800 dark:text-green-200">
-                      {previewChartData.length > 0 &&
-                        numberToKorean(
-                          previewChartData[previewChartData.length - 1]?.planned?.toString() || "0"
-                        )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            <PlanPreviewChartSection
+              previewChartData={previewChartData}
+              validInvestments={validInvestments}
+              planPeriod={planPeriod}
+            />
 
             {/* 제출 버튼 */}
             <div className="flex justify-center gap-4">

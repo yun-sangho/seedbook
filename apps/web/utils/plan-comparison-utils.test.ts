@@ -1,7 +1,7 @@
 import { AssetPlan } from "@web/features/asset-plan/types/types";
 import { InvestmentItem } from "@web/features/investments/types/types";
 import { beforeEach, describe, expect, it } from "vitest";
-import { preparePlanComparisonChartData } from "./plan-comparison-utils";
+import { getMonthlyContribution, preparePlanComparisonChartData } from "./plan-comparison-utils";
 
 describe("preparePlanComparisonChartData", () => {
   let mockInvestments: InvestmentItem[];
@@ -399,6 +399,59 @@ describe("preparePlanComparisonChartData", () => {
         const date = new Date(dataPoint.date);
         const expectedMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
         expect(dataPoint.month).toBe(expectedMonth);
+      });
+    });
+  });
+
+  describe("새 타입 속성 (kind, monthOffset) 및 helper", () => {
+    it("getMonthlyContribution이 주기 변환을 정확히 수행한다", () => {
+      expect(getMonthlyContribution("120", "월")).toBeCloseTo(120);
+      expect(getMonthlyContribution("120", "분기")).toBeCloseTo(40); // 120/3
+      expect(getMonthlyContribution("120", "반기")).toBeCloseTo(20); // 120/6
+      expect(getMonthlyContribution("120", "년")).toBeCloseTo(10); // 120/12
+      expect(getMonthlyContribution("abc", "월")).toBe(0);
+      expect(getMonthlyContribution("120", "없음")).toBe(0);
+    });
+
+    it("kind에 따라 actual 필드 null 여부가 올바르게 구분된다", () => {
+      const result = preparePlanComparisonChartData(mockInvestments, mockPlan, "1year");
+      const futurePoints = result.filter((p) => p.kind === "future");
+      const pastPoints = result.filter((p) => p.kind === "past");
+      const presentPoints = result.filter((p) => p.kind === "present");
+
+      // present 포인트는 1개 이상 (주간 샘플링이 오늘과 같은 달 내 동일 월오프셋 0을 여러 개 포함할 수 있음)
+      expect(presentPoints.length).toBeGreaterThanOrEqual(1);
+      presentPoints.forEach((p) => {
+        expect(p.actual).toBeGreaterThan(0);
+        expect(p.monthOffset).toBe(0);
+      });
+
+      pastPoints.forEach((p) => expect(p.actual).not.toBeNull());
+      futurePoints.forEach((p) => expect(p.actual).toBeNull());
+    });
+
+    it("monthOffset 부호가 과거/현재/미래를 반영한다", () => {
+      const result = preparePlanComparisonChartData(mockInvestments, mockPlan, "1year");
+      const present = result.find((p) => p.kind === "present");
+      expect(present?.monthOffset).toBe(0);
+      // 과거는 음수
+      result.filter((p) => p.kind === "past").forEach((p) => expect(p.monthOffset).toBeLessThan(0));
+      // 미래는 양수 (>=1)
+      result
+        .filter((p) => p.kind === "future")
+        .forEach((p) => expect(p.monthOffset).toBeGreaterThan(0));
+    });
+
+    it("PlanComparisonPoint 타입이 좁혀지는지 타입 단언 검사 (컴파일 시점)", () => {
+      const points = preparePlanComparisonChartData(mockInvestments, mockPlan, "30days");
+      // 런타임 검증 + 타입 내로잉 예시
+      points.forEach((pt) => {
+        if (pt.kind === "future") {
+          expect(pt.actual).toBeNull();
+        } else {
+          // past | present
+          expect(pt.actual).not.toBeNull();
+        }
       });
     });
   });
