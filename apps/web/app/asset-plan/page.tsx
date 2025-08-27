@@ -149,20 +149,45 @@ export default function AssetPlanPage() {
     e.preventDefault();
     if (!isFormValid()) return;
 
-    // 자산계획 데이터 생성
+    // Normalize accountPlans to include only valid investments and clean numeric strings
+    const normalizedAccountPlans: typeof accountPlans = validInvestments.reduce(
+      (acc, inv) => {
+        const raw = accountPlans[inv.id] || {
+          contributionAmount: "0",
+          contributionFrequency: "월",
+          targetAnnualReturn: "0",
+        };
+
+        acc[inv.id] = {
+          contributionAmount: (raw.contributionAmount || "0").replace(/,/g, "").trim(),
+          contributionFrequency: raw.contributionFrequency || "월",
+          targetAnnualReturn: (raw.targetAnnualReturn || "0").trim(),
+        };
+
+        return acc;
+      },
+      {} as typeof accountPlans
+    );
+
+    // Build plan data matching the store's expected shape
     const planData = {
-      planName,
-      planPeriod: parseInt(planPeriod),
-      accountPlans,
+      planName: planName.trim() || "미리보기",
+      planPeriod: parseInt(planPeriod, 10),
+      accountPlans: normalizedAccountPlans,
       totalMonthlyContribution,
       averageTargetReturn,
     };
 
-    // 스토어에 자산계획 저장
+    // Save to store
     addPlan(planData);
 
-    // 성공 메시지 표시 후 자산 페이지로 이동
-    alert(`"${planName}" 자산계획이 성공적으로 저장되었습니다!`);
+    // Reset form state
+    setPlanName("");
+    setPlanPeriod("30");
+    setAccountPlans({});
+
+    // Notify and navigate
+    alert(`"${planData.planName}" 자산계획이 성공적으로 저장되었습니다!`);
     router.push("/assets");
   };
 

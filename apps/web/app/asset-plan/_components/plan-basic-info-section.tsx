@@ -18,7 +18,7 @@ export function PlanBasicInfoSection({
   setPlanPeriod,
 }: PlanBasicInfoSectionProps) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-xl">
       <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
         <Target className="w-5 h-5" />
         계획 기본 정보

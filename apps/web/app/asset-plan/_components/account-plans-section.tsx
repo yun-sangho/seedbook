@@ -25,7 +25,7 @@ export function AccountPlansSection({
   getMonthlyContribution,
 }: AccountPlansSectionProps) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-xl">
       <h2 className="text-xl font-semibold mb-6">계좌별 투자 계획</h2>
       <div className="space-y-6">
         {investments.map((investment) => (

@@ -37,15 +37,12 @@ export function PlanPreviewChartSection({
   } as const;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 flex flex-col h-full">
+    <div className="bg-white dark:bg-gray-800 p-6 flex flex-col">
       <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
         <TrendingUp className="w-5 h-5" />
         자산 변화 미리보기
       </h2>
-      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-        현재 설정한 투자 계획에 따른 예상 자산 변화를 확인하세요
-      </p>
-      <div className="h-80 w-full">
+      <div className="w-full">
         <ChartContainer config={chartConfig}>
           <AreaChart data={previewChartData} margin={{ left: 12, right: 12, top: 12, bottom: 12 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -76,7 +73,7 @@ export function PlanPreviewChartSection({
                 const date = new Date(value);
                 return `${date.getFullYear()}년 ${date.getMonth() + 1}월`;
               }}
-              formatter={(value) => [numberToKorean(value?.toString() || "0"), "예상 자산 가치"]}
+              formatter={(value) => [numberToKorean(value?.toString() || "0")]}
             />
             <Area
               dataKey="planned"
@@ -89,8 +86,8 @@ export function PlanPreviewChartSection({
           </AreaChart>
         </ChartContainer>
       </div>
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+      <div className="flex gap-4 w-full">
+        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex-1">
           <div className="text-sm text-blue-700 dark:text-blue-300 mb-1">현재 총 자산</div>
           <div className="text-xl font-semibold text-blue-800 dark:text-blue-200">
             {numberToKorean(
@@ -98,7 +95,7 @@ export function PlanPreviewChartSection({
             )}
           </div>
         </div>
-        <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+        <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg flex-1">
           <div className="text-sm text-green-700 dark:text-green-300 mb-1">
             {planPeriod}년 후 예상 자산
           </div>
