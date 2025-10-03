@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { InvestmentAreaChart } from "@web/components/investment-area-chart";
 import { InvestmentPlanComparisonChart } from "@web/components/investment-plan-comparison-chart";
+import { Button } from "@web/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -17,6 +18,7 @@ import { useInvestmentStore } from "@web/features/investments/stores/investment-
 import { InvestmentItem } from "@web/features/investments/types/types";
 import { numberToKorean } from "@web/utils/number-format";
 import { ChevronRight, Landmark } from "lucide-react";
+import { L } from "vitest/dist/chunks/reporters.d.BFLkQcL6.js";
 
 export default function AssetsPage() {
   const investments = useInvestmentStore((state) => state.investments);
@@ -61,9 +63,7 @@ function EmptyInvestmentsView() {
           <InvestmentCard />
         </div>
 
-        <div className="flex justify-center gap-4 mt-10">
-          <ActionsBar />
-        </div>
+        <ActionsBar />
       </div>
     </main>
   );
@@ -71,26 +71,14 @@ function EmptyInvestmentsView() {
 
 function ActionsBar() {
   return (
-    <>
-      <Link
-        href="/asset-plan"
-        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors"
-      >
-        자산계획 수립하기
-      </Link>
-      <Link
-        href="/asset-plan-list"
-        className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 transition-colors"
-      >
-        자산계획 목록 보기
-      </Link>
-      <Link
-        href="/dashboard"
-        className="px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
-      >
-        대시보드 보기
-      </Link>
-    </>
+    <div className="flex flex-wrap justify-center gap-4">
+      <Button asChild size={"lg"}>
+        <Link href="/asset-plan">자산계획 세우기</Link>
+      </Button>
+      <Button variant={"secondary"} asChild size={"lg"}>
+        <Link href="/asset-plan-list">자산계획 목록 보기</Link>
+      </Button>
+    </div>
   );
 }
 
@@ -110,57 +98,33 @@ function InvestmentDashboardView({ investments }: InvestmentDashboardViewProps) 
 
   return (
     <main className="flex flex-col items-center min-h-screen p-8 md:p-24">
-      <div className="w-full max-w-4xl">
-        <div className="mb-10">
-          <Header title="투자 자산 현황" />
+      <div className="w-full max-w-4xl flex flex-col gap-8">
+        <Header title="투자 자산 현황" />
 
-          <div className="bg-green-100 dark:bg-green-900/30 rounded-xl p-6 mb-8">
-            <SummaryCard
-              validInvestments={validInvestments}
-              plans={plans}
-              selectedPlanId={selectedPlanId}
-              setSelectedPlanId={setSelectedPlanId}
-              showComparison={showComparison}
-              setShowComparison={setShowComparison}
-              totalInvestments={totalInvestments}
-              selectedPlan={selectedPlan}
-            />
-
-            <div className="mb-6" />
-
-            <ChartArea
-              validInvestments={validInvestments}
-              showComparison={showComparison}
-              selectedPlan={selectedPlan}
-            />
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 mb-8">
-            <h3 className="text-lg font-semibold mb-4">투자 계좌 목록</h3>
-            <InvestmentList investments={validInvestments} />
-          </div>
+        <div className="bg-green-100 dark:bg-green-900/30 rounded-xl p-6">
+          <SummaryCard
+            validInvestments={validInvestments}
+            plans={plans}
+            selectedPlanId={selectedPlanId}
+            setSelectedPlanId={setSelectedPlanId}
+            showComparison={showComparison}
+            setShowComparison={setShowComparison}
+            totalInvestments={totalInvestments}
+            selectedPlan={selectedPlan}
+          />
+          <ChartArea
+            validInvestments={validInvestments}
+            showComparison={showComparison}
+            selectedPlan={selectedPlan}
+          />
         </div>
 
-        <div className="flex justify-center gap-4 mt-10">
-          <Link
-            href="/asset-plan"
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 transition-colors"
-          >
-            자산계획 수립하기
-          </Link>
-          <Link
-            href="/asset-plan-list"
-            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 transition-colors"
-          >
-            자산계획 목록 보기
-          </Link>
-          <Link
-            href="/dashboard"
-            className="px-6 py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
-          >
-            상세 대시보드 보기
-          </Link>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6">
+          <h3 className="text-lg font-semibold mb-4">투자 계좌 목록</h3>
+          <InvestmentList investments={validInvestments} />
         </div>
+
+        <ActionsBar />
       </div>
     </main>
   );
