@@ -19,6 +19,7 @@ export function InvestmentForm() {
   );
   const addHistoryRecord = useInvestmentStore((state) => state.addHistoryRecord);
   const reorderInvestments = useInvestmentStore((state) => state.reorderInvestments);
+  const removeInvestment = useInvestmentStore((state) => state.removeInvestment);
 
   const handleChange = (id: number, field: string, value: string) => {
     updateInvestment(id, field as keyof InvestmentItem, value);
@@ -67,16 +68,13 @@ export function InvestmentForm() {
               onUpdateItem={handleChange}
               onRemoveHistoryRecord={handleRemoveHistoryRecord}
               onAddHistory={handleAddHistory}
+              onRemoveInvestment={removeInvestment}
             />
           </SortableItem>
         ))}
       </SortableList>
 
-      <Button
-        onClick={openAddAccountModal}
-        size={"lg"}
-        className="bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-      >
+      <Button onClick={openAddAccountModal} size={"lg"}>
         + 투자 계좌 추가
       </Button>
 

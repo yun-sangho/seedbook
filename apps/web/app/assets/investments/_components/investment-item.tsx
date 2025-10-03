@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AssetNameInput } from "@web/components/ui/asset-name-input";
 import { Badge } from "@web/components/ui/badge";
 import { Button } from "@web/components/ui/button";
+import { Card } from "@web/components/ui/card";
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
 import { InvestmentItem } from "@web/features/investments/types/types";
@@ -20,6 +21,7 @@ interface InvestmentItemComponentProps {
     initialInvestment: number,
     currentValue: number
   ) => void;
+  onRemoveInvestment: (id: number) => void;
 }
 
 export function InvestmentItemComponent({
@@ -27,15 +29,13 @@ export function InvestmentItemComponent({
   onUpdateItem,
   onRemoveHistoryRecord,
   onAddHistory,
+  onRemoveInvestment,
 }: InvestmentItemComponentProps) {
   const [isRecordsExpanded, setIsRecordsExpanded] = useState(false);
   const [isAddHistoryModalOpen, setIsAddHistoryModalOpen] = useState(false);
 
   return (
-    <div
-      key={item.id}
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col gap-3 px-4 py-3"
-    >
+    <Card key={item.id} className=" flex flex-col gap-3 px-4 py-3">
       <div className="flex gap-2 flex-wrap justify-between items-center">
         <Badge variant={"secondary"}>{`${item.accountType} / ${item.accountOwner}`}</Badge>
 
@@ -56,10 +56,7 @@ export function InvestmentItemComponent({
 
       <div className="w-full flex gap-4 flex-wrap justify-between">
         <div className="flex items-center gap-2 relative flex-grow-1">
-          <Label
-            htmlFor={`initialInvestment-${item.id}`}
-            className="text-sm text-gray-600 dark:text-gray-400"
-          >
+          <Label htmlFor={`initialInvestment-${item.id}`} className="text-sm ">
             투자원금
           </Label>
           <Input
@@ -75,16 +72,13 @@ export function InvestmentItemComponent({
             className="text-sm flex-1"
           />
           {!!item.initialInvestment && item.initialInvestment > 0 && (
-            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-1 z-10 pointer-events-none">
+            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs   px-1 z-10 pointer-events-none">
               {numberToKorean(item.initialInvestment)}
             </div>
           )}
         </div>
         <div className="flex items-center gap-2 relative flex-grow-1">
-          <Label
-            htmlFor={`currentValue-${item.id}`}
-            className="text-sm text-gray-600 dark:text-gray-400"
-          >
+          <Label htmlFor={`currentValue-${item.id}`} className="text-sm ">
             평가금액
           </Label>
           <Input
@@ -98,62 +92,72 @@ export function InvestmentItemComponent({
             className="text-sm flex-1"
           />
           {!!item.currentValue && item.currentValue > 0 && (
-            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-1 z-10 pointer-events-none">
+            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs px-1 z-10 pointer-events-none">
               {numberToKorean(item.currentValue)}
             </div>
           )}
         </div>
       </div>
 
-      {item.records.length > 0 && isRecordsExpanded && (
+      {isRecordsExpanded && (
         <div className="w-full space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">히스토리</span>
-          </div>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {item.records
-              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-              .map((record, index) => {
-                const isLatest = index === 0;
-                return (
-                  <div
-                    key={`${record.date}-${index}`}
-                    className="flex flex-wrap justify-between gap-2 items-center p-2 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
-                  >
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
-                      {new Date(record.date).toLocaleDateString("ko-KR")}
-                      {isLatest ? (
-                        <span className="ml-1 text-xs text-blue-600 dark:text-blue-400">
-                          (최신)
-                        </span>
-                      ) : (
-                        <span
-                          className="ml-1 text-xs text-gray-500 dark:text-gray-400 cursor-pointer underline"
-                          onClick={() => onRemoveHistoryRecord(item.id, record.date)}
-                        >
-                          삭제
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex gap-2 text-sm flex-wrap">
-                        <span>원금: {numberToKorean(record.initialInvestment)}</span>
-                        <span>평가: {numberToKorean(record.currentValue)}</span>
+          {item.records.length > 0 && (
+            <>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  히스토리
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsAddHistoryModalOpen(true)}
+                  className="h-7 text-xs"
+                >
+                  + 기록 추가
+                </Button>
+              </div>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {item.records
+                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                  .map((record, index) => {
+                    const isLatest = index === 0;
+                    return (
+                      <div
+                        key={`${record.date}-${index}`}
+                        className="flex flex-wrap justify-between gap-2 items-center p-2 rounded-lg border"
+                      >
+                        <div className="text-sm">
+                          {new Date(record.date).toLocaleDateString("ko-KR")}
+                          {!isLatest && (
+                            <span
+                              className="ml-1 text-xs cursor-pointer underline"
+                              onClick={() => onRemoveHistoryRecord(item.id, record.date)}
+                            >
+                              삭제
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex gap-2 text-sm flex-wrap">
+                            <span>원금: {numberToKorean(record.initialInvestment)}</span>
+                            <span>평가: {numberToKorean(record.currentValue)}</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                );
-              })}
-            <div className="flex">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setIsAddHistoryModalOpen(true)}
-                className="text-xs ml-auto"
-              >
-                + 히스토리 추가
-              </Button>
-            </div>
+                    );
+                  })}
+              </div>
+            </>
+          )}
+          <div className="flex">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => onRemoveInvestment(item.id)}
+              className="text-xs ml-auto underline"
+            >
+              계좌 삭제
+            </Button>
           </div>
         </div>
       )}
@@ -164,6 +168,6 @@ export function InvestmentItemComponent({
         item={item}
         onAddHistory={onAddHistory}
       />
-    </div>
+    </Card>
   );
 }
