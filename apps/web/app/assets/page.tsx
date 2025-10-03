@@ -18,7 +18,6 @@ import { useInvestmentStore } from "@web/features/investments/stores/investment-
 import { InvestmentItem } from "@web/features/investments/types/types";
 import { numberToKorean } from "@web/utils/number-format";
 import { ChevronRight, Landmark } from "lucide-react";
-import { L } from "vitest/dist/chunks/reporters.d.BFLkQcL6.js";
 
 export default function AssetsPage() {
   const investments = useInvestmentStore((state) => state.investments);

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Input } from "@web/components/ui/input";
 import { Check, Edit, X } from "lucide-react";
+import { Button } from "./button";
 import { cn } from "./utils";
 
 interface AssetNameInputProps {
@@ -64,34 +65,34 @@ export function AssetNameInput({
             placeholder={placeholder}
           />
           <div className="flex ml-2">
-            <button
+            <Button
               type="button"
+              variant={"ghost"}
               onClick={saveValue}
-              className="p-1 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md transition-colors"
+              className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20  "
               aria-label="저장"
+              size={"icon"}
             >
-              <Check className="w-4 h-4" />
-            </button>
-            <button
+              <Check />
+            </Button>
+            <Button
               type="button"
+              variant={"ghost"}
               onClick={cancelEditing}
-              className="p-1 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors ml-1"
+              className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
               aria-label="취소"
+              size={"icon"}
             >
-              <X className="w-4 h-4" />
-            </button>
+              <X />
+            </Button>
           </div>
         </div>
       ) : (
         <div className="flex items-center" onClick={startEditing}>
           <span className={inputClassName}>{value}</span>
-          <button
-            type="button"
-            className="ml-2 p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
-            aria-label="이름 수정"
-          >
-            <Edit className="w-4 h-4" />
-          </button>
+          <Button variant={"ghost"} type="button" aria-label="이름 수정" size={"icon"}>
+            <Edit />
+          </Button>
         </div>
       )}
     </div>

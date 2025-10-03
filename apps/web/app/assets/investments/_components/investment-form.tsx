@@ -8,6 +8,7 @@ import { useInvestmentStore } from "@web/features/investments/stores/investment-
 import { InvestmentItem } from "@web/features/investments/types/types";
 import { AddInvestmentModal } from "./add-investment-modal";
 import { InvestmentItemComponent } from "./investment-item";
+import { InvestmentSummary } from "./investment-summary";
 
 export function InvestmentForm() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -48,6 +49,8 @@ export function InvestmentForm() {
 
   return (
     <div className="flex flex-col gap-3">
+      <InvestmentSummary investments={investments} />
+
       <SortableList
         items={investments}
         onReorder={reorderInvestments}
@@ -55,7 +58,7 @@ export function InvestmentForm() {
         renderDragOverlay={(activeId) => {
           const item = investments.find((inv) => inv.id === activeId);
           return item ? (
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-6 shadow-lg opacity-90">
+            <div className="bg-secondary rounded-xl p-6 shadow-lg opacity-90">
               <h3 className="text-lg font-semibold">{item.accountName}</h3>
             </div>
           ) : null;
