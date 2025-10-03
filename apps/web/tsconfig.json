@@ -7,9 +7,18 @@
       }
     ],
     "paths": {
-      "@web/*": ["./*"]
+      "@web/*": ["./*"],
+      "@seedbook/database": ["../../packages/database/src"],
+      "@seedbook/database/*": ["../../packages/database/src/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", "next-env.d.ts", "next.config.ts", ".next/types/**/*.ts"],
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "next-env.d.ts",
+    "next.config.ts",
+    ".next/types/**/*.ts",
+    "../../openapi-ts.config.ts"
+  ],
   "exclude": ["node_modules"]
 }

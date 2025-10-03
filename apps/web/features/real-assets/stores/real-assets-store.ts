@@ -34,6 +34,7 @@ interface RealAssetsState {
   updateRealAsset: (id: number, field: keyof RealAssetItem, value: string | number) => void;
   addCustomOwner: (owner: string) => void;
   setExpandedFormId: (id: number) => void;
+  reorderRealAssets: (reorderedAssets: RealAssetItem[]) => void;
   resetStore: () => void;
 }
 
@@ -114,6 +115,10 @@ export const useRealAssetsStore = create<RealAssetsState>()(
 
       setExpandedFormId: (id) => {
         set({ expandedFormId: id });
+      },
+
+      reorderRealAssets: (reorderedAssets) => {
+        set({ realAssets: reorderedAssets });
       },
 
       resetStore: () => {

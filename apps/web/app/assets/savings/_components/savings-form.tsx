@@ -11,6 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@web/components/ui/select";
+import { SortableItem } from "@web/components/ui/sortable-item";
+import { SortableList } from "@web/components/ui/sortable-list";
 import { Textarea } from "@web/components/ui/textarea";
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
 import { DEFAULT_OWNERS, SAVINGS_TYPES } from "@web/features/savings/types/constants";
@@ -31,6 +33,7 @@ export function SavingsForm({ handleSubmit }: SavingsFormProps) {
   const updateSavings = useSavingsStore((state) => state.updateSavings);
   const addCustomOwner = useSavingsStore((state) => state.addCustomOwner);
   const setExpandedFormId = useSavingsStore((state) => state.setExpandedFormId);
+  const reorderSavings = useSavingsStore((state) => state.reorderSavings);
 
   // 계좌 이름 수정 상태 관리
   const [editingNameId, setEditingNameId] = useState<number | null>(null);
@@ -141,223 +144,239 @@ export function SavingsForm({ handleSubmit }: SavingsFormProps) {
       )}
 
       <form onSubmit={handleSubmit}>
-        {savings.map((item) => {
-          const isExpanded = expandedFormId === item.id;
+        <SortableList
+          items={savings}
+          onReorder={reorderSavings}
+          getItemId={(item) => item.id}
+          renderDragOverlay={(activeId) => {
+            const item = savings.find((saving) => saving.id === activeId);
+            return item ? (
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg opacity-90">
+                <h3 className="text-lg font-semibold">{item.accountName}</h3>
+              </div>
+            ) : null;
+          }}
+        >
+          {savings.map((item) => {
+            const isExpanded = expandedFormId === item.id;
 
-          return (
-            <div key={item.id} className="mb-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-              <div
-                className={`flex justify-between items-center p-6 ${!isExpanded ? "border-b-0" : "border-b dark:border-gray-700"} cursor-pointer`}
-                onClick={(e) => {
-                  // 이벤트 버블링을 방지하기 위해 특정 요소를 클릭했는지 확인
-                  const target = e.target as HTMLElement;
-                  const isEditButton = target.closest('[aria-label="이름 수정"]');
-                  const isDeleteButton = target.closest('[aria-label="삭제"]');
-                  const isCheckButton = target.closest('[aria-label="저장"]');
-                  const isCancelButton = target.closest('[aria-label="취소"]');
-
-                  // 특정 아이콘이나 버튼을 클릭한 경우 토글 동작을 방지
-                  if (!isEditButton && !isDeleteButton && !isCheckButton && !isCancelButton) {
-                    setExpandedFormId(isExpanded ? -1 : item.id);
-                  }
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
+            return (
+              <SortableItem key={item.id} id={item.id}>
+                <div className="mb-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+                  <div
+                    className={`flex justify-between items-center p-6 ${!isExpanded ? "border-b-0" : "border-b dark:border-gray-700"} cursor-pointer`}
                     onClick={(e) => {
-                      e.stopPropagation(); // 이벤트 버블링 방지
-                      setExpandedFormId(isExpanded ? -1 : item.id);
-                    }}
-                    className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                    aria-label={isExpanded ? "접기" : "펼치기"}
-                  >
-                    <ChevronDown
-                      className={`transition-transform ${isExpanded ? "rotate-180" : ""} w-5 h-5`}
-                    />
-                  </button>
+                      // 이벤트 버블링을 방지하기 위해 특정 요소를 클릭했는지 확인
+                      const target = e.target as HTMLElement;
+                      const isEditButton = target.closest('[aria-label="이름 수정"]');
+                      const isDeleteButton = target.closest('[aria-label="삭제"]');
+                      const isCheckButton = target.closest('[aria-label="저장"]');
+                      const isCancelButton = target.closest('[aria-label="취소"]');
 
-                  {editingNameId === item.id ? (
-                    <div className="flex items-center">
-                      <Input
-                        type="text"
-                        value={tempAccountName}
-                        onChange={(e) => {
-                          e.stopPropagation(); // 이벤트 버블링 방지
-                          setTempAccountName(e.target.value);
-                        }}
-                        className="p-1 w-auto"
-                        autoFocus
-                        onBlur={(e) => {
-                          e.stopPropagation(); // 이벤트 버블링 방지
-                          saveAccountName();
-                        }}
-                        onClick={(e) => e.stopPropagation()} // 클릭 시 버블링 방지
-                        onKeyDown={(e) => {
-                          e.stopPropagation(); // 키 입력 시 버블링 방지
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            saveAccountName();
-                          } else if (e.key === "Escape") {
-                            cancelEditingName();
-                          }
-                        }}
-                      />
-                      <div className="flex ml-2">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation(); // 이벤트 버블링 방지
-                            saveAccountName();
-                          }}
-                          className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 mr-1"
-                          aria-label="저장"
-                        >
-                          <Check className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation(); // 이벤트 버블링 방지
-                            cancelEditingName();
-                          }}
-                          className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                          aria-label="취소"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center">
-                      <span className="font-medium">{item.accountName}</span>
+                      // 특정 아이콘이나 버튼을 클릭한 경우 토글 동작을 방지
+                      if (!isEditButton && !isDeleteButton && !isCheckButton && !isCancelButton) {
+                        setExpandedFormId(isExpanded ? -1 : item.id);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation(); // 이벤트 버블링 방지
-                          startEditingName(item.id);
+                          setExpandedFormId(isExpanded ? -1 : item.id);
                         }}
-                        className="ml-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                        aria-label="이름 수정"
+                        className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                        aria-label={isExpanded ? "접기" : "펼치기"}
                       >
-                        <Edit className="w-3.5 h-3.5" />
+                        <ChevronDown
+                          className={`transition-transform ${isExpanded ? "rotate-180" : ""} w-5 h-5`}
+                        />
                       </button>
+
+                      {editingNameId === item.id ? (
+                        <div className="flex items-center">
+                          <Input
+                            type="text"
+                            value={tempAccountName}
+                            onChange={(e) => {
+                              e.stopPropagation(); // 이벤트 버블링 방지
+                              setTempAccountName(e.target.value);
+                            }}
+                            className="p-1 w-auto"
+                            autoFocus
+                            onBlur={(e) => {
+                              e.stopPropagation(); // 이벤트 버블링 방지
+                              saveAccountName();
+                            }}
+                            onClick={(e) => e.stopPropagation()} // 클릭 시 버블링 방지
+                            onKeyDown={(e) => {
+                              e.stopPropagation(); // 키 입력 시 버블링 방지
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                saveAccountName();
+                              } else if (e.key === "Escape") {
+                                cancelEditingName();
+                              }
+                            }}
+                          />
+                          <div className="flex ml-2">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation(); // 이벤트 버블링 방지
+                                saveAccountName();
+                              }}
+                              className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 mr-1"
+                              aria-label="저장"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation(); // 이벤트 버블링 방지
+                                cancelEditingName();
+                              }}
+                              className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                              aria-label="취소"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center">
+                          <span className="font-medium">{item.accountName}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation(); // 이벤트 버블링 방지
+                              startEditingName(item.id);
+                            }}
+                            className="ml-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                            aria-label="이름 수정"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center">
+                      <div className="flex flex-col mr-4">
+                        <div className="flex items-center">
+                          <span className="text-sm font-bold">
+                            {item.amount ? numberToKorean(item.amount.toString()) : "미입력"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation(); // 이벤트 버블링 방지
+                          removeSavingsItem(item.id);
+                        }}
+                        className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                        aria-label="삭제"
+                      >
+                        <Trash className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="p-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* 저축 유형 */}
+                        <div>
+                          <Label htmlFor={`account-type-${item.id}`}>저축 유형</Label>
+                          <div className="relative mt-2">
+                            <Select
+                              value={item.accountType}
+                              onValueChange={(value) => handleChange(item.id, "accountType", value)}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="저축 유형 선택" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectGroup>
+                                  {SAVINGS_TYPES.map((type) => (
+                                    <SelectItem key={type} value={type}>
+                                      {type}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        {/* 계좌 소유자 */}
+                        <div>
+                          <Label htmlFor={`account-owner-${item.id}`}>계좌 소유자</Label>
+                          <div className="relative mt-2">
+                            <Select
+                              value={item.accountOwner}
+                              onValueChange={(value) => {
+                                if (value === "custom") {
+                                  setShowCustomOwnerInput(true);
+                                } else {
+                                  handleChange(item.id, "accountOwner", value);
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="소유자 선택" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectGroup>
+                                  {accountOwners.map((owner) => (
+                                    <SelectItem key={owner} value={owner}>
+                                      {owner}
+                                    </SelectItem>
+                                  ))}
+                                  <SelectItem value="custom">+ 새 소유자 추가</SelectItem>
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        {/* 금액 */}
+                        <div>
+                          <Label htmlFor={`amount-${item.id}`}>금액 (만원)</Label>
+                          <Input
+                            id={`amount-${item.id}`}
+                            type="text"
+                            value={item.amount > 0 ? item.amount.toLocaleString() : ""}
+                            onChange={(e) => handleChange(item.id, "amount", e.target.value)}
+                            placeholder="만원 단위로 입력"
+                            className="mt-2"
+                          />
+                        </div>
+
+                        {/* 메모 */}
+                        <div className="md:col-span-2">
+                          <Label htmlFor={`note-${item.id}`}>메모</Label>
+                          <Textarea
+                            id={`note-${item.id}`}
+                            value={item.note}
+                            onChange={(e) => handleChange(item.id, "note", e.target.value)}
+                            placeholder="메모 작성"
+                            rows={3}
+                            className="mt-2"
+                          />
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
-
-                <div className="flex items-center">
-                  <div className="flex flex-col mr-4">
-                    <div className="flex items-center">
-                      <span className="text-sm font-bold">
-                        {item.amount ? numberToKorean(item.amount.toString()) : "미입력"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation(); // 이벤트 버블링 방지
-                      removeSavingsItem(item.id);
-                    }}
-                    className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                    aria-label="삭제"
-                  >
-                    <Trash className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              {isExpanded && (
-                <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* 저축 유형 */}
-                    <div>
-                      <Label htmlFor={`account-type-${item.id}`}>저축 유형</Label>
-                      <div className="relative mt-2">
-                        <Select
-                          value={item.accountType}
-                          onValueChange={(value) => handleChange(item.id, "accountType", value)}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="저축 유형 선택" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              {SAVINGS_TYPES.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                  {type}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* 계좌 소유자 */}
-                    <div>
-                      <Label htmlFor={`account-owner-${item.id}`}>계좌 소유자</Label>
-                      <div className="relative mt-2">
-                        <Select
-                          value={item.accountOwner}
-                          onValueChange={(value) => {
-                            if (value === "custom") {
-                              setShowCustomOwnerInput(true);
-                            } else {
-                              handleChange(item.id, "accountOwner", value);
-                            }
-                          }}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="소유자 선택" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              {accountOwners.map((owner) => (
-                                <SelectItem key={owner} value={owner}>
-                                  {owner}
-                                </SelectItem>
-                              ))}
-                              <SelectItem value="custom">+ 새 소유자 추가</SelectItem>
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* 금액 */}
-                    <div>
-                      <Label htmlFor={`amount-${item.id}`}>금액 (만원)</Label>
-                      <Input
-                        id={`amount-${item.id}`}
-                        type="text"
-                        value={item.amount > 0 ? item.amount.toLocaleString() : ""}
-                        onChange={(e) => handleChange(item.id, "amount", e.target.value)}
-                        placeholder="만원 단위로 입력"
-                        className="mt-2"
-                      />
-                    </div>
-
-                    {/* 메모 */}
-                    <div className="md:col-span-2">
-                      <Label htmlFor={`note-${item.id}`}>메모</Label>
-                      <Textarea
-                        id={`note-${item.id}`}
-                        value={item.note}
-                        onChange={(e) => handleChange(item.id, "note", e.target.value)}
-                        placeholder="메모 작성"
-                        rows={3}
-                        className="mt-2"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
+              </SortableItem>
+            );
+          })}
+        </SortableList>
 
         <div className="mt-6 flex justify-end">
           <button

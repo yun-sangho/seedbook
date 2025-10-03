@@ -14,7 +14,7 @@ interface InvestmentStackedAreaChartProps {
 }
 
 export function InvestmentStackedAreaChart({ investments }: InvestmentStackedAreaChartProps) {
-  const [selectedRange, setSelectedRange] = useState<TimeRange>("30days");
+  const [selectedRange, setSelectedRange] = useState<TimeRange>("3months");
 
   const { data, config } = prepareStackedAreaChartData(investments, selectedRange);
   const hasData = data.length > 0;
@@ -46,7 +46,7 @@ export function InvestmentStackedAreaChart({ investments }: InvestmentStackedAre
     <div className="w-full">
       {/* 시간 범위 선택 버튼들 */}
       <div className="flex gap-2 mb-4 justify-center">
-        {(["30days", "3months", "1year"] as TimeRange[]).map((range) => (
+        {(["3months", "1year", "all"] as TimeRange[]).map((range) => (
           <Button
             key={range}
             variant={selectedRange === range ? "default" : "outline"}

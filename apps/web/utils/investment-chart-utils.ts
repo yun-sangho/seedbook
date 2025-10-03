@@ -1,7 +1,7 @@
 import { InvestmentItem } from "@web/features/investments/types/types";
 
 // 시간 범위 타입
-export type TimeRange = "30days" | "3months" | "1year";
+export type TimeRange = "3months" | "1year" | "all";
 
 // 차트 데이터 포인트 인터페이스
 export interface InvestmentChartData {
@@ -14,14 +14,14 @@ export interface InvestmentChartData {
 function getDateRange(range: TimeRange): Date {
   const now = new Date();
   switch (range) {
-    case "30days":
-      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     case "3months":
       return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
     case "1year":
       return new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+    case "all":
+      return new Date(0); // 1970-01-01부터 모든 데이터
     default:
-      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
   }
 }
 
@@ -114,13 +114,13 @@ function getInvestmentValueAtDate(investment: InvestmentItem, targetDate: string
 // 시간 범위 라벨을 반환하는 함수
 export function getTimeRangeLabel(range: TimeRange): string {
   switch (range) {
-    case "30days":
-      return "최근 30일";
     case "3months":
-      return "최근 3개월";
+      return "3개월";
     case "1year":
-      return "최근 1년";
+      return "1년";
+    case "all":
+      return "전체 기간";
     default:
-      return "최근 30일";
+      return "3개월";
   }
 }

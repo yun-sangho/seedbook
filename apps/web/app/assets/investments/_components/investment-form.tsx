@@ -1,16 +1,24 @@
 "use client";
 
+import { useState } from "react";
+import { Button } from "@web/components/ui/button";
+import { SortableItem } from "@web/components/ui/sortable-item";
+import { SortableList } from "@web/components/ui/sortable-list";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { InvestmentItem } from "@web/features/investments/types/types";
+import { AddInvestmentModal } from "./add-investment-modal";
 import { InvestmentItemComponent } from "./investment-item";
 
 export function InvestmentForm() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const investments = useInvestmentStore((state) => state.investments);
   const updateInvestment = useInvestmentStore((state) => state.updateInvestment);
   const removeInvestmentHistoryRecord = useInvestmentStore(
     (state) => state.removeInvestmentHistoryRecord
   );
   const addHistoryRecord = useInvestmentStore((state) => state.addHistoryRecord);
+  const reorderInvestments = useInvestmentStore((state) => state.reorderInvestments);
 
   const handleChange = (id: number, field: string, value: string) => {
     updateInvestment(id, field as keyof InvestmentItem, value);
@@ -29,17 +37,50 @@ export function InvestmentForm() {
     addHistoryRecord(itemId, date, initialInvestment, currentValue);
   };
 
+  const openAddAccountModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const closeAddAccountModal = () => {
+    setIsModalOpen(false);
+  };
+
   return (
     <div className="flex flex-col gap-3">
-      {investments.map((item) => (
-        <InvestmentItemComponent
-          key={item.id}
-          item={item}
-          onUpdateItem={handleChange}
-          onRemoveHistoryRecord={handleRemoveHistoryRecord}
-          onAddHistory={handleAddHistory}
-        />
-      ))}
+      <SortableList
+        items={investments}
+        onReorder={reorderInvestments}
+        getItemId={(item) => item.id}
+        renderDragOverlay={(activeId) => {
+          const item = investments.find((inv) => inv.id === activeId);
+          return item ? (
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-6 shadow-lg opacity-90">
+              <h3 className="text-lg font-semibold">{item.accountName}</h3>
+            </div>
+          ) : null;
+        }}
+      >
+        {investments.map((item) => (
+          <SortableItem key={item.id} id={item.id}>
+            <InvestmentItemComponent
+              item={item}
+              onUpdateItem={handleChange}
+              onRemoveHistoryRecord={handleRemoveHistoryRecord}
+              onAddHistory={handleAddHistory}
+            />
+          </SortableItem>
+        ))}
+      </SortableList>
+
+      <Button
+        onClick={openAddAccountModal}
+        size={"lg"}
+        className="bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+      >
+        + 투자 계좌 추가
+      </Button>
+
+      <AddInvestmentModal isOpen={isModalOpen} onClose={closeAddAccountModal} />
     </div>
   );
 }

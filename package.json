@@ -7,10 +7,15 @@
     "lint": "turbo run lint",
     "check-types": "turbo run check-types",
     "format": "prettier --write \"**/*.{ts,tsx,css}\"",
-    "format:check": "prettier --check \"**/*.{ts,tsx,css}\""
+    "format:check": "prettier --check \"**/*.{ts,tsx,css}\"",
+    "openapi:api": "pnpm --filter api build:openapi",
+    "openapi-ts": "openapi-ts",
+    "openapi:regen": "pnpm openapi:api && pnpm --filter @seedbook/web openapi:gen"
   },
   "devDependencies": {
+    "@hey-api/openapi-ts": "0.84.1",
     "@ianvs/prettier-plugin-sort-imports": "^4.5.1",
+    "@types/node": "^22.7.5",
     "prettier": "^3.6.0",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "turbo": "^2.5.4"

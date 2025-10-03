@@ -1,0 +1,26 @@
+{
+  "name": "@seedbook/database",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "dotenv -e .env.local prisma migrate dev",
+    "build": "tsc -p tsconfig.json",
+    "etl:etf:prices": "tsx ./scripts/fetch-etf-prices.ts",
+    "etl:etf:holdings": "tsx ./scripts/fetch-etf-holdings.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.19.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/dotenv": "^8.2.0",
+    "@types/node": "^22.7.5",
+    "dotenv-cli": "^10.0.0",
+    "prisma": "^5.19.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.4.0"
+  }
+}

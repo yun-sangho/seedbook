@@ -17,6 +17,7 @@ interface LoansState {
   updateLoan: <K extends keyof LoanItem>(id: number, key: K, value: LoanItem[K]) => void;
   addCustomOwner: (owner: string) => void;
   setExpandedFormId: (id: number) => void;
+  reorderLoans: (reorderedLoans: LoanItem[]) => void;
 }
 
 // Zustand 스토어 생성
@@ -90,6 +91,12 @@ export const useLoansStore = create<LoansState>()(
         setExpandedFormId: (id) =>
           set({
             expandedFormId: id,
+          }),
+
+        // 대출 순서 재정렬
+        reorderLoans: (reorderedLoans) =>
+          set({
+            loans: reorderedLoans,
           }),
       }),
       {

@@ -11,6 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@web/components/ui/select";
+import { SortableItem } from "@web/components/ui/sortable-item";
+import { SortableList } from "@web/components/ui/sortable-list";
 import { Textarea } from "@web/components/ui/textarea";
 import { useRealAssetsStore } from "@web/features/real-assets/stores/real-assets-store";
 import { DEFAULT_OWNERS, RealAssetType } from "@web/features/real-assets/types/constants";
@@ -23,6 +25,7 @@ export default function RealAssetsPage() {
   const addRealAsset = useRealAssetsStore((state) => state.addRealAsset);
   const removeRealAsset = useRealAssetsStore((state) => state.removeRealAsset);
   const updateRealAsset = useRealAssetsStore((state) => state.updateRealAsset);
+  const reorderRealAssets = useRealAssetsStore((state) => state.reorderRealAssets);
 
   // 총 실물자산 금액 계산 - 최적화를 위해 useMemo 사용
   const totalRealAssetsValue = useMemo(() => {
@@ -61,130 +64,154 @@ export default function RealAssetsPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          {realAssets.map((item) => (
-            <div key={item.id} className="p-6 bg-gray-50 dark:bg-gray-800 rounded-xl">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">{item.assetName}</h3>
-                {
-                  <button
-                    type="button"
-                    className="p-2 text-red-500 hover:bg-gray-100 rounded-full dark:hover:bg-gray-700"
-                    onClick={() => removeRealAsset(item.id)}
-                    aria-label="삭제"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                }
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor={`type-${item.id}`}>자산 유형</Label>
-                  <Select
-                    defaultValue={RealAssetType.REAL_ESTATE}
-                    value={item.assetType}
-                    onValueChange={(value) => updateRealAsset(item.id, "assetType", value)}
-                  >
-                    <SelectTrigger id={`type-${item.id}`}>
-                      <SelectValue placeholder="자산 유형 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.values(RealAssetType).map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+          <SortableList
+            items={realAssets}
+            onReorder={reorderRealAssets}
+            getItemId={(item) => item.id}
+            renderDragOverlay={(activeId) => {
+              const item = realAssets.find((asset) => asset.id === activeId);
+              return item ? (
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-6 shadow-lg opacity-90">
+                  <h3 className="text-lg font-semibold">{item.assetName}</h3>
                 </div>
-
-                <div>
-                  <Label htmlFor={`name-${item.id}`}>자산명</Label>
-                  <Input
-                    id={`name-${item.id}`}
-                    placeholder="자산명"
-                    value={item.assetName}
-                    onChange={(e) => updateRealAsset(item.id, "assetName", e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor={`owner-${item.id}`}>소유자</Label>
-                  <Select
-                    value={item.assetOwner}
-                    onValueChange={(value) => updateRealAsset(item.id, "assetOwner", value)}
-                  >
-                    <SelectTrigger id={`owner-${item.id}`}>
-                      <SelectValue placeholder="소유자 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DEFAULT_OWNERS.map((owner) => (
-                        <SelectItem key={owner} value={owner}>
-                          {owner}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor={`purchaseValue-${item.id}`}>구입 금액 (원)</Label>
-                  <Input
-                    id={`purchaseValue-${item.id}`}
-                    placeholder="구입 금액"
-                    value={
-                      item.purchaseValue === 0
-                        ? ""
-                        : item.purchaseValue
-                          ? item.purchaseValue.toString()
-                          : ""
+              ) : null;
+            }}
+          >
+            {realAssets.map((item) => (
+              <SortableItem key={item.id} id={item.id}>
+                <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold">{item.assetName}</h3>
+                    {
+                      <button
+                        type="button"
+                        className="p-2 text-red-500 hover:bg-gray-100 rounded-full dark:hover:bg-gray-700"
+                        onClick={() => removeRealAsset(item.id)}
+                        aria-label="삭제"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
                     }
-                    onChange={(e) =>
-                      updateRealAsset(item.id, "purchaseValue", parseNumericString(e.target.value))
-                    }
-                  />
-                </div>
+                  </div>
 
-                <div>
-                  <Label htmlFor={`currentValue-${item.id}`}>현재 가치 (원)</Label>
-                  <Input
-                    id={`currentValue-${item.id}`}
-                    placeholder="현재 가치"
-                    value={
-                      item.currentValue === 0
-                        ? ""
-                        : item.currentValue
-                          ? item.currentValue.toString()
-                          : ""
-                    }
-                    onChange={(e) =>
-                      updateRealAsset(item.id, "currentValue", parseNumericString(e.target.value))
-                    }
-                  />
-                </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor={`type-${item.id}`}>자산 유형</Label>
+                      <Select
+                        defaultValue={RealAssetType.REAL_ESTATE}
+                        value={item.assetType}
+                        onValueChange={(value) => updateRealAsset(item.id, "assetType", value)}
+                      >
+                        <SelectTrigger id={`type-${item.id}`}>
+                          <SelectValue placeholder="자산 유형 선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.values(RealAssetType).map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                <div>
-                  <Label htmlFor={`purchaseDate-${item.id}`}>구입일</Label>
-                  <Input
-                    id={`purchaseDate-${item.id}`}
-                    type="date"
-                    value={item.purchaseDate}
-                    onChange={(e) => updateRealAsset(item.id, "purchaseDate", e.target.value)}
-                  />
-                </div>
+                    <div>
+                      <Label htmlFor={`name-${item.id}`}>자산명</Label>
+                      <Input
+                        id={`name-${item.id}`}
+                        placeholder="자산명"
+                        value={item.assetName}
+                        onChange={(e) => updateRealAsset(item.id, "assetName", e.target.value)}
+                      />
+                    </div>
 
-                <div className="md:col-span-2">
-                  <Label htmlFor={`note-${item.id}`}>메모</Label>
-                  <Textarea
-                    id={`note-${item.id}`}
-                    placeholder="메모 추가"
-                    value={item.note}
-                    onChange={(e) => updateRealAsset(item.id, "note", e.target.value)}
-                  />
+                    <div>
+                      <Label htmlFor={`owner-${item.id}`}>소유자</Label>
+                      <Select
+                        value={item.assetOwner}
+                        onValueChange={(value) => updateRealAsset(item.id, "assetOwner", value)}
+                      >
+                        <SelectTrigger id={`owner-${item.id}`}>
+                          <SelectValue placeholder="소유자 선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DEFAULT_OWNERS.map((owner) => (
+                            <SelectItem key={owner} value={owner}>
+                              {owner}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor={`purchaseValue-${item.id}`}>구입 금액 (원)</Label>
+                      <Input
+                        id={`purchaseValue-${item.id}`}
+                        placeholder="구입 금액"
+                        value={
+                          item.purchaseValue === 0
+                            ? ""
+                            : item.purchaseValue
+                              ? item.purchaseValue.toString()
+                              : ""
+                        }
+                        onChange={(e) =>
+                          updateRealAsset(
+                            item.id,
+                            "purchaseValue",
+                            parseNumericString(e.target.value)
+                          )
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor={`currentValue-${item.id}`}>현재 가치 (원)</Label>
+                      <Input
+                        id={`currentValue-${item.id}`}
+                        placeholder="현재 가치"
+                        value={
+                          item.currentValue === 0
+                            ? ""
+                            : item.currentValue
+                              ? item.currentValue.toString()
+                              : ""
+                        }
+                        onChange={(e) =>
+                          updateRealAsset(
+                            item.id,
+                            "currentValue",
+                            parseNumericString(e.target.value)
+                          )
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor={`purchaseDate-${item.id}`}>구입일</Label>
+                      <Input
+                        id={`purchaseDate-${item.id}`}
+                        type="date"
+                        value={item.purchaseDate}
+                        onChange={(e) => updateRealAsset(item.id, "purchaseDate", e.target.value)}
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <Label htmlFor={`note-${item.id}`}>메모</Label>
+                      <Textarea
+                        id={`note-${item.id}`}
+                        placeholder="메모 추가"
+                        value={item.note}
+                        onChange={(e) => updateRealAsset(item.id, "note", e.target.value)}
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))}
+              </SortableItem>
+            ))}
+          </SortableList>
 
           <button
             type="button"

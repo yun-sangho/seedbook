@@ -11,6 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@web/components/ui/select";
+import { SortableItem } from "@web/components/ui/sortable-item";
+import { SortableList } from "@web/components/ui/sortable-list";
 import { Textarea } from "@web/components/ui/textarea";
 import { useLoansStore } from "@web/features/loans/stores/loans-store";
 import { DEFAULT_OWNERS, LOAN_TYPES } from "@web/features/loans/types/constants";
@@ -23,6 +25,7 @@ export default function LoansPage() {
   const addLoan = useLoansStore((state) => state.addLoan);
   const removeLoan = useLoansStore((state) => state.removeLoan);
   const updateLoan = useLoansStore((state) => state.updateLoan);
+  const reorderLoans = useLoansStore((state) => state.reorderLoans);
 
   // 총 대출 금액 계산 - 최적화를 위해 useMemo 사용
   const totalLoansAmount = useMemo(() => {
@@ -61,139 +64,155 @@ export default function LoansPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          {loans.map((item) => (
-            <div key={item.id} className="p-6 bg-gray-50 dark:bg-gray-800 rounded-xl">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">{item.loanName}</h3>
-                {loans.length > 1 && (
-                  <button
-                    type="button"
-                    className="p-2 text-red-500 hover:bg-gray-100 rounded-full dark:hover:bg-gray-700"
-                    onClick={() => removeLoan(item.id)}
-                    aria-label="삭제"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor={`type-${item.id}`}>대출 유형</Label>
-                  <Select
-                    value={item.loanType}
-                    onValueChange={(value) => updateLoan(item.id, "loanType", value)}
-                  >
-                    <SelectTrigger id={`type-${item.id}`}>
-                      <SelectValue placeholder="대출 유형 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LOAN_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+          <SortableList
+            items={loans}
+            onReorder={reorderLoans}
+            getItemId={(item) => item.id}
+            renderDragOverlay={(activeId) => {
+              const item = loans.find((loan) => loan.id === activeId);
+              return item ? (
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-6 shadow-lg opacity-90">
+                  <h3 className="text-lg font-semibold">{item.loanName}</h3>
                 </div>
+              ) : null;
+            }}
+          >
+            {loans.map((item) => (
+              <SortableItem key={item.id} id={item.id}>
+                <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold">{item.loanName}</h3>
+                    {loans.length > 1 && (
+                      <button
+                        type="button"
+                        className="p-2 text-red-500 hover:bg-gray-100 rounded-full dark:hover:bg-gray-700"
+                        onClick={() => removeLoan(item.id)}
+                        aria-label="삭제"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
 
-                <div>
-                  <Label htmlFor={`name-${item.id}`}>대출명</Label>
-                  <Input
-                    id={`name-${item.id}`}
-                    placeholder="대출명"
-                    value={item.loanName}
-                    onChange={(e) => updateLoan(item.id, "loanName", e.target.value)}
-                  />
-                </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor={`type-${item.id}`}>대출 유형</Label>
+                      <Select
+                        value={item.loanType}
+                        onValueChange={(value) => updateLoan(item.id, "loanType", value)}
+                      >
+                        <SelectTrigger id={`type-${item.id}`}>
+                          <SelectValue placeholder="대출 유형 선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LOAN_TYPES.map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                <div>
-                  <Label htmlFor={`owner-${item.id}`}>차주</Label>
-                  <Select
-                    value={item.loanOwner}
-                    onValueChange={(value) => updateLoan(item.id, "loanOwner", value)}
-                  >
-                    <SelectTrigger id={`owner-${item.id}`}>
-                      <SelectValue placeholder="차주 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DEFAULT_OWNERS.map((owner) => (
-                        <SelectItem key={owner} value={owner}>
-                          {owner}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                    <div>
+                      <Label htmlFor={`name-${item.id}`}>대출명</Label>
+                      <Input
+                        id={`name-${item.id}`}
+                        placeholder="대출명"
+                        value={item.loanName}
+                        onChange={(e) => updateLoan(item.id, "loanName", e.target.value)}
+                      />
+                    </div>
 
-                <div>
-                  <Label htmlFor={`lender-${item.id}`}>대출기관</Label>
-                  <Input
-                    id={`lender-${item.id}`}
-                    placeholder="대출기관"
-                    value={item.lender}
-                    onChange={(e) => updateLoan(item.id, "lender", e.target.value)}
-                  />
-                </div>
+                    <div>
+                      <Label htmlFor={`owner-${item.id}`}>차주</Label>
+                      <Select
+                        value={item.loanOwner}
+                        onValueChange={(value) => updateLoan(item.id, "loanOwner", value)}
+                      >
+                        <SelectTrigger id={`owner-${item.id}`}>
+                          <SelectValue placeholder="차주 선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DEFAULT_OWNERS.map((owner) => (
+                            <SelectItem key={owner} value={owner}>
+                              {owner}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                <div>
-                  <Label htmlFor={`amount-${item.id}`}>대출 금액 (원)</Label>
-                  <Input
-                    id={`amount-${item.id}`}
-                    placeholder="대출 금액"
-                    value={item.amount === 0 ? "" : item.amount.toString()}
-                    onChange={(e) =>
-                      updateLoan(item.id, "amount", parseNumericString(e.target.value))
-                    }
-                  />
-                </div>
+                    <div>
+                      <Label htmlFor={`lender-${item.id}`}>대출기관</Label>
+                      <Input
+                        id={`lender-${item.id}`}
+                        placeholder="대출기관"
+                        value={item.lender}
+                        onChange={(e) => updateLoan(item.id, "lender", e.target.value)}
+                      />
+                    </div>
 
-                <div>
-                  <Label htmlFor={`interestRate-${item.id}`}>이자율 (%)</Label>
-                  <Input
-                    id={`interestRate-${item.id}`}
-                    placeholder="이자율"
-                    value={item.interestRate === 0 ? "" : item.interestRate.toString()}
-                    onChange={(e) =>
-                      updateLoan(item.id, "interestRate", parseFloat(e.target.value))
-                    }
-                  />
-                </div>
+                    <div>
+                      <Label htmlFor={`amount-${item.id}`}>대출 금액 (원)</Label>
+                      <Input
+                        id={`amount-${item.id}`}
+                        placeholder="대출 금액"
+                        value={item.amount === 0 ? "" : item.amount.toString()}
+                        onChange={(e) =>
+                          updateLoan(item.id, "amount", parseNumericString(e.target.value))
+                        }
+                      />
+                    </div>
 
-                <div>
-                  <Label htmlFor={`maturityDate-${item.id}`}>만기일</Label>
-                  <Input
-                    id={`maturityDate-${item.id}`}
-                    type="date"
-                    value={item.maturityDate}
-                    onChange={(e) => updateLoan(item.id, "maturityDate", e.target.value)}
-                  />
-                </div>
+                    <div>
+                      <Label htmlFor={`interestRate-${item.id}`}>이자율 (%)</Label>
+                      <Input
+                        id={`interestRate-${item.id}`}
+                        placeholder="이자율"
+                        value={item.interestRate === 0 ? "" : item.interestRate.toString()}
+                        onChange={(e) =>
+                          updateLoan(item.id, "interestRate", parseFloat(e.target.value))
+                        }
+                      />
+                    </div>
 
-                <div>
-                  <Label htmlFor={`monthlyPayment-${item.id}`}>월 상환금 (원)</Label>
-                  <Input
-                    id={`monthlyPayment-${item.id}`}
-                    placeholder="월 상환금"
-                    value={item.monthlyPayment === 0 ? "" : item.monthlyPayment.toString()}
-                    onChange={(e) =>
-                      updateLoan(item.id, "monthlyPayment", parseNumericString(e.target.value))
-                    }
-                  />
-                </div>
+                    <div>
+                      <Label htmlFor={`maturityDate-${item.id}`}>만기일</Label>
+                      <Input
+                        id={`maturityDate-${item.id}`}
+                        type="date"
+                        value={item.maturityDate}
+                        onChange={(e) => updateLoan(item.id, "maturityDate", e.target.value)}
+                      />
+                    </div>
 
-                <div className="md:col-span-2">
-                  <Label htmlFor={`note-${item.id}`}>메모</Label>
-                  <Textarea
-                    id={`note-${item.id}`}
-                    placeholder="메모 추가"
-                    value={item.note}
-                    onChange={(e) => updateLoan(item.id, "note", e.target.value)}
-                  />
+                    <div>
+                      <Label htmlFor={`monthlyPayment-${item.id}`}>월 상환금 (원)</Label>
+                      <Input
+                        id={`monthlyPayment-${item.id}`}
+                        placeholder="월 상환금"
+                        value={item.monthlyPayment === 0 ? "" : item.monthlyPayment.toString()}
+                        onChange={(e) =>
+                          updateLoan(item.id, "monthlyPayment", parseNumericString(e.target.value))
+                        }
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <Label htmlFor={`note-${item.id}`}>메모</Label>
+                      <Textarea
+                        id={`note-${item.id}`}
+                        placeholder="메모 추가"
+                        value={item.note}
+                        onChange={(e) => updateLoan(item.id, "note", e.target.value)}
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))}
+              </SortableItem>
+            ))}
+          </SortableList>
 
           <button
             type="button"

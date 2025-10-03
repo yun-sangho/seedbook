@@ -233,6 +233,28 @@ describe("Investment Store", () => {
       });
     });
 
+    it("should add investment record using last record's initialInvestment as default", () => {
+      const { addHistoryRecord, addInvestmentRecord } = useInvestmentStore.getState();
+
+      // Add existing record with initialInvestment
+      addHistoryRecord(2, "2024-01-10", 500000, 600000);
+
+      // Add new record without specifying initialInvestment
+      addInvestmentRecord(2, { currentValue: 700000 });
+
+      const state = useInvestmentStore.getState();
+      const investment = state.investments[0]!;
+      expect(investment.records).toHaveLength(2);
+
+      // New record should inherit initialInvestment from last record
+      const newRecord = investment.records[0]!; // Newest record is first
+      expect(newRecord).toMatchObject({
+        date: "2024-01-15",
+        initialInvestment: 500000, // Inherited from last record
+        currentValue: 700000,
+      });
+    });
+
     it("should add investment record with custom values", () => {
       const { addInvestmentRecord } = useInvestmentStore.getState();
 
@@ -342,6 +364,36 @@ describe("Investment Store", () => {
       const state = useInvestmentStore.getState();
       expect(state.expandedFormId).toBe(5);
     });
+
+    it("should update expandedFormId when updating different investment", () => {
+      const { addInvestment, updateInvestment } = useInvestmentStore.getState();
+
+      addInvestment(); // id: 2
+      addInvestment(); // id: 3
+
+      // Initially expanded form is 3 (last added)
+      let state = useInvestmentStore.getState();
+      expect(state.expandedFormId).toBe(3);
+
+      // Update investment 2 - should change expandedFormId to 2
+      updateInvestment(2, "accountName", "Updated");
+
+      state = useInvestmentStore.getState();
+      expect(state.expandedFormId).toBe(2);
+    });
+
+    it("should not change expandedFormId when updating currently expanded investment", () => {
+      const { addInvestment, setExpandedFormId, updateInvestment } = useInvestmentStore.getState();
+
+      addInvestment(); // id: 2
+      setExpandedFormId(2);
+
+      // Update the currently expanded investment
+      updateInvestment(2, "accountName", "Updated");
+
+      const state = useInvestmentStore.getState();
+      expect(state.expandedFormId).toBe(2); // Should remain the same
+    });
   });
 
   describe("Store Reset", () => {
@@ -369,6 +421,85 @@ describe("Investment Store", () => {
       expect(state.customOwners).toEqual([]);
       expect(state.lastInvestmentId).toBe(1);
       expect(state.expandedFormId).toBe(1);
+    });
+  });
+
+  describe("Reorder Investments", () => {
+    it("should reorder investments array", () => {
+      const { addInvestment, updateInvestment, reorderInvestments } = useInvestmentStore.getState();
+
+      // Add three investments
+      addInvestment(); // id: 2
+      addInvestment(); // id: 3
+      addInvestment(); // id: 4
+
+      // Update names to identify them
+      updateInvestment(2, "accountName", "First");
+      updateInvestment(3, "accountName", "Second");
+      updateInvestment(4, "accountName", "Third");
+
+      let state = useInvestmentStore.getState();
+      // Investments are prepended, so order is: [Third, Second, First]
+      expect(state.investments.map((inv) => inv.accountName)).toEqual(["Third", "Second", "First"]);
+
+      // Reorder: move First to the beginning
+      const reordered = [state.investments[2]!, state.investments[0]!, state.investments[1]!];
+      reorderInvestments(reordered);
+
+      state = useInvestmentStore.getState();
+      expect(state.investments.map((inv) => inv.accountName)).toEqual(["First", "Third", "Second"]);
+    });
+
+    it("should maintain investment data when reordering", () => {
+      const { addInvestment, addHistoryRecord, reorderInvestments } = useInvestmentStore.getState();
+
+      // Add investments with history
+      addInvestment(); // id: 2
+      addHistoryRecord(2, "2024-01-10", 500000, 600000);
+
+      addInvestment(); // id: 3
+      addHistoryRecord(3, "2024-01-12", 1000000, 1100000);
+
+      let state = useInvestmentStore.getState();
+      const originalFirst = state.investments[0]!;
+      const originalSecond = state.investments[1]!;
+
+      // Reverse order
+      reorderInvestments([originalSecond, originalFirst]);
+
+      state = useInvestmentStore.getState();
+      // Verify data integrity
+      expect(state.investments[0]!.id).toBe(2);
+      expect(state.investments[0]!.records).toHaveLength(1);
+      expect(state.investments[0]!.records[0]!.currentValue).toBe(600000);
+
+      expect(state.investments[1]!.id).toBe(3);
+      expect(state.investments[1]!.records).toHaveLength(1);
+      expect(state.investments[1]!.records[0]!.currentValue).toBe(1100000);
+    });
+
+    it("should handle empty array reorder", () => {
+      const { reorderInvestments } = useInvestmentStore.getState();
+
+      reorderInvestments([]);
+
+      const state = useInvestmentStore.getState();
+      expect(state.investments).toEqual([]);
+    });
+
+    it("should handle single item reorder", () => {
+      const { addInvestment, reorderInvestments } = useInvestmentStore.getState();
+
+      addInvestment();
+
+      let state = useInvestmentStore.getState();
+      const singleItem = state.investments[0]!;
+
+      reorderInvestments([singleItem]);
+
+      state = useInvestmentStore.getState();
+      expect(state.investments).toHaveLength(1);
+      expect(state.investments[0]!.id).toBe(singleItem.id);
     });
   });
 

@@ -16,6 +16,7 @@ interface SavingsState {
   updateSavings: <K extends keyof SavingsItem>(id: number, key: K, value: SavingsItem[K]) => void;
   addCustomOwner: (owner: string) => void;
   setExpandedFormId: (id: number) => void;
+  reorderSavings: (reorderedSavings: SavingsItem[]) => void;
 }
 
 // Zustand 스토어 생성
@@ -83,6 +84,12 @@ export const useSavingsStore = create<SavingsState>()(
         setExpandedFormId: (id) =>
           set({
             expandedFormId: id,
+          }),
+
+        // 저축 순서 재정렬
+        reorderSavings: (reorderedSavings) =>
+          set({
+            savings: reorderedSavings,
           }),
       }),
       {

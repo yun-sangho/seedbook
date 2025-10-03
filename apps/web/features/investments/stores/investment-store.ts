@@ -44,6 +44,7 @@ interface InvestmentState {
   ) => void;
   addCustomOwner: (owner: string) => void;
   setExpandedFormId: (id: number) => void;
+  reorderInvestments: (reorderedInvestments: InvestmentItem[]) => void;
   resetStore: () => void;
 }
 
@@ -352,6 +353,10 @@ export const useInvestmentStore = create<InvestmentState>()(
 
       setExpandedFormId: (id) => {
         set({ expandedFormId: id });
+      },
+
+      reorderInvestments: (reorderedInvestments) => {
+        set({ investments: reorderedInvestments });
       },
 
       resetStore: () => {
