@@ -37,7 +37,7 @@ export function InvestmentItemComponent({
   return (
     <Card key={item.id} className="gap-4">
       <CardHeader>
-        <div className="flex gap-2 flex-wrap justify-between items-center">
+        <div className="flex gap-2 flex-wrap sm:items-center max-sm:flex-col ">
           <Badge variant={"secondary"}>{`${item.accountType} / ${item.accountOwner}`}</Badge>
           <div
             className="flex justify-between items-center flex-grow-1 flex-wrap"
@@ -125,7 +125,7 @@ export function InvestmentItemComponent({
                       return (
                         <div
                           key={`${record.date}-${index}`}
-                          className="flex flex-wrap justify-between gap-2 items-center p-2 rounded-lg border"
+                          className="flex flex-wrap sm:justify-between gap-2 sm:items-center p-2 rounded-lg border max-sm:flex-col"
                         >
                           <div className="text-sm">
                             {new Date(record.date).toLocaleDateString("ko-KR")}
