@@ -147,7 +147,7 @@ export function AddHistoryModal({ isOpen, onClose, item, onAddHistory }: AddHist
               {!!initialInvestment && Number(initialInvestment.replace(/,/g, "")) > 0 && (
                 <div
                   id={`history-initialInvestmentHint-${item.id}`}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-1 z-10 pointer-events-none"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs px-1 z-10 pointer-events-none"
                 >
                   {numberToKorean(Number(initialInvestment.replace(/,/g, "")))}
                 </div>
@@ -178,7 +178,7 @@ export function AddHistoryModal({ isOpen, onClose, item, onAddHistory }: AddHist
                 }
               />
               {!!currentValue && Number(currentValue.replace(/,/g, "")) > 0 && (
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-1 z-10 pointer-events-none">
+                <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs  px-1 z-10 pointer-events-none">
                   {numberToKorean(Number(currentValue.replace(/,/g, "")))}
                 </div>
               )}

@@ -58,18 +58,15 @@ export function AddInvestmentModal({ isOpen, onClose }: AddInvestmentModalProps)
             <Label className="block mb-3 text-sm font-medium">계좌 유형</Label>
             <div className="grid grid-cols-2 gap-2">
               {ACCOUNT_TYPES.map((type) => (
-                <button
+                <Button
                   key={type}
                   type="button"
+                  size={"lg"}
+                  variant={selectedAccountType === type ? "default" : "outline"}
                   onClick={() => setSelectedAccountType(type)}
-                  className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${
-                    selectedAccountType === type
-                      ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-400 dark:bg-blue-900/30 dark:text-blue-300"
-                      : "border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-800 dark:hover:border-blue-500 dark:hover:bg-blue-900/20"
-                  }`}
                 >
                   {type}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -78,18 +75,15 @@ export function AddInvestmentModal({ isOpen, onClose }: AddInvestmentModalProps)
             <Label className="block mb-3 text-sm font-medium">계좌 소유자</Label>
             <div className="grid grid-cols-2 gap-2">
               {accountOwners.map((owner) => (
-                <button
+                <Button
                   key={owner}
                   type="button"
+                  size={"lg"}
                   onClick={() => setSelectedOwner(owner)}
-                  className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${
-                    selectedOwner === owner
-                      ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-400 dark:bg-blue-900/30 dark:text-blue-300"
-                      : "border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50 dark:border-gray-600 dark:bg-gray-800 dark:hover:border-blue-500 dark:hover:bg-blue-900/20"
-                  }`}
+                  variant={selectedOwner === owner ? "default" : "outline"}
                 >
                   {owner}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
