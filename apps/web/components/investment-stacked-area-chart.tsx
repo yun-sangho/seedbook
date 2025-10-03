@@ -43,9 +43,9 @@ export function InvestmentStackedAreaChart({ investments }: InvestmentStackedAre
   const accountKeys = Object.keys(config);
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-4">
       {/* 시간 범위 선택 버튼들 */}
-      <div className="flex gap-2 mb-4 justify-center">
+      <div className="flex gap-2  justify-center">
         {(["3months", "1year", "all"] as TimeRange[]).map((range) => (
           <Button
             key={range}
@@ -58,7 +58,6 @@ export function InvestmentStackedAreaChart({ investments }: InvestmentStackedAre
           </Button>
         ))}
       </div>
-
       {/* Stacked Area 차트 */}
       <div className="w-full h-[300px]">
         <ChartContainer config={config} className="h-full w-full">
@@ -111,9 +110,8 @@ export function InvestmentStackedAreaChart({ investments }: InvestmentStackedAre
           </AreaChart>
         </ChartContainer>
       </div>
-
       {/* 범례 */}
-      <div className="flex flex-wrap gap-3 mt-4 justify-center">
+      <div className="flex flex-wrap gap-3 justify-center">
         {accountKeys.map((key) => (
           <div key={key} className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: config[key]?.color }} />
