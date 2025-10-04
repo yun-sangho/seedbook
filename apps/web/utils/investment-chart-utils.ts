@@ -1,7 +1,7 @@
 import { InvestmentItem } from "@web/features/investments/types/types";
 
 // 시간 범위 타입
-export type TimeRange = "3months" | "1year" | "all";
+export type TimeRange = "30days" | "3months" | "1year" | "all";
 
 // 차트 데이터 포인트 인터페이스
 export interface InvestmentChartData {
@@ -14,6 +14,8 @@ export interface InvestmentChartData {
 function getDateRange(range: TimeRange): Date {
   const now = new Date();
   switch (range) {
+    case "30days":
+      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     case "3months":
       return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
     case "1year":
@@ -114,6 +116,8 @@ function getInvestmentValueAtDate(investment: InvestmentItem, targetDate: string
 // 시간 범위 라벨을 반환하는 함수
 export function getTimeRangeLabel(range: TimeRange): string {
   switch (range) {
+    case "30days":
+      return "30일";
     case "3months":
       return "3개월";
     case "1year":
