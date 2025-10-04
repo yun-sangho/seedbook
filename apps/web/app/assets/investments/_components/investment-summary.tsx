@@ -3,14 +3,17 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
 import { InvestmentItem } from "@web/features/investments/types/types";
+import { prepareMonthlyInvestmentSummary } from "@web/utils/monthly-summary-utils";
 import { calculateReturnRate, formatReturnRate, numberToKorean } from "@web/utils/number-format";
+import { getProfitColorClass, getProfitPrefix } from "@web/utils/profit-color";
+import { columns } from "./monthly-summary-columns";
+import { DataTable } from "./monthly-summary-data-table";
 
 interface InvestmentSummaryProps {
   investments: InvestmentItem[];
 }
 
 export function InvestmentSummary({ investments }: InvestmentSummaryProps) {
-  // 총계 계산
   const totals = useMemo(() => {
     const totalInitialInvestment = investments.reduce(
       (sum, inv) => sum + (inv.initialInvestment || 0),
@@ -28,46 +31,55 @@ export function InvestmentSummary({ investments }: InvestmentSummaryProps) {
     };
   }, [investments]);
 
+  const monthlyData = useMemo(() => prepareMonthlyInvestmentSummary(investments), [investments]);
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>총 계좌 요약</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="text-sm text-muted-foreground mb-1">투자원금</div>
-            <div className="text-xl font-semibold">
-              {numberToKorean(totals.totalInitialInvestment)}
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>총 계좌 요약</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="text-sm text-muted-foreground mb-1">투자원금</div>
+              <div className="text-xl font-semibold">
+                {numberToKorean(totals.totalInitialInvestment)}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground mb-1">평가금액</div>
+              <div className="text-xl font-semibold">
+                {numberToKorean(totals.totalCurrentValue)}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground mb-1">수익금</div>
+              <div className={`text-xl font-semibold ${getProfitColorClass(totals.totalProfit)}`}>
+                {getProfitPrefix(totals.totalProfit)}
+                {numberToKorean(totals.totalProfit)}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground mb-1">수익률</div>
+              <div
+                className={`text-xl font-semibold ${getProfitColorClass(totals.totalReturnRate)}`}
+              >
+                {formatReturnRate(totals.totalReturnRate)}
+              </div>
             </div>
           </div>
-          <div>
-            <div className="text-sm text-muted-foreground mb-1">평가금액</div>
-            <div className="text-xl font-semibold">{numberToKorean(totals.totalCurrentValue)}</div>
-          </div>
-          <div>
-            <div className="text-sm text-muted-foreground mb-1">수익금</div>
-            <div
-              className={`text-xl font-semibold ${
-                totals.totalProfit >= 0 ? "text-blue-600" : "text-red-600"
-              }`}
-            >
-              {totals.totalProfit >= 0 ? "+" : ""}
-              {numberToKorean(totals.totalProfit)}
-            </div>
-          </div>
-          <div>
-            <div className="text-sm text-muted-foreground mb-1">수익률</div>
-            <div
-              className={`text-xl font-semibold ${
-                totals.totalReturnRate >= 0 ? "text-blue-600" : "text-red-600"
-              }`}
-            >
-              {formatReturnRate(totals.totalReturnRate)}
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>월별 투자 내역</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DataTable columns={columns} data={monthlyData} />
+        </CardContent>
+      </Card>
+    </div>
   );
 }
