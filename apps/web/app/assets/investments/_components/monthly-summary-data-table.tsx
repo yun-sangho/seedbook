@@ -95,7 +95,7 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
       </div>
 
       {/* Pagination Controls */}
-      <div className="flex items-center justify-between px-2">
+      <div className="flex items-center justify-between px-2 max-md:flex-col max-md:gap-2">
         <div className="flex items-center gap-2">
           <p className="text-sm text-muted-foreground">
             총 {table.getFilteredRowModel().rows.length}개 중{" "}
@@ -108,7 +108,7 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
           </p>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-6 max-md:flex-col max-md:gap-2">
           <div className="flex items-center gap-2">
             <p className="text-sm font-medium">페이지당 행:</p>
             <Select
