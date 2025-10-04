@@ -369,15 +369,31 @@ export function InvestmentPlanComparisonChart({
 
             <ChartTooltip
               cursor={false}
-              content={<ChartTooltipContent />}
-              labelFormatter={(value) => {
-                const date = new Date(value);
-                return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
-              }}
-              formatter={(value, name) => [
-                numberToKorean(value?.toString() || "0"),
-                chartConfig[name as keyof typeof chartConfig]?.label || name,
-              ]}
+              content={
+                <ChartTooltipContent
+                  labelFormatter={(value) => {
+                    const date = new Date(value);
+                    return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+                  }}
+                  formatter={(value, name) => {
+                    const label = chartConfig[name as keyof typeof chartConfig]?.label || name;
+                    const color = chartConfig[name as keyof typeof chartConfig]?.color;
+
+                    return (
+                      <div className="flex w-full items-center gap-2">
+                        <div
+                          className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+                          style={{ backgroundColor: color }}
+                        />
+                        <span className="text-muted-foreground flex-1">{label}</span>
+                        <span className="font-mono font-medium tabular-nums text-foreground">
+                          {numberToKorean(value?.toString() || "0")}
+                        </span>
+                      </div>
+                    );
+                  }}
+                />
+              }
             />
 
             {/* 실제 투자 성과 영역 */}

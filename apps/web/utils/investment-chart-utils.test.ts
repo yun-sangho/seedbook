@@ -1,6 +1,6 @@
 import { InvestmentItem } from "@web/features/investments/types/types";
 import { describe, expect, test } from "vitest";
-import { prepareInvestmentChartData } from "./investment-chart-utils";
+import { prepareInvestmentChartData, TimeRange } from "./investment-chart-utils";
 
 describe("prepareInvestmentChartData", () => {
   // 테스트용 날짜 생성 헬퍼
@@ -33,7 +33,7 @@ describe("prepareInvestmentChartData", () => {
 
   describe("기본 기능 테스트", () => {
     test("빈 배열을 전달하면 빈 결과를 반환해야 함", () => {
-      const result = prepareInvestmentChartData([], "all");
+      const result = prepareInvestmentChartData([], TimeRange.ALL);
       expect(result).toEqual([]);
     });
 
@@ -43,7 +43,7 @@ describe("prepareInvestmentChartData", () => {
         createInvestment(2, "계좌2", []), // 히스토리 없음
       ];
 
-      const result = prepareInvestmentChartData(investments, "all");
+      const result = prepareInvestmentChartData(investments, TimeRange.ALL);
       expect(result).toEqual([]);
     });
 
@@ -52,7 +52,7 @@ describe("prepareInvestmentChartData", () => {
         createInvestment(1, "계좌1", [{ daysAgo: 5, currentValue: 1000, initialInvestment: 800 }]),
       ];
 
-      const result = prepareInvestmentChartData(investments, "all");
+      const result = prepareInvestmentChartData(investments, TimeRange.ALL);
       expect(result).toHaveLength(1);
       expect(result[0]!.totalValue).toBe(1000);
       expect(result[0]!.date).toBe(createDate(5));
@@ -67,7 +67,7 @@ describe("prepareInvestmentChartData", () => {
         ]),
       ];
 
-      const result = prepareInvestmentChartData(investments, "all");
+      const result = prepareInvestmentChartData(investments, TimeRange.ALL);
       expect(result).toHaveLength(3);
       expect(result[0]!.date).toBe(createDate(10)); // 가장 오래된 날짜가 첫 번째
       expect(result[1]!.date).toBe(createDate(5));
@@ -85,7 +85,7 @@ describe("prepareInvestmentChartData", () => {
         createInvestment(2, "계좌2", [{ daysAgo: 5, currentValue: 2000, initialInvestment: 1500 }]),
       ];
 
-      const result = prepareInvestmentChartData(investments, "all");
+      const result = prepareInvestmentChartData(investments, TimeRange.ALL);
       expect(result).toHaveLength(2);
       expect(result[0]?.totalValue).toBe(1000); // 10일 전: 계좌1(1000) + 계좌2(0, 아직 기록 없음)
       expect(result[1]?.totalValue).toBe(3000); // 5일 전: 계좌1(1000, 이전 기록 유지) + 계좌2(2000)
@@ -102,7 +102,7 @@ describe("prepareInvestmentChartData", () => {
         ]),
       ];
 
-      const result = prepareInvestmentChartData(investments, "all");
+      const result = prepareInvestmentChartData(investments, TimeRange.ALL);
       expect(result).toHaveLength(1);
       expect(result[0]?.totalValue).toBe(3000); // 1000 + 2000
       expect(result[0]?.date).toBe(createDate(sameDaysAgo));
@@ -122,7 +122,7 @@ describe("prepareInvestmentChartData", () => {
         createInvestment(3, "계좌3", [{ daysAgo: 3, currentValue: 2000, initialInvestment: 1800 }]),
       ];
 
-      const result = prepareInvestmentChartData(investments, "all");
+      const result = prepareInvestmentChartData(investments, TimeRange.ALL);
       expect(result).toHaveLength(5);
 
       // 날짜순 정렬 확인
@@ -142,7 +142,7 @@ describe("prepareInvestmentChartData", () => {
   });
 
   describe("시간 범위 필터링 테스트", () => {
-    test("30일 범위 필터링", () => {
+    test("1개월 범위 필터링", () => {
       const investments: InvestmentItem[] = [
         createInvestment(1, "계좌1", [
           { daysAgo: 35, currentValue: 500, initialInvestment: 500 }, // 범위 밖 (30일 초과)
@@ -151,13 +151,13 @@ describe("prepareInvestmentChartData", () => {
         ]),
       ];
 
-      const result = prepareInvestmentChartData(investments, "30days");
+      const result = prepareInvestmentChartData(investments, TimeRange.ONE_MONTH);
       expect(result).toHaveLength(2); // 35일 전 데이터는 제외
       expect(result[0]?.totalValue).toBe(800);
       expect(result[1]?.totalValue).toBe(1000);
     });
 
-    test("30일 범위 필터링 - 여러 계좌", () => {
+    test("1개월 범위 필터링 - 여러 계좌", () => {
       const investments: InvestmentItem[] = [
         createInvestment(1, "계좌1", [
           { daysAgo: 40, currentValue: 500, initialInvestment: 500 }, // 범위 밖
@@ -169,7 +169,7 @@ describe("prepareInvestmentChartData", () => {
         ]),
       ];
 
-      const result = prepareInvestmentChartData(investments, "30days");
+      const result = prepareInvestmentChartData(investments, TimeRange.ONE_MONTH);
       expect(result).toHaveLength(3); // 40일 전 데이터는 제외
 
       // 20일 전: 계좌1(800) + 계좌2(0, 아직 기록 없음)
@@ -191,7 +191,7 @@ describe("prepareInvestmentChartData", () => {
         ]),
       ];
 
-      const result = prepareInvestmentChartData(investments, "3months");
+      const result = prepareInvestmentChartData(investments, TimeRange.THREE_MONTHS);
       expect(result).toHaveLength(2); // 100일 전 데이터는 제외
       expect(result[0]?.totalValue).toBe(800);
       expect(result[1]?.totalValue).toBe(1000);
@@ -206,7 +206,7 @@ describe("prepareInvestmentChartData", () => {
         ]),
       ];
 
-      const result = prepareInvestmentChartData(investments, "3months");
+      const result = prepareInvestmentChartData(investments, TimeRange.THREE_MONTHS);
       expect(result).toHaveLength(2); // 100일 전 데이터는 제외
       expect(result[0]?.totalValue).toBe(800);
       expect(result[1]?.totalValue).toBe(1000);
@@ -221,10 +221,106 @@ describe("prepareInvestmentChartData", () => {
         ]),
       ];
 
-      const result = prepareInvestmentChartData(investments, "1year");
+      const result = prepareInvestmentChartData(investments, TimeRange.ONE_YEAR);
       expect(result).toHaveLength(2); // 400일 전 데이터는 제외
       expect(result[0]?.totalValue).toBe(800);
       expect(result[1]?.totalValue).toBe(1000);
+    });
+
+    test("5년 범위 필터링", () => {
+      const investments: InvestmentItem[] = [
+        createInvestment(1, "계좌1", [
+          { daysAgo: 2000, currentValue: 500, initialInvestment: 500 }, // 범위 밖 (5년 = 1825일 초과)
+          { daysAgo: 1000, currentValue: 800, initialInvestment: 500 }, // 범위 안
+          { daysAgo: 100, currentValue: 1000, initialInvestment: 500 }, // 범위 안
+        ]),
+      ];
+
+      const result = prepareInvestmentChartData(investments, TimeRange.FIVE_YEARS);
+      expect(result).toHaveLength(2); // 2000일 전 데이터는 제외
+      expect(result[0]?.totalValue).toBe(800);
+      expect(result[1]?.totalValue).toBe(1000);
+    });
+
+    test("5년 범위 필터링 - 여러 계좌", () => {
+      const investments: InvestmentItem[] = [
+        createInvestment(1, "계좌1", [
+          { daysAgo: 2000, currentValue: 500, initialInvestment: 500 }, // 범위 밖
+          { daysAgo: 1000, currentValue: 800, initialInvestment: 500 }, // 범위 안
+        ]),
+        createInvestment(2, "계좌2", [
+          { daysAgo: 500, currentValue: 1500, initialInvestment: 1500 }, // 범위 안
+          { daysAgo: 100, currentValue: 2000, initialInvestment: 1500 }, // 범위 안
+        ]),
+      ];
+
+      const result = prepareInvestmentChartData(investments, TimeRange.FIVE_YEARS);
+      expect(result).toHaveLength(3);
+
+      // 1000일 전: 계좌1(800) + 계좌2(0)
+      expect(result[0]?.totalValue).toBe(800);
+
+      // 500일 전: 계좌1(800, 이전 기록 유지) + 계좌2(1500)
+      expect(result[1]?.totalValue).toBe(2300);
+
+      // 100일 전: 계좌1(800, 이전 기록 유지) + 계좌2(2000)
+      expect(result[2]?.totalValue).toBe(2800);
+    });
+
+    test("10년 범위 필터링", () => {
+      const investments: InvestmentItem[] = [
+        createInvestment(1, "계좌1", [
+          { daysAgo: 4000, currentValue: 500, initialInvestment: 500 }, // 범위 밖 (10년 = 3650일 초과)
+          { daysAgo: 2000, currentValue: 800, initialInvestment: 500 }, // 범위 안
+          { daysAgo: 100, currentValue: 1000, initialInvestment: 500 }, // 범위 안
+        ]),
+      ];
+
+      const result = prepareInvestmentChartData(investments, TimeRange.TEN_YEARS);
+      expect(result).toHaveLength(2); // 4000일 전 데이터는 제외
+      expect(result[0]?.totalValue).toBe(800);
+      expect(result[1]?.totalValue).toBe(1000);
+    });
+
+    test("10년 범위 필터링 - 여러 계좌", () => {
+      const investments: InvestmentItem[] = [
+        createInvestment(1, "계좌1", [
+          { daysAgo: 4000, currentValue: 500, initialInvestment: 500 }, // 범위 밖
+          { daysAgo: 2000, currentValue: 800, initialInvestment: 500 }, // 범위 안
+        ]),
+        createInvestment(2, "계좌2", [
+          { daysAgo: 1000, currentValue: 1500, initialInvestment: 1500 }, // 범위 안
+          { daysAgo: 100, currentValue: 2000, initialInvestment: 1500 }, // 범위 안
+        ]),
+      ];
+
+      const result = prepareInvestmentChartData(investments, TimeRange.TEN_YEARS);
+      expect(result).toHaveLength(3);
+
+      // 2000일 전: 계좌1(800) + 계좌2(0)
+      expect(result[0]?.totalValue).toBe(800);
+
+      // 1000일 전: 계좌1(800, 이전 기록 유지) + 계좌2(1500)
+      expect(result[1]?.totalValue).toBe(2300);
+
+      // 100일 전: 계좌1(800, 이전 기록 유지) + 계좌2(2000)
+      expect(result[2]?.totalValue).toBe(2800);
+    });
+
+    test("전체 범위 - 아주 오래된 데이터도 포함", () => {
+      const investments: InvestmentItem[] = [
+        createInvestment(1, "계좌1", [
+          { daysAgo: 5000, currentValue: 500, initialInvestment: 500 }, // 범위 안 (ALL은 모두 포함)
+          { daysAgo: 2000, currentValue: 800, initialInvestment: 500 }, // 범위 안
+          { daysAgo: 100, currentValue: 1000, initialInvestment: 500 }, // 범위 안
+        ]),
+      ];
+
+      const result = prepareInvestmentChartData(investments, TimeRange.ALL);
+      expect(result).toHaveLength(3); // 모든 데이터 포함
+      expect(result[0]?.totalValue).toBe(500);
+      expect(result[1]?.totalValue).toBe(800);
+      expect(result[2]?.totalValue).toBe(1000);
     });
   });
 
@@ -250,7 +346,7 @@ describe("prepareInvestmentChartData", () => {
         },
       ];
 
-      const result = prepareInvestmentChartData(investments, "all");
+      const result = prepareInvestmentChartData(investments, TimeRange.ALL);
       expect(result).toHaveLength(1);
       expect(result[0]?.totalValue).toBe(1200); // 마지막 값 사용
     });
@@ -284,7 +380,7 @@ describe("prepareInvestmentChartData", () => {
         },
       ];
 
-      const result = prepareInvestmentChartData(investments, "all");
+      const result = prepareInvestmentChartData(investments, TimeRange.ALL);
       expect(result).toHaveLength(1);
       expect(result[0]?.totalValue).toBe(3000); // 1000 + 2000
     });
@@ -313,7 +409,7 @@ describe("prepareInvestmentChartData", () => {
         },
       ];
 
-      const result = prepareInvestmentChartData(investments, "all");
+      const result = prepareInvestmentChartData(investments, TimeRange.ALL);
       expect(result).toHaveLength(1);
       expect(result[0]?.totalValue).toBe(800); // 미래 날짜는 무시
     });
@@ -323,7 +419,7 @@ describe("prepareInvestmentChartData", () => {
         createInvestment(1, "계좌1", [{ daysAgo: 5, currentValue: 0, initialInvestment: 1000 }]),
       ];
 
-      const result = prepareInvestmentChartData(investments, "all");
+      const result = prepareInvestmentChartData(investments, TimeRange.ALL);
       expect(result).toHaveLength(1);
       expect(result[0]?.totalValue).toBe(0);
     });
@@ -336,7 +432,7 @@ describe("prepareInvestmentChartData", () => {
         ]),
       ];
 
-      const result = prepareInvestmentChartData(investments, "all");
+      const result = prepareInvestmentChartData(investments, TimeRange.ALL);
       expect(result).toHaveLength(1);
       expect(result[0]?.totalValue).toBe(largeValue);
     });
@@ -358,7 +454,7 @@ describe("prepareInvestmentChartData", () => {
         ]),
       ];
 
-      const result = prepareInvestmentChartData(investments, "all");
+      const result = prepareInvestmentChartData(investments, TimeRange.ALL);
       expect(result).toHaveLength(4);
 
       // 15일 전: 계좌1만 존재 (계좌2는 아직 개설 안됨)
@@ -388,7 +484,7 @@ describe("prepareInvestmentChartData", () => {
         createInvestment(2, "계좌2", [{ daysAgo: 5, currentValue: 2000, initialInvestment: 2000 }]),
       ];
 
-      const result = prepareInvestmentChartData(investments, "all");
+      const result = prepareInvestmentChartData(investments, TimeRange.ALL);
       expect(result).toHaveLength(3);
 
       // 20일 전: 계좌1만
@@ -408,7 +504,7 @@ describe("prepareInvestmentChartData", () => {
         createInvestment(1, "계좌1", [{ daysAgo: 5, currentValue: 1000, initialInvestment: 800 }]),
       ];
 
-      const result = prepareInvestmentChartData(investments, "all");
+      const result = prepareInvestmentChartData(investments, TimeRange.ALL);
       expect(result[0]?.dateFormatted).toMatch(/^\d{1,2}월 \d{1,2}일$/); // "7월 15일" 형식
     });
   });

@@ -5,6 +5,7 @@ import { AppHeader } from "@web/components/app-header";
 import { AppSidebar } from "@web/components/app-sidebar";
 import { ThemeProvider } from "@web/components/theme-provider";
 import { SidebarProvider } from "@web/components/ui/sidebar";
+import { cn } from "@web/lib/utils";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -17,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head />
-      <body className={geist.className}>
+      <body className={cn(geist.className, "w-screen h-screen")}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -26,9 +27,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           <SidebarProvider>
             <AppSidebar />
-            <div className="flex flex-1 flex-col">
+            <div className="w-full h-full">
               <AppHeader />
-              <main className="flex-1 p-4">{children}</main>
+              <main className="w-full h-full max-w-screen-lg mx-auto">{children}</main>
             </div>
           </SidebarProvider>
         </ThemeProvider>

@@ -17,7 +17,7 @@ interface InvestmentAreaChartProps {
 }
 
 export function InvestmentAreaChart({ investments }: InvestmentAreaChartProps) {
-  const [selectedRange, setSelectedRange] = useState<TimeRange>("30days");
+  const [selectedRange, setSelectedRange] = useState<TimeRange>(TimeRange.ONE_MONTH);
 
   const chartData = prepareInvestmentChartData(investments, selectedRange);
   const hasData = chartData.length > 0;
@@ -36,13 +36,21 @@ export function InvestmentAreaChart({ investments }: InvestmentAreaChartProps) {
   return (
     <div className="w-full">
       {/* 시간 범위 선택 버튼들 */}
-      <div className="flex gap-2 mb-4 justify-center">
-        {(["30days", "3months", "1year"] as TimeRange[]).map((range) => (
+      <div className="flex gap-2 mb-4 justify-center flex-wrap">
+        {[
+          TimeRange.ONE_MONTH,
+          TimeRange.THREE_MONTHS,
+          TimeRange.ONE_YEAR,
+          TimeRange.FIVE_YEARS,
+          TimeRange.TEN_YEARS,
+          TimeRange.ALL,
+        ].map((range) => (
           <Button
             key={range}
-            variant={selectedRange === range ? "default" : "outline"}
+            variant={"secondary"}
             size="sm"
             onClick={() => setSelectedRange(range)}
+            aria-selected={selectedRange === range}
             className="text-xs"
           >
             {getTimeRangeLabel(range)}
@@ -90,8 +98,21 @@ export function InvestmentAreaChart({ investments }: InvestmentAreaChartProps) {
             <ChartTooltip
               content={
                 <ChartTooltipContent
-                  formatter={(value) => [numberToKorean(value.toString()), "평가금액"]}
                   labelFormatter={(label) => `날짜: ${label}`}
+                  formatter={(value) => {
+                    return (
+                      <div className="flex w-full items-center gap-2">
+                        <div
+                          className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+                          style={{ backgroundColor: "#22c55e" }}
+                        />
+                        <span className="text-muted-foreground flex-1">평가금액</span>
+                        <span className="font-mono font-medium tabular-nums text-foreground">
+                          {numberToKorean(value.toString())}
+                        </span>
+                      </div>
+                    );
+                  }}
                 />
               }
             />

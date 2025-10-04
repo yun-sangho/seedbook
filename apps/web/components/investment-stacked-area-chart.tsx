@@ -14,7 +14,7 @@ interface InvestmentStackedAreaChartProps {
 }
 
 export function InvestmentStackedAreaChart({ investments }: InvestmentStackedAreaChartProps) {
-  const [selectedRange, setSelectedRange] = useState<TimeRange>("3months");
+  const [selectedRange, setSelectedRange] = useState<TimeRange>(TimeRange.THREE_MONTHS);
 
   const { data, config } = prepareStackedAreaChartData(investments, selectedRange);
   const hasData = data.length > 0;
@@ -43,24 +43,10 @@ export function InvestmentStackedAreaChart({ investments }: InvestmentStackedAre
   const accountKeys = Object.keys(config);
 
   return (
-    <div className="w-full space-y-4">
-      {/* 시간 범위 선택 버튼들 */}
-      <div className="flex gap-2  justify-center">
-        {(["3months", "1year", "all"] as TimeRange[]).map((range) => (
-          <Button
-            key={range}
-            variant={selectedRange === range ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSelectedRange(range)}
-            className="text-xs"
-          >
-            {getTimeRangeLabel(range)}
-          </Button>
-        ))}
-      </div>
+    <div className="w-full">
       {/* Stacked Area 차트 */}
-      <div className="w-full h-[300px]">
-        <ChartContainer config={config} className="h-full w-full">
+      <div className="w-full">
+        <ChartContainer config={config} className="w-full">
           <AreaChart data={data}>
             <defs>
               {accountKeys.map((key) => (
@@ -75,6 +61,7 @@ export function InvestmentStackedAreaChart({ investments }: InvestmentStackedAre
               axisLine={false}
               tickLine={false}
               tick={{ fontSize: 10, fill: "#6b7280" }}
+              hide={true}
             />
             <YAxis
               axisLine={true}
@@ -90,9 +77,21 @@ export function InvestmentStackedAreaChart({ investments }: InvestmentStackedAre
                 <ChartTooltipContent
                   formatter={(value, name) => {
                     const accountName = config[name as string]?.label || name;
-                    return [numberToKorean(value.toString()), accountName];
+                    const color = config[name as string]?.color;
+
+                    return (
+                      <div className="flex w-full items-center gap-2">
+                        <div
+                          className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+                          style={{ backgroundColor: color }}
+                        />
+                        <span className="text-muted-foreground flex-1">{accountName}</span>
+                        <span className="font-mono font-medium tabular-nums text-foreground">
+                          {numberToKorean(value.toString())}
+                        </span>
+                      </div>
+                    );
                   }}
-                  labelFormatter={(label) => `날짜: ${label}`}
                 />
               }
             />
@@ -110,13 +109,25 @@ export function InvestmentStackedAreaChart({ investments }: InvestmentStackedAre
           </AreaChart>
         </ChartContainer>
       </div>
-      {/* 범례 */}
-      <div className="flex flex-wrap gap-3 justify-center">
-        {accountKeys.map((key) => (
-          <div key={key} className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: config[key]?.color }} />
-            <span className="text-xs text-gray-600 dark:text-gray-400">{config[key]?.label}</span>
-          </div>
+      <div className="flex gap-1 justify-center flex-wrap">
+        {[
+          TimeRange.ONE_MONTH,
+          TimeRange.THREE_MONTHS,
+          TimeRange.ONE_YEAR,
+          TimeRange.FIVE_YEARS,
+          TimeRange.TEN_YEARS,
+          TimeRange.ALL,
+        ].map((range) => (
+          <Button
+            key={range}
+            variant={selectedRange === range ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setSelectedRange(range)}
+            className="text-xs"
+            aria-selected={selectedRange === range}
+          >
+            {getTimeRangeLabel(range)}
+          </Button>
         ))}
       </div>
     </div>

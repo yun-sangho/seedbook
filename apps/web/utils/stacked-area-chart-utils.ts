@@ -26,11 +26,17 @@ const COLORS = [
 function getDateRange(range: TimeRange): Date {
   const now = new Date();
   switch (range) {
-    case "3months":
+    case TimeRange.ONE_MONTH:
+      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    case TimeRange.THREE_MONTHS:
       return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-    case "1year":
+    case TimeRange.ONE_YEAR:
       return new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-    case "all":
+    case TimeRange.FIVE_YEARS:
+      return new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000);
+    case TimeRange.TEN_YEARS:
+      return new Date(now.getTime() - 10 * 365 * 24 * 60 * 60 * 1000);
+    case TimeRange.ALL:
       return new Date(0); // 1970-01-01부터 모든 데이터
     default:
       return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
