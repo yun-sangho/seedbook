@@ -16,9 +16,14 @@ import { ACCOUNT_TYPES, DEFAULT_OWNERS } from "@web/features/investments/types/c
 interface AddInvestmentModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onInvestmentAdded?: () => void;
 }
 
-export function AddInvestmentModal({ isOpen, onClose }: AddInvestmentModalProps) {
+export function AddInvestmentModal({
+  isOpen,
+  onClose,
+  onInvestmentAdded,
+}: AddInvestmentModalProps) {
   const addInvestmentWithTypeAndOwner = useInvestmentStore(
     (state) => state.addInvestmentWithTypeAndOwner
   );
@@ -36,6 +41,7 @@ export function AddInvestmentModal({ isOpen, onClose }: AddInvestmentModalProps)
       setSelectedAccountType("");
       setSelectedOwner("");
       onClose();
+      onInvestmentAdded?.();
     }
   };
 

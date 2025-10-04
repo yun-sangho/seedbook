@@ -8,11 +8,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@web/components/ui/tab
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { InvestmentItem } from "@web/features/investments/types/types";
 import { AddInvestmentModal } from "./add-investment-modal";
+import { InvestmentTab } from "./constants";
 import { InvestmentItemComponent } from "./investment-item";
 import { InvestmentSummary } from "./investment-summary";
 
 export function InvestmentForm() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<InvestmentTab>(InvestmentTab.SUMMARY);
 
   const investments = useInvestmentStore((state) => state.investments);
   const updateInvestment = useInvestmentStore((state) => state.updateInvestment);
@@ -48,23 +50,27 @@ export function InvestmentForm() {
     setIsModalOpen(false);
   };
 
+  const handleInvestmentAdded = () => {
+    setActiveTab(InvestmentTab.DETAILS);
+  };
+
   return (
-    <Tabs defaultValue="summary">
+    <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as InvestmentTab)}>
       <div className="w-full flex justify-between">
         <TabsList>
-          <TabsTrigger value="summary">요약</TabsTrigger>
-          <TabsTrigger value="details">계좌 상세</TabsTrigger>
+          <TabsTrigger value={InvestmentTab.SUMMARY}>요약</TabsTrigger>
+          <TabsTrigger value={InvestmentTab.DETAILS}>계좌 상세</TabsTrigger>
         </TabsList>
         <Button onClick={openAddAccountModal} className="ml-auto">
           + 투자 계좌 추가
         </Button>
       </div>
 
-      <TabsContent value="summary">
+      <TabsContent value={InvestmentTab.SUMMARY}>
         <InvestmentSummary investments={investments} />
       </TabsContent>
 
-      <TabsContent value="details">
+      <TabsContent value={InvestmentTab.DETAILS}>
         <SortableList
           items={investments}
           onReorder={reorderInvestments}
@@ -92,7 +98,11 @@ export function InvestmentForm() {
         </SortableList>
       </TabsContent>
 
-      <AddInvestmentModal isOpen={isModalOpen} onClose={closeAddAccountModal} />
+      <AddInvestmentModal
+        isOpen={isModalOpen}
+        onClose={closeAddAccountModal}
+        onInvestmentAdded={handleInvestmentAdded}
+      />
     </Tabs>
   );
 }
