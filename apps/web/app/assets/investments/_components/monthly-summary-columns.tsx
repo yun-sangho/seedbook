@@ -39,53 +39,25 @@ export const columns: ColumnDef<MonthlySummaryRow>[] = [
   },
   {
     accessorKey: "initialInvestment",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          투자원금
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: "투자원금",
     cell: ({ row }) => {
       const value = row.getValue("initialInvestment") as number;
       return <div className="text-right">{numberToKorean(value)}</div>;
     },
+    enableSorting: false,
   },
   {
     accessorKey: "currentValue",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          평가금액
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: "평가금액",
     cell: ({ row }) => {
       const value = row.getValue("currentValue") as number;
       return <div className="text-right font-medium">{numberToKorean(value)}</div>;
     },
+    enableSorting: false,
   },
   {
     accessorKey: "profit",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          수익금 (전월대비)
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: "수익금 (전월대비)",
     cell: ({ row }) => {
       const value = row.getValue("profit") as number;
       return (
@@ -95,20 +67,11 @@ export const columns: ColumnDef<MonthlySummaryRow>[] = [
         </div>
       );
     },
+    enableSorting: false,
   },
   {
     accessorKey: "returnRate",
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          수익률 (전월대비)
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: "수익률 (전월대비)",
     cell: ({ row }) => {
       const value = row.getValue("returnRate") as number;
       return (
@@ -117,5 +80,6 @@ export const columns: ColumnDef<MonthlySummaryRow>[] = [
         </div>
       );
     },
+    enableSorting: false,
   },
 ];
