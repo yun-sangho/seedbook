@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@web/components/ui/button";
 import { SortableItem } from "@web/components/ui/sortable-item";
 import { SortableList } from "@web/components/ui/sortable-list";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@web/components/ui/tabs";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { InvestmentItem } from "@web/features/investments/types/types";
 import { AddInvestmentModal } from "./add-investment-modal";
@@ -48,40 +49,50 @@ export function InvestmentForm() {
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <InvestmentSummary investments={investments} />
+    <Tabs defaultValue="summary">
+      <div className="w-full flex justify-between">
+        <TabsList>
+          <TabsTrigger value="summary">요약</TabsTrigger>
+          <TabsTrigger value="details">계좌 상세</TabsTrigger>
+        </TabsList>
+        <Button onClick={openAddAccountModal} className="ml-auto">
+          + 투자 계좌 추가
+        </Button>
+      </div>
 
-      <SortableList
-        items={investments}
-        onReorder={reorderInvestments}
-        getItemId={(item) => item.id}
-        renderDragOverlay={(activeId) => {
-          const item = investments.find((inv) => inv.id === activeId);
-          return item ? (
-            <div className="bg-secondary rounded-xl p-6 shadow-lg opacity-90">
-              <h3 className="text-lg font-semibold">{item.accountName}</h3>
-            </div>
-          ) : null;
-        }}
-      >
-        {investments.map((item) => (
-          <SortableItem key={item.id} id={item.id}>
-            <InvestmentItemComponent
-              item={item}
-              onUpdateItem={handleChange}
-              onRemoveHistoryRecord={handleRemoveHistoryRecord}
-              onAddHistory={handleAddHistory}
-              onRemoveInvestment={removeInvestment}
-            />
-          </SortableItem>
-        ))}
-      </SortableList>
+      <TabsContent value="summary">
+        <InvestmentSummary investments={investments} />
+      </TabsContent>
 
-      <Button onClick={openAddAccountModal} size={"lg"}>
-        + 투자 계좌 추가
-      </Button>
+      <TabsContent value="details">
+        <SortableList
+          items={investments}
+          onReorder={reorderInvestments}
+          getItemId={(item) => item.id}
+          renderDragOverlay={(activeId) => {
+            const item = investments.find((inv) => inv.id === activeId);
+            return item ? (
+              <div className="bg-secondary rounded-xl p-6 shadow-lg opacity-90">
+                <h3 className="text-lg font-semibold">{item.accountName}</h3>
+              </div>
+            ) : null;
+          }}
+        >
+          {investments.map((item) => (
+            <SortableItem key={item.id} id={item.id}>
+              <InvestmentItemComponent
+                item={item}
+                onUpdateItem={handleChange}
+                onRemoveHistoryRecord={handleRemoveHistoryRecord}
+                onAddHistory={handleAddHistory}
+                onRemoveInvestment={removeInvestment}
+              />
+            </SortableItem>
+          ))}
+        </SortableList>
+      </TabsContent>
 
       <AddInvestmentModal isOpen={isModalOpen} onClose={closeAddAccountModal} />
-    </div>
+    </Tabs>
   );
 }
