@@ -9,7 +9,7 @@ const pageNames: Record<string, string> = {
   "/dashboard": "대시보드",
   "/assets": "전체 자산",
   "/assets/investments": "투자",
-  "/assets/savings": "예금",
+  "/assets/savings": "저축",
   "/assets/real-assets": "실물 자산",
   "/assets/loans": "대출",
   "/asset-plan": "자산 계획",

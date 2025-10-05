@@ -49,7 +49,7 @@ const assetItems = [
     icon: TrendingUp,
   },
   {
-    title: "예금",
+    title: "저축",
     url: "/assets/savings",
     icon: PiggyBank,
   },
