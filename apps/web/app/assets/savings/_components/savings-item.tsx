@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@web/components/ui/popo
 import { ACCOUNT_COLORS } from "@web/features/savings/types/constants";
 import type { SavingsItem } from "@web/features/savings/types/types";
 import { numberToKorean } from "@web/utils/number-format";
+import { AddSavingsHistoryModal } from "./add-savings-history-modal";
 
 interface SavingsItemComponentProps {
   item: SavingsItem;
@@ -29,6 +30,7 @@ export function SavingsItemComponent({
 }: SavingsItemComponentProps) {
   const [isRecordsExpanded, setIsRecordsExpanded] = useState(false);
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
   const handleColorChange = (color: string) => {
     onUpdateItem(item.id, "color", color);
@@ -36,8 +38,7 @@ export function SavingsItemComponent({
   };
 
   const handleAddHistory = () => {
-    const today = new Date().toISOString().split("T")[0]!;
-    onAddHistory(item.id, today, item.balance);
+    setIsHistoryModalOpen(true);
   };
 
   return (
@@ -189,6 +190,13 @@ export function SavingsItemComponent({
           </div>
         )}
       </CardContent>
+
+      <AddSavingsHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        item={item}
+        onAddHistory={onAddHistory}
+      />
     </Card>
   );
 }

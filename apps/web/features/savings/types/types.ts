@@ -33,7 +33,7 @@ export interface CheckingAccount {
 }
 
 /**
- * 예금 계좌 잔액 기록 인터페이스 (히스토리용)
+ * 저축 계좌 잔액 기록 인터페이스 (히스토리용)
  */
 export interface DepositAccountRecord {
   date: string; // 기준날짜 (YYYY-MM-DD 형식)
@@ -42,15 +42,15 @@ export interface DepositAccountRecord {
 }
 
 /**
- * 정기예금 계좌 인터페이스
+ * 정기저축 계좌 인터페이스
  * - 카테고리: 예적금
- * - 계좌 타입: 예금
+ * - 계좌 타입: 저축
  */
 export interface SavingsDepositAccount {
   id: number;
   accountName: string; // 계좌명
   category: SavingsCategory.DEPOSIT; // 카테고리
-  accountType: DepositAccountType.SAVINGS_DEPOSIT; // 계좌 타입: 예금
+  accountType: DepositAccountType.SAVINGS_DEPOSIT; // 계좌 타입: 저축
   accountOwner: string; // 계좌 소유자
   currency: string; // 통화
   interestRate: number; // 이율 (%, 필수)
@@ -125,7 +125,7 @@ export function isCheckingAccount(account: SavingsAccount): account is CheckingA
 }
 
 /**
- * 정기예금 계좌인지 확인
+ * 정기저축 계좌인지 확인
  */
 export function isSavingsDepositAccount(account: SavingsAccount): account is SavingsDepositAccount {
   return (
@@ -156,7 +156,7 @@ export function isHousingSubscriptionAccount(
 }
 
 /**
- * 예적금 카테고리인지 확인 (예금 또는 적금)
+ * 예적금 카테고리인지 확인 (저축 또는 적금)
  */
 export function isDepositCategory(
   account: SavingsAccount
@@ -184,7 +184,7 @@ export interface SavingsRecord {
 export interface SavingsItem {
   id: number;
   accountName: string; // 계좌명
-  accountType: string; // 계좌 타입 (입출금, 예금, 적금, 주택청약 등)
+  accountType: string; // 계좌 타입 (입출금, 저축, 적금, 주택청약 등)
   accountOwner: string; // 계좌 소유자 (본인, 배우자 등)
   currency: string; // 통화 (KRW, USD 등)
   balance: number; // 현재 잔액 (만원 단위)

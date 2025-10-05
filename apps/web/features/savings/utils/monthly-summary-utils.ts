@@ -10,10 +10,10 @@ export interface MonthlySummaryRow {
 }
 
 /**
- * 예금 계좌들의 월별 요약 데이터 생성
+ * 저축 계좌들의 월별 요약 데이터 생성
  *
- * @param savings - 예금 계좌 배열
- * @returns 월별 요약 데이터 배열 (최신순 정렬)
+ * @param savings - 저축 계좌 배열
+ * @returns 월별 요약 데이터 배열
  */
 export function prepareMonthlySavingsSummary(savings: SavingsItem[]): MonthlySummaryRow[] {
   // 빈 배열 처리

@@ -11,7 +11,7 @@ Savings 모듈은 **3가지 카테고리**와 **4가지 계좌 타입**을 지�
 ├─ 입출금 (Checking)
 │  └─ 입출금 (Checking Account)
 ├─ 예적금 (Deposit)
-│  ├─ 예금 (Savings Deposit)
+│  ├─ 저축 (Savings Deposit)
 │  └─ 적금 (Installment Savings)
 └─ 주택청약 (Housing)
    └─ 주택청약 (Housing Subscription)
@@ -53,12 +53,12 @@ interface CheckingAccountRecord {
 }
 ```
 
-### 2. 정기예금 계좌 (Savings Deposit Account)
+### 2. 정기저축 계좌 (Savings Deposit Account)
 
 **카테고리**: 예적금  
-**계좌 타입**: 예금
+**계좌 타입**: 저축
 
-고정 이율의 정기예금 계좌
+고정 이율의 정기저축 계좌
 
 **특징:**
 
@@ -176,7 +176,7 @@ enum CheckingAccountType {
 
 // 예적금 타입
 enum DepositAccountType {
-  SAVINGS_DEPOSIT = "예금",
+  SAVINGS_DEPOSIT = "저축",
   INSTALLMENT_SAVINGS = "적금",
 }
 
@@ -244,7 +244,7 @@ function processAccount(account: SavingsAccount) {
     }
   } else if (isSavingsDepositAccount(account)) {
     // account는 SavingsDepositAccount로 자동 타입 추론
-    console.log(`정기예금: ${account.accountName}, 이율: ${account.interestRate}%`);
+    console.log(`정기저축: ${account.accountName}, 이율: ${account.interestRate}%`);
     if (account.maturityDate) {
       console.log(`만기일: ${account.maturityDate}`);
     }

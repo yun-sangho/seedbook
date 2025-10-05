@@ -30,9 +30,9 @@ export function SavingsManager() {
         <Card>
           <CardContent className="py-12">
             <div className="text-center space-y-4">
-              <p className="text-muted-foreground">아직 등록된 예금 계좌가 없습니다.</p>
+              <p className="text-muted-foreground">아직 등록된 저축 계좌가 없습니다.</p>
               <Button onClick={() => setIsModalOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />첫 예금 계좌 추가하기
+                <Plus className="mr-2 h-4 w-4" />첫 저축 계좌 추가하기
               </Button>
             </div>
           </CardContent>
@@ -72,7 +72,7 @@ export function SavingsManager() {
 
           <Button onClick={() => setIsModalOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            예금 계좌 추가
+            저축 계좌 추가
           </Button>
         </div>
 

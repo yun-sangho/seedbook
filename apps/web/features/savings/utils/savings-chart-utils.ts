@@ -54,11 +54,11 @@ const formatDateToKorean = (dateString: string): string => {
 };
 
 /**
- * 예금 히스토리를 차트 데이터로 변환
+ * 저축 히스토리를 차트 데이터로 변환
  *
- * @param savings - 예금 계좌 배열
- * @param timeRange - 시간 범위
- * @returns 차트 데이터 배열 (날짜별 잔액 합산)
+ * @param savings - 저축 계좌 배열
+ * @param timeRange - 시간 범위 필터
+ * @returns 차트 데이터 포인트 배열
  */
 export function prepareSavingsChartData(
   savings: SavingsItem[],

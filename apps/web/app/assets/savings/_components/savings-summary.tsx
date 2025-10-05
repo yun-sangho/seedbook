@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { SavingsStackedAreaChart } from "@web/components/savings-stacked-area-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
 import { prepareMonthlySavingsSummary } from "@web/features/savings/utils/monthly-summary-utils";
@@ -21,10 +22,20 @@ export function SavingsSummary() {
 
   return (
     <div className="space-y-6">
+      {/* 저축 차트 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>저축 추이</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SavingsStackedAreaChart savings={savings} />
+        </CardContent>
+      </Card>
+
       {/* 총계 카드 */}
       <Card>
         <CardHeader>
-          <CardTitle>전체 예금 요약</CardTitle>
+          <CardTitle>전체 저축 요약</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
@@ -47,7 +58,7 @@ export function SavingsSummary() {
       {monthlyData.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>월별 예금 내역</CardTitle>
+            <CardTitle>월별 저축 내역</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">

@@ -19,7 +19,7 @@ describe("preparePlanComparisonChartData", () => {
         initialInvestment: 1000, // 1,000만원
         currentValue: 1200, // 1,200만원
         note: "",
-      color: "#3b82f6",
+        color: "#3b82f6",
         records: [
           {
             date: "2024-06-01",
@@ -47,7 +47,7 @@ describe("preparePlanComparisonChartData", () => {
         initialInvestment: 500, // 500만원
         currentValue: 550, // 550만원
         note: "",
-      color: "#3b82f6",
+        color: "#3b82f6",
         records: [
           {
             date: "2024-06-01",

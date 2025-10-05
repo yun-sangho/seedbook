@@ -18,7 +18,7 @@ export enum CheckingAccountType {
  * 예적금 카테고리 계좌 타입
  */
 export enum DepositAccountType {
-  SAVINGS_DEPOSIT = "예금", // 정기예금
+  SAVINGS_DEPOSIT = "저축", // 정기저축
   INSTALLMENT_SAVINGS = "적금", // 정기적금
 }
 
@@ -54,7 +54,7 @@ export enum DefaultOwnerType {
 }
 
 /**
- * 예금 계좌 유형 목록
+ * 저축 계좌 유형 목록
  */
 export const SAVINGS_ACCOUNT_TYPES = Object.values(SavingsAccountType);
 
@@ -83,7 +83,7 @@ export const ACCOUNT_TYPES_BY_CATEGORY = {
 export const SAVINGS_CATEGORIES = Object.values(SavingsCategory);
 
 /**
- * 예금 계좌별 차트 색상 팔레트 (30가지)
+ * 저축 계좌별 차트 색상 팔레트 (30가지)
  * 6가지 기본 색상 × 5단계 명도로 구성하여 시각적 구분 최대화
  *
  * 기본 색상: Red, Yellow, Green, Cyan, Blue, Purple

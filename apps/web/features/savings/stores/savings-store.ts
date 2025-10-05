@@ -7,7 +7,7 @@ import { ACCOUNT_COLORS, COLOR_FAMILIES } from "../types/constants";
 import type { SavingsItem, SavingsRecord } from "../types/types";
 
 /**
- * 예금 스토어 상태 인터페이스
+ * 저축 스토어 상태 인터페이스
  */
 interface SavingsState {
   // 데이터 (localStorage에 저장)
@@ -60,7 +60,7 @@ const initialState = {
 };
 
 /**
- * Zustand 예금 스토어
+ * Zustand 저축 스토어
  */
 export const useSavingsStore = create<SavingsState>()(
   persist(
@@ -78,7 +78,7 @@ export const useSavingsStore = create<SavingsState>()(
               ...state.savings,
               {
                 id: newId,
-                accountName: `예금 계좌 #${newId}`,
+                accountName: `저축 계좌 #${newId}`,
                 accountType: "",
                 accountOwner: "본인",
                 currency: "원",

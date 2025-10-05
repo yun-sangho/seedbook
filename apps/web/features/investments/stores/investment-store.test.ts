@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CurrencyType, DefaultOwnerType } from "../types/constants";
-import { InvestmentItem, InvestmentRecord } from "../types/types";
 import { useInvestmentStore } from "./investment-store";
 
 // localStorage mock
@@ -10,6 +9,8 @@ const localStorageMock = {
   removeItem: vi.fn(),
   clear: vi.fn(),
 };
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 global.localStorage = localStorageMock as any;
 
 // Date mock for consistent testing

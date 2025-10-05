@@ -2,7 +2,7 @@
 
 ## Overview
 
-Savings 모듈은 3가지 다른 예금 계좌 타입을 지원하며, 각각 고유한 인터페이스를 가집니다.
+Savings 모듈은 3가지 다른 저축 계좌 타입을 지원하며, 각각 고유한 인터페이스를 가집니다.
 
 ## Account Types
 
@@ -39,7 +39,7 @@ interface CheckingAccountRecord {
 
 ### 2. 예적금 계좌 (Deposit Account) - TBD
 
-고정 이율의 정기예금/적금 계좌 (추후 구현 예정)
+고정 이율의 정기저축/적금 계좌 (추후 구현 예정)
 
 **예상 특징:**
 

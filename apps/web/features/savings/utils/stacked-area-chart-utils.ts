@@ -82,7 +82,7 @@ const getAccountBalanceAtDate = (account: SavingsItem, targetDate: string): numb
 /**
  * Stacked Area Chart용 데이터 준비
  *
- * @param savings - 예금 계좌 배열
+ * @param savings - 저축 계좌 배열
  * @param timeRange - 시간 범위
  * @returns data: 날짜별 각 계좌의 잔액, config: 계좌별 설정
  */

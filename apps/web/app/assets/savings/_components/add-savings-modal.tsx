@@ -66,9 +66,9 @@ export function AddSavingsModal({ isOpen, onClose, onSavingsAdded }: AddSavingsM
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>새 예금 계좌 추가</DialogTitle>
+          <DialogTitle>새 저축 계좌 추가</DialogTitle>
           <DialogDescription>
-            추가할 예금 계좌의 카테고리, 유형, 소유자를 선택해주세요.
+            추가할 저축 계좌의 카테고리, 유형, 소유자를 선택해주세요.
           </DialogDescription>
         </DialogHeader>
 
