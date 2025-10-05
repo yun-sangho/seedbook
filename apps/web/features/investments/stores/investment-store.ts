@@ -1,9 +1,10 @@
 "use client";
 
+import { getNextColor as getNextColorUtil } from "@web/utils/color-selection";
 import { parseNumericString } from "@web/utils/number-format";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { ACCOUNT_COLORS, CurrencyType, DefaultOwnerType } from "../types/constants";
+import { ACCOUNT_COLORS, COLOR_FAMILIES, CurrencyType, DefaultOwnerType } from "../types/constants";
 import { InvestmentItem, InvestmentRecord } from "../types/types";
 
 // 현재 날짜를 YYYY-MM-DD 형식으로 반환하는 헬퍼 함수
@@ -13,21 +14,8 @@ const getCurrentDate = (): string => {
 
 // 사용 가능한 색상을 반환하는 헬퍼 함수
 const getNextColor = (existingInvestments: InvestmentItem[]): string => {
-  const usedColors = new Set(existingInvestments.map((inv) => inv.color));
-
-  // 아직 사용되지 않은 색상 찾기
-  for (const color of ACCOUNT_COLORS) {
-    if (!usedColors.has(color)) {
-      return color;
-    }
-  }
-
-  // 모든 색상이 사용된 경우, 순환하여 재사용
-  return (
-    ACCOUNT_COLORS[existingInvestments.length % ACCOUNT_COLORS.length] ||
-    ACCOUNT_COLORS[0] ||
-    "#3b82f6"
-  );
+  const usedColors = existingInvestments.map((inv) => inv.color).filter(Boolean);
+  return getNextColorUtil(usedColors, ACCOUNT_COLORS, COLOR_FAMILIES);
 };
 
 // 투자 정보 상태 인터페이스

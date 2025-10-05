@@ -8,38 +8,36 @@ import { Card, CardContent, CardHeader } from "@web/components/ui/card";
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@web/components/ui/popover";
-import { ACCOUNT_COLORS } from "@web/features/investments/types/constants";
-import { InvestmentItem } from "@web/features/investments/types/types";
+import { ACCOUNT_COLORS } from "@web/features/savings/types/constants";
+import type { SavingsItem } from "@web/features/savings/types/types";
 import { numberToKorean } from "@web/utils/number-format";
-import { AddHistoryModal } from "./add-history-modal";
 
-interface InvestmentItemComponentProps {
-  item: InvestmentItem;
-  onUpdateItem: (id: number, field: keyof InvestmentItem, value: string) => void;
+interface SavingsItemComponentProps {
+  item: SavingsItem;
+  onUpdateItem: (id: number, field: keyof SavingsItem, value: string) => void;
   onRemoveHistoryRecord: (id: number, date: string) => void;
-  onAddHistory: (
-    itemId: number,
-    date: string,
-    initialInvestment: number,
-    currentValue: number
-  ) => void;
-  onRemoveInvestment: (id: number) => void;
+  onAddHistory: (id: number, date: string, balance: number) => void;
+  onRemoveSavings: (id: number) => void;
 }
 
-export function InvestmentItemComponent({
+export function SavingsItemComponent({
   item,
   onUpdateItem,
   onRemoveHistoryRecord,
   onAddHistory,
-  onRemoveInvestment,
-}: InvestmentItemComponentProps) {
+  onRemoveSavings,
+}: SavingsItemComponentProps) {
   const [isRecordsExpanded, setIsRecordsExpanded] = useState(false);
-  const [isAddHistoryModalOpen, setIsAddHistoryModalOpen] = useState(false);
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
 
   const handleColorChange = (color: string) => {
     onUpdateItem(item.id, "color", color);
     setIsColorPickerOpen(false);
+  };
+
+  const handleAddHistory = () => {
+    const today = new Date().toISOString().split("T")[0]!;
+    onAddHistory(item.id, today, item.balance);
   };
 
   return (
@@ -96,46 +94,38 @@ export function InvestmentItemComponent({
       <CardContent className="space-y-4">
         <div className="w-full flex gap-4 flex-wrap justify-between">
           <div className="flex items-center gap-2 relative flex-grow-1">
-            <Label htmlFor={`initialInvestment-${item.id}`} className="text-sm ">
-              투자원금
+            <Label htmlFor={`balance-${item.id}`} className="text-sm ">
+              잔액
             </Label>
             <Input
-              id={`initialInvestment-${item.id}`}
+              id={`balance-${item.id}`}
               type="text"
-              value={
-                item.initialInvestment && item.initialInvestment > 0
-                  ? item.initialInvestment.toLocaleString()
-                  : ""
-              }
-              onChange={(e) => onUpdateItem(item.id, "initialInvestment", e.target.value)}
-              placeholder="투자원금 입력"
+              value={item.balance && item.balance > 0 ? item.balance.toLocaleString() : ""}
+              onChange={(e) => onUpdateItem(item.id, "balance", e.target.value)}
+              placeholder="잔액 입력"
               className="text-sm flex-1"
             />
-            {!!item.initialInvestment && item.initialInvestment > 0 && (
+            {!!item.balance && item.balance > 0 && (
               <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs   px-1 z-10 pointer-events-none">
-                {numberToKorean(item.initialInvestment)}
+                {numberToKorean(item.balance)}
               </div>
             )}
           </div>
           <div className="flex items-center gap-2 relative flex-grow-1">
-            <Label htmlFor={`currentValue-${item.id}`} className="text-sm ">
-              평가금액
+            <Label htmlFor={`interestRate-${item.id}`} className="text-sm ">
+              이율(%)
             </Label>
             <Input
-              id={`currentValue-${item.id}`}
-              type="text"
-              value={
-                item.currentValue && item.currentValue > 0 ? item.currentValue.toLocaleString() : ""
-              }
-              onChange={(e) => onUpdateItem(item.id, "currentValue", e.target.value)}
-              placeholder="평가금액 입력"
+              id={`interestRate-${item.id}`}
+              type="number"
+              step="0.01"
+              min="0"
+              max="100"
+              value={item.interestRate ?? ""}
+              onChange={(e) => onUpdateItem(item.id, "interestRate", e.target.value)}
+              placeholder="이율 입력 (선택)"
               className="text-sm flex-1"
             />
-            {!!item.currentValue && item.currentValue > 0 && (
-              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs px-1 z-10 pointer-events-none">
-                {numberToKorean(item.currentValue)}
-              </div>
-            )}
           </div>
         </div>
 
@@ -146,7 +136,7 @@ export function InvestmentItemComponent({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setIsAddHistoryModalOpen(true)}
+                onClick={handleAddHistory}
                 className="h-7 text-xs"
               >
                 + 기록 추가
@@ -177,8 +167,7 @@ export function InvestmentItemComponent({
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="flex gap-2 text-sm flex-wrap">
-                            <span>원금: {numberToKorean(record.initialInvestment)}</span>
-                            <span>평가: {numberToKorean(record.currentValue)}</span>
+                            <span>잔액: {numberToKorean(record.balance)}</span>
                           </div>
                         </div>
                       </div>
@@ -191,7 +180,7 @@ export function InvestmentItemComponent({
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => onRemoveInvestment(item.id)}
+                onClick={() => onRemoveSavings(item.id)}
                 className="text-xs ml-auto underline"
               >
                 계좌 삭제
@@ -200,13 +189,6 @@ export function InvestmentItemComponent({
           </div>
         )}
       </CardContent>
-
-      <AddHistoryModal
-        isOpen={isAddHistoryModalOpen}
-        onClose={() => setIsAddHistoryModalOpen(false)}
-        item={item}
-        onAddHistory={onAddHistory}
-      />
     </Card>
   );
 }

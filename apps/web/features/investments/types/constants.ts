@@ -89,3 +89,16 @@ export const ACCOUNT_COLORS = [
   "#7e22ce", // purple-700
   "#6b21a8", // purple-800
 ];
+
+/**
+ * 색상 계열 분류 (6개 그룹)
+ * 각 계열당 5가지 색상 (명도 차이)
+ */
+export const COLOR_FAMILIES = {
+  RED: ACCOUNT_COLORS.slice(0, 5), // 빨강 계열
+  YELLOW: ACCOUNT_COLORS.slice(5, 10), // 노랑 계열
+  GREEN: ACCOUNT_COLORS.slice(10, 15), // 초록 계열
+  CYAN: ACCOUNT_COLORS.slice(15, 20), // 청록 계열
+  BLUE: ACCOUNT_COLORS.slice(20, 25), // 파랑 계열
+  PURPLE: ACCOUNT_COLORS.slice(25, 30), // 보라 계열
+} as const;
