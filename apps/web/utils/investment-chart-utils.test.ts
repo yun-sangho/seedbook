@@ -29,6 +29,7 @@ describe("prepareInvestmentChartData", () => {
       initialInvestment: record.initialInvestment,
     })),
     note: "",
+    color: "#3b82f6",
   });
 
   describe("기본 기능 테스트", () => {
@@ -343,6 +344,7 @@ describe("prepareInvestmentChartData", () => {
             { date: sameDate, currentValue: 1200, initialInvestment: 800 }, // 두 번째 기록 (이걸 사용해야 함)
           ],
           note: "",
+          color: "#3b82f6",
         },
       ];
 
@@ -366,6 +368,7 @@ describe("prepareInvestmentChartData", () => {
           currentValue: 1000,
           records: [{ date: sameDate, currentValue: 1000, initialInvestment: 800 }],
           note: "",
+          color: "#3b82f6",
         },
         {
           id: 2,
@@ -377,6 +380,7 @@ describe("prepareInvestmentChartData", () => {
           currentValue: 2000,
           records: [{ date: sameDate, currentValue: 2000, initialInvestment: 1500 }],
           note: "",
+          color: "#10b981",
         },
       ];
 
@@ -406,6 +410,7 @@ describe("prepareInvestmentChartData", () => {
             { date: futureDateString, currentValue: 1200, initialInvestment: 800 }, // 미래
           ],
           note: "",
+          color: "#3b82f6",
         },
       ];
 

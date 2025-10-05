@@ -107,6 +107,28 @@ pnpm check-types         # type check monorepo
 
 Search existing util or store patterns before adding new abstractions. If ambiguity involves monetary units or chart UX, request clarification rather than guessing.
 
+### 15. Reference Documentation
+
+When working with specific modules, consult these comprehensive technical documents:
+
+- **Investment Module**: See `/docs/INVESTMENT_MODULE_SPEC.md` for:
+  - Complete architecture and data structures
+  - State management patterns (Zustand + localStorage)
+  - Chart visualization strategies (Recharts)
+  - 30-color palette system for account colors
+  - Utility functions and data transformation logic
+  - Component hierarchy and interaction flows
+
+- **Testing Strategy**: See `/docs/INVESTMENT_TESTS.md` for:
+  - Vitest configuration and setup
+  - Test structure and organization (117 test cases)
+  - Mocking strategies (localStorage, Date, Zustand stores)
+  - AAA pattern (Arrange-Act-Assert) examples
+  - Edge case coverage guidelines
+  - Coverage targets (>95% statements, >90% branches)
+
+These documents provide deep context on existing patterns. Reference them before implementing similar features in other modules.
+
 ---
 
 These rules keep user-facing financial projections trustworthy and interactions consistent. Follow them unless a documented refactor direction is provided.

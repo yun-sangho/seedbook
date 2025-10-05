@@ -545,4 +545,66 @@ describe("Investment Store", () => {
       });
     });
   });
+
+  describe("Color Management", () => {
+    it("should assign a color when adding a new investment", () => {
+      const { addInvestment } = useInvestmentStore.getState();
+
+      addInvestment();
+
+      const state = useInvestmentStore.getState();
+      expect(state.investments[0]!.color).toBeDefined();
+      expect(typeof state.investments[0]!.color).toBe("string");
+      expect(state.investments[0]!.color).toMatch(/^#[0-9a-f]{6}$/i);
+    });
+
+    it("should assign different colors to multiple investments", () => {
+      const { addInvestment } = useInvestmentStore.getState();
+
+      addInvestment();
+      addInvestment();
+      addInvestment();
+
+      const state = useInvestmentStore.getState();
+      const colors = state.investments.map((inv) => inv.color);
+
+      // First 3 investments should have different colors
+      expect(colors[0]).not.toBe(colors[1]);
+      expect(colors[1]).not.toBe(colors[2]);
+      expect(colors[0]).not.toBe(colors[2]);
+    });
+
+    it("should update investment color", () => {
+      const { addInvestment, updateInvestment } = useInvestmentStore.getState();
+
+      addInvestment();
+      const initialColor = useInvestmentStore.getState().investments[0]!.color;
+
+      updateInvestment(2, "color", "#ff0000");
+
+      const state = useInvestmentStore.getState();
+      expect(state.investments[0]!.color).toBe("#ff0000");
+      expect(state.investments[0]!.color).not.toBe(initialColor);
+    });
+
+    it("should assign colors when adding investments with type", () => {
+      const { addInvestmentWithType } = useInvestmentStore.getState();
+
+      addInvestmentWithType("증권계좌");
+
+      const state = useInvestmentStore.getState();
+      expect(state.investments[0]!.color).toBeDefined();
+      expect(typeof state.investments[0]!.color).toBe("string");
+    });
+
+    it("should assign colors when adding investments with type and owner", () => {
+      const { addInvestmentWithTypeAndOwner } = useInvestmentStore.getState();
+
+      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+
+      const state = useInvestmentStore.getState();
+      expect(state.investments[0]!.color).toBeDefined();
+      expect(typeof state.investments[0]!.color).toBe("string");
+    });
+  });
 });

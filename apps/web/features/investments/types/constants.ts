@@ -38,3 +38,54 @@ export const CURRENCY_OPTIONS = Object.values(CurrencyType);
  * 기본 계좌 소유자 목록
  */
 export const DEFAULT_OWNERS = Object.values(DefaultOwnerType);
+
+/**
+ * 투자 계좌별 차트 색상 팔레트 (30가지)
+ * 6가지 기본 색상 × 5단계 명도로 구성하여 시각적 구분 최대화
+ *
+ * 기본 색상: Red, Yellow, Green, Cyan, Blue, Purple
+ * 각 색상당 5단계: 400, 500, 600, 700, 800
+ */
+export const ACCOUNT_COLORS = [
+  // Red 계열 (빨강) - 5단계
+  "#f87171", // red-400
+  "#ef4444", // red-500
+  "#dc2626", // red-600
+  "#b91c1c", // red-700
+  "#991b1b", // red-800
+
+  // Yellow 계열 (노랑) - 5단계
+  "#facc15", // yellow-400
+  "#eab308", // yellow-500
+  "#ca8a04", // yellow-600
+  "#a16207", // yellow-700
+  "#854d0e", // yellow-800
+
+  // Green 계열 (초록) - 5단계
+  "#4ade80", // green-400
+  "#22c55e", // green-500
+  "#16a34a", // green-600
+  "#15803d", // green-700
+  "#166534", // green-800
+
+  // Cyan 계열 (청록) - 5단계
+  "#22d3ee", // cyan-400
+  "#06b6d4", // cyan-500
+  "#0891b2", // cyan-600
+  "#0e7490", // cyan-700
+  "#155e75", // cyan-800
+
+  // Blue 계열 (파랑) - 5단계
+  "#60a5fa", // blue-400
+  "#3b82f6", // blue-500
+  "#2563eb", // blue-600
+  "#1d4ed8", // blue-700
+  "#1e40af", // blue-800
+
+  // Purple 계열 (보라) - 5단계
+  "#c084fc", // purple-400
+  "#a855f7", // purple-500
+  "#9333ea", // purple-600
+  "#7e22ce", // purple-700
+  "#6b21a8", // purple-800
+];

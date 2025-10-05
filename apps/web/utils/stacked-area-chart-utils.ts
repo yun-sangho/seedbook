@@ -8,20 +8,6 @@ export interface AccountChartData {
   [accountKey: string]: number | string; // 동적으로 계좌별 값들이 추가됨
 }
 
-// 색상 팔레트
-const COLORS = [
-  "#3b82f6", // blue-500
-  "#10b981", // emerald-500
-  "#f59e0b", // amber-500
-  "#ef4444", // red-500
-  "#8b5cf6", // violet-500
-  "#06b6d4", // cyan-500
-  "#84cc16", // lime-500
-  "#f97316", // orange-500
-  "#ec4899", // pink-500
-  "#6366f1", // indigo-500
-];
-
 // 날짜를 필터링하는 함수
 function getDateRange(range: TimeRange): Date {
   const now = new Date();
@@ -128,11 +114,11 @@ export function prepareStackedAreaChartData(
 
   // 차트 설정 생성
   const config: Record<string, { label: string; color: string }> = {};
-  investmentsWithHistory.forEach((investment, index) => {
+  investmentsWithHistory.forEach((investment) => {
     const accountKey = `account_${investment.id}`;
     config[accountKey] = {
       label: investment.accountName,
-      color: COLORS[index % COLORS.length] || "#6b7280",
+      color: investment.color, // 계좌별로 저장된 색상 사용
     };
   });
 

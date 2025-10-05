@@ -3,12 +3,31 @@
 import { parseNumericString } from "@web/utils/number-format";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { CurrencyType, DefaultOwnerType } from "../types/constants";
+import { ACCOUNT_COLORS, CurrencyType, DefaultOwnerType } from "../types/constants";
 import { InvestmentItem, InvestmentRecord } from "../types/types";
 
 // 현재 날짜를 YYYY-MM-DD 형식으로 반환하는 헬퍼 함수
 const getCurrentDate = (): string => {
   return new Date().toISOString().split("T")[0] || "";
+};
+
+// 사용 가능한 색상을 반환하는 헬퍼 함수
+const getNextColor = (existingInvestments: InvestmentItem[]): string => {
+  const usedColors = new Set(existingInvestments.map((inv) => inv.color));
+
+  // 아직 사용되지 않은 색상 찾기
+  for (const color of ACCOUNT_COLORS) {
+    if (!usedColors.has(color)) {
+      return color;
+    }
+  }
+
+  // 모든 색상이 사용된 경우, 순환하여 재사용
+  return (
+    ACCOUNT_COLORS[existingInvestments.length % ACCOUNT_COLORS.length] ||
+    ACCOUNT_COLORS[0] ||
+    "#3b82f6"
+  );
 };
 
 // 투자 정보 상태 인터페이스
@@ -60,6 +79,7 @@ export const useInvestmentStore = create<InvestmentState>()(
       addInvestment: () => {
         const { lastInvestmentId, investments } = get();
         const newId = lastInvestmentId + 1;
+        const newColor = getNextColor(investments);
 
         set({
           investments: [
@@ -73,6 +93,7 @@ export const useInvestmentStore = create<InvestmentState>()(
               currentValue: 0,
               records: [],
               note: "",
+              color: newColor,
             },
             ...investments,
           ],
@@ -84,6 +105,7 @@ export const useInvestmentStore = create<InvestmentState>()(
       addInvestmentWithType: (accountType: string) => {
         const { lastInvestmentId, investments } = get();
         const newId = lastInvestmentId + 1;
+        const newColor = getNextColor(investments);
 
         set({
           investments: [
@@ -97,6 +119,7 @@ export const useInvestmentStore = create<InvestmentState>()(
               currentValue: 0,
               records: [],
               note: "",
+              color: newColor,
             },
             ...investments,
           ],
@@ -108,6 +131,7 @@ export const useInvestmentStore = create<InvestmentState>()(
       addInvestmentWithTypeAndOwner: (accountType: string, accountOwner: string) => {
         const { lastInvestmentId, investments } = get();
         const newId = lastInvestmentId + 1;
+        const newColor = getNextColor(investments);
 
         set({
           investments: [
@@ -121,6 +145,7 @@ export const useInvestmentStore = create<InvestmentState>()(
               currentValue: 0,
               records: [],
               note: "",
+              color: newColor,
             },
             ...investments,
           ],
@@ -378,6 +403,27 @@ export const useInvestmentStore = create<InvestmentState>()(
         lastInvestmentId: state.lastInvestmentId,
         // expandedFormId는 제외
       }),
+      // 기존 데이터 마이그레이션: color 속성이 없는 투자에 색상 추가
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          let needsUpdate = false;
+          const updatedInvestments = state.investments.map((inv, index) => {
+            // color 속성이 없는 경우 추가
+            if (!inv.color) {
+              needsUpdate = true;
+              return {
+                ...inv,
+                color: ACCOUNT_COLORS[index % ACCOUNT_COLORS.length] || "#3b82f6",
+              };
+            }
+            return inv;
+          });
+
+          if (needsUpdate) {
+            state.investments = updatedInvestments;
+          }
+        }
+      },
     }
   )
 );

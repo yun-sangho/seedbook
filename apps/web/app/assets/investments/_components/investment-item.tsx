@@ -7,6 +7,8 @@ import { Button } from "@web/components/ui/button";
 import { Card, CardContent, CardHeader } from "@web/components/ui/card";
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@web/components/ui/popover";
+import { ACCOUNT_COLORS } from "@web/features/investments/types/constants";
 import { InvestmentItem } from "@web/features/investments/types/types";
 import { numberToKorean } from "@web/utils/number-format";
 import { AddHistoryModal } from "./add-history-modal";
@@ -33,12 +35,49 @@ export function InvestmentItemComponent({
 }: InvestmentItemComponentProps) {
   const [isRecordsExpanded, setIsRecordsExpanded] = useState(false);
   const [isAddHistoryModalOpen, setIsAddHistoryModalOpen] = useState(false);
+  const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
+
+  const handleColorChange = (color: string) => {
+    onUpdateItem(item.id, "color", color);
+    setIsColorPickerOpen(false);
+  };
 
   return (
     <Card key={item.id} className="gap-4">
       <CardHeader>
         <div className="flex gap-2 flex-wrap sm:items-center max-sm:flex-col ">
-          <Badge variant={"secondary"}>{`${item.accountType} / ${item.accountOwner}`}</Badge>
+          <div className="flex items-center gap-2">
+            <Popover open={isColorPickerOpen} onOpenChange={setIsColorPickerOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  className="w-6 h-6 rounded"
+                  style={{ backgroundColor: item.color }}
+                  title="색상 변경"
+                />
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-3" align="start">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">계좌 색상 선택</p>
+                  <div className="grid grid-cols-5 gap-2">
+                    {ACCOUNT_COLORS.map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => handleColorChange(color)}
+                        className="w-8 h-8 rounded border-2 hover:scale-110 transition-transform"
+                        style={{
+                          backgroundColor: color,
+                          borderColor:
+                            color === item.color ? "hsl(var(--foreground))" : "transparent",
+                        }}
+                        title={color}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Badge variant={"secondary"}>{`${item.accountType} / ${item.accountOwner}`}</Badge>
+          </div>
           <div
             className="flex justify-between items-center flex-grow-1 flex-wrap"
             onClick={() => setIsRecordsExpanded(!isRecordsExpanded)}

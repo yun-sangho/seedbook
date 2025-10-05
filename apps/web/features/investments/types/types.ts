@@ -20,4 +20,5 @@ export interface InvestmentItem {
   currentValue: number; // 현재 평가금액
   records: InvestmentRecord[]; // 금액 변경 히스토리
   note: string;
+  color: string; // 차트 표시 색상
 }
