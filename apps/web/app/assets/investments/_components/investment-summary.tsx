@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { InvestmentStackedAreaChart } from "@web/components/investment-stacked-area-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
 import { InvestmentItem } from "@web/features/investments/types/types";
 import { prepareMonthlyInvestmentSummary } from "@web/utils/monthly-summary-utils";
@@ -34,7 +35,17 @@ export function InvestmentSummary({ investments }: InvestmentSummaryProps) {
   const monthlyData = useMemo(() => prepareMonthlyInvestmentSummary(investments), [investments]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* 투자 차트 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>투자 추이</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <InvestmentStackedAreaChart investments={investments} />
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>총 계좌 요약</CardTitle>

@@ -50,7 +50,7 @@ export function SavingsSummary() {
   }, [defaultYear, selectedYear]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* 저축 차트 */}
       <Card>
         <CardHeader>

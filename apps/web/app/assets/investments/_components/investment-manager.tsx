@@ -7,7 +7,7 @@ import { SortableList } from "@web/components/ui/sortable-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@web/components/ui/tabs";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { InvestmentItem } from "@web/features/investments/types/types";
-import { PlusCircle, TrendingUp } from "lucide-react";
+import { Plus, TrendingUp } from "lucide-react";
 import { AddInvestmentModal } from "./add-investment-modal";
 import { InvestmentTab } from "./constants";
 import { InvestmentItemComponent } from "./investment-item";
@@ -26,7 +26,7 @@ function EmptyState({ onAddAccount }: { onAddAccount: () => void }) {
         다양한 투자 계좌를 한 곳에서 관리할 수 있습니다.
       </p>
       <Button onClick={onAddAccount} size="lg">
-        <PlusCircle className="h-5 w-5" />첫 투자 계좌 추가하기
+        <Plus className="h-5 w-5" />첫 투자 계좌 추가하기
       </Button>
     </div>
   );
@@ -89,14 +89,18 @@ export function InvestmentManager() {
   }
 
   return (
-    <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as InvestmentTab)}>
+    <Tabs
+      value={activeTab}
+      onValueChange={(value) => setActiveTab(value as InvestmentTab)}
+      className="w-full gap-4"
+    >
       <div className="w-full flex justify-between">
         <TabsList>
           <TabsTrigger value={InvestmentTab.SUMMARY}>요약</TabsTrigger>
           <TabsTrigger value={InvestmentTab.DETAILS}>계좌 상세</TabsTrigger>
         </TabsList>
         <Button onClick={openAddAccountModal} className="ml-auto">
-          <PlusCircle className="h-4 w-4" />
+          <Plus className="h-4 w-4" />
           투자 계좌 추가
         </Button>
       </div>

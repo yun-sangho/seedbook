@@ -63,15 +63,15 @@ export function SavingsManager() {
 
   return (
     <>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="flex items-center justify-between mb-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full gap-4">
+        <div className="flex items-center justify-between">
           <TabsList>
             <TabsTrigger value="summary">요약</TabsTrigger>
             <TabsTrigger value="details">계좌 상세</TabsTrigger>
           </TabsList>
 
           <Button onClick={() => setIsModalOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="h-4 w-4" />
             저축 계좌 추가
           </Button>
         </div>
