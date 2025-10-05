@@ -7,6 +7,8 @@ export interface MonthlySummaryRow {
   yearMonth: string; // "2024-01"
   displayMonth: string; // "2024년 1월"
   balance: number; // 잔액 (만원 단위)
+  change: number; // 직전 월 대비 증감액 (만원 단위)
+  hasChange: boolean; // 직전 월 데이터 존재 여부
 }
 
 /**
@@ -21,14 +23,9 @@ export function prepareMonthlySavingsSummary(savings: SavingsItem[]): MonthlySum
     return [];
   }
 
-  // 월별 데이터를 집계하기 위한 Map
-  const monthlyMap = new Map<
-    string,
-    {
-      date: string; // 해당 월의 가장 최근 날짜
-      balance: number;
-    }
-  >();
+  // 계좌별, 월별 최신 잔액을 저장할 Map
+  // Map<accountId, Map<yearMonth, balance>>
+  const accountMonthlyData = new Map<number, Map<string, number>>();
 
   // 모든 계좌의 히스토리 수집
   savings.forEach((account) => {
@@ -36,9 +33,11 @@ export function prepareMonthlySavingsSummary(savings: SavingsItem[]): MonthlySum
       return;
     }
 
+    const monthlyMap = new Map<string, { date: string; balance: number }>();
+
+    // 해당 계좌의 월별 최신 데이터 수집
     account.records.forEach((record) => {
       const yearMonth = record.date.substring(0, 7); // "2024-01"
-
       const existing = monthlyMap.get(yearMonth);
 
       if (!existing || record.date > existing.date) {
@@ -47,30 +46,60 @@ export function prepareMonthlySavingsSummary(savings: SavingsItem[]): MonthlySum
           date: record.date,
           balance: record.balance,
         });
-      } else if (record.date === existing.date) {
-        // 같은 날짜인 경우 잔액 합산
-        monthlyMap.set(yearMonth, {
-          date: record.date,
-          balance: existing.balance + record.balance,
-        });
       }
+    });
+
+    // 계좌별 월별 데이터 저장
+    const balanceMap = new Map<string, number>();
+    monthlyMap.forEach((data, yearMonth) => {
+      balanceMap.set(yearMonth, data.balance);
+    });
+    accountMonthlyData.set(account.id, balanceMap);
+  });
+
+  // 모든 yearMonth 수집
+  const allYearMonths = new Set<string>();
+  accountMonthlyData.forEach((monthlyMap) => {
+    monthlyMap.forEach((_, yearMonth) => {
+      allYearMonths.add(yearMonth);
     });
   });
 
-  // Map을 배열로 변환
-  const summaryData: MonthlySummaryRow[] = Array.from(monthlyMap.entries()).map(
-    ([yearMonth, data]) => {
-      const [year, month] = yearMonth.split("-");
-      return {
-        yearMonth,
-        displayMonth: `${year}년 ${parseInt(month!, 10)}월`,
-        balance: data.balance,
-      };
-    }
-  );
+  // yearMonth별로 모든 계좌의 잔액 합산
+  const summaryData: MonthlySummaryRow[] = Array.from(allYearMonths).map((yearMonth) => {
+    let totalBalance = 0;
+
+    // 모든 계좌의 해당 월 잔액 합산
+    accountMonthlyData.forEach((monthlyMap) => {
+      const balance = monthlyMap.get(yearMonth);
+      if (balance !== undefined) {
+        totalBalance += balance;
+      }
+    });
+
+    const [year, month] = yearMonth.split("-");
+    return {
+      yearMonth,
+      displayMonth: `${year}년 ${parseInt(month!, 10)}월`,
+      balance: totalBalance,
+      change: 0, // 임시값, 아래에서 계산
+      hasChange: false, // 임시값, 아래에서 계산
+    };
+  });
 
   // 최신순 정렬
   summaryData.sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
+
+  // 직전 월 대비 증감액 계산
+  summaryData.forEach((row, index) => {
+    // 다음 인덱스가 직전 월 (최신순 정렬이므로)
+    const previousRow = summaryData[index + 1];
+
+    if (previousRow) {
+      row.change = row.balance - previousRow.balance;
+      row.hasChange = true;
+    }
+  });
 
   return summaryData;
 }
