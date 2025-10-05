@@ -1,13 +1,16 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@web/components/ui/chart";
+import { ChartContainer, ChartTooltip } from "@web/components/ui/chart";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@web/components/ui/tabs";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { useLoansStore } from "@web/features/loans/stores/loans-store";
 import { useRealAssetsStore } from "@web/features/real-assets/stores/real-assets-store";
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
 import { numberToKorean } from "@web/utils/number-format";
+import { ChevronRight } from "lucide-react";
 import { Cell, Label, Pie, PieChart } from "recharts";
 
 type AssetType = "투자" | "저축" | "실물자산" | "부채";
@@ -51,7 +54,7 @@ export default function AssetsOverviewPage() {
       data.push({
         name: "투자",
         value: assetTotals.investment,
-        fill: "hsl(var(--chart-1))",
+        fill: "#3b82f6", // blue-500
       });
     }
 
@@ -59,7 +62,7 @@ export default function AssetsOverviewPage() {
       data.push({
         name: "저축",
         value: assetTotals.savings,
-        fill: "hsl(var(--chart-2))",
+        fill: "#10b981", // green-500
       });
     }
 
@@ -67,7 +70,7 @@ export default function AssetsOverviewPage() {
       data.push({
         name: "실물자산",
         value: assetTotals.realAssets,
-        fill: "hsl(var(--chart-3))",
+        fill: "#f59e0b", // amber-500
       });
     }
 
@@ -75,7 +78,7 @@ export default function AssetsOverviewPage() {
       data.push({
         name: "부채",
         value: assetTotals.loans,
-        fill: "hsl(var(--chart-4))",
+        fill: "#ef4444", // red-500
       });
     }
 
@@ -85,19 +88,19 @@ export default function AssetsOverviewPage() {
   const chartConfig = {
     투자: {
       label: "투자",
-      color: "hsl(var(--chart-1))",
+      color: "#3b82f6",
     },
     저축: {
       label: "저축",
-      color: "hsl(var(--chart-2))",
+      color: "#10b981",
     },
     실물자산: {
       label: "실물자산",
-      color: "hsl(var(--chart-3))",
+      color: "#f59e0b",
     },
     부채: {
       label: "부채",
-      color: "hsl(var(--chart-4))",
+      color: "#ef4444",
     },
   };
 
@@ -106,11 +109,6 @@ export default function AssetsOverviewPage() {
   return (
     <main className="flex flex-col items-center min-h-screen p-8 md:p-24">
       <div className="w-full max-w-6xl">
-        <div className="mb-10 text-center">
-          <h1 className="text-3xl font-bold mb-4">전체 자산 현황</h1>
-          <p className="text-gray-600 dark:text-gray-400">모든 자산을 한눈에 확인하세요.</p>
-        </div>
-
         {!hasAnyAssets ? (
           <Card>
             <CardContent className="pt-6">
@@ -132,12 +130,26 @@ export default function AssetsOverviewPage() {
                 >
                   <PieChart>
                     <ChartTooltip
-                      content={
-                        <ChartTooltipContent
-                          hideLabel
-                          formatter={(value) => numberToKorean(value.toString())}
-                        />
-                      }
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length && payload[0]) {
+                          const data = payload[0].payload as AssetData;
+                          return (
+                            <div className="rounded-lg border bg-background p-3 shadow-md">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div
+                                  className="w-3 h-3 rounded-full"
+                                  style={{ backgroundColor: data.fill }}
+                                />
+                                <span className="font-semibold">{data.name}</span>
+                              </div>
+                              <div className="text-lg font-bold">
+                                {numberToKorean(data.value.toString())}
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
                     />
                     <Pie
                       data={chartData}
@@ -185,63 +197,203 @@ export default function AssetsOverviewPage() {
               </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">투자</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold">
-                    {numberToKorean(assetTotals.investment.toString())}
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {investments.length}개 계좌
-                  </p>
-                </CardContent>
-              </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>자산 상세</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Tabs defaultValue="investments" className="w-full">
+                  <div className="w-full overflow-x-auto">
+                    <TabsList className="inline-flex w-auto min-w-full h-full">
+                      <TabsTrigger value="investments" className="flex-1 min-w-[120px]">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-lg font-bold">
+                            {numberToKorean(assetTotals.investment.toString())}
+                          </span>
+                          <span className="text-xs sm:text-sm">투자</span>
+                        </div>
+                      </TabsTrigger>
+                      <TabsTrigger value="savings" className="flex-1 min-w-[120px]">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-lg font-bold">
+                            {numberToKorean(assetTotals.savings.toString())}
+                          </span>
+                          <span className="text-xs sm:text-sm">저축</span>
+                        </div>
+                      </TabsTrigger>
+                      <TabsTrigger value="realAssets" className="flex-1 min-w-[120px]">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-lg font-bold">
+                            {numberToKorean(assetTotals.realAssets.toString())}
+                          </span>
+                          <span className="text-xs sm:text-sm">실물자산</span>
+                        </div>
+                      </TabsTrigger>
+                      <TabsTrigger value="loans" className="flex-1 min-w-[120px]">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-lg font-bold">
+                            {numberToKorean(assetTotals.loans.toString())}
+                          </span>
+                          <span className="text-xs sm:text-sm">부채</span>
+                        </div>
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">저축</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold">
-                    {numberToKorean(assetTotals.savings.toString())}
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {savings.length}개 계좌
-                  </p>
-                </CardContent>
-              </Card>
+                  <TabsContent value="investments" className="mt-4">
+                    <div className="flex justify-end mb-3">
+                      <Link
+                        href="/assets/investments"
+                        className="flex items-center text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        상세 보기
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </Link>
+                    </div>
+                    <div className="space-y-3">
+                      {investments.length === 0 ? (
+                        <p className="text-center text-gray-500 dark:text-gray-400 py-4">
+                          투자 계좌가 없습니다.
+                        </p>
+                      ) : (
+                        investments.map((investment) => (
+                          <div
+                            key={investment.id}
+                            className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                          >
+                            <div>
+                              <h4 className="font-medium">{investment.accountName}</h4>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                {investment.accountType} · {investment.accountOwner}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-semibold">
+                                {numberToKorean((investment.currentValue ?? 0).toString())}
+                              </p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </TabsContent>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">실물자산</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold">
-                    {numberToKorean(assetTotals.realAssets.toString())}
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {realAssets.length}개 자산
-                  </p>
-                </CardContent>
-              </Card>
+                  <TabsContent value="savings" className="mt-4">
+                    <div className="flex justify-end mb-3">
+                      <Link
+                        href="/assets/savings"
+                        className="flex items-center text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        상세 보기
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </Link>
+                    </div>
+                    <div className="space-y-3">
+                      {savings.length === 0 ? (
+                        <p className="text-center text-gray-500 dark:text-gray-400 py-4">
+                          저축 계좌가 없습니다.
+                        </p>
+                      ) : (
+                        savings.map((saving) => (
+                          <div
+                            key={saving.id}
+                            className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                          >
+                            <div>
+                              <h4 className="font-medium">{saving.accountName}</h4>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                {saving.accountType} · {saving.accountOwner}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-semibold">
+                                {numberToKorean((saving.balance ?? 0).toString())}
+                              </p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </TabsContent>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">부채</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                    {numberToKorean(assetTotals.loans.toString())}
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {loans.length}개 대출
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+                  <TabsContent value="realAssets" className="mt-4">
+                    <div className="flex justify-end mb-3">
+                      <Link
+                        href="/assets/real-assets"
+                        className="flex items-center text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        상세 보기
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </Link>
+                    </div>
+                    <div className="space-y-3">
+                      {realAssets.length === 0 ? (
+                        <p className="text-center text-gray-500 dark:text-gray-400 py-4">
+                          실물자산이 없습니다.
+                        </p>
+                      ) : (
+                        realAssets.map((asset) => (
+                          <div
+                            key={asset.id}
+                            className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                          >
+                            <div>
+                              <h4 className="font-medium">{asset.assetName}</h4>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                {asset.assetType}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-semibold">
+                                {numberToKorean((asset.currentValue ?? 0).toString())}
+                              </p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="loans" className="mt-4">
+                    <div className="flex justify-end mb-3">
+                      <Link
+                        href="/assets/loans"
+                        className="flex items-center text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        상세 보기
+                        <ChevronRight className="w-4 h-4 ml-1" />
+                      </Link>
+                    </div>
+                    <div className="space-y-3">
+                      {loans.length === 0 ? (
+                        <p className="text-center text-gray-500 dark:text-gray-400 py-4">
+                          부채가 없습니다.
+                        </p>
+                      ) : (
+                        loans.map((loan) => (
+                          <div
+                            key={loan.id}
+                            className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                          >
+                            <div>
+                              <h4 className="font-medium">{loan.loanName}</h4>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                {loan.loanType} · {loan.lender}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-semibold">
+                                {numberToKorean((loan.amount ?? 0).toString())}
+                              </p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>
