@@ -205,36 +205,36 @@ export default function AssetsOverviewPage() {
                 <Tabs defaultValue="investments" className="w-full">
                   <div className="w-full overflow-x-auto">
                     <TabsList className="inline-flex w-auto min-w-full h-full">
-                      <TabsTrigger value="investments" className="flex-1 min-w-[120px]">
+                      <TabsTrigger value="investments" className="flex-1 min-w-[120px] py-2">
                         <div className="flex flex-col items-center gap-1">
                           <span className="text-lg font-bold">
                             {numberToKorean(assetTotals.investment.toString())}
                           </span>
-                          <span className="text-xs sm:text-sm">투자</span>
+                          <span>투자</span>
                         </div>
                       </TabsTrigger>
-                      <TabsTrigger value="savings" className="flex-1 min-w-[120px]">
+                      <TabsTrigger value="savings" className="flex-1 min-w-[120px] py-2">
                         <div className="flex flex-col items-center gap-1">
                           <span className="text-lg font-bold">
                             {numberToKorean(assetTotals.savings.toString())}
                           </span>
-                          <span className="text-xs sm:text-sm">저축</span>
+                          <span>저축</span>
                         </div>
                       </TabsTrigger>
-                      <TabsTrigger value="realAssets" className="flex-1 min-w-[120px]">
+                      <TabsTrigger value="realAssets" className="flex-1 min-w-[120px] py-2">
                         <div className="flex flex-col items-center gap-1">
                           <span className="text-lg font-bold">
                             {numberToKorean(assetTotals.realAssets.toString())}
                           </span>
-                          <span className="text-xs sm:text-sm">실물자산</span>
+                          <span>실물자산</span>
                         </div>
                       </TabsTrigger>
-                      <TabsTrigger value="loans" className="flex-1 min-w-[120px]">
+                      <TabsTrigger value="loans" className="flex-1 min-w-[120px] py-2">
                         <div className="flex flex-col items-center gap-1">
                           <span className="text-lg font-bold">
                             {numberToKorean(assetTotals.loans.toString())}
                           </span>
-                          <span className="text-xs sm:text-sm">부채</span>
+                          <span>부채</span>
                         </div>
                       </TabsTrigger>
                     </TabsList>
