@@ -11,7 +11,8 @@ import {
 } from "@web/components/ui/dialog";
 import { Label } from "@web/components/ui/label";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
-import { ACCOUNT_TYPES, DEFAULT_OWNERS } from "@web/features/investments/types/constants";
+import { ACCOUNT_TYPES } from "@web/features/investments/types/constants";
+import { DEFAULT_OWNERS } from "@web/types/account.consts";
 
 interface AddInvestmentModalProps {
   isOpen: boolean;

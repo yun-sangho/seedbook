@@ -1,5 +1,5 @@
 import type { InvestmentItem } from "@web/features/investments/types/types";
-import { TimeRange } from "@web/types/time.types";
+import { TimeRange } from "@web/types/time.consts";
 import { getDateRange } from "@web/utils/time-range-utils";
 
 // 각 계좌별 차트 데이터 포인트 인터페이스

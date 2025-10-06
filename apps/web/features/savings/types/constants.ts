@@ -30,45 +30,6 @@ export enum HousingAccountType {
 }
 
 /**
- * @deprecated Use SavingsCategory instead
- */
-export enum SavingsAccountType {
-  CHECKING = "입출금",
-  DEPOSIT = "예적금",
-  HOUSING = "주택청약",
-}
-
-/**
- * 통화 유형 열거형
- */
-export enum CurrencyType {
-  KRW = "원",
-}
-
-/**
- * 계좌 소유자 열거형 (기본 값)
- */
-export enum DefaultOwnerType {
-  SELF = "본인",
-  SPOUSE = "배우자",
-}
-
-/**
- * 저축 계좌 유형 목록
- */
-export const SAVINGS_ACCOUNT_TYPES = Object.values(SavingsAccountType);
-
-/**
- * 통화 옵션 목록
- */
-export const CURRENCY_OPTIONS = Object.values(CurrencyType);
-
-/**
- * 기본 계좌 소유자 목록
- */
-export const DEFAULT_OWNERS = Object.values(DefaultOwnerType);
-
-/**
  * 카테고리별 계좌 타입 그룹
  */
 export const ACCOUNT_TYPES_BY_CATEGORY = {

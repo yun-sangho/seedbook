@@ -13,9 +13,9 @@ import { Label } from "@web/components/ui/label";
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
 import {
   ACCOUNT_TYPES_BY_CATEGORY,
-  DEFAULT_OWNERS,
   SAVINGS_CATEGORIES,
 } from "@web/features/savings/types/constants";
+import { DEFAULT_OWNERS } from "@web/types/account.consts";
 
 interface AddSavingsModalProps {
   isOpen: boolean;

@@ -5,7 +5,7 @@ import { Button } from "@web/components/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@web/components/ui/chart";
 import { SavingsItem } from "@web/features/savings/types/types";
 import { prepareSavingsStackedAreaChartData } from "@web/features/savings/utils/savings-stacked-area-chart-utils";
-import { TimeRange } from "@web/types/time.types";
+import { TimeRange } from "@web/types/time.consts";
 import { numberToKorean } from "@web/utils/number-format";
 import { getTimeRangeLabel } from "@web/utils/time-range-utils";
 import { Area, AreaChart, XAxis, YAxis } from "recharts";

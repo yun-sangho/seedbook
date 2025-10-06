@@ -1,10 +1,11 @@
 "use client";
 
+import { CurrencyType, DefaultOwnerType } from "@web/types/account.consts";
 import { getNextColor as getNextColorUtil } from "@web/utils/color-selection";
 import { parseNumericString } from "@web/utils/number-format";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { ACCOUNT_COLORS, COLOR_FAMILIES, CurrencyType, DefaultOwnerType } from "../types/constants";
+import { ACCOUNT_COLORS, COLOR_FAMILIES } from "../types/constants";
 import { InvestmentItem, InvestmentRecord } from "../types/types";
 
 // 현재 날짜를 YYYY-MM-DD 형식으로 반환하는 헬퍼 함수

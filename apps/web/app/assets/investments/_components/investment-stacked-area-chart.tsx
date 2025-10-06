@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@web/components/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@web/components/ui/chart";
 import { prepareStackedAreaChartData, type InvestmentItem } from "@web/features/investments";
-import { TimeRange } from "@web/types/time.types";
+import { TimeRange } from "@web/types/time.consts";
 import { numberToKorean } from "@web/utils/number-format";
 import { getTimeRangeLabel } from "@web/utils/time-range-utils";
 import { Area, AreaChart, XAxis, YAxis } from "recharts";

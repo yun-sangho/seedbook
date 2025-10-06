@@ -1,5 +1,5 @@
 import type { SavingsItem } from "@web/features/savings/types/types";
-import { TimeRange } from "@web/types/time.types";
+import { TimeRange } from "@web/types/time.consts";
 import { describe, expect, it } from "vitest";
 import { prepareSavingsStackedAreaChartData } from "./savings-stacked-area-chart-utils";
 

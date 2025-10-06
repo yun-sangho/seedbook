@@ -1,5 +1,5 @@
+import { CurrencyType, DefaultOwnerType } from "@web/types/account.consts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CurrencyType, DefaultOwnerType } from "../types/constants";
 import { useInvestmentStore } from "./investment-store";
 
 // localStorage mock

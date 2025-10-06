@@ -1,4 +1,4 @@
-import { TimeRange } from "@web/types/time.types";
+import { TimeRange } from "@web/types/time.consts";
 
 /**
  * 시간 범위 라벨을 반환하는 함수
