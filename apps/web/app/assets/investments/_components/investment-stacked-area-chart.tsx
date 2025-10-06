@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { Button } from "@web/components/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@web/components/ui/chart";
-import { InvestmentItem } from "@web/features/investments/types/types";
-import { getTimeRangeLabel, TimeRange } from "@web/utils/investment-chart-utils";
+import { prepareStackedAreaChartData, type InvestmentItem } from "@web/features/investments";
+import { TimeRange } from "@web/types/time.types";
 import { numberToKorean } from "@web/utils/number-format";
-import { prepareStackedAreaChartData } from "@web/utils/stacked-area-chart-utils";
+import { getTimeRangeLabel } from "@web/utils/time-range-utils";
 import { Area, AreaChart, XAxis, YAxis } from "recharts";
 
 interface InvestmentStackedAreaChartProps {

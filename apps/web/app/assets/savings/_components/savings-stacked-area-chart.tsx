@@ -4,9 +4,10 @@ import { useState } from "react";
 import { Button } from "@web/components/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@web/components/ui/chart";
 import { SavingsItem } from "@web/features/savings/types/types";
-import { getTimeRangeLabel, TimeRange } from "@web/utils/investment-chart-utils";
+import { prepareSavingsStackedAreaChartData } from "@web/features/savings/utils/savings-stacked-area-chart-utils";
+import { TimeRange } from "@web/types/time.types";
 import { numberToKorean } from "@web/utils/number-format";
-import { prepareSavingsStackedAreaChartData } from "@web/utils/savings-stacked-area-chart-utils";
+import { getTimeRangeLabel } from "@web/utils/time-range-utils";
 import { Area, AreaChart, XAxis, YAxis } from "recharts";
 
 interface SavingsStackedAreaChartProps {

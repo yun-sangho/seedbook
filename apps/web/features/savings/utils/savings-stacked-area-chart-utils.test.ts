@@ -1,6 +1,6 @@
 import type { SavingsItem } from "@web/features/savings/types/types";
+import { TimeRange } from "@web/types/time.types";
 import { describe, expect, it } from "vitest";
-import { TimeRange } from "./investment-chart-utils";
 import { prepareSavingsStackedAreaChartData } from "./savings-stacked-area-chart-utils";
 
 describe("prepareSavingsStackedAreaChartData", () => {

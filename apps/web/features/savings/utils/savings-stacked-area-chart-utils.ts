@@ -1,32 +1,12 @@
-import { SavingsItem } from "@web/features/savings/types/types";
-import { TimeRange } from "@web/utils/investment-chart-utils";
+import type { SavingsItem } from "@web/features/savings/types/types";
+import { TimeRange } from "@web/types/time.types";
+import { getDateRange } from "@web/utils/time-range-utils";
 
 // 각 계좌별 차트 데이터 포인트 인터페이스
 export interface SavingsAccountChartData {
   date: string;
   dateFormatted: string;
   [accountKey: string]: number | string; // 동적으로 계좌별 값들이 추가됨
-}
-
-// 날짜를 필터링하는 함수
-function getDateRange(range: TimeRange): Date {
-  const now = new Date();
-  switch (range) {
-    case TimeRange.ONE_MONTH:
-      return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    case TimeRange.THREE_MONTHS:
-      return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-    case TimeRange.ONE_YEAR:
-      return new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-    case TimeRange.FIVE_YEARS:
-      return new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000);
-    case TimeRange.TEN_YEARS:
-      return new Date(now.getTime() - 10 * 365 * 24 * 60 * 60 * 1000);
-    case TimeRange.ALL:
-      return new Date(0); // 1970-01-01부터 모든 데이터
-    default:
-      return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-  }
 }
 
 // 특정 날짜에서 계좌의 잔액을 추정하는 함수
