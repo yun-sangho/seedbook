@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { SavingsStackedAreaChart } from "@web/components/savings-stacked-area-chart";
+import { SavingsStackedAreaChart } from "@web/app/assets/savings/_components/savings-stacked-area-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@web/components/ui/tabs";
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
