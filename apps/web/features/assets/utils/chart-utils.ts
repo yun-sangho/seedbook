@@ -62,11 +62,11 @@ const CHART_COLORS = [
  * 저축 항목에 대한 차트 데이터를 생성합니다.
  */
 export function prepareSavingsChartData(savings: SavingsItem[]): ChartData[] {
-  const validSavings = savings.filter((item) => item.amount > 0);
+  const validSavings = savings.filter((item) => item.balance > 0);
 
   return validSavings.map((item, index) => ({
     name: item.accountName,
-    amount: item.amount,
+    amount: item.balance,
     color: CHART_COLORS[(index + 4) % CHART_COLORS.length] || AssetColor.SAVINGS,
   }));
 }
@@ -121,13 +121,13 @@ export function prepareAssetsChartData(
   loans: LoanItem[]
 ): AssetType[] {
   // 유효한 항목만 필터링
-  const validSavings = savings.filter((item) => item.amount > 0);
+  const validSavings = savings.filter((item) => item.balance > 0);
   const validInvestments = investments.filter((item) => item.currentValue > 0);
   const validRealAssets = realAssets.filter((item) => item.currentValue > 0);
   const validLoans = loans.filter((item) => item.amount > 0);
 
   // 총 금액 계산
-  const totalSavings = validSavings.reduce((sum, item) => sum + item.amount, 0);
+  const totalSavings = validSavings.reduce((sum, item) => sum + item.balance, 0);
   const totalInvestments = validInvestments.reduce((sum, item) => sum + item.currentValue, 0);
   const totalRealAssets = validRealAssets.reduce((sum, item) => sum + item.currentValue, 0);
   const totalLoans = validLoans.reduce((sum, item) => sum + item.amount, 0);
@@ -206,7 +206,7 @@ export function calculateAssetTypeTotal(
   switch (assetCategory) {
     case AssetCategory.SAVINGS:
       return savings
-        ? savings.filter((item) => item.amount > 0).reduce((sum, item) => sum + item.amount, 0)
+        ? savings.filter((item) => item.balance > 0).reduce((sum, item) => sum + item.balance, 0)
         : 0;
     case AssetCategory.INVESTMENT:
       return investments

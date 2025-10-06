@@ -24,6 +24,7 @@ import {
   Building2,
   CreditCard,
   Home,
+  LineChart,
   ListChecks,
   PiggyBank,
   Target,
@@ -44,6 +45,11 @@ const assetItems = [
     title: "전체 자산",
     url: "/assets",
     icon: Wallet,
+  },
+  {
+    title: "자산 기록",
+    url: "/assets/progress",
+    icon: LineChart,
   },
   {
     title: "투자",

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { AppHeader } from "@web/components/app-header";
 import { AppSidebar } from "@web/components/app-sidebar";
+import { AutoProgressTracker } from "@web/components/auto-progress-tracker";
 import { ThemeProvider } from "@web/components/theme-provider";
 import { SidebarProvider } from "@web/components/ui/sidebar";
 import { cn } from "@web/lib/utils";
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           enableSystem
           disableTransitionOnChange
         >
+          <AutoProgressTracker />
           <SidebarProvider>
             <AppSidebar />
             <div className="w-full h-full">
