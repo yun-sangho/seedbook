@@ -1,6 +1,6 @@
 "use client";
 
-import { CurrencyType, DefaultOwnerType } from "@web/types/account.consts";
+import { CurrencyType } from "@web/types/account.consts";
 import { getNextColor as getNextColorUtil } from "@web/utils/color-selection";
 import { parseNumericString } from "@web/utils/number-format";
 import { create } from "zustand";
@@ -23,15 +23,11 @@ const getNextColor = (existingInvestments: InvestmentItem[]): string => {
 interface InvestmentState {
   // 데이터
   investments: InvestmentItem[];
-  customOwners: string[];
   lastInvestmentId: number;
 
   // UI 상태 (LocalStorage에 저장하지 않음)
   expandedFormId: number;
 
-  // 액션
-  addInvestment: () => void;
-  addInvestmentWithType: (accountType: string) => void;
   addInvestmentWithTypeAndOwner: (accountType: string, accountOwner: string) => void;
   removeInvestment: (id: number) => void;
   updateInvestment: (id: number, field: keyof InvestmentItem, value: string | number) => void;
@@ -50,7 +46,6 @@ interface InvestmentState {
     initialInvestment: number,
     currentValue: number
   ) => void;
-  addCustomOwner: (owner: string) => void;
   setExpandedFormId: (id: number) => void;
   reorderInvestments: (reorderedInvestments: InvestmentItem[]) => void;
   resetStore: () => void;
@@ -64,58 +59,6 @@ export const useInvestmentStore = create<InvestmentState>()(
       customOwners: [],
       lastInvestmentId: 1,
       expandedFormId: 1,
-
-      addInvestment: () => {
-        const { lastInvestmentId, investments } = get();
-        const newId = lastInvestmentId + 1;
-        const newColor = getNextColor(investments);
-
-        set({
-          investments: [
-            {
-              id: newId,
-              accountName: `투자 계좌 #${newId}`,
-              accountType: "",
-              accountOwner: DefaultOwnerType.SELF,
-              currency: CurrencyType.KRW,
-              initialInvestment: 0,
-              currentValue: 0,
-              records: [],
-              note: "",
-              color: newColor,
-            },
-            ...investments,
-          ],
-          lastInvestmentId: newId,
-          expandedFormId: newId, // 새로 추가된 폼을 자동으로 펼침
-        });
-      },
-
-      addInvestmentWithType: (accountType: string) => {
-        const { lastInvestmentId, investments } = get();
-        const newId = lastInvestmentId + 1;
-        const newColor = getNextColor(investments);
-
-        set({
-          investments: [
-            {
-              id: newId,
-              accountName: accountType || `투자 계좌 #${newId}`,
-              accountType: accountType,
-              accountOwner: DefaultOwnerType.SELF,
-              currency: CurrencyType.KRW,
-              initialInvestment: 0,
-              currentValue: 0,
-              records: [],
-              note: "",
-              color: newColor,
-            },
-            ...investments,
-          ],
-          lastInvestmentId: newId,
-          expandedFormId: newId, // 새로 추가된 폼을 자동으로 펼침
-        });
-      },
 
       addInvestmentWithTypeAndOwner: (accountType: string, accountOwner: string) => {
         const { lastInvestmentId, investments } = get();
@@ -356,15 +299,6 @@ export const useInvestmentStore = create<InvestmentState>()(
         });
       },
 
-      addCustomOwner: (owner) => {
-        // 이미 있는 소유자면 추가하지 않음
-        if (get().customOwners.includes(owner)) return;
-
-        set((state) => ({
-          customOwners: [...state.customOwners, owner],
-        }));
-      },
-
       setExpandedFormId: (id) => {
         set({ expandedFormId: id });
       },
@@ -376,7 +310,6 @@ export const useInvestmentStore = create<InvestmentState>()(
       resetStore: () => {
         set({
           investments: [],
-          customOwners: [],
           lastInvestmentId: 1,
           expandedFormId: 1,
         });
@@ -388,7 +321,6 @@ export const useInvestmentStore = create<InvestmentState>()(
       // UI 관련 상태는 지속성 저장에서 제외 (성능 최적화)
       partialize: (state) => ({
         investments: state.investments,
-        customOwners: state.customOwners,
         lastInvestmentId: state.lastInvestmentId,
         // expandedFormId는 제외
       }),

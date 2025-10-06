@@ -12,15 +12,12 @@ import type { SavingsItem, SavingsRecord } from "../types/types";
 interface SavingsState {
   // 데이터 (localStorage에 저장)
   savings: SavingsItem[];
-  customOwners: string[];
   lastSavingsId: number;
 
   // UI 상태 (저장 안됨)
   expandedFormId: number;
 
   // 계좌 관리 액션
-  addSavings: () => void;
-  addSavingsWithType: (type: string) => void;
   addSavingsWithTypeAndOwner: (type: string, owner: string) => void;
   removeSavings: (id: number) => void;
   updateSavings: <K extends keyof SavingsItem>(id: number, field: K, value: SavingsItem[K]) => void;
@@ -29,9 +26,6 @@ interface SavingsState {
   // 히스토리 관리 액션
   addHistoryRecord: (id: number, date: string, balance: number) => void;
   removeSavingsHistoryRecord: (id: number, date: string) => void;
-
-  // 소유자 관리
-  addCustomOwner: (owner: string) => void;
 
   // UI 상태
   setExpandedFormId: (id: number) => void;
@@ -66,58 +60,6 @@ export const useSavingsStore = create<SavingsState>()(
   persist(
     (set) => ({
       ...initialState,
-
-      // 빈 계좌 추가
-      addSavings: () =>
-        set((state) => {
-          const newId = state.lastSavingsId + 1;
-          const newColor = getNextColor(state.savings);
-
-          return {
-            savings: [
-              ...state.savings,
-              {
-                id: newId,
-                accountName: `저축 계좌 #${newId}`,
-                accountType: "",
-                accountOwner: "본인",
-                currency: "원",
-                balance: 0,
-                records: [],
-                note: "",
-                color: newColor,
-              },
-            ],
-            lastSavingsId: newId,
-            expandedFormId: newId,
-          };
-        }),
-
-      // 유형 지정 계좌 추가
-      addSavingsWithType: (type: string) =>
-        set((state) => {
-          const newId = state.lastSavingsId + 1;
-          const newColor = getNextColor(state.savings);
-
-          return {
-            savings: [
-              ...state.savings,
-              {
-                id: newId,
-                accountName: `${type} 계좌`,
-                accountType: type,
-                accountOwner: "본인",
-                currency: "원",
-                balance: 0,
-                records: [],
-                note: "",
-                color: newColor,
-              },
-            ],
-            lastSavingsId: newId,
-            expandedFormId: newId,
-          };
-        }),
 
       // 유형+소유자 지정 계좌 추가
       addSavingsWithTypeAndOwner: (type: string, owner: string) =>
@@ -269,17 +211,6 @@ export const useSavingsStore = create<SavingsState>()(
           }),
         })),
 
-      // 사용자 정의 소유자 추가
-      addCustomOwner: (owner) =>
-        set((state) => {
-          if (state.customOwners.includes(owner)) {
-            return state; // 이미 존재하면 변경 없음
-          }
-          return {
-            customOwners: [...state.customOwners, owner],
-          };
-        }),
-
       // 확장된 폼 ID 설정
       setExpandedFormId: (id) =>
         set({
@@ -294,7 +225,6 @@ export const useSavingsStore = create<SavingsState>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         savings: state.savings,
-        customOwners: state.customOwners,
         lastSavingsId: state.lastSavingsId,
         // expandedFormId는 UI 상태이므로 제외
       }),
