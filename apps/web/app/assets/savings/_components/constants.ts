@@ -1,4 +1,4 @@
-export enum InvestmentTab {
+export enum SavingtTab {
   STATISTICS = "statistics",
   ACOUNTS = "accounts",
 }

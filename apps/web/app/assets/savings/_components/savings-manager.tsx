@@ -9,12 +9,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@web/components/ui/tab
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
 import { Plus } from "lucide-react";
 import { AddSavingsModal } from "./add-savings-modal";
+import { SavingtTab } from "./constants";
 import { SavingsItemComponent } from "./savings-item";
 import { SavingsSummary } from "./savings-summary";
 
 export function SavingsManager() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("summary");
+  const [activeTab, setActiveTab] = useState<SavingtTab>(SavingtTab.ACOUNTS);
 
   const savings = useSavingsStore((state) => state.savings);
   const updateSavings = useSavingsStore((state) => state.updateSavings);
@@ -41,7 +42,7 @@ export function SavingsManager() {
         <AddSavingsModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
-          onSavingsAdded={() => setActiveTab("details")}
+          onSavingsAdded={() => setActiveTab(SavingtTab.ACOUNTS)}
         />
       </>
     );
@@ -58,16 +59,20 @@ export function SavingsManager() {
 
   // 계좌 추가 후 핸들러
   const handleSavingsAdded = () => {
-    setActiveTab("details"); // 계좌 상세 탭으로 자동 전환
+    setActiveTab(SavingtTab.ACOUNTS); // 계좌 상세 탭으로 자동 전환
   };
 
   return (
     <>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full gap-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as SavingtTab)}
+        className="w-full gap-4"
+      >
         <div className="flex items-center justify-between">
           <TabsList>
-            <TabsTrigger value="summary">요약</TabsTrigger>
-            <TabsTrigger value="details">계좌 상세</TabsTrigger>
+            <TabsTrigger value={SavingtTab.ACOUNTS}>계좌 관리</TabsTrigger>
+            <TabsTrigger value={SavingtTab.STATISTICS}>요약</TabsTrigger>
           </TabsList>
 
           <Button onClick={() => setIsModalOpen(true)}>
@@ -77,12 +82,12 @@ export function SavingsManager() {
         </div>
 
         {/* 요약 탭 */}
-        <TabsContent value="summary">
+        <TabsContent value={SavingtTab.STATISTICS}>
           <SavingsSummary />
         </TabsContent>
 
         {/* 계좌 상세 탭 */}
-        <TabsContent value="details" className="space-y-4">
+        <TabsContent value={SavingtTab.ACOUNTS} className="space-y-4">
           <SortableList
             items={savings}
             onReorder={reorderSavings}

@@ -34,7 +34,7 @@ function EmptyState({ onAddAccount }: { onAddAccount: () => void }) {
 
 export function InvestmentManager() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<InvestmentTab>(InvestmentTab.SUMMARY);
+  const [activeTab, setActiveTab] = useState<InvestmentTab>(InvestmentTab.ACOUNTS);
 
   const investments = useInvestmentStore((state) => state.investments);
   const updateInvestment = useInvestmentStore((state) => state.updateInvestment);
@@ -71,7 +71,7 @@ export function InvestmentManager() {
   };
 
   const handleInvestmentAdded = () => {
-    setActiveTab(InvestmentTab.DETAILS);
+    setActiveTab(InvestmentTab.ACOUNTS);
   };
 
   // Show empty state when no investments
@@ -96,8 +96,8 @@ export function InvestmentManager() {
     >
       <div className="w-full flex justify-between">
         <TabsList>
-          <TabsTrigger value={InvestmentTab.SUMMARY}>요약</TabsTrigger>
-          <TabsTrigger value={InvestmentTab.DETAILS}>계좌 상세</TabsTrigger>
+          <TabsTrigger value={InvestmentTab.ACOUNTS}>계좌 관리</TabsTrigger>
+          <TabsTrigger value={InvestmentTab.STATISTICS}>통계</TabsTrigger>
         </TabsList>
         <Button onClick={openAddAccountModal} className="ml-auto">
           <Plus className="h-4 w-4" />
@@ -105,11 +105,11 @@ export function InvestmentManager() {
         </Button>
       </div>
 
-      <TabsContent value={InvestmentTab.SUMMARY}>
+      <TabsContent value={InvestmentTab.STATISTICS}>
         <InvestmentSummary investments={investments} />
       </TabsContent>
 
-      <TabsContent value={InvestmentTab.DETAILS}>
+      <TabsContent value={InvestmentTab.ACOUNTS}>
         <SortableList
           items={investments}
           onReorder={reorderInvestments}
