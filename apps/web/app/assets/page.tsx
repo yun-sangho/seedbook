@@ -175,6 +175,7 @@ export default function AssetsOverviewPage() {
               <AssetTabContent
                 key={tab.value}
                 value={tab.value}
+                total={tab.total}
                 detailUrl={tab.detailUrl}
                 items={tab.items}
                 emptyMessage={tab.emptyMessage}

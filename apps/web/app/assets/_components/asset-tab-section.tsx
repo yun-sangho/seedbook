@@ -38,13 +38,18 @@ export function AssetTabTrigger({ value, label }: { value: string; label: string
 
 export function AssetTabContent({
   value,
+  total,
   detailUrl,
   items,
   emptyMessage,
-}: Omit<AssetTabSectionProps, "label" | "total">) {
+}: Omit<AssetTabSectionProps, "label">) {
   return (
     <TabsContent value={value} className="mt-4">
-      <div className="flex justify-end mb-3">
+      <div className="flex justify-between items-center mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm">총액</span>
+          <span className="text-xl font-bold">{numberToKorean(total.toString())}</span>
+        </div>
         <Link
           href={detailUrl}
           className="flex items-center text-sm text-blue-600 dark:text-blue-400 hover:underline"
