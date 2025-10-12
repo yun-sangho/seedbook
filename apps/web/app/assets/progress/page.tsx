@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
 import { useProgressStore } from "@web/features/assets/stores/progress-store";
-import { type AssetProgressView } from "@web/features/assets/types/progress";
-import { generateCumulativeProgressPoints } from "@web/features/assets/utils/progress-utils";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { useLoansStore } from "@web/features/loans/stores/loans-store";
 import { useRealAssetsStore } from "@web/features/real-assets/stores/real-assets-store";
@@ -21,10 +19,8 @@ export default function AssetProgressPage() {
   const loans = useLoansStore((state) => state.loans);
 
   const progressPoints = useProgressStore((state) => state.progressPoints);
-  const setProgressPoints = useProgressStore((state) => state.setProgressPoints);
+  // const setProgressPoints = useProgressStore((state) => state.setProgressPoints);
   const addProgressPoint = useProgressStore((state) => state.addProgressPoint);
-
-  const [selectedView, setSelectedView] = useState<AssetProgressView>("netAssets");
 
   // 현재 총액 계산
   const currentTotals = useMemo(() => {
@@ -41,30 +37,14 @@ export default function AssetProgressPage() {
     };
   }, [investments, savings, realAssets, loans]);
 
-  // 자산 변경 시 자동으로 progress points 업데이트
-  useEffect(() => {
-    const generatedPoints = generateCumulativeProgressPoints(
-      investments,
-      savings,
-      realAssets,
-      loans
-    );
-    setProgressPoints(generatedPoints);
-  }, [investments, savings, realAssets, loans, setProgressPoints]);
-
   return (
     <div className="w-full h-full max-w-6xl p-4 space-y-6">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-3xl font-bold">자산 기록</h1>
-        <AddProgressPointDialog currentTotals={currentTotals} onAdd={addProgressPoint} />
       </div>
 
       {/* 차트 */}
-      <AssetProgressChart
-        progressPoints={progressPoints}
-        selectedView={selectedView}
-        onViewChange={setSelectedView}
-      />
+      <AssetProgressChart progressPoints={progressPoints} />
 
       {/* 데이터 테이블 */}
       <Card>
@@ -72,7 +52,13 @@ export default function AssetProgressPage() {
           <CardTitle>자산 기록 상세</CardTitle>
         </CardHeader>
         <CardContent>
-          <ProgressDataTable columns={progressColumns} data={[...progressPoints].reverse()} />
+          <ProgressDataTable
+            columns={progressColumns}
+            data={[...progressPoints].reverse()}
+            headerAction={
+              <AddProgressPointDialog currentTotals={currentTotals} onAdd={addProgressPoint} />
+            }
+          />
         </CardContent>
       </Card>
     </div>

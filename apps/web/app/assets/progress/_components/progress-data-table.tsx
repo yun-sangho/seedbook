@@ -23,9 +23,14 @@ import {
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  headerAction?: React.ReactNode;
 }
 
-export function ProgressDataTable<TData, TValue>({ columns, data }: DataTableProps<TData, TValue>) {
+export function ProgressDataTable<TData, TValue>({
+  columns,
+  data,
+  headerAction,
+}: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [pagination, setPagination] = useState({
     pageIndex: 0,
@@ -48,6 +53,7 @@ export function ProgressDataTable<TData, TValue>({ columns, data }: DataTablePro
 
   return (
     <div className="space-y-4">
+      {headerAction && <div className="flex justify-end">{headerAction}</div>}
       <div className="rounded-md border">
         <Table>
           <TableHeader>

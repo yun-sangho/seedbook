@@ -36,7 +36,7 @@ describe("auto-progress-tracker", () => {
     cleanup = startAutoProgressTracking();
 
     // 투자 추가
-    useInvestmentStore.getState().addInvestment();
+    useInvestmentStore.getState().addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
     const investments = useInvestmentStore.getState().investments;
     const investmentId = investments[0]?.id || 1;
 
@@ -57,7 +57,7 @@ describe("auto-progress-tracker", () => {
     cleanup = startAutoProgressTracking();
 
     // 저축 추가
-    useSavingsStore.getState().addSavings();
+    useSavingsStore.getState().addSavingsWithTypeAndOwner("예금", "홍길동");
     const savings = useSavingsStore.getState().savings;
     const savingsId = savings[0]?.id || 1;
 
@@ -120,14 +120,14 @@ describe("auto-progress-tracker", () => {
     cleanup = startAutoProgressTracking();
 
     // 투자 추가
-    useInvestmentStore.getState().addInvestment();
+    useInvestmentStore.getState().addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
     const investments = useInvestmentStore.getState().investments;
     const investmentId = investments[0]?.id || 1;
     useInvestmentStore.getState().updateInvestment(investmentId, "currentValue", 100000);
 
     // 100ms 후 저축 추가
     vi.advanceTimersByTime(100);
-    useSavingsStore.getState().addSavings();
+    useSavingsStore.getState().addSavingsWithTypeAndOwner("예금", "홍길동");
     const savings = useSavingsStore.getState().savings;
     const savingsId = savings[0]?.id || 1;
     useSavingsStore.getState().updateSavings(savingsId, "balance", 50000);
@@ -156,7 +156,7 @@ describe("auto-progress-tracker", () => {
     cleanup = startAutoProgressTracking();
 
     // 첫 번째 변경
-    useInvestmentStore.getState().addInvestment();
+    useInvestmentStore.getState().addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
     const investments = useInvestmentStore.getState().investments;
     const investmentId = investments[0]?.id || 1;
     useInvestmentStore.getState().updateInvestment(investmentId, "currentValue", 100000);
@@ -182,7 +182,7 @@ describe("auto-progress-tracker", () => {
     cleanup = undefined;
 
     // 변경사항 발생
-    useInvestmentStore.getState().addInvestment();
+    useInvestmentStore.getState().addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
     const investments = useInvestmentStore.getState().investments;
     const investmentId = investments[0]?.id || 1;
     useInvestmentStore.getState().updateInvestment(investmentId, "currentValue", 100000);
@@ -198,7 +198,7 @@ describe("auto-progress-tracker", () => {
     cleanup = startAutoProgressTracking();
 
     // 투자 추가 (currentValue는 0)
-    useInvestmentStore.getState().addInvestment();
+    useInvestmentStore.getState().addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
     const investments = useInvestmentStore.getState().investments;
     const investmentId = investments[0]?.id || 1;
 
@@ -210,5 +210,158 @@ describe("auto-progress-tracker", () => {
     // progress point가 생성되지 않아야 함
     const points = useProgressStore.getState().progressPoints;
     expect(points.length).toBe(0);
+  });
+
+  it("계좌 삭제 시 이전 날짜의 progress point들은 유지되어야 함", async () => {
+    cleanup = startAutoProgressTracking();
+
+    // 테스트 시작 날짜 설정
+    vi.setSystemTime(new Date("2024-01-01"));
+
+    // 첫 번째 날짜에 투자 추가
+    useInvestmentStore.getState().addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+    const investments = useInvestmentStore.getState().investments;
+    const investmentId = investments[0]?.id || 1;
+    useInvestmentStore.getState().updateInvestment(investmentId, "currentValue", 100000);
+
+    vi.advanceTimersByTime(500);
+
+    // 날짜 변경 (다음 날로)
+    vi.setSystemTime(new Date("2024-01-02"));
+
+    // 두 번째 날짜에 저축 추가
+    useSavingsStore.getState().addSavingsWithTypeAndOwner("예금", "홍길동");
+    const savings = useSavingsStore.getState().savings;
+    const savingsId = savings[0]?.id || 1;
+    useSavingsStore.getState().updateSavings(savingsId, "balance", 50000);
+
+    vi.advanceTimersByTime(500);
+
+    // 세 번째 날짜에 실물자산 추가
+    vi.setSystemTime(new Date("2024-01-03"));
+    useRealAssetsStore.getState().addRealAsset();
+    const realAssets = useRealAssetsStore.getState().realAssets;
+    const assetId = realAssets[0]?.id || 1;
+    useRealAssetsStore.getState().updateRealAsset(assetId, "currentValue", 200000);
+
+    vi.advanceTimersByTime(500);
+
+    // progress point 3개 생성 확인
+    let points = useProgressStore.getState().progressPoints;
+    expect(points.length).toBe(3);
+    expect(points[0]?.date).toBe("2024-01-01");
+    expect(points[0]?.investments).toBe(100000);
+    expect(points[1]?.date).toBe("2024-01-02");
+    expect(points[1]?.savings).toBe(50000);
+    expect(points[2]?.date).toBe("2024-01-03");
+    expect(points[2]?.realAssets).toBe(200000);
+
+    // 네 번째 날짜에 투자 계좌 삭제
+    vi.setSystemTime(new Date("2024-01-04"));
+    useInvestmentStore.getState().removeInvestment(investmentId);
+
+    vi.advanceTimersByTime(500);
+
+    // 계좌 삭제 시 새로운 progress point가 생성되지만
+    // 이전 날짜의 progress point들은 유지되어야 함
+    points = useProgressStore.getState().progressPoints;
+    expect(points.length).toBe(4); // 새로운 progress point가 추가됨
+    expect(points[0]?.date).toBe("2024-01-01"); // 첫 번째 날짜 유지
+    expect(points[0]?.investments).toBe(100000); // 기존 값 유지
+    expect(points[1]?.date).toBe("2024-01-02"); // 두 번째 날짜 유지
+    expect(points[1]?.savings).toBe(50000); // 기존 값 유지
+    expect(points[2]?.date).toBe("2024-01-03"); // 세 번째 날짜 유지
+    expect(points[2]?.realAssets).toBe(200000); // 기존 값 유지
+    expect(points[3]?.date).toBe("2024-01-04"); // 새로운 progress point
+    expect(points[3]?.investments).toBe(0); // 삭제 후 0
+    expect(points[3]?.savings).toBe(50000); // 기존 유지
+    expect(points[3]?.realAssets).toBe(200000); // 기존 유지
+  });
+
+  it("저축 계좌 삭제 시 progress point가 업데이트된다", async () => {
+    cleanup = startAutoProgressTracking();
+
+    // 저축 추가 및 금액 설정
+    useSavingsStore.getState().addSavingsWithTypeAndOwner("예금", "홍길동");
+    const savings = useSavingsStore.getState().savings;
+    const savingsId = savings[0]?.id || 1;
+    useSavingsStore.getState().updateSavings(savingsId, "balance", 50000);
+
+    vi.advanceTimersByTime(500);
+
+    // progress point 생성 확인
+    let points = useProgressStore.getState().progressPoints;
+    expect(points.length).toBe(1);
+    expect(points[0]?.savings).toBe(50000);
+    expect(points[0]?.totalAssets).toBe(50000);
+
+    // 저축 계좌 삭제
+    useSavingsStore.getState().removeSavings(savingsId);
+
+    vi.advanceTimersByTime(500);
+
+    // 계좌 삭제 시 새로운 progress point가 생성되어 기존 값이 업데이트됨
+    points = useProgressStore.getState().progressPoints;
+    expect(points.length).toBe(1);
+    expect(points[0]?.savings).toBe(0); // 삭제 후 0으로 업데이트
+    expect(points[0]?.totalAssets).toBe(0); // 삭제 후 0으로 업데이트
+  });
+
+  it("실물자산 삭제 시 progress point가 업데이트된다", async () => {
+    cleanup = startAutoProgressTracking();
+
+    // 실물자산 추가 및 금액 설정
+    useRealAssetsStore.getState().addRealAsset();
+    const realAssets = useRealAssetsStore.getState().realAssets;
+    const assetId = realAssets[0]?.id || 1;
+    useRealAssetsStore.getState().updateRealAsset(assetId, "currentValue", 200000);
+
+    vi.advanceTimersByTime(500);
+
+    // progress point 생성 확인
+    let points = useProgressStore.getState().progressPoints;
+    expect(points.length).toBe(1);
+    expect(points[0]?.realAssets).toBe(200000);
+    expect(points[0]?.totalAssets).toBe(200000);
+
+    // 실물자산 삭제
+    useRealAssetsStore.getState().removeRealAsset(assetId);
+
+    vi.advanceTimersByTime(500);
+
+    // 계좌 삭제 시 새로운 progress point가 생성되어 기존 값이 업데이트됨
+    points = useProgressStore.getState().progressPoints;
+    expect(points.length).toBe(1);
+    expect(points[0]?.realAssets).toBe(0); // 삭제 후 0으로 업데이트
+    expect(points[0]?.totalAssets).toBe(0); // 삭제 후 0으로 업데이트
+  });
+
+  it("대출 삭제 시 progress point가 업데이트된다", async () => {
+    cleanup = startAutoProgressTracking();
+
+    // 대출 추가 및 금액 설정
+    useLoansStore.getState().addLoan();
+    const loans = useLoansStore.getState().loans;
+    const loanId = loans[0]?.id || 1;
+    useLoansStore.getState().updateLoan(loanId, "amount", 30000);
+
+    vi.advanceTimersByTime(500);
+
+    // progress point 생성 확인
+    let points = useProgressStore.getState().progressPoints;
+    expect(points.length).toBe(1);
+    expect(points[0]?.loans).toBe(30000);
+    expect(points[0]?.netAssets).toBe(-30000);
+
+    // 대출 삭제
+    useLoansStore.getState().removeLoan(loanId);
+
+    vi.advanceTimersByTime(500);
+
+    // 계좌 삭제 시 새로운 progress point가 생성되어 기존 값이 업데이트됨
+    points = useProgressStore.getState().progressPoints;
+    expect(points.length).toBe(1);
+    expect(points[0]?.loans).toBe(0); // 삭제 후 0으로 업데이트
+    expect(points[0]?.netAssets).toBe(0); // 삭제 후 0으로 업데이트
   });
 });

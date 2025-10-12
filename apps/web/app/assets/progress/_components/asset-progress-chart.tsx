@@ -1,44 +1,49 @@
 "use client";
 
-import { useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
+import { useMemo, useState } from "react";
+import { Button } from "@web/components/ui/button";
+import { Card, CardContent, CardHeader } from "@web/components/ui/card";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@web/components/ui/select";
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@web/components/ui/chart";
+import { Tabs, TabsList, TabsTrigger } from "@web/components/ui/tabs";
 import {
   ASSET_PROGRESS_VIEW_LABELS,
   type AssetProgressPoint,
   type AssetProgressView,
 } from "@web/features/assets/types/progress";
+import { TimeRange } from "@web/types/time.consts";
 import { numberToKorean } from "@web/utils/number-format";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { getDateRange, getTimeRangeLabel } from "@web/utils/time-range-utils";
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
 interface AssetProgressChartProps {
   progressPoints: AssetProgressPoint[];
-  selectedView: AssetProgressView;
-  onViewChange: (view: AssetProgressView) => void;
 }
 
-export function AssetProgressChart({
-  progressPoints,
-  selectedView,
-  onViewChange,
-}: AssetProgressChartProps) {
+export function AssetProgressChart({ progressPoints }: AssetProgressChartProps) {
+  const [selectedView, setSelectedView] = useState<AssetProgressView>("netAssets");
+  const [selectedRange, setSelectedRange] = useState<TimeRange>(TimeRange.ALL);
+
+  // 날짜 범위에 따라 progressPoints 필터링
+  const filteredPoints = useMemo(() => {
+    if (selectedRange === TimeRange.ALL) {
+      return progressPoints;
+    }
+
+    const cutoffDate = getDateRange(selectedRange);
+    return progressPoints.filter((point) => {
+      const pointDate = new Date(point.date);
+      return pointDate >= cutoffDate;
+    });
+  }, [progressPoints, selectedRange]);
+
   // 차트 데이터 준비
   const chartData = useMemo(() => {
-    return progressPoints.map((point) => {
+    return filteredPoints.map((point, index) => {
       const date = new Date(point.date);
       const dateFormatted = isNaN(date.getTime())
         ? point.date
@@ -48,17 +53,29 @@ export function AssetProgressChart({
             day: "numeric",
           });
 
+      const currentValue = point[selectedView];
+      const previousValue = index > 0 ? (filteredPoints[index - 1]?.[selectedView] ?? 0) : 0;
+      const change = index > 0 ? currentValue - previousValue : 0;
+      const changePercent = index > 0 && previousValue !== 0 ? (change / previousValue) * 100 : 0;
+
       return {
         date: point.date,
-        value: point[selectedView],
+        value: currentValue,
+        previousValue,
+        change,
+        changePercent,
         dateFormatted,
+        // 모든 뷰의 값 포함
+        totalAssets: point.totalAssets,
+        netAssets: point.netAssets,
+        loans: point.loans,
       };
     });
-  }, [progressPoints, selectedView]);
+  }, [filteredPoints, selectedView]);
 
   // 통계 계산
   const stats = useMemo(() => {
-    if (progressPoints.length === 0) {
+    if (filteredPoints.length === 0) {
       return {
         current: 0,
         initial: 0,
@@ -67,8 +84,8 @@ export function AssetProgressChart({
       };
     }
 
-    const latest = progressPoints[progressPoints.length - 1];
-    const first = progressPoints[0];
+    const latest = filteredPoints[filteredPoints.length - 1];
+    const first = filteredPoints[0];
 
     if (!latest || !first) {
       return {
@@ -90,25 +107,29 @@ export function AssetProgressChart({
       change,
       changePercent,
     };
-  }, [progressPoints, selectedView]);
+  }, [filteredPoints, selectedView]);
+
+  // ChartConfig 정의
+  const chartConfig: ChartConfig = {
+    value: {
+      label: ASSET_PROGRESS_VIEW_LABELS[selectedView],
+    },
+  };
 
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>{ASSET_PROGRESS_VIEW_LABELS[selectedView]} 추이</CardTitle>
-          <Select value={selectedView} onValueChange={(v) => onViewChange(v as AssetProgressView)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
+          {/* <CardTitle>{ASSET_PROGRESS_VIEW_LABELS[selectedView]} 추이</CardTitle> */}
+          <Tabs value={selectedView} onValueChange={(v) => setSelectedView(v as AssetProgressView)}>
+            <TabsList>
               {Object.entries(ASSET_PROGRESS_VIEW_LABELS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
+                <TabsTrigger key={value} value={value}>
                   {label}
-                </SelectItem>
+                </TabsTrigger>
               ))}
-            </SelectContent>
-          </Select>
+            </TabsList>
+          </Tabs>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -148,57 +169,157 @@ export function AssetProgressChart({
             기록된 자산 데이터가 없습니다.
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={400}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="dateFormatted"
-                tick={{ fontSize: 12 }}
-                angle={-45}
-                textAnchor="end"
-                height={80}
-              />
+          <ChartContainer config={chartConfig} className="h-[400px] w-full">
+            <LineChart data={chartData} accessibilityLayer>
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="dateFormatted" hide={true} tickLine={false} axisLine={false} />
               <YAxis
                 tick={{ fontSize: 12 }}
                 tickFormatter={(value) => {
-                  if (value >= 100000000) {
-                    return `${(value / 100000000).toFixed(0)}억`;
-                  }
-                  if (value >= 10000) {
-                    return `${(value / 10000).toFixed(0)}만`;
-                  }
-                  return value.toString();
+                  return numberToKorean(value.toString());
                 }}
               />
-              <Tooltip
-                content={({ active, payload }) => {
-                  if (active && payload && payload.length && payload[0]) {
-                    const data = payload[0];
-                    return (
-                      <div className="bg-background border rounded-lg p-3 shadow-md">
-                        <p className="text-sm font-medium mb-1">
-                          {data.payload?.dateFormatted ?? ""}
-                        </p>
-                        <p className="text-lg font-bold text-blue-600">
-                          {numberToKorean(data.value?.toString() ?? "0")}
-                        </p>
-                      </div>
-                    );
-                  }
-                  return null;
-                }}
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={(value, payload) => {
+                      if (payload && payload.length > 0) {
+                        const data = payload[0]?.payload;
+                        return data?.dateFormatted ?? value;
+                      }
+                      return value;
+                    }}
+                    formatter={(value, name, item) => {
+                      const data = item.payload;
+                      const hasChange = data.change !== undefined && data.change !== 0;
+
+                      // 현재 뷰에 따라 보여줄 다른 메트릭 결정
+                      const otherMetrics: Array<{ label: string; value: number }> = [];
+                      if (selectedView === "totalAssets") {
+                        otherMetrics.push(
+                          { label: ASSET_PROGRESS_VIEW_LABELS.netAssets, value: data.netAssets },
+                          { label: ASSET_PROGRESS_VIEW_LABELS.loans, value: data.loans }
+                        );
+                      } else if (selectedView === "netAssets") {
+                        otherMetrics.push(
+                          {
+                            label: ASSET_PROGRESS_VIEW_LABELS.totalAssets,
+                            value: data.totalAssets,
+                          },
+                          { label: ASSET_PROGRESS_VIEW_LABELS.loans, value: data.loans }
+                        );
+                      } else if (selectedView === "loans") {
+                        otherMetrics.push(
+                          {
+                            label: ASSET_PROGRESS_VIEW_LABELS.totalAssets,
+                            value: data.totalAssets,
+                          },
+                          { label: ASSET_PROGRESS_VIEW_LABELS.netAssets, value: data.netAssets }
+                        );
+                      }
+
+                      return (
+                        <div className="flex w-full flex-col gap-2">
+                          {/* 현재 값 */}
+                          <div className="flex w-full items-center gap-2">
+                            <div
+                              className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+                              style={{ backgroundColor: "hsl(var(--chart-1))" }}
+                            />
+                            <span className="text-muted-foreground flex-1">
+                              {ASSET_PROGRESS_VIEW_LABELS[selectedView]}
+                            </span>
+                            <span className="font-mono font-medium tabular-nums text-foreground">
+                              {numberToKorean(value.toString())}
+                            </span>
+                          </div>
+
+                          {/* 변화량 정보 */}
+                          {hasChange && (
+                            <div className="flex w-full flex-col gap-1 border-t pt-2">
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-xs text-muted-foreground">전 지점 대비</span>
+                                <span
+                                  className={`text-sm font-semibold tabular-nums ${
+                                    data.change >= 0 ? "text-green-600" : "text-red-600"
+                                  }`}
+                                >
+                                  {data.change >= 0 ? "+" : ""}
+                                  {numberToKorean(data.change?.toString() ?? "0")}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-xs text-muted-foreground">증감률</span>
+                                <span
+                                  className={`text-sm font-semibold tabular-nums ${
+                                    data.changePercent >= 0 ? "text-green-600" : "text-red-600"
+                                  }`}
+                                >
+                                  {data.changePercent >= 0 ? "+" : ""}
+                                  {data.changePercent?.toFixed(2)}%
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 다른 메트릭 */}
+                          {otherMetrics.length > 0 && (
+                            <div className="flex w-full flex-col gap-1 border-t pt-2">
+                              {otherMetrics.map((metric) => (
+                                <div
+                                  key={metric.label}
+                                  className="flex items-center justify-between gap-4"
+                                >
+                                  <span className="text-xs text-muted-foreground">
+                                    {metric.label}
+                                  </span>
+                                  <span className="text-sm tabular-nums text-foreground">
+                                    {numberToKorean(metric.value?.toString() ?? "0")}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }}
+                  />
+                }
               />
               <Line
                 type="monotone"
                 dataKey="value"
-                stroke="#3b82f6"
+                stroke="var(--chart-1)"
                 strokeWidth={2}
                 dot={{ r: 4 }}
                 activeDot={{ r: 6 }}
               />
             </LineChart>
-          </ResponsiveContainer>
+          </ChartContainer>
         )}
+
+        {/* 날짜 범위 선택 버튼 */}
+        <div className="flex gap-1 justify-center flex-wrap pt-4">
+          {[
+            TimeRange.ONE_MONTH,
+            TimeRange.THREE_MONTHS,
+            TimeRange.ONE_YEAR,
+            TimeRange.FIVE_YEARS,
+            TimeRange.TEN_YEARS,
+            TimeRange.ALL,
+          ].map((range) => (
+            <Button
+              key={range}
+              variant={selectedRange === range ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setSelectedRange(range)}
+              className="text-xs"
+              aria-selected={selectedRange === range}
+            >
+              {getTimeRangeLabel(range)}
+            </Button>
+          ))}
+        </div>
       </CardContent>
     </Card>
   );
