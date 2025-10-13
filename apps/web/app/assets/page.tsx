@@ -2,8 +2,8 @@
 
 import { useMemo } from "react";
 import { Tabs, TabsList } from "@web/components/ui/tabs";
+import { useDebtsStore } from "@web/features/debts/stores/debts-store";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
-import { useLoansStore } from "@web/features/loans/stores/loans-store";
 import { useRealAssetsStore } from "@web/features/real-assets/stores/real-assets-store";
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
 import { AssetDonutChart } from "./_components/asset-donut-chart";
@@ -12,7 +12,7 @@ import { AssetTabContent, AssetTabTrigger, EmptyAssetState } from "./_components
 export default function AssetsOverviewPage() {
   const investments = useInvestmentStore((state) => state.investments);
   const savings = useSavingsStore((state) => state.savings);
-  const loans = useLoansStore((state) => state.loans);
+  const loans = useDebtsStore((state) => state.debts);
   const realAssets = useRealAssetsStore((state) => state.realAssets);
 
   const assetTotals = useMemo(() => {
@@ -139,7 +139,7 @@ export default function AssetsOverviewPage() {
         value: "loans",
         label: "부채",
         total: assetTotals.loans,
-        detailUrl: "/assets/loans",
+        detailUrl: "/assets/debt",
         items: loans.map((loan) => ({
           id: loan.id,
           primaryText: loan.loanName,

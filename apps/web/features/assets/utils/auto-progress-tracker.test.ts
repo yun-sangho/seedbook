@@ -1,5 +1,5 @@
+import { useDebtsStore } from "@web/features/debts/stores/debts-store";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
-import { useLoansStore } from "@web/features/loans/stores/loans-store";
 import { useRealAssetsStore } from "@web/features/real-assets/stores/real-assets-store";
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,7 +14,7 @@ describe("auto-progress-tracker", () => {
     useInvestmentStore.getState().resetStore?.();
     useSavingsStore.getState().resetStore?.();
     useRealAssetsStore.getState().resetStore?.();
-    useLoansStore.setState({ loans: [], lastLoanId: 0 });
+    useDebtsStore.setState({ debts: [], lastDebtId: 0 });
     useProgressStore.getState().clearProgressPoints();
 
     // 타이머 mock 설정
@@ -99,12 +99,12 @@ describe("auto-progress-tracker", () => {
     cleanup = startAutoProgressTracking();
 
     // 대출 추가
-    useLoansStore.getState().addLoan();
-    const loans = useLoansStore.getState().loans;
+    useDebtsStore.getState().addDebt();
+    const loans = useDebtsStore.getState().debts;
     const loanId = loans[0]?.id || 1;
 
     // 대출 금액 업데이트
-    useLoansStore.getState().updateLoan(loanId, "amount", 30000);
+    useDebtsStore.getState().updateDebt(loanId, "amount", 30000);
 
     // debounce 대기
     vi.advanceTimersByTime(500);
@@ -134,10 +134,10 @@ describe("auto-progress-tracker", () => {
 
     // 200ms 후 대출 추가
     vi.advanceTimersByTime(200);
-    useLoansStore.getState().addLoan();
-    const loans = useLoansStore.getState().loans;
+    useDebtsStore.getState().addDebt();
+    const loans = useDebtsStore.getState().debts;
     const loanId = loans[0]?.id || 1;
-    useLoansStore.getState().updateLoan(loanId, "amount", 30000);
+    useDebtsStore.getState().updateDebt(loanId, "amount", 30000);
 
     // 마지막 변경으로부터 500ms 대기
     vi.advanceTimersByTime(500);
@@ -340,10 +340,10 @@ describe("auto-progress-tracker", () => {
     cleanup = startAutoProgressTracking();
 
     // 대출 추가 및 금액 설정
-    useLoansStore.getState().addLoan();
-    const loans = useLoansStore.getState().loans;
+    useDebtsStore.getState().addDebt();
+    const loans = useDebtsStore.getState().debts;
     const loanId = loans[0]?.id || 1;
-    useLoansStore.getState().updateLoan(loanId, "amount", 30000);
+    useDebtsStore.getState().updateDebt(loanId, "amount", 30000);
 
     vi.advanceTimersByTime(500);
 
@@ -354,7 +354,7 @@ describe("auto-progress-tracker", () => {
     expect(points[0]?.netAssets).toBe(-30000);
 
     // 대출 삭제
-    useLoansStore.getState().removeLoan(loanId);
+    useDebtsStore.getState().removeDebt(loanId);
 
     vi.advanceTimersByTime(500);
 

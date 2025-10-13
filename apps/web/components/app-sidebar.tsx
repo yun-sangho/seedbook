@@ -27,6 +27,7 @@ import {
   LineChart,
   ListChecks,
   PiggyBank,
+  Settings,
   Target,
   TrendingUp,
   Wallet,
@@ -68,7 +69,7 @@ const assetItems = [
   },
   {
     title: "대출",
-    url: "/assets/loans",
+    url: "/assets/debt",
     icon: CreditCard,
   },
 ];
@@ -83,6 +84,14 @@ const planItems = [
     title: "계획 목록",
     url: "/asset-plan-list",
     icon: ListChecks,
+  },
+];
+
+const adminItems = [
+  {
+    title: "관리",
+    url: "/admin",
+    icon: Settings,
   },
 ];
 
@@ -159,6 +168,33 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {planItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <TooltipProvider delayDuration={0}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <SidebarMenuButton asChild isActive={pathname === item.url}>
+                          <Link href={item.url}>
+                            <item.icon />
+                            <span>{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        <p>{item.title}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>관리</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {adminItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <TooltipProvider delayDuration={0}>
                     <Tooltip>

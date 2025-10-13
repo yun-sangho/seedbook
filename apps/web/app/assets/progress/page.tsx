@@ -3,8 +3,8 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
 import { useProgressStore } from "@web/features/assets/stores/progress-store";
+import { useDebtsStore } from "@web/features/debts/stores/debts-store";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
-import { useLoansStore } from "@web/features/loans/stores/loans-store";
 import { useRealAssetsStore } from "@web/features/real-assets/stores/real-assets-store";
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
 import { AddProgressPointDialog } from "./_components/add-progress-point-dialog";
@@ -16,7 +16,7 @@ export default function AssetProgressPage() {
   const investments = useInvestmentStore((state) => state.investments);
   const savings = useSavingsStore((state) => state.savings);
   const realAssets = useRealAssetsStore((state) => state.realAssets);
-  const loans = useLoansStore((state) => state.loans);
+  const loans = useDebtsStore((state) => state.debts);
 
   const progressPoints = useProgressStore((state) => state.progressPoints);
   // const setProgressPoints = useProgressStore((state) => state.setProgressPoints);

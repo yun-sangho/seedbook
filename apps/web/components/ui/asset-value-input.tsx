@@ -2,7 +2,7 @@
 
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
-import { CurrencyType } from "@web/features/investments/types/constants";
+import { CurrencyType } from "@web/types/account.consts";
 import { numberToKorean } from "@web/utils/number-format";
 import { cn } from "./utils";
 
@@ -10,7 +10,7 @@ interface AssetValueInputProps {
   id: string | number;
   label?: string;
   value: number;
-  currency: string | CurrencyType;
+  currency: CurrencyType;
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;

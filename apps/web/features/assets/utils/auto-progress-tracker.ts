@@ -5,8 +5,8 @@
  * Store 간 직접 의존성 없이 subscribe 패턴을 활용하여 느슨하게 결합됩니다.
  */
 
+import { useDebtsStore } from "@web/features/debts/stores/debts-store";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
-import { useLoansStore } from "@web/features/loans/stores/loans-store";
 import { useRealAssetsStore } from "@web/features/real-assets/stores/real-assets-store";
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
 import { useProgressStore } from "../stores/progress-store";
@@ -35,8 +35,8 @@ const calculateRealAssetsTotal = (state: ReturnType<typeof useRealAssetsStore.ge
 /**
  * 대출 총액 계산
  */
-const calculateLoansTotal = (state: ReturnType<typeof useLoansStore.getState>) => {
-  return state.loans.reduce((sum, loan) => sum + (loan.amount || 0), 0);
+const calculateLoansTotal = (state: ReturnType<typeof useDebtsStore.getState>) => {
+  return state.debts.reduce((sum, loan) => sum + (loan.amount || 0), 0);
 };
 
 /**
@@ -68,7 +68,7 @@ export const startAutoProgressTracking = () => {
   previousTotals.investments = calculateInvestmentTotal(useInvestmentStore.getState());
   previousTotals.savings = calculateSavingsTotal(useSavingsStore.getState());
   previousTotals.realAssets = calculateRealAssetsTotal(useRealAssetsStore.getState());
-  previousTotals.loans = calculateLoansTotal(useLoansStore.getState());
+  previousTotals.loans = calculateLoansTotal(useDebtsStore.getState());
 
   // Debounce를 위한 타이머
   let timeoutId: NodeJS.Timeout | null = null;
@@ -132,7 +132,7 @@ export const startAutoProgressTracking = () => {
   });
 
   // 대출 store 구독
-  const unsubscribeLoans = useLoansStore.subscribe((state) => {
+  const unsubscribeLoans = useDebtsStore.subscribe((state) => {
     const newTotal = calculateLoansTotal(state);
     if (newTotal !== previousTotals.loans) {
       previousTotals.loans = newTotal;

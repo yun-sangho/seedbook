@@ -1,5 +1,5 @@
+import type { DebtsItem } from "@web/features/debts/types/types";
 import type { InvestmentItem } from "@web/features/investments/types/types";
-import type { LoanItem } from "@web/features/loans/types/types";
 import type { SavingsItem } from "@web/features/savings/types/types";
 import { describe, expect, it } from "vitest";
 import { generateCumulativeProgressPoints } from "./progress-utils";
@@ -108,7 +108,7 @@ describe("generateCumulativeProgressPoints", () => {
       },
     ];
 
-    const loans: LoanItem[] = [
+    const loans: DebtsItem[] = [
       {
         id: 1,
         loanName: "주택담보대출",

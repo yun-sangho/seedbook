@@ -1,5 +1,5 @@
+import type { DebtsItem } from "@web/features/debts/types/types";
 import type { InvestmentItem } from "@web/features/investments/types/types";
-import type { LoanItem } from "@web/features/loans/types/types";
 import type { RealAssetItem } from "@web/features/real-assets/types/types";
 import type { SavingsItem } from "@web/features/savings/types/types";
 import type { AssetProgressPoint } from "../types/progress";
@@ -22,7 +22,7 @@ export function generateAssetProgressPoints(
   investments: InvestmentItem[],
   savings: SavingsItem[],
   realAssets: RealAssetItem[],
-  loans: LoanItem[]
+  loans: DebtsItem[]
 ): AssetProgressPoint[] {
   const dateMap = new Map<string, AssetProgressPoint>();
 
@@ -126,7 +126,7 @@ export function generateCumulativeProgressPoints(
   investments: InvestmentItem[],
   savings: SavingsItem[],
   realAssets: RealAssetItem[],
-  loans: LoanItem[]
+  loans: DebtsItem[]
 ): AssetProgressPoint[] {
   const allDates = new Set<string>();
   const assetsByDate = new Map<

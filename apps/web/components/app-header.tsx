@@ -11,9 +11,11 @@ const pageNames: Record<string, string> = {
   "/assets/investments": "투자",
   "/assets/savings": "저축",
   "/assets/real-assets": "실물 자산",
-  "/assets/loans": "대출",
+  "/assets/debt": "대출",
+  "/assets/progress": "자산 기록",
   "/asset-plan": "자산 계획",
   "/asset-plan-list": "계획 목록",
+  "/admin": "관리",
   "/contact": "문의하기",
 };
 

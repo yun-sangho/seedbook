@@ -1,7 +1,7 @@
 /**
  * 대출 아이템 타입
  */
-export interface LoanItem {
+export interface DebtsItem {
   id: number;
   loanName: string;
   loanType: string; // 대출 유형 (주택담보, 신용대출 등)
