@@ -10,4 +10,5 @@ export interface RealAssetItem {
   purchaseValue: number; // 구입 가치 (원)
   purchaseDate: string; // 구입 날짜 (YYYY-MM-DD)
   note: string; // 메모
+  color: string; // 차트 색상
 }

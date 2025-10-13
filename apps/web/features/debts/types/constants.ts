@@ -16,14 +16,9 @@ export const LOAN_TYPES = [
 export enum DefaultOwnerType {
   SELF = "본인",
   SPOUSE = "배우자",
-  JOINT = "공동명의",
 }
 
 /**
  * 기본 소유자 목록
  */
-export const DEFAULT_OWNERS = [
-  DefaultOwnerType.SELF,
-  DefaultOwnerType.SPOUSE,
-  DefaultOwnerType.JOINT,
-] as const;
+export const DEFAULT_OWNERS = [DefaultOwnerType.SELF, DefaultOwnerType.SPOUSE] as const;

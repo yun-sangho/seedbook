@@ -1,5 +1,5 @@
 import { InvestmentItem } from "@web/features/investments/types/types";
-import { TimeRange } from "@web/utils/investment-chart-utils";
+import { TimeRange } from "@web/types/time.consts";
 import { describe, expect, test } from "vitest";
 import {
   AccountChartData,

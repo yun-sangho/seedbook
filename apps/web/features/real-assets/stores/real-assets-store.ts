@@ -1,28 +1,22 @@
 "use client";
 
+import { getNextColor as getNextColorUtil } from "@web/utils/color-selection";
 import { parseNumericString } from "@web/utils/number-format";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { DefaultOwnerType, RealAssetType } from "../types/constants";
+import { ASSET_COLORS, COLOR_FAMILIES, DefaultOwnerType, RealAssetType } from "../types/constants";
 import { RealAssetItem } from "../types/types";
 
-// 초기 실물자산
-const DEFAULT_REAL_ASSET: RealAssetItem = {
-  id: 1,
-  assetName: "실물자산 #1",
-  assetType: RealAssetType.REAL_ESTATE,
-  assetOwner: DefaultOwnerType.SELF,
-  currentValue: 0,
-  purchaseValue: 0,
-  purchaseDate: "",
-  note: "",
+// 사용 가능한 색상을 반환하는 헬퍼 함수
+const getNextColor = (existingAssets: RealAssetItem[]): string => {
+  const usedColors = existingAssets.map((asset) => asset.color).filter(Boolean);
+  return getNextColorUtil(usedColors, ASSET_COLORS, COLOR_FAMILIES);
 };
 
 // 실물자산 정보 상태 인터페이스
 interface RealAssetsState {
   // 데이터
   realAssets: RealAssetItem[];
-  customOwners: string[];
   lastRealAssetId: number;
 
   // UI 상태 (LocalStorage에 저장하지 않음)
@@ -32,7 +26,6 @@ interface RealAssetsState {
   addRealAsset: () => void;
   removeRealAsset: (id: number) => void;
   updateRealAsset: (id: number, field: keyof RealAssetItem, value: string | number) => void;
-  addCustomOwner: (owner: string) => void;
   setExpandedFormId: (id: number) => void;
   reorderRealAssets: (reorderedAssets: RealAssetItem[]) => void;
   resetStore: () => void;
@@ -43,13 +36,13 @@ export const useRealAssetsStore = create<RealAssetsState>()(
   persist(
     (set, get) => ({
       realAssets: [],
-      customOwners: [],
       lastRealAssetId: 1,
       expandedFormId: 1,
 
       addRealAsset: () => {
         const { lastRealAssetId, realAssets } = get();
         const newId = lastRealAssetId + 1;
+        const newColor = getNextColor(realAssets);
 
         set({
           realAssets: [
@@ -62,6 +55,7 @@ export const useRealAssetsStore = create<RealAssetsState>()(
               purchaseValue: 0,
               purchaseDate: "",
               note: "",
+              color: newColor,
             },
             ...realAssets,
           ],
@@ -104,15 +98,6 @@ export const useRealAssetsStore = create<RealAssetsState>()(
         });
       },
 
-      addCustomOwner: (owner) => {
-        // 이미 있는 소유자면 추가하지 않음
-        if (get().customOwners.includes(owner)) return;
-
-        set((state) => ({
-          customOwners: [...state.customOwners, owner],
-        }));
-      },
-
       setExpandedFormId: (id) => {
         set({ expandedFormId: id });
       },
@@ -123,8 +108,7 @@ export const useRealAssetsStore = create<RealAssetsState>()(
 
       resetStore: () => {
         set({
-          realAssets: [DEFAULT_REAL_ASSET],
-          customOwners: [],
+          realAssets: [],
           lastRealAssetId: 1,
           expandedFormId: 1,
         });
@@ -136,10 +120,30 @@ export const useRealAssetsStore = create<RealAssetsState>()(
       // UI 관련 상태는 지속성 저장에서 제외 (성능 최적화)
       partialize: (state) => ({
         realAssets: state.realAssets,
-        customOwners: state.customOwners,
         lastRealAssetId: state.lastRealAssetId,
         // expandedFormId는 제외
       }),
+      // 기존 데이터 마이그레이션: color 속성이 없는 자산에 색상 추가
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          let needsUpdate = false;
+          const updatedAssets = state.realAssets.map((asset, index) => {
+            // color 속성이 없는 경우 추가
+            if (!asset.color) {
+              needsUpdate = true;
+              return {
+                ...asset,
+                color: ASSET_COLORS[index % ASSET_COLORS.length] || "#3b82f6",
+              };
+            }
+            return asset;
+          });
+
+          if (needsUpdate) {
+            state.realAssets = updatedAssets;
+          }
+        }
+      },
     }
   )
 );
