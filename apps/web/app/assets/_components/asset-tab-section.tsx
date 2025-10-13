@@ -63,10 +63,7 @@ export function AssetTabContent({
           <p className="text-center text-gray-500 dark:text-gray-400 py-4">{emptyMessage}</p>
         ) : (
           items.map((item) => (
-            <div
-              key={item.id}
-              className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
-            >
+            <Card key={item.id} className="flex flex-row justify-between items-center p-4 w-full">
               <div>
                 <h4 className="font-medium">{item.primaryText}</h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400">{item.secondaryText}</p>
@@ -74,7 +71,7 @@ export function AssetTabContent({
               <div className="text-right">
                 <p className="font-semibold">{numberToKorean(item.value.toString())}</p>
               </div>
-            </div>
+            </Card>
           ))
         )}
       </div>
