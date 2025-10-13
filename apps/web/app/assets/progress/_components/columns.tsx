@@ -104,7 +104,7 @@ export const progressColumns: ColumnDef<AssetProgressPoint>[] = [
     },
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("loans"));
-      return <div className="text-right text-red-600">{numberToKorean(amount.toString())}</div>;
+      return <div className="text-right">{"-" + numberToKorean(amount.toString())}</div>;
     },
   },
   {
@@ -124,7 +124,7 @@ export const progressColumns: ColumnDef<AssetProgressPoint>[] = [
     },
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("totalAssets"));
-      return <div className="text-right font-semibold">{numberToKorean(amount.toString())}</div>;
+      return <div className="text-right">{numberToKorean(amount.toString())}</div>;
     },
   },
   {
