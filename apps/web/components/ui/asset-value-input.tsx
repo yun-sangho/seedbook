@@ -25,7 +25,7 @@ export function AssetValueInput({
   placeholder,
   className = "",
 }: AssetValueInputProps) {
-  const currencyUnit = currency === CurrencyType.KRW ? "만원" : "달러";
+  const currencyUnit = currency === CurrencyType.KRW ? "원" : "달러";
   const defaultPlaceholder = `${currencyUnit} 단위로 입력`;
 
   return (

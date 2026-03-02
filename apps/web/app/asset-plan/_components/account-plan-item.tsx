@@ -48,7 +48,7 @@ export function AccountPlanItem({
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <Label htmlFor={`contributionAmount-${investment.id}`}>추가 납입금 (만원)</Label>
+          <Label htmlFor={`contributionAmount-${investment.id}`}>추가 납입금 (원)</Label>
           <Input
             id={`contributionAmount-${investment.id}`}
             type="text"

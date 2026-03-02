@@ -223,11 +223,28 @@ export const useSavingsStore = create<SavingsState>()(
     {
       name: "savings-storage",
       storage: createJSONStorage(() => localStorage),
+      version: 1,
       partialize: (state) => ({
         savings: state.savings,
         lastSavingsId: state.lastSavingsId,
         // expandedFormId는 UI 상태이므로 제외
       }),
+      // 만원 → 원 마이그레이션
+      migrate: (persisted, version) => {
+        if (version === 0) {
+          const state = persisted as { savings: SavingsItem[]; lastSavingsId: number };
+          const MANWON_TO_WON = 10000;
+          state.savings = state.savings.map((s) => ({
+            ...s,
+            balance: s.balance * MANWON_TO_WON,
+            records: (s.records || []).map((r) => ({
+              ...r,
+              balance: r.balance * MANWON_TO_WON,
+            })),
+          }));
+        }
+        return persisted as { savings: SavingsItem[]; lastSavingsId: number };
+      },
       onRehydrateStorage: () => (state) => {
         // localStorage에서 로드 후 color 속성 없으면 추가 (마이그레이션)
         if (state) {

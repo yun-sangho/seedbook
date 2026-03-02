@@ -6,7 +6,7 @@ export interface AssetPlan {
   updatedAt: Date;
   accountPlans: {
     [accountId: number]: {
-      contributionAmount: string; // 만원 단위
+      contributionAmount: string; // 원 단위
       contributionFrequency: string; // 월/분기/반기/년
       targetAnnualReturn: string;
     };

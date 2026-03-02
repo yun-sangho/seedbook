@@ -1,19 +1,24 @@
 /**
- * 숫자를 한글 금액 단위(만원, 억원, 조원)로 변환하는 함수
+ * 숫자(원 단위)를 한글 금액 단위(만원, 억원, 조원)로 변환하는 함수
+ * 만원 미만은 절삭하여 표시
  */
 export function numberToKorean(num: string | number): string {
   if ((!num && num !== 0) || (typeof num === "string" && isNaN(Number(num)))) return "";
 
-  const number = typeof num === "string" ? Number(num) : num;
-  if (number === 0) return "0만원";
+  const rawWon = typeof num === "string" ? Number(num) : num;
+  if (rawWon === 0) return "0원";
+
+  const sign = rawWon < 0 ? "-" : "";
+  const manwon = Math.floor(Math.abs(rawWon) / 10000);
+  if (manwon === 0) return "0원";
 
   // 조 단위 (1조 = 100,000억 = 1,00000000만)
-  if (number >= 100000000) {
-    const jo = Math.floor(number / 100000000); // 조 단위
-    const remainder = number % 100000000; // 조 단위 이하
+  if (manwon >= 100000000) {
+    const jo = Math.floor(manwon / 100000000); // 조 단위
+    const remainder = manwon % 100000000; // 조 단위 이하
 
     if (remainder === 0) {
-      return `${jo}조원`;
+      return `${sign}${jo}조원`;
     }
 
     // 억 단위 처리
@@ -21,27 +26,27 @@ export function numberToKorean(num: string | number): string {
     const man = remainder % 10000; // 만 단위
 
     if (eok === 0) {
-      return `${jo}조${man.toFixed()}만원`;
+      return `${sign}${jo}조${man.toFixed()}만원`;
     } else if (man === 0) {
-      return `${jo}조${eok}억원`;
+      return `${sign}${jo}조${eok}억원`;
     } else {
-      return `${jo}조${eok}억${man.toFixed()}만원`;
+      return `${sign}${jo}조${eok}억${man.toFixed()}만원`;
     }
   }
   // 억 단위 (1억 = 10,000만)
-  else if (number >= 10000) {
-    const eok = Math.floor(number / 10000); // 억 단위
-    const man = number % 10000; // 만 단위
+  else if (manwon >= 10000) {
+    const eok = Math.floor(manwon / 10000); // 억 단위
+    const man = manwon % 10000; // 만 단위
 
     if (man === 0) {
-      return `${eok}억원`;
+      return `${sign}${eok}억원`;
     } else {
-      return `${eok}억${man.toFixed()}만원`;
+      return `${sign}${eok}억${man.toFixed()}만원`;
     }
   }
   // 만 단위만 있는 경우
   else {
-    return `${number.toFixed()}만원`;
+    return `${sign}${manwon.toFixed()}만원`;
   }
 }
 

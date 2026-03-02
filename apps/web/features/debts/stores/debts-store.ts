@@ -79,6 +79,28 @@ export const useDebtsStore = create<DebtsState>()(
       }),
       {
         name: "debts-storage", // localStorage 키 이름
+        version: 1,
+        // 만원 → 원 마이그레이션
+        migrate: (persisted, version) => {
+          if (version === 0) {
+            const state = persisted as {
+              debts: DebtsItem[];
+              expandedFormId: number;
+              lastDebtId: number;
+            };
+            const MANWON_TO_WON = 10000;
+            state.debts = state.debts.map((d) => ({
+              ...d,
+              amount: d.amount * MANWON_TO_WON,
+              monthlyPayment: d.monthlyPayment * MANWON_TO_WON,
+            }));
+          }
+          return persisted as {
+            debts: DebtsItem[];
+            expandedFormId: number;
+            lastDebtId: number;
+          };
+        },
       }
     )
   )

@@ -4,7 +4,7 @@ Concise guide for AI agents to be productive quickly. Focus on CURRENT patterns;
 
 ## 1. Purpose & Domain
 
-Personal asset planning & projection tool (투자/예금/실물/부채). Core feature: compare current aggregated asset value vs projected growth under a user-defined plan (기간, 납입, 목표수익률). Monetary unit internally kept in 만원.
+Personal asset planning & projection tool (투자/예금/실물/부채). Core feature: compare current aggregated asset value vs projected growth under a user-defined plan (기간, 납입, 목표수익률). Monetary unit internally kept in 원 (KRW). Display uses `numberToKorean()` which converts 원 → 만원 표시 (만원 미만 절삭).
 
 ## 2. Architecture Snapshot
 
@@ -25,7 +25,7 @@ User edits plan form (app/asset-plan/page.tsx) → local derived values (totalMo
 
 ## 4. Monetary & Calculation Rules
 
-- All entered amounts already represent 만원 (10,000 KRW). No scaling unless formatting for display.
+- All entered amounts are in 원 (KRW). `numberToKorean()` converts to 만원 display (만원 미만 절삭).
 - Frequency → monthly conversion: 월=x, 분기÷3, 반기÷6, 년÷12.
 - Chart Y-axis labels: >=100000000 → 억, >=10000 → 만, else raw.
 - Growth rate display: (final - current)/current \* 100 (guard current=0 → 0%).
@@ -80,12 +80,12 @@ Top-level scripts (turbo):
 3. Add utils for heavy calculations (keep components lean).
 4. Add tests for new calculation utilities.
 5. Integrate into page/component; memoize derived arrays.
-6. Maintain 만원 단위 invariants & formatting via numberToKorean.
+6. Maintain 원 단위 invariants & formatting via numberToKorean.
 7. If chart-related, follow interaction policy (Section 5).
 
 ## 12. Common Pitfalls (Avoid)
 
-- Converting 만원 → 원 inadvertently (double scaling bugs).
+- Double-scaling bugs when formatting (numberToKorean already handles 원→만원 conversion).
 - Introducing wheel/pinch zoom back (breaks UX decision).
 - Inline anonymous objects/functions causing re-renders (lift & memoize).
 - Re-implementing number formatting or monthly conversion logic.

@@ -14,26 +14,43 @@ describe("numberToKorean", () => {
     expect(numberToKorean("abc")).toBe("");
   });
 
-  it('should return "0만원" for zero', () => {
-    expect(numberToKorean(0)).toBe("0만원");
+  it('should return "0원" for zero', () => {
+    expect(numberToKorean(0)).toBe("0원");
   });
 
-  it("should format man (10,000) unit correctly", () => {
-    expect(numberToKorean(5000)).toBe("5000만원");
+  it('should return "0원" for values under 1만원', () => {
+    expect(numberToKorean(9999)).toBe("0원");
+    expect(numberToKorean(5000)).toBe("0원");
   });
 
-  it("should format eok (100,000,000) unit correctly", () => {
-    expect(numberToKorean(10000)).toBe("1억원");
-    expect(numberToKorean(12345)).toBe("1억2345만원");
-    expect(numberToKorean(112345)).toBe("11억2345만원");
-    expect(numberToKorean(1112345)).toBe("111억2345만원");
+  it("should format man (만원) unit correctly", () => {
+    expect(numberToKorean(10000)).toBe("1만원");
+    expect(numberToKorean(50000000)).toBe("5000만원");
+    expect(numberToKorean(99990000)).toBe("9999만원");
   });
 
-  it("should format jo (1,000,000,000,000) unit correctly", () => {
-    expect(numberToKorean(100000000)).toBe("1조원");
-    expect(numberToKorean(100020000)).toBe("1조2억원");
-    expect(numberToKorean(100002000)).toBe("1조2000만원");
-    expect(numberToKorean(100020300)).toBe("1조2억300만원");
+  it("should format eok (억원) unit correctly", () => {
+    expect(numberToKorean(100000000)).toBe("1억원");
+    expect(numberToKorean(123450000)).toBe("1억2345만원");
+    expect(numberToKorean(1123450000)).toBe("11억2345만원");
+    expect(numberToKorean(11123450000)).toBe("111억2345만원");
+  });
+
+  it("should format jo (조원) unit correctly", () => {
+    expect(numberToKorean(1000000000000)).toBe("1조원");
+    expect(numberToKorean(1000200000000)).toBe("1조2억원");
+    expect(numberToKorean(1000020000000)).toBe("1조2000만원");
+    expect(numberToKorean(1000203000000)).toBe("1조2억300만원");
+  });
+
+  it("should truncate sub-만원 fractions", () => {
+    expect(numberToKorean(10005000)).toBe("1000만원");
+    expect(numberToKorean(100009999)).toBe("1억원");
+  });
+
+  it("should handle string input as 원 unit", () => {
+    expect(numberToKorean("50000000")).toBe("5000만원");
+    expect(numberToKorean("100000000")).toBe("1억원");
   });
 });
 

@@ -18,6 +18,7 @@ interface RealAssetsState {
   // 데이터
   realAssets: RealAssetItem[];
   lastRealAssetId: number;
+  customOwners: string[];
 
   // UI 상태 (LocalStorage에 저장하지 않음)
   expandedFormId: number;
@@ -37,6 +38,7 @@ export const useRealAssetsStore = create<RealAssetsState>()(
     (set, get) => ({
       realAssets: [],
       lastRealAssetId: 1,
+      customOwners: [],
       expandedFormId: 1,
 
       addRealAsset: () => {
@@ -110,6 +112,7 @@ export const useRealAssetsStore = create<RealAssetsState>()(
         set({
           realAssets: [],
           lastRealAssetId: 1,
+          customOwners: [],
           expandedFormId: 1,
         });
       },
@@ -117,12 +120,35 @@ export const useRealAssetsStore = create<RealAssetsState>()(
     {
       name: "real-assets-storage", // localStorage에 저장될 키 이름
       storage: createJSONStorage(() => localStorage),
+      version: 1,
       // UI 관련 상태는 지속성 저장에서 제외 (성능 최적화)
       partialize: (state) => ({
         realAssets: state.realAssets,
         lastRealAssetId: state.lastRealAssetId,
+        customOwners: state.customOwners,
         // expandedFormId는 제외
       }),
+      // 만원 → 원 마이그레이션
+      migrate: (persisted, version) => {
+        if (version === 0) {
+          const state = persisted as {
+            realAssets: RealAssetItem[];
+            lastRealAssetId: number;
+            customOwners: string[];
+          };
+          const MANWON_TO_WON = 10000;
+          state.realAssets = state.realAssets.map((a) => ({
+            ...a,
+            currentValue: a.currentValue * MANWON_TO_WON,
+            purchaseValue: a.purchaseValue * MANWON_TO_WON,
+          }));
+        }
+        return persisted as {
+          realAssets: RealAssetItem[];
+          lastRealAssetId: number;
+          customOwners: string[];
+        };
+      },
       // 기존 데이터 마이그레이션: color 속성이 없는 자산에 색상 추가
       onRehydrateStorage: () => (state) => {
         if (state) {

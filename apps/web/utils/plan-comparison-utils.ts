@@ -26,10 +26,10 @@ export interface FuturePlanComparisonPoint {
 export type PlanComparisonPoint = PastPlanComparisonPoint | FuturePlanComparisonPoint;
 
 /**
- * 월 환산 납입금 계산 (만원 단위 유지)
+ * 월 환산 납입금 계산 (원 단위)
  */
 export function getMonthlyContribution(amount: string, frequency: string): number {
-  const numericAmount = parseFloat(amount.replace(/,/g, "")); // 만원 단위 그대로 사용
+  const numericAmount = parseFloat(amount.replace(/,/g, "")); // 원 단위
   if (isNaN(numericAmount)) return 0;
 
   switch (frequency) {

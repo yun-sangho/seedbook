@@ -318,12 +318,37 @@ export const useInvestmentStore = create<InvestmentState>()(
     {
       name: "investment-storage", // localStorage에 저장될 키 이름
       storage: createJSONStorage(() => localStorage),
+      version: 1,
       // UI 관련 상태는 지속성 저장에서 제외 (성능 최적화)
       partialize: (state) => ({
         investments: state.investments,
         lastInvestmentId: state.lastInvestmentId,
         // expandedFormId는 제외
       }),
+      // 만원 → 원 마이그레이션
+      migrate: (persisted, version) => {
+        if (version === 0) {
+          const state = persisted as {
+            investments: InvestmentItem[];
+            lastInvestmentId: number;
+          };
+          const MANWON_TO_WON = 10000;
+          state.investments = state.investments.map((inv) => ({
+            ...inv,
+            initialInvestment: inv.initialInvestment * MANWON_TO_WON,
+            currentValue: inv.currentValue * MANWON_TO_WON,
+            records: inv.records.map((r) => ({
+              ...r,
+              initialInvestment: r.initialInvestment * MANWON_TO_WON,
+              currentValue: r.currentValue * MANWON_TO_WON,
+            })),
+          }));
+        }
+        return persisted as {
+          investments: InvestmentItem[];
+          lastInvestmentId: number;
+        };
+      },
       // 기존 데이터 마이그레이션: color 속성이 없는 투자에 색상 추가
       onRehydrateStorage: () => (state) => {
         if (state) {

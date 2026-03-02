@@ -26,7 +26,7 @@ export default function AssetPlanPage() {
   const [planPeriod, setPlanPeriod] = useState("30"); // 계획 기간 (년)
   const [accountPlans, setAccountPlans] = useState<{
     [accountId: number]: {
-      contributionAmount: string; // 만원 단위
+      contributionAmount: string; // 원 단위
       contributionFrequency: string; // 월/분기/반기/년
       targetAnnualReturn: string;
     };
@@ -64,9 +64,9 @@ export default function AssetPlanPage() {
     });
   };
 
-  // 월 환산 납입금 계산 헬퍼 함수 (만원 단위 유지)
+  // 월 환산 납입금 계산 헬퍼 함수 (원 단위)
   const getMonthlyContribution = (amount: string, frequency: string): number => {
-    const numericAmount = parseFloat(amount.replace(/,/g, "")); // 만원 단위 그대로 사용
+    const numericAmount = parseFloat(amount.replace(/,/g, "")); // 원 단위
     if (isNaN(numericAmount)) return 0;
 
     switch (frequency) {

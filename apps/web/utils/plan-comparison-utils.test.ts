@@ -8,7 +8,7 @@ describe("preparePlanComparisonChartData", () => {
   let mockPlan: AssetPlan;
 
   beforeEach(() => {
-    // 목 투자 계좌 데이터 설정
+    // 목 투자 계좌 데이터 설정 (원 단위)
     mockInvestments = [
       {
         id: 1,
@@ -16,25 +16,25 @@ describe("preparePlanComparisonChartData", () => {
         accountType: "일반투자계좌",
         accountOwner: "홍길동",
         currency: "KRW",
-        initialInvestment: 1000, // 1,000만원
-        currentValue: 1200, // 1,200만원
+        initialInvestment: 10000000, // 1,000만원
+        currentValue: 12000000, // 1,200만원
         note: "",
         color: "#3b82f6",
         records: [
           {
             date: "2024-06-01",
-            initialInvestment: 1000,
-            currentValue: 1050,
+            initialInvestment: 10000000,
+            currentValue: 10500000,
           },
           {
             date: "2024-07-01",
-            initialInvestment: 1000,
-            currentValue: 1100,
+            initialInvestment: 10000000,
+            currentValue: 11000000,
           },
           {
             date: "2024-08-01",
-            initialInvestment: 1000,
-            currentValue: 1200,
+            initialInvestment: 10000000,
+            currentValue: 12000000,
           },
         ],
       },
@@ -44,31 +44,31 @@ describe("preparePlanComparisonChartData", () => {
         accountType: "ISA 계좌",
         accountOwner: "홍길동",
         currency: "KRW",
-        initialInvestment: 500, // 500만원
-        currentValue: 550, // 550만원
+        initialInvestment: 5000000, // 500만원
+        currentValue: 5500000, // 550만원
         note: "",
         color: "#3b82f6",
         records: [
           {
             date: "2024-06-01",
-            initialInvestment: 500,
-            currentValue: 520,
+            initialInvestment: 5000000,
+            currentValue: 5200000,
           },
           {
             date: "2024-07-01",
-            initialInvestment: 500,
-            currentValue: 530,
+            initialInvestment: 5000000,
+            currentValue: 5300000,
           },
           {
             date: "2024-08-01",
-            initialInvestment: 500,
-            currentValue: 550,
+            initialInvestment: 5000000,
+            currentValue: 5500000,
           },
         ],
       },
     ];
 
-    // 목 자산계획 데이터 설정
+    // 목 자산계획 데이터 설정 (원 단위)
     mockPlan = {
       id: "plan-1",
       planName: "은퇴 준비 계획",
@@ -77,17 +77,17 @@ describe("preparePlanComparisonChartData", () => {
       updatedAt: new Date("2024-01-01"),
       accountPlans: {
         1: {
-          contributionAmount: "100", // 100만원
+          contributionAmount: "1000000", // 100만원
           contributionFrequency: "월",
           targetAnnualReturn: "7.0",
         },
         2: {
-          contributionAmount: "200", // 200만원
+          contributionAmount: "2000000", // 200만원
           contributionFrequency: "분기",
           targetAnnualReturn: "5.0",
         },
       },
-      totalMonthlyContribution: 166.67, // 약 166.67만원 (100만원 + 200만원/3)
+      totalMonthlyContribution: 1666700, // 약 166.67만원 (1000000 + 2000000/3)
       averageTargetReturn: 6.14, // 가중평균 수익률
     };
   });
@@ -296,7 +296,7 @@ describe("preparePlanComparisonChartData", () => {
         ...mockPlan,
         accountPlans: {
           1: {
-            contributionAmount: "100",
+            contributionAmount: "1000000",
             contributionFrequency: "월",
             targetAnnualReturn: "0.0",
           },
@@ -325,7 +325,7 @@ describe("preparePlanComparisonChartData", () => {
         ...mockPlan,
         accountPlans: {
           1: {
-            contributionAmount: "100",
+            contributionAmount: "1000000",
             contributionFrequency: "월",
             targetAnnualReturn: "50.0", // 연 50% 수익률
           },
@@ -352,7 +352,7 @@ describe("preparePlanComparisonChartData", () => {
         ...mockPlan,
         accountPlans: {
           1: {
-            contributionAmount: "100",
+            contributionAmount: "1000000",
             contributionFrequency: "월",
             targetAnnualReturn: "7.0",
           },
@@ -407,12 +407,12 @@ describe("preparePlanComparisonChartData", () => {
 
   describe("새 타입 속성 (kind, monthOffset) 및 helper", () => {
     it("getMonthlyContribution이 주기 변환을 정확히 수행한다", () => {
-      expect(getMonthlyContribution("120", "월")).toBeCloseTo(120);
-      expect(getMonthlyContribution("120", "분기")).toBeCloseTo(40); // 120/3
-      expect(getMonthlyContribution("120", "반기")).toBeCloseTo(20); // 120/6
-      expect(getMonthlyContribution("120", "년")).toBeCloseTo(10); // 120/12
+      expect(getMonthlyContribution("1200000", "월")).toBeCloseTo(1200000);
+      expect(getMonthlyContribution("1200000", "분기")).toBeCloseTo(400000); // 1200000/3
+      expect(getMonthlyContribution("1200000", "반기")).toBeCloseTo(200000); // 1200000/6
+      expect(getMonthlyContribution("1200000", "년")).toBeCloseTo(100000); // 1200000/12
       expect(getMonthlyContribution("abc", "월")).toBe(0);
-      expect(getMonthlyContribution("120", "없음")).toBe(0);
+      expect(getMonthlyContribution("1200000", "없음")).toBe(0);
     });
 
     it("kind에 따라 actual 필드 null 여부가 올바르게 구분된다", () => {

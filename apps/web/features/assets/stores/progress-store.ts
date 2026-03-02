@@ -70,6 +70,24 @@ export const useProgressStore = create<ProgressState>()(
     }),
     {
       name: "progress-storage",
+      version: 1,
+      // 만원 → 원 마이그레이션
+      migrate: (persisted, version) => {
+        if (version === 0) {
+          const state = persisted as { progressPoints: AssetProgressPoint[] };
+          const MANWON_TO_WON = 10000;
+          state.progressPoints = state.progressPoints.map((p) => ({
+            ...p,
+            totalAssets: p.totalAssets * MANWON_TO_WON,
+            netAssets: p.netAssets * MANWON_TO_WON,
+            investments: p.investments * MANWON_TO_WON,
+            savings: p.savings * MANWON_TO_WON,
+            realAssets: p.realAssets * MANWON_TO_WON,
+            loans: p.loans * MANWON_TO_WON,
+          }));
+        }
+        return persisted as { progressPoints: AssetProgressPoint[] };
+      },
     }
   )
 );

@@ -36,7 +36,7 @@ Requires Node >= 22, pnpm 8.
 
 ## Domain Rules
 
-**Monetary unit**: All amounts are in 만원 (10,000 KRW) internally. Never convert to 원 — use `numberToKorean()` for display formatting only. Double-scaling bugs are a known pitfall.
+**Monetary unit**: All amounts are in 원 (KRW) internally. `numberToKorean()` converts 원 → 만원 display (만원 미만 절삭). Stores use Zustand persist `version: 1` with migration from legacy 만원 format.
 
 **Frequency conversion**: 월=x, 분기÷3, 반기÷6, 년÷12.
 

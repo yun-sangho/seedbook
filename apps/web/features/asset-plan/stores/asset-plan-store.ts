@@ -40,6 +40,7 @@ export const useAssetPlanStore = create<AssetPlanStore>()(
     }),
     {
       name: "asset-plan-storage",
+      version: 1,
       // 날짜 객체를 JSON으로 직렬화/역직렬화하기 위한 설정
       partialize: (state) => ({
         plans: state.plans.map((plan) => ({
@@ -48,6 +49,36 @@ export const useAssetPlanStore = create<AssetPlanStore>()(
           updatedAt: plan.updatedAt.toISOString(),
         })),
       }),
+      // 만원 → 원 마이그레이션
+      migrate: (persisted, version) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const state = persisted as any;
+        if (version === 0 && state.plans) {
+          const MANWON_TO_WON = 10000;
+          state.plans = state.plans.map((plan: Record<string, unknown>) => ({
+            ...plan,
+            totalMonthlyContribution:
+              (plan.totalMonthlyContribution as number) * MANWON_TO_WON,
+            accountPlans: Object.fromEntries(
+              Object.entries(
+                plan.accountPlans as Record<
+                  string,
+                  { contributionAmount: string; contributionFrequency: string; targetAnnualReturn: string }
+                >
+              ).map(([id, ap]) => [
+                id,
+                {
+                  ...ap,
+                  contributionAmount: String(
+                    parseFloat(ap.contributionAmount.replace(/,/g, "")) * MANWON_TO_WON
+                  ),
+                },
+              ])
+            ),
+          }));
+        }
+        return state;
+      },
       // 로컬스토리지에서 읽어올 때 날짜 객체로 복원
       onRehydrateStorage: () => (state) => {
         if (state) {

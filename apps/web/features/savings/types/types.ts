@@ -10,7 +10,7 @@ import {
  */
 export interface CheckingAccountRecord {
   date: string; // 기준날짜 (YYYY-MM-DD 형식)
-  balance: number; // 잔액 (만원 단위)
+  balance: number; // 잔액 (원 단위)
 }
 
 /**
@@ -37,7 +37,7 @@ export interface CheckingAccount {
  */
 export interface DepositAccountRecord {
   date: string; // 기준날짜 (YYYY-MM-DD 형식)
-  balance: number; // 잔액 (만원 단위)
+  balance: number; // 잔액 (원 단위)
   interestRate?: number; // 이율 (%, 변동 시)
 }
 
@@ -83,7 +83,7 @@ export interface InstallmentSavingsAccount {
  */
 export interface HousingAccountRecord {
   date: string; // 기준날짜 (YYYY-MM-DD 형식)
-  balance: number; // 잔액 (만원 단위)
+  balance: number; // 잔액 (원 단위)
 }
 
 /**
@@ -174,7 +174,7 @@ export function isDepositCategory(
  */
 export interface SavingsRecord {
   date: string; // 기준날짜 (YYYY-MM-DD 형식)
-  balance: number; // 잔액 (만원 단위)
+  balance: number; // 잔액 (원 단위)
 }
 
 /**
@@ -187,7 +187,7 @@ export interface SavingsItem {
   accountType: string; // 계좌 타입 (입출금, 저축, 적금, 주택청약 등)
   accountOwner: string; // 계좌 소유자 (본인, 배우자 등)
   currency: string; // 통화 (KRW, USD 등)
-  balance: number; // 현재 잔액 (만원 단위)
+  balance: number; // 현재 잔액 (원 단위)
   interestRate?: number; // 이율 (선택적, %)
   records: SavingsRecord[]; // 잔액 변경 히스토리
   note: string; // 메모
