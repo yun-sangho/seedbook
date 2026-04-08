@@ -16,6 +16,7 @@ describe("prepareMonthlyInvestmentSummary", () => {
         records: [],
         note: "",
         color: "#3b82f6",
+        holdings: [],
       },
     ];
 
@@ -40,6 +41,7 @@ describe("prepareMonthlyInvestmentSummary", () => {
         ],
         note: "",
         color: "#3b82f6",
+        holdings: [],
       },
     ];
 
@@ -73,6 +75,7 @@ describe("prepareMonthlyInvestmentSummary", () => {
         initialInvestment: 1000,
         currentValue: 1100,
         records: [{ date: "2024-01-30", initialInvestment: 1000, currentValue: 1100 }],
+        holdings: [],
         note: "",
         color: "#3b82f6",
       },
@@ -87,6 +90,7 @@ describe("prepareMonthlyInvestmentSummary", () => {
         records: [{ date: "2024-01-25", initialInvestment: 2000, currentValue: 2200 }],
         note: "",
         color: "#3b82f6",
+        holdings: [],
       },
     ];
 
@@ -114,6 +118,7 @@ describe("prepareMonthlyInvestmentSummary", () => {
           { date: "2024-01-20", initialInvestment: 1100, currentValue: 1150 },
           { date: "2024-01-30", initialInvestment: 1200, currentValue: 1300 }, // Last
         ],
+        holdings: [],
         note: "",
         color: "#3b82f6",
       },
@@ -131,6 +136,7 @@ describe("prepareMonthlyInvestmentSummary", () => {
         ],
         note: "",
         color: "#3b82f6",
+        holdings: [],
       },
     ];
 
@@ -156,6 +162,7 @@ describe("prepareMonthlyInvestmentSummary", () => {
         records: [{ date: "2024-01-30", initialInvestment: 1000, currentValue: 1200 }],
         note: "",
         color: "#3b82f6",
+        holdings: [],
       },
     ];
 
@@ -182,6 +189,7 @@ describe("prepareMonthlyInvestmentSummary", () => {
         ],
         note: "",
         color: "#3b82f6",
+        holdings: [],
       },
     ];
 

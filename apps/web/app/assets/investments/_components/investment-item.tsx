@@ -9,7 +9,7 @@ import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@web/components/ui/popover";
 import { ACCOUNT_COLORS } from "@web/features/investments/types/constants";
-import { InvestmentItem } from "@web/features/investments/types/types";
+import { InvestmentItem, StockHolding } from "@web/features/investments/types/types";
 import { numberToKorean } from "@web/utils/number-format";
 import { AddHistoryModal } from "./add-history-modal";
 
@@ -24,6 +24,14 @@ interface InvestmentItemComponentProps {
     currentValue: number
   ) => void;
   onRemoveInvestment: (id: number) => void;
+  onAddStockHolding: (investmentId: number) => void;
+  onUpdateStockHolding: (
+    investmentId: number,
+    holdingId: number,
+    field: keyof StockHolding,
+    value: string | number
+  ) => void;
+  onRemoveStockHolding: (investmentId: number, holdingId: number) => void;
 }
 
 export function InvestmentItemComponent({
@@ -32,6 +40,9 @@ export function InvestmentItemComponent({
   onRemoveHistoryRecord,
   onAddHistory,
   onRemoveInvestment,
+  onAddStockHolding,
+  onUpdateStockHolding,
+  onRemoveStockHolding,
 }: InvestmentItemComponentProps) {
   const [isRecordsExpanded, setIsRecordsExpanded] = useState(false);
   const [isAddHistoryModalOpen, setIsAddHistoryModalOpen] = useState(false);
@@ -186,6 +197,69 @@ export function InvestmentItemComponent({
                   })}
               </div>
             )}
+
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  보유 주식
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onAddStockHolding(item.id)}
+                  className="h-7 text-xs"
+                >
+                  + 종목 추가
+                </Button>
+              </div>
+
+              {item.holdings && item.holdings.length > 0 && (
+                <div className="space-y-2">
+                  {item.holdings.map((holding) => (
+                    <div
+                      key={holding.id}
+                      className="flex flex-wrap gap-2 items-center p-2 rounded-lg border"
+                    >
+                      <Input
+                        type="text"
+                        value={holding.name}
+                        onChange={(e) =>
+                          onUpdateStockHolding(item.id, holding.id, "name", e.target.value)
+                        }
+                        placeholder="종목명"
+                        className="text-sm flex-1 min-w-[100px]"
+                      />
+                      <Input
+                        type="text"
+                        value={holding.quantity > 0 ? holding.quantity.toLocaleString() : ""}
+                        onChange={(e) =>
+                          onUpdateStockHolding(item.id, holding.id, "quantity", e.target.value)
+                        }
+                        placeholder="수량"
+                        className="text-sm w-24"
+                      />
+                      <Input
+                        type="text"
+                        value={holding.memo}
+                        onChange={(e) =>
+                          onUpdateStockHolding(item.id, holding.id, "memo", e.target.value)
+                        }
+                        placeholder="메모"
+                        className="text-sm flex-1 min-w-[80px]"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onRemoveStockHolding(item.id, holding.id)}
+                        className="h-7 text-xs text-destructive hover:text-destructive"
+                      >
+                        삭제
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <div className="flex">
               <Button

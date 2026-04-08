@@ -44,6 +44,9 @@ export function InvestmentManager() {
   const addHistoryRecord = useInvestmentStore((state) => state.addHistoryRecord);
   const reorderInvestments = useInvestmentStore((state) => state.reorderInvestments);
   const removeInvestment = useInvestmentStore((state) => state.removeInvestment);
+  const addStockHolding = useInvestmentStore((state) => state.addStockHolding);
+  const updateStockHolding = useInvestmentStore((state) => state.updateStockHolding);
+  const removeStockHolding = useInvestmentStore((state) => state.removeStockHolding);
 
   const handleChange = (id: number, field: string, value: string) => {
     updateInvestment(id, field as keyof InvestmentItem, value);
@@ -131,6 +134,9 @@ export function InvestmentManager() {
                 onRemoveHistoryRecord={handleRemoveHistoryRecord}
                 onAddHistory={handleAddHistory}
                 onRemoveInvestment={removeInvestment}
+                onAddStockHolding={addStockHolding}
+                onUpdateStockHolding={updateStockHolding}
+                onRemoveStockHolding={removeStockHolding}
               />
             </SortableItem>
           ))}

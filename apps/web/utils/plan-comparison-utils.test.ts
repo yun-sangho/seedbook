@@ -20,6 +20,7 @@ describe("preparePlanComparisonChartData", () => {
         currentValue: 12000000, // 1,200만원
         note: "",
         color: "#3b82f6",
+        holdings: [],
         records: [
           {
             date: "2024-06-01",
@@ -48,6 +49,7 @@ describe("preparePlanComparisonChartData", () => {
         currentValue: 5500000, // 550만원
         note: "",
         color: "#3b82f6",
+        holdings: [],
         records: [
           {
             date: "2024-06-01",

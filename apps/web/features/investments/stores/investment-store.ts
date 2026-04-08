@@ -6,7 +6,7 @@ import { parseNumericString } from "@web/utils/number-format";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { ACCOUNT_COLORS, COLOR_FAMILIES } from "../types/constants";
-import { InvestmentItem, InvestmentRecord } from "../types/types";
+import { InvestmentItem, InvestmentRecord, StockHolding } from "../types/types";
 
 // 현재 날짜를 YYYY-MM-DD 형식으로 반환하는 헬퍼 함수
 const getCurrentDate = (): string => {
@@ -46,6 +46,14 @@ interface InvestmentState {
     initialInvestment: number,
     currentValue: number
   ) => void;
+  addStockHolding: (investmentId: number) => void;
+  updateStockHolding: (
+    investmentId: number,
+    holdingId: number,
+    field: keyof StockHolding,
+    value: string | number
+  ) => void;
+  removeStockHolding: (investmentId: number, holdingId: number) => void;
   setExpandedFormId: (id: number) => void;
   reorderInvestments: (reorderedInvestments: InvestmentItem[]) => void;
   resetStore: () => void;
@@ -76,6 +84,7 @@ export const useInvestmentStore = create<InvestmentState>()(
               initialInvestment: 0,
               currentValue: 0,
               records: [],
+              holdings: [],
               note: "",
               color: newColor,
             },
@@ -299,6 +308,51 @@ export const useInvestmentStore = create<InvestmentState>()(
         });
       },
 
+      addStockHolding: (investmentId) => {
+        set((state) => {
+          const updatedInvestments = state.investments.map((item) => {
+            if (item.id !== investmentId) return item;
+            const maxId = item.holdings.reduce((max, h) => Math.max(max, h.id), 0);
+            const newHolding: StockHolding = {
+              id: maxId + 1,
+              name: "",
+              quantity: 0,
+              memo: "",
+            };
+            return { ...item, holdings: [...item.holdings, newHolding] };
+          });
+          return { investments: updatedInvestments };
+        });
+      },
+
+      updateStockHolding: (investmentId, holdingId, field, value) => {
+        set((state) => {
+          const updatedInvestments = state.investments.map((item) => {
+            if (item.id !== investmentId) return item;
+            const updatedHoldings = item.holdings.map((h) => {
+              if (h.id !== holdingId) return h;
+              if (field === "quantity") {
+                const num = typeof value === "string" ? parseNumericString(value) : value;
+                return { ...h, quantity: num };
+              }
+              return { ...h, [field]: value };
+            });
+            return { ...item, holdings: updatedHoldings };
+          });
+          return { investments: updatedInvestments };
+        });
+      },
+
+      removeStockHolding: (investmentId, holdingId) => {
+        set((state) => {
+          const updatedInvestments = state.investments.map((item) => {
+            if (item.id !== investmentId) return item;
+            return { ...item, holdings: item.holdings.filter((h) => h.id !== holdingId) };
+          });
+          return { investments: updatedInvestments };
+        });
+      },
+
       setExpandedFormId: (id) => {
         set({ expandedFormId: id });
       },
@@ -354,15 +408,21 @@ export const useInvestmentStore = create<InvestmentState>()(
         if (state) {
           let needsUpdate = false;
           const updatedInvestments = state.investments.map((inv, index) => {
+            let updated = inv;
             // color 속성이 없는 경우 추가
             if (!inv.color) {
               needsUpdate = true;
-              return {
-                ...inv,
+              updated = {
+                ...updated,
                 color: ACCOUNT_COLORS[index % ACCOUNT_COLORS.length] || "#3b82f6",
               };
             }
-            return inv;
+            // holdings 속성이 없는 경우 추가
+            if (!inv.holdings) {
+              needsUpdate = true;
+              updated = { ...updated, holdings: [] };
+            }
+            return updated;
           });
 
           if (needsUpdate) {
