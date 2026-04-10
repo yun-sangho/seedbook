@@ -53,6 +53,11 @@ interface InvestmentState {
     field: keyof StockHolding,
     value: string | number
   ) => void;
+  setStockHoldingFromSearch: (
+    investmentId: number,
+    holdingId: number,
+    stock: { market: string; ticker: string; name: string; currency: string }
+  ) => void;
   removeStockHolding: (investmentId: number, holdingId: number) => void;
   setExpandedFormId: (id: number) => void;
   reorderInvestments: (reorderedInvestments: InvestmentItem[]) => void;
@@ -315,7 +320,10 @@ export const useInvestmentStore = create<InvestmentState>()(
             const maxId = item.holdings.reduce((max, h) => Math.max(max, h.id), 0);
             const newHolding: StockHolding = {
               id: maxId + 1,
+              market: "",
+              ticker: "",
               name: "",
+              currency: "",
               quantity: 0,
               memo: "",
             };
@@ -336,6 +344,26 @@ export const useInvestmentStore = create<InvestmentState>()(
                 return { ...h, quantity: num };
               }
               return { ...h, [field]: value };
+            });
+            return { ...item, holdings: updatedHoldings };
+          });
+          return { investments: updatedInvestments };
+        });
+      },
+
+      setStockHoldingFromSearch: (investmentId, holdingId, stock) => {
+        set((state) => {
+          const updatedInvestments = state.investments.map((item) => {
+            if (item.id !== investmentId) return item;
+            const updatedHoldings = item.holdings.map((h) => {
+              if (h.id !== holdingId) return h;
+              return {
+                ...h,
+                market: stock.market,
+                ticker: stock.ticker,
+                name: stock.name,
+                currency: stock.currency,
+              };
             });
             return { ...item, holdings: updatedHoldings };
           });
@@ -372,20 +400,23 @@ export const useInvestmentStore = create<InvestmentState>()(
     {
       name: "investment-storage", // localStorage에 저장될 키 이름
       storage: createJSONStorage(() => localStorage),
-      version: 1,
+      version: 2,
       // UI 관련 상태는 지속성 저장에서 제외 (성능 최적화)
       partialize: (state) => ({
         investments: state.investments,
         lastInvestmentId: state.lastInvestmentId,
         // expandedFormId는 제외
       }),
-      // 만원 → 원 마이그레이션
+      // 마이그레이션:
+      //   v0 → v1: 만원 → 원 단위 변환
+      //   v1 → v2: StockHolding 에 market/ticker/currency 기본값 주입
       migrate: (persisted, version) => {
+        const state = persisted as {
+          investments: InvestmentItem[];
+          lastInvestmentId: number;
+        };
+
         if (version === 0) {
-          const state = persisted as {
-            investments: InvestmentItem[];
-            lastInvestmentId: number;
-          };
           const MANWON_TO_WON = 10000;
           state.investments = state.investments.map((inv) => ({
             ...inv,
@@ -398,10 +429,20 @@ export const useInvestmentStore = create<InvestmentState>()(
             })),
           }));
         }
-        return persisted as {
-          investments: InvestmentItem[];
-          lastInvestmentId: number;
-        };
+
+        if (version < 2) {
+          state.investments = state.investments.map((inv) => ({
+            ...inv,
+            holdings: (inv.holdings ?? []).map((h) => ({
+              ...h,
+              market: h.market ?? "",
+              ticker: h.ticker ?? "",
+              currency: h.currency ?? "",
+            })),
+          }));
+        }
+
+        return state;
       },
       // 기존 데이터 마이그레이션: color 속성이 없는 투자에 색상 추가
       onRehydrateStorage: () => (state) => {

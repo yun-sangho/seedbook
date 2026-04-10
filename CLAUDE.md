@@ -62,6 +62,10 @@ Vitest with jsdom and globals. Tests live alongside source as `*.test.ts`. Focus
 - Search existing utils before adding new ones; mirror established patterns
 - Do not disable lint rules unless necessary; explain in comment if you must
 
+## Shell Command Rules
+
+**Do not wrap docker/pnpm/git commands in `for` loops** (or any shell construct that starts with a non-excluded keyword like `for`, `while`, `if`). The sandbox decides "inside vs outside" by matching the first token of the command string against `excludedCommands`; a `for` loop starts with `for`, so the whole invocation runs *inside* the sandbox, and the docker/pnpm/git call inside the loop then hits `operation not permitted` when it tries to reach docker.sock or similar resources. Run each command as a separate Bash call, or chain with `&&` / `;` starting with the excluded keyword (e.g., `docker compose logs ... && docker compose ps`).
+
 ## Key Files
 
 - Projection logic: `apps/web/utils/plan-comparison-utils.ts`

@@ -487,6 +487,217 @@ describe("Investment Store", () => {
     });
   });
 
+  describe("Stock Holdings", () => {
+    beforeEach(() => {
+      const { addInvestmentWithTypeAndOwner } = useInvestmentStore.getState();
+      addInvestmentWithTypeAndOwner("증권계좌", "홍길동"); // id: 2
+    });
+
+    it("adds a blank holding with empty market/ticker/currency", () => {
+      const { addStockHolding } = useInvestmentStore.getState();
+
+      addStockHolding(2);
+
+      const state = useInvestmentStore.getState();
+      const holdings = state.investments[0]!.holdings;
+      expect(holdings).toHaveLength(1);
+      expect(holdings[0]!).toMatchObject({
+        id: 1,
+        market: "",
+        ticker: "",
+        name: "",
+        currency: "",
+        quantity: 0,
+        memo: "",
+      });
+    });
+
+    it("setStockHoldingFromSearch writes market/ticker/name/currency atomically", () => {
+      const { addStockHolding, setStockHoldingFromSearch } =
+        useInvestmentStore.getState();
+
+      addStockHolding(2);
+      setStockHoldingFromSearch(2, 1, {
+        market: "KOSPI",
+        ticker: "005930",
+        name: "삼성전자",
+        currency: "KRW",
+      });
+
+      const holding = useInvestmentStore.getState().investments[0]!.holdings[0]!;
+      expect(holding).toMatchObject({
+        market: "KOSPI",
+        ticker: "005930",
+        name: "삼성전자",
+        currency: "KRW",
+      });
+    });
+
+    it("setStockHoldingFromSearch preserves quantity and memo set before selection", () => {
+      const { addStockHolding, updateStockHolding, setStockHoldingFromSearch } =
+        useInvestmentStore.getState();
+
+      addStockHolding(2);
+      updateStockHolding(2, 1, "quantity", "10");
+      updateStockHolding(2, 1, "memo", "중장기 보유");
+
+      setStockHoldingFromSearch(2, 1, {
+        market: "KOSPI",
+        ticker: "005930",
+        name: "삼성전자",
+        currency: "KRW",
+      });
+
+      const holding = useInvestmentStore.getState().investments[0]!.holdings[0]!;
+      expect(holding.quantity).toBe(10);
+      expect(holding.memo).toBe("중장기 보유");
+    });
+
+    it("setStockHoldingFromSearch overwrites a previously selected stock", () => {
+      const { addStockHolding, setStockHoldingFromSearch } =
+        useInvestmentStore.getState();
+
+      addStockHolding(2);
+      setStockHoldingFromSearch(2, 1, {
+        market: "KOSPI",
+        ticker: "005930",
+        name: "삼성전자",
+        currency: "KRW",
+      });
+      setStockHoldingFromSearch(2, 1, {
+        market: "NASDAQ",
+        ticker: "AAPL",
+        name: "Apple Inc.",
+        currency: "USD",
+      });
+
+      const holding = useInvestmentStore.getState().investments[0]!.holdings[0]!;
+      expect(holding).toMatchObject({
+        market: "NASDAQ",
+        ticker: "AAPL",
+        name: "Apple Inc.",
+        currency: "USD",
+      });
+    });
+
+    it("removeStockHolding removes the specified holding only", () => {
+      const { addStockHolding, setStockHoldingFromSearch, removeStockHolding } =
+        useInvestmentStore.getState();
+
+      addStockHolding(2);
+      setStockHoldingFromSearch(2, 1, {
+        market: "KOSPI",
+        ticker: "005930",
+        name: "삼성전자",
+        currency: "KRW",
+      });
+      addStockHolding(2);
+      setStockHoldingFromSearch(2, 2, {
+        market: "KOSPI",
+        ticker: "000660",
+        name: "SK하이닉스",
+        currency: "KRW",
+      });
+
+      removeStockHolding(2, 1);
+
+      const holdings = useInvestmentStore.getState().investments[0]!.holdings;
+      expect(holdings).toHaveLength(1);
+      expect(holdings[0]!.ticker).toBe("000660");
+    });
+  });
+
+  describe("Persist Migration", () => {
+    it("v1 → v2 backfills missing market/ticker/currency on legacy holdings", () => {
+      // Import the raw persist config isn't exposed, so we re-import and
+      // drive the migrate function through the storage roundtrip by calling
+      // it directly. The migrate function lives on the persist middleware's
+      // options; easiest is to rehydrate a payload manually.
+      //
+      // We re-use the module under test by invoking the migrate logic via the
+      // store's configured migrate path: write to localStorage in v1 format
+      // and then reload.
+      const legacyState = {
+        state: {
+          investments: [
+            {
+              id: 2,
+              accountName: "테스트",
+              accountType: "증권계좌",
+              accountOwner: "홍길동",
+              currency: "KRW",
+              initialInvestment: 0,
+              currentValue: 0,
+              records: [],
+              holdings: [
+                { id: 1, name: "삼성전자", quantity: 10, memo: "" },
+              ],
+              note: "",
+              color: "#3b82f6",
+            },
+          ],
+          lastInvestmentId: 2,
+        },
+        version: 1,
+      };
+
+      // Drive the store's persist.migrate directly.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const persistApi = (useInvestmentStore as any).persist;
+      const migrated = persistApi.getOptions().migrate(
+        legacyState.state,
+        legacyState.version,
+      );
+
+      const holding = migrated.investments[0].holdings[0];
+      expect(holding.market).toBe("");
+      expect(holding.ticker).toBe("");
+      expect(holding.currency).toBe("");
+      expect(holding.name).toBe("삼성전자");
+      expect(holding.quantity).toBe(10);
+    });
+
+    it("v1 → v2 leaves already-populated holding fields intact", () => {
+      const v1WithModernFields = {
+        investments: [
+          {
+            id: 2,
+            accountName: "테스트",
+            accountType: "증권계좌",
+            accountOwner: "홍길동",
+            currency: "KRW",
+            initialInvestment: 0,
+            currentValue: 0,
+            records: [],
+            holdings: [
+              {
+                id: 1,
+                market: "KOSPI",
+                ticker: "005930",
+                name: "삼성전자",
+                currency: "KRW",
+                quantity: 10,
+                memo: "",
+              },
+            ],
+            note: "",
+            color: "#3b82f6",
+          },
+        ],
+        lastInvestmentId: 2,
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const persistApi = (useInvestmentStore as any).persist;
+      const migrated = persistApi.getOptions().migrate(v1WithModernFields, 1);
+
+      const holding = migrated.investments[0].holdings[0];
+      expect(holding.market).toBe("KOSPI");
+      expect(holding.ticker).toBe("005930");
+      expect(holding.currency).toBe("KRW");
+    });
+  });
+
   describe("Color Management", () => {
     it("should assign a color when adding a new investment", () => {
       const { addInvestmentWithTypeAndOwner } = useInvestmentStore.getState();

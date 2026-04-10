@@ -10,7 +10,15 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,css}\"",
     "openapi:api": "pnpm --filter api build:openapi",
     "openapi-ts": "openapi-ts",
-    "openapi:regen": "pnpm openapi:api && pnpm --filter @seedbook/web openapi:gen"
+    "openapi:regen": "pnpm openapi:api && pnpm --filter @seedbook/web openapi:gen",
+    "crawler:start": "pnpm --filter @seedbook/stock-crawler start",
+    "crawler:stocks": "pnpm --filter @seedbook/stock-crawler crawl:stocks",
+    "crawler:prices": "pnpm --filter @seedbook/stock-crawler crawl:prices",
+    "crawler:all": "pnpm --filter @seedbook/stock-crawler crawl:all",
+    "db:migrate": "pnpm --filter @seedbook/database prisma:migrate",
+    "db:generate": "pnpm --filter @seedbook/database prisma:generate",
+    "docker:dev": "docker compose -f docker-compose.dev.yml up --build",
+    "docker:prod": "docker compose up --build -d"
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "0.84.1",

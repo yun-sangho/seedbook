@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 주식 종목 마스터.
+// 복합 PK (market, ticker) 로 시장 간 동일 티커 충돌 방지 —
+// 추후 NASDAQ/NYSE 등 해외 시장 추가 시 스키마 변경이 필요 없도록 설계.
+model Stock {
+  market    String // KOSPI | KOSDAQ | KONEX | 향후 NASDAQ | NYSE 등
+  ticker    String // KR: 6자리 숫자 (예: "005930") | US: 알파벳 심볼 (예: "AAPL")
+  name      String // 종목명
+  currency  String       @default("KRW") // KRW | USD
+  sector    String? // 업종
+  isActive  Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  prices    StockPrice[]
+
+  @@id([market, ticker])
+  @@index([market])
+  @@index([isActive])
+  @@index([name])
+}
+
+model StockPrice {
+  id          Int      @id @default(autoincrement())
+  stockMarket String
+  stockTicker String
+  date        DateTime @db.Date
+  open        BigInt // 시가 (원)
+  high        BigInt // 고가
+  low         BigInt // 저가
+  close       BigInt // 종가
+  volume      BigInt // 거래량
+  marketCap   BigInt? // 시가총액
+  change      BigInt? // 전일대비
+  stock       Stock    @relation(fields: [stockMarket, stockTicker], references: [market, ticker])
+
+  @@unique([stockMarket, stockTicker, date])
+  @@index([date])
+  @@index([stockMarket, stockTicker])
+}
