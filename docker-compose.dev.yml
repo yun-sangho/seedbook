@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-seedbook}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-seedbook}
+      POSTGRES_DB: ${POSTGRES_DB:-seedbook}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-seedbook}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  stock-crawler:
+    build:
+      context: .
+      dockerfile: packages/stock-crawler/Dockerfile
+      target: development
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-seedbook}:${POSTGRES_PASSWORD:-seedbook}@postgres:5432/${POSTGRES_DB:-seedbook}
+      CRON_MORNING: ${CRON_MORNING:-0 6 * * 1-5}
+      CRON_AFTERNOON: ${CRON_AFTERNOON:-30 16 * * 1-5}
+      RUN_NOW: ${RUN_NOW:-true}
+      NODE_ENV: development
+    volumes:
+      - ./packages/stock-crawler/src:/app/packages/stock-crawler/src
+      - ./packages/database/src:/app/packages/database/src
+      - ./packages/database/prisma:/app/packages/database/prisma
+
+volumes:
+  postgres_data_dev:

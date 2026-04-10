@@ -1,0 +1,24 @@
+{
+  "name": "@seedbook/stock-crawler",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "tsx src/index.ts",
+    "crawl:stocks": "tsx src/jobs/sync-stock-list.ts",
+    "crawl:prices": "tsx src/jobs/sync-stock-prices.ts",
+    "crawl:all": "tsx src/jobs/run-all.ts"
+  },
+  "dependencies": {
+    "@seedbook/database": "workspace:*",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "@types/node-cron": "^3.0.11",
+    "tsx": "^4.19.0",
+    "typescript": "^5.4.0"
+  }
+}

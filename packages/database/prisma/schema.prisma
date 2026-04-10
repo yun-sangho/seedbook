@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Stock {
+  id         String       @id // 종목코드 (e.g. "005930")
+  name       String // 종목명
+  market     String // KOSPI | KOSDAQ | KONEX
+  sector     String? // 업종
+  isActive   Boolean      @default(true)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  prices     StockPrice[]
+
+  @@index([market])
+  @@index([isActive])
+}
+
+model StockPrice {
+  id        Int      @id @default(autoincrement())
+  stockId   String
+  date      DateTime @db.Date
+  open      BigInt // 시가 (원)
+  high      BigInt // 고가
+  low       BigInt // 저가
+  close     BigInt // 종가
+  volume    BigInt // 거래량
+  marketCap BigInt? // 시가총액
+  change    BigInt? // 전일대비
+  stock     Stock    @relation(fields: [stockId], references: [id])
+
+  @@unique([stockId, date])
+  @@index([date])
+  @@index([stockId])
+}
