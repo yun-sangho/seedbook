@@ -8,7 +8,9 @@ import { Card, CardContent, CardHeader } from "@web/components/ui/card";
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@web/components/ui/popover";
+import { StockCombobox } from "@web/features/investments/components/stock-combobox";
 import { ACCOUNT_COLORS } from "@web/features/investments/types/constants";
+import type { Stock } from "@web/features/investments/types/stock";
 import { InvestmentItem, StockHolding } from "@web/features/investments/types/types";
 import { numberToKorean } from "@web/utils/number-format";
 import { AddHistoryModal } from "./add-history-modal";
@@ -31,6 +33,11 @@ interface InvestmentItemComponentProps {
     field: keyof StockHolding,
     value: string | number
   ) => void;
+  onSetStockHoldingFromSearch: (
+    investmentId: number,
+    holdingId: number,
+    stock: Stock
+  ) => void;
   onRemoveStockHolding: (investmentId: number, holdingId: number) => void;
 }
 
@@ -42,6 +49,7 @@ export function InvestmentItemComponent({
   onRemoveInvestment,
   onAddStockHolding,
   onUpdateStockHolding,
+  onSetStockHoldingFromSearch,
   onRemoveStockHolding,
 }: InvestmentItemComponentProps) {
   const [isRecordsExpanded, setIsRecordsExpanded] = useState(false);
@@ -215,48 +223,64 @@ export function InvestmentItemComponent({
 
               {item.holdings && item.holdings.length > 0 && (
                 <div className="space-y-2">
-                  {item.holdings.map((holding) => (
-                    <div
-                      key={holding.id}
-                      className="flex flex-wrap gap-2 items-center p-2 rounded-lg border"
-                    >
-                      <Input
-                        type="text"
-                        value={holding.name}
-                        onChange={(e) =>
-                          onUpdateStockHolding(item.id, holding.id, "name", e.target.value)
-                        }
-                        placeholder="종목명"
-                        className="text-sm flex-1 min-w-[100px]"
-                      />
-                      <Input
-                        type="text"
-                        value={holding.quantity > 0 ? holding.quantity.toLocaleString() : ""}
-                        onChange={(e) =>
-                          onUpdateStockHolding(item.id, holding.id, "quantity", e.target.value)
-                        }
-                        placeholder="수량"
-                        className="text-sm w-24"
-                      />
-                      <Input
-                        type="text"
-                        value={holding.memo}
-                        onChange={(e) =>
-                          onUpdateStockHolding(item.id, holding.id, "memo", e.target.value)
-                        }
-                        placeholder="메모"
-                        className="text-sm flex-1 min-w-[80px]"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onRemoveStockHolding(item.id, holding.id)}
-                        className="h-7 text-xs text-destructive hover:text-destructive"
+                  {item.holdings.map((holding) => {
+                    const selectedStock: Stock | null =
+                      holding.ticker && holding.market
+                        ? {
+                            market: holding.market,
+                            ticker: holding.ticker,
+                            name: holding.name,
+                            currency: holding.currency,
+                          }
+                        : holding.name
+                          ? {
+                              market: "",
+                              ticker: "",
+                              name: holding.name,
+                              currency: "",
+                            }
+                          : null;
+                    return (
+                      <div
+                        key={holding.id}
+                        className="flex flex-wrap gap-2 items-center p-2 rounded-lg border"
                       >
-                        삭제
-                      </Button>
-                    </div>
-                  ))}
+                        <StockCombobox
+                          value={selectedStock}
+                          onSelect={(stock) =>
+                            onSetStockHoldingFromSearch(item.id, holding.id, stock)
+                          }
+                          className="min-w-[140px]"
+                        />
+                        <Input
+                          type="text"
+                          value={holding.quantity > 0 ? holding.quantity.toLocaleString() : ""}
+                          onChange={(e) =>
+                            onUpdateStockHolding(item.id, holding.id, "quantity", e.target.value)
+                          }
+                          placeholder="수량"
+                          className="text-sm w-24"
+                        />
+                        <Input
+                          type="text"
+                          value={holding.memo}
+                          onChange={(e) =>
+                            onUpdateStockHolding(item.id, holding.id, "memo", e.target.value)
+                          }
+                          placeholder="메모"
+                          className="text-sm flex-1 min-w-[80px]"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onRemoveStockHolding(item.id, holding.id)}
+                          className="h-7 text-xs text-destructive hover:text-destructive"
+                        >
+                          삭제
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

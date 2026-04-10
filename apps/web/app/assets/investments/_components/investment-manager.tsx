@@ -46,6 +46,9 @@ export function InvestmentManager() {
   const removeInvestment = useInvestmentStore((state) => state.removeInvestment);
   const addStockHolding = useInvestmentStore((state) => state.addStockHolding);
   const updateStockHolding = useInvestmentStore((state) => state.updateStockHolding);
+  const setStockHoldingFromSearch = useInvestmentStore(
+    (state) => state.setStockHoldingFromSearch
+  );
   const removeStockHolding = useInvestmentStore((state) => state.removeStockHolding);
 
   const handleChange = (id: number, field: string, value: string) => {
@@ -136,6 +139,7 @@ export function InvestmentManager() {
                 onRemoveInvestment={removeInvestment}
                 onAddStockHolding={addStockHolding}
                 onUpdateStockHolding={updateStockHolding}
+                onSetStockHoldingFromSearch={setStockHoldingFromSearch}
                 onRemoveStockHolding={removeStockHolding}
               />
             </SortableItem>

@@ -77,9 +77,10 @@ export async function fetchAllStocksWithPrices(
 
 export function parseStockList(items: KrxStockItem[]) {
   return items.map((item) => ({
-    id: item.ISU_SRT_CD,
-    name: item.ISU_NM,
     market: item.MKT_NM,
+    ticker: item.ISU_SRT_CD,
+    name: item.ISU_NM,
+    currency: "KRW",
     sector: item.SECT_TP_NM || null,
   }));
 }
@@ -88,7 +89,8 @@ export function parsePriceData(items: KrxStockItem[], date: Date) {
   return items
     .filter((item) => parseNumber(item.TDD_CLSPRC) > 0n)
     .map((item) => ({
-      stockId: item.ISU_SRT_CD,
+      stockMarket: item.MKT_NM,
+      stockTicker: item.ISU_SRT_CD,
       date,
       open: parseNumber(item.TDD_OPNPRC),
       high: parseNumber(item.TDD_HGPRC),

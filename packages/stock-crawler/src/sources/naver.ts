@@ -27,13 +27,20 @@ interface NaverMarketValueResponse {
 }
 
 export interface StockListItem {
-  id: string;
-  name: string;
   market: string;
+  ticker: string;
+  name: string;
+  currency: string;
+}
+
+export interface StockRef {
+  market: string;
+  ticker: string;
 }
 
 export interface StockPriceItem {
-  stockId: string;
+  stockMarket: string;
+  stockTicker: string;
   date: Date;
   open: bigint;
   high: bigint;
@@ -89,14 +96,16 @@ export async function fetchAllStocks(): Promise<StockListItem[]> {
 
   const stocks: StockListItem[] = [
     ...kospi.map((s) => ({
-      id: s.itemCode,
-      name: s.stockName,
       market: "KOSPI",
+      ticker: s.itemCode,
+      name: s.stockName,
+      currency: "KRW",
     })),
     ...kosdaq.map((s) => ({
-      id: s.itemCode,
-      name: s.stockName,
       market: "KOSDAQ",
+      ticker: s.itemCode,
+      name: s.stockName,
+      currency: "KRW",
     })),
   ];
 
@@ -123,11 +132,11 @@ function formatDate(date: Date): string {
 }
 
 export async function fetchStockDailyPrice(
-  stockId: string,
+  ref: StockRef,
   date: Date,
 ): Promise<StockPriceItem | null> {
   const dateStr = formatDate(date);
-  const url = `https://api.stock.naver.com/chart/domestic/item/${stockId}/day?startDateTime=${dateStr}&endDateTime=${dateStr}`;
+  const url = `https://api.stock.naver.com/chart/domestic/item/${ref.ticker}/day?startDateTime=${dateStr}&endDateTime=${dateStr}`;
 
   const resp = await fetch(url, { headers: HEADERS });
   if (!resp.ok) return null;
@@ -137,7 +146,8 @@ export async function fetchStockDailyPrice(
 
   const item = data[0]!;
   return {
-    stockId,
+    stockMarket: ref.market,
+    stockTicker: ref.ticker,
     date,
     open: BigInt(Math.round(item.openPrice)),
     high: BigInt(Math.round(item.highPrice)),
@@ -150,17 +160,17 @@ export async function fetchStockDailyPrice(
 }
 
 export async function fetchAllStockPrices(
-  stockIds: string[],
+  refs: StockRef[],
   date: Date,
   concurrency = 5,
 ): Promise<StockPriceItem[]> {
   const results: StockPriceItem[] = [];
-  const total = stockIds.length;
+  const total = refs.length;
 
   for (let i = 0; i < total; i += concurrency) {
-    const batch = stockIds.slice(i, i + concurrency);
+    const batch = refs.slice(i, i + concurrency);
     const batchResults = await Promise.all(
-      batch.map((id) => fetchStockDailyPrice(id, date)),
+      batch.map((ref) => fetchStockDailyPrice(ref, date)),
     );
 
     for (const r of batchResults) {

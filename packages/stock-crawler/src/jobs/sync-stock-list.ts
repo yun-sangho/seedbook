@@ -7,38 +7,54 @@ export async function syncStockList(): Promise<void> {
   logger.info("종목 목록 동기화 시작");
 
   const stocks = await fetchAllStocks();
-  const crawledIds = new Set(stocks.map((s) => s.id));
 
   let upserted = 0;
 
   for (const stock of stocks) {
     await prisma.stock.upsert({
-      where: { id: stock.id },
+      where: {
+        market_ticker: { market: stock.market, ticker: stock.ticker },
+      },
       create: {
-        id: stock.id,
-        name: stock.name,
         market: stock.market,
+        ticker: stock.ticker,
+        name: stock.name,
+        currency: stock.currency,
         isActive: true,
       },
       update: {
         name: stock.name,
-        market: stock.market,
+        currency: stock.currency,
         isActive: true,
       },
     });
     upserted++;
   }
 
-  const result = await prisma.stock.updateMany({
-    where: {
-      id: { notIn: [...crawledIds] },
-      isActive: true,
-    },
-    data: { isActive: false },
-  });
+  // 크롤링된 종목에 없는 기존 활성 종목은 비활성화.
+  // 시장 단위로 격리: KOSPI 크롤링 결과가 KOSDAQ 종목을 건드리지 않음.
+  const crawledByMarket = new Map<string, string[]>();
+  for (const stock of stocks) {
+    const list = crawledByMarket.get(stock.market) ?? [];
+    list.push(stock.ticker);
+    crawledByMarket.set(stock.market, list);
+  }
+
+  let deactivated = 0;
+  for (const [market, tickers] of crawledByMarket) {
+    const result = await prisma.stock.updateMany({
+      where: {
+        market,
+        ticker: { notIn: tickers },
+        isActive: true,
+      },
+      data: { isActive: false },
+    });
+    deactivated += result.count;
+  }
 
   logger.info(
-    `종목 목록 동기화 완료: ${upserted}개 upsert, ${result.count}개 비활성화`,
+    `종목 목록 동기화 완료: ${upserted}개 upsert, ${deactivated}개 비활성화`,
   );
 }
 

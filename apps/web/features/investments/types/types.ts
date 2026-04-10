@@ -8,13 +8,20 @@ export interface InvestmentRecord {
 }
 
 /**
- * 보유 주식 인터페이스
+ * 보유 주식 인터페이스.
+ *
+ * `market` / `ticker` / `currency` 는 Stock 마스터(Prisma `Stock` 모델)
+ * 에서 복제된 정보. 마스터 참조 무결성은 보장되지 않음 — holdings 는
+ * 사용자가 직접 편집 가능한 localStorage 자료이기 때문.
  */
 export interface StockHolding {
   id: number;
+  market: string; // "KOSPI" | "KOSDAQ" | 향후 "NASDAQ" 등. 비어있으면 레거시(이름만 있음).
+  ticker: string; // 종목 티커. 비어있으면 레거시.
   name: string; // 종목명
+  currency: string; // "KRW" | "USD". 비어있으면 레거시.
   quantity: number; // 보유 수량
-  memo: string; // 메모 (티커 등)
+  memo: string; // 메모
 }
 
 /**

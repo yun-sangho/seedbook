@@ -12,13 +12,12 @@ export async function syncStockPrices(date?: Date): Promise<void> {
   // 활성 종목만 가져오기
   const activeStocks = await prisma.stock.findMany({
     where: { isActive: true },
-    select: { id: true },
+    select: { market: true, ticker: true },
   });
 
-  const stockIds = activeStocks.map((s) => s.id);
-  logger.info(`활성 종목 ${stockIds.length}개 시세 수집 시작`);
+  logger.info(`활성 종목 ${activeStocks.length}개 시세 수집 시작`);
 
-  const prices = await fetchAllStockPrices(stockIds, targetDate);
+  const prices = await fetchAllStockPrices(activeStocks, targetDate);
 
   logger.info(`${prices.length}개 시세 데이터 DB 저장 시작`);
 
@@ -32,8 +31,9 @@ export async function syncStockPrices(date?: Date): Promise<void> {
       batch.map((price) =>
         prisma.stockPrice.upsert({
           where: {
-            stockId_date: {
-              stockId: price.stockId,
+            stockMarket_stockTicker_date: {
+              stockMarket: price.stockMarket,
+              stockTicker: price.stockTicker,
               date: price.date,
             },
           },
