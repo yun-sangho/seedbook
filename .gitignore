@@ -40,3 +40,4 @@ dist/
 
 # claude code runtime logs
 .claude/hooks-logs/
+.claude/worktrees/
