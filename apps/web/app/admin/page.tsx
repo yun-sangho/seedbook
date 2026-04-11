@@ -8,10 +8,15 @@ import { useDebtsStore } from "@web/features/debts/stores/debts-store";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { useRealAssetsStore } from "@web/features/real-assets/stores/real-assets-store";
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
+import { useAllStoresHydrated } from "@web/lib/zustand-hydration";
 import { Download, Upload } from "lucide-react";
 
 export default function AdminPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // 하이드레이션이 끝나기 전에 내보내기 버튼이 눌리면 빈 JSON 을 저장하게 되어
+  // 사용자가 실제 데이터를 잃은 것처럼 오인할 수 있다. gate 가 통과된 이후에만
+  // 버튼을 활성화한다.
+  const storesHydrated = useAllStoresHydrated();
 
   const investments = useInvestmentStore((state) => state.investments);
   const savings = useSavingsStore((state) => state.savings);
@@ -176,7 +181,11 @@ export default function AdminPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-4">
-            <Button onClick={exportData} className="flex items-center gap-2">
+            <Button
+              onClick={exportData}
+              disabled={!storesHydrated}
+              className="flex items-center gap-2"
+            >
               <Download className="w-4 h-4" />
               데이터 내보내기 (JSON)
             </Button>
@@ -193,6 +202,7 @@ export default function AdminPage() {
               <Button
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
+                disabled={!storesHydrated}
                 className="flex items-center gap-2"
               >
                 <Upload className="w-4 h-4" />
