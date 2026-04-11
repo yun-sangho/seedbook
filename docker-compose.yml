@@ -31,5 +31,26 @@ services:
       CRON_AFTERNOON: ${CRON_AFTERNOON:-30 16 * * 1-5}
       NODE_ENV: production
 
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: production
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-seedbook}:${POSTGRES_PASSWORD:-seedbook}@postgres:5432/${POSTGRES_DB:-seedbook}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3001}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      NODE_ENV: production
+      PORT: "3001"
+      HOSTNAME: "0.0.0.0"
+    ports:
+      - "${WEB_PORT:-3001}:3001"
+
 volumes:
   postgres_data:
