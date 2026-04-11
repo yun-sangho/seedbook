@@ -1,0 +1,23 @@
+import { betterAuth } from "better-auth";
+import { prismaAdapter } from "better-auth/adapters/prisma";
+import { prisma } from "@seedbook/database";
+
+export const auth = betterAuth({
+  database: prismaAdapter(prisma, { provider: "postgresql" }),
+  socialProviders: {
+    kakao: {
+      clientId: process.env.KAKAO_CLIENT_ID ?? "",
+      clientSecret: process.env.KAKAO_CLIENT_SECRET ?? "",
+      // account_email 은 카카오 비즈앱 심사 스코프라 일반 개발 앱에선
+      // KOE205 가 난다. 기본 스코프를 끄고 필수 두 개만 요청한다.
+      disableDefaultScope: true,
+      scope: ["profile_nickname", "profile_image"],
+      // User.email 은 @unique NOT NULL 이라 이메일 동의 없이도
+      // 충돌 없는 합성 주소를 넣어 준다. kakao user id 는 전역 유일.
+      mapProfileToUser: (profile) => ({
+        email: `${profile.id}@kakao.local`,
+        emailVerified: false,
+      }),
+    },
+  },
+});

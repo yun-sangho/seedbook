@@ -41,3 +41,4 @@ dist/
 # claude code runtime logs
 .claude/hooks-logs/
 .claude/worktrees/
+.claude/scheduled_tasks.lock

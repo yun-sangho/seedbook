@@ -1,6 +1,12 @@
 {
   "$schema": "https://turborepo.com/schema.json",
   "ui": "tui",
+  "globalEnv": [
+    "BETTER_AUTH_SECRET",
+    "BETTER_AUTH_URL",
+    "KAKAO_CLIENT_ID",
+    "KAKAO_CLIENT_SECRET"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build", "format:check"],

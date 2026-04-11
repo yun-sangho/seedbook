@@ -1,10 +1,12 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  schemas  = ["public", "seedbook"]
 }
 
 // 주식 종목 마스터.
@@ -25,6 +27,7 @@ model Stock {
   @@index([market])
   @@index([isActive])
   @@index([name])
+  @@schema("public")
 }
 
 model StockPrice {
@@ -44,4 +47,71 @@ model StockPrice {
   @@unique([stockMarket, stockTicker, date])
   @@index([date])
   @@index([stockMarket, stockTicker])
+  @@schema("public")
+}
+
+// --- Better Auth (Kakao login) ---
+// 이 네 테이블은 Better Auth prismaAdapter 가 관리한다.
+// seedbook 스키마 아래에 위치시켜 stock 관련 public 테이블과 네임스페이스를 분리한다.
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean
+  image         String?
+  createdAt     DateTime
+  updatedAt     DateTime
+  sessions      Session[]
+  accounts      Account[]
+
+  @@map("user")
+  @@schema("seedbook")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+  @@schema("seedbook")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@map("account")
+  @@schema("seedbook")
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
+  @@schema("seedbook")
 }
