@@ -3,6 +3,9 @@
  * http://data.krx.co.kr 에서 전 종목 목록 및 시세 데이터를 가져옵니다.
  */
 
+import { kstDateStringCompact, kstMidnight } from "@seedbook/database";
+import { fetchWithRetry } from "./http.js";
+
 export interface KrxStockItem {
   ISU_CD: string; // ISIN 코드
   ISU_SRT_CD: string; // 단축코드 (6자리)
@@ -23,8 +26,7 @@ interface KrxResponse {
   OutBlock_1: KrxStockItem[];
 }
 
-const KRX_BASE_URL =
-  "http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd";
+const KRX_BASE_URL = "http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd";
 
 const HEADERS = {
   "User-Agent":
@@ -33,23 +35,15 @@ const HEADERS = {
   "Content-Type": "application/x-www-form-urlencoded",
 };
 
-function formatDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}${m}${d}`;
-}
-
 function parseNumber(value: string): bigint {
   const cleaned = value.replace(/,/g, "").trim();
   if (!cleaned || cleaned === "-") return 0n;
   return BigInt(cleaned);
 }
 
-export async function fetchAllStocksWithPrices(
-  date?: Date,
-): Promise<KrxStockItem[]> {
-  const trdDd = formatDate(date ?? new Date());
+export async function fetchAllStocksWithPrices(date?: Date): Promise<KrxStockItem[]> {
+  // KRX 는 KST 기준 YYYYMMDD 날짜를 원한다.
+  const trdDd = kstDateStringCompact(date ?? new Date());
 
   const body = new URLSearchParams({
     bld: "dbms/MDC/STAT/standard/MDCSTAT01501",
@@ -61,18 +55,21 @@ export async function fetchAllStocksWithPrices(
     csvxls_is498: "false",
   });
 
-  const response = await fetch(KRX_BASE_URL, {
-    method: "POST",
-    headers: HEADERS,
-    body: body.toString(),
-  });
-
-  if (!response.ok) {
-    throw new Error(`KRX request failed: ${response.status}`);
-  }
+  const response = await fetchWithRetry(
+    KRX_BASE_URL,
+    {
+      method: "POST",
+      headers: HEADERS,
+      body: body.toString(),
+    },
+    { label: `KRX ${trdDd}` }
+  );
 
   const data = (await response.json()) as KrxResponse;
-  return data.OutBlock_1 ?? [];
+  if (!data || !Array.isArray(data.OutBlock_1)) {
+    throw new Error("KRX 응답 포맷 이상: OutBlock_1 이 배열이 아님");
+  }
+  return data.OutBlock_1;
 }
 
 export function parseStockList(items: KrxStockItem[]) {
@@ -86,12 +83,14 @@ export function parseStockList(items: KrxStockItem[]) {
 }
 
 export function parsePriceData(items: KrxStockItem[], date: Date) {
+  // DB 에는 "KST 거래일 자정" instant 를 저장 (naver.ts 와 동일 규칙).
+  const tradingDayInstant = kstMidnight(date);
   return items
     .filter((item) => parseNumber(item.TDD_CLSPRC) > 0n)
     .map((item) => ({
       stockMarket: item.MKT_NM,
       stockTicker: item.ISU_SRT_CD,
-      date,
+      date: tradingDayInstant,
       open: parseNumber(item.TDD_OPNPRC),
       high: parseNumber(item.TDD_HGPRC),
       low: parseNumber(item.TDD_LWPRC),

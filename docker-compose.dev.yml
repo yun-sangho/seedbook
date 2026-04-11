@@ -19,7 +19,7 @@ services:
   stock-crawler:
     build:
       context: .
-      dockerfile: packages/stock-crawler/Dockerfile
+      dockerfile: apps/stock-crawler/Dockerfile
       target: development
     restart: unless-stopped
     depends_on:
@@ -32,7 +32,7 @@ services:
       RUN_NOW: ${RUN_NOW:-true}
       NODE_ENV: development
     volumes:
-      - ./packages/stock-crawler/src:/app/packages/stock-crawler/src
+      - ./apps/stock-crawler/src:/app/apps/stock-crawler/src
       - ./packages/database/src:/app/packages/database/src
       - ./packages/database/prisma:/app/packages/database/prisma
 

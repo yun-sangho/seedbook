@@ -1,5 +1,4 @@
 import { prisma } from "@seedbook/database";
-
 import { logger } from "../logger.js";
 import { syncStockList } from "./sync-stock-list.js";
 import { syncStockPrices } from "./sync-stock-prices.js";

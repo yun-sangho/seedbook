@@ -19,7 +19,7 @@ services:
   stock-crawler:
     build:
       context: .
-      dockerfile: packages/stock-crawler/Dockerfile
+      dockerfile: apps/stock-crawler/Dockerfile
       target: production
     restart: unless-stopped
     depends_on:

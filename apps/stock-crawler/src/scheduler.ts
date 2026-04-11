@@ -1,8 +1,7 @@
 import * as cron from "node-cron";
-
-import { logger } from "./logger.js";
 import { syncStockList } from "./jobs/sync-stock-list.js";
 import { syncStockPrices } from "./jobs/sync-stock-prices.js";
+import { logger } from "./logger.js";
 
 const TIMEZONE = "Asia/Seoul";
 
@@ -14,7 +13,16 @@ const SCHEDULE_AFTERNOON = process.env.CRON_AFTERNOON ?? "30 16 * * 1-5";
 
 let isRunning = false;
 
-async function runJob(name: string, fn: () => Promise<void>) {
+/** 현재 스케줄러가 실행 중인 job 이 있는지. graceful shutdown 이 in-flight job 을
+ *  기다릴 때 사용한다. */
+export function isJobRunning(): boolean {
+  return isRunning;
+}
+
+/** 작업 실행 래퍼. isRunning 락으로 동시 실행을 방지하고 에러를 로그한다.
+ *  스케줄러 cron 경로 뿐 아니라 index.ts 의 RUN_NOW 초기 실행도 이 래퍼를
+ *  통과시켜서 graceful shutdown 이 in-flight 상태를 관찰할 수 있게 한다. */
+export async function runJob(name: string, fn: () => Promise<void>) {
   if (isRunning) {
     logger.warn(`이전 작업이 실행 중이므로 ${name} 건너뜀`);
     return;
@@ -46,7 +54,7 @@ export function startScheduler() {
     () => {
       void runJob("오전 종목 동기화", syncStockList);
     },
-    { timezone: TIMEZONE },
+    { timezone: TIMEZONE }
   );
 
   // 오후: 종목 목록 + 시세 수집
@@ -58,7 +66,7 @@ export function startScheduler() {
         await syncStockPrices();
       });
     },
-    { timezone: TIMEZONE },
+    { timezone: TIMEZONE }
   );
 
   logger.info("스케줄 등록 완료. 대기 중...");

@@ -1,13 +1,23 @@
-import { prisma } from "@seedbook/database";
-
+import { kstDateString, kstDayOfWeek, prisma } from "@seedbook/database";
 import { logger } from "../logger.js";
 import { fetchAllStockPrices } from "../sources/naver.js";
 
 export async function syncStockPrices(date?: Date): Promise<void> {
   const targetDate = date ?? new Date();
-  const dateStr = targetDate.toISOString().slice(0, 10);
+  const kstDay = kstDateString(targetDate); // "YYYY-MM-DD" (KST 기준)
 
-  logger.info(`일봉 시세 수집 시작: ${dateStr}`);
+  // 주말은 시세 데이터가 없으므로 명시 인자가 없을 때 스킵한다 (불필요한 트래픽 방지).
+  // 명시 인자가 있을 경우(예: 스크립트로 과거 특정일 재수집)는 호출자 의도를 신뢰.
+  // 요일 판정은 반드시 KST 기준이어야 한다 (컨테이너 TZ 는 UTC 기본값).
+  if (date === undefined) {
+    const day = kstDayOfWeek(targetDate); // 0=일, 6=토 (KST 기준)
+    if (day === 0 || day === 6) {
+      logger.info(`주말(${kstDay} KST), 시세 수집 스킵`);
+      return;
+    }
+  }
+
+  logger.info(`일봉 시세 수집 시작: ${kstDay} KST`);
 
   // 활성 종목만 가져오기
   const activeStocks = await prisma.stock.findMany({
@@ -47,14 +57,14 @@ export async function syncStockPrices(date?: Date): Promise<void> {
             marketCap: price.marketCap,
             change: price.change,
           },
-        }),
-      ),
+        })
+      )
     );
 
     upserted += batch.length;
   }
 
-  logger.info(`일봉 시세 수집 완료: ${upserted}개 upsert (${dateStr})`);
+  logger.info(`일봉 시세 수집 완료: ${upserted}개 upsert (${kstDay} KST)`);
 }
 
 // CLI 직접 실행
