@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@web/components/ui/tab
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
 import { prepareMonthlySavingsSummary } from "@web/features/savings/utils/monthly-summary-utils";
 import { numberToKorean } from "@web/utils/number-format";
-import { getProfitColorClass, getProfitPrefix } from "@web/utils/profit-color";
+import { formatProfitKorean, getProfitColorClass } from "@web/utils/profit-color";
 
 export function SavingsSummary() {
   const savings = useSavingsStore((state) => state.savings);
@@ -117,10 +117,7 @@ export function SavingsSummary() {
                                   <div
                                     className={`text-xs ${getProfitColorClass(row.change)} flex items-center justify-end gap-1`}
                                   >
-                                    <span>
-                                      {getProfitPrefix(row.change)}
-                                      {numberToKorean(Math.abs(row.change))}
-                                    </span>
+                                    <span>{formatProfitKorean(row.change)}</span>
                                   </div>
                                 )}
                               </div>

@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
 import { RealAssetItem } from "@web/features/real-assets/types/types";
 import { calculateReturnRate, formatReturnRate, numberToKorean } from "@web/utils/number-format";
-import { getProfitColorClass, getProfitPrefix } from "@web/utils/profit-color";
+import { formatProfitKorean, getProfitColorClass } from "@web/utils/profit-color";
 
 interface RealAssetsSummaryProps {
   realAssets: RealAssetItem[];
@@ -91,8 +91,7 @@ export function RealAssetsSummary({ realAssets }: RealAssetsSummaryProps) {
             <div>
               <div className="text-sm text-muted-foreground mb-1">평가손익</div>
               <div className={`text-xl font-semibold ${getProfitColorClass(totals.totalProfit)}`}>
-                {getProfitPrefix(totals.totalProfit)}
-                {numberToKorean(totals.totalProfit)}
+                {formatProfitKorean(totals.totalProfit)}
               </div>
             </div>
             <div>
@@ -128,8 +127,7 @@ export function RealAssetsSummary({ realAssets }: RealAssetsSummaryProps) {
                   <div className="text-right">
                     <div className="font-semibold">{numberToKorean(data.currentValue)}</div>
                     <div className={`text-sm ${getProfitColorClass(profit)}`}>
-                      {getProfitPrefix(profit)}
-                      {numberToKorean(profit)} ({formatReturnRate(returnRate)})
+                      {formatProfitKorean(profit)} ({formatReturnRate(returnRate)})
                     </div>
                   </div>
                 </div>
@@ -160,8 +158,7 @@ export function RealAssetsSummary({ realAssets }: RealAssetsSummaryProps) {
                   <div className="text-right">
                     <div className="font-semibold">{numberToKorean(data.currentValue)}</div>
                     <div className={`text-sm ${getProfitColorClass(profit)}`}>
-                      {getProfitPrefix(profit)}
-                      {numberToKorean(profit)} ({formatReturnRate(returnRate)})
+                      {formatProfitKorean(profit)} ({formatReturnRate(returnRate)})
                     </div>
                   </div>
                 </div>

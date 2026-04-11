@@ -21,6 +21,7 @@ describe("preparePlanComparisonChartData", () => {
         note: "",
         color: "#3b82f6",
         holdings: [],
+        cashItems: [],
         records: [
           {
             date: "2024-06-01",
@@ -50,6 +51,7 @@ describe("preparePlanComparisonChartData", () => {
         note: "",
         color: "#3b82f6",
         holdings: [],
+        cashItems: [],
         records: [
           {
             date: "2024-06-01",

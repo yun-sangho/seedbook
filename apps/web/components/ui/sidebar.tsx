@@ -24,8 +24,7 @@ import { cn } from "@web/lib/utils";
 import { cva, VariantProps } from "class-variance-authority";
 import { PanelLeftIcon } from "lucide-react";
 
-const SIDEBAR_COOKIE_NAME = "sidebar_state";
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
+const SIDEBAR_STORAGE_KEY = "sidebar_state";
 const SIDEBAR_WIDTH = "16rem";
 const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
@@ -71,6 +70,20 @@ function SidebarProvider({
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
   const [_open, _setOpen] = React.useState(defaultOpen);
+
+  // Uncontrolled 모드에서 첫 마운트 후 localStorage 의 값으로 상태를 복원한다.
+  // useState 초기값으로 직접 읽지 않는 이유는 SSR hydration 불일치를 막기 위함.
+  React.useEffect(() => {
+    if (openProp !== undefined) return;
+    try {
+      const stored = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
+      if (stored === "true") _setOpen(true);
+      else if (stored === "false") _setOpen(false);
+    } catch {
+      // localStorage 접근 실패는 무시 (private mode 등)
+    }
+  }, [openProp]);
+
   const open = openProp ?? _open;
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
@@ -81,8 +94,12 @@ function SidebarProvider({
         _setOpen(openState);
       }
 
-      // This sets the cookie to keep the sidebar state.
-      document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+      // 접힘/펼침 상태를 localStorage 에 저장해 새로고침·네비게이션 후에도 유지.
+      try {
+        window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(openState));
+      } catch {
+        // localStorage 접근 실패는 무시
+      }
     },
     [setOpenProp, open]
   );

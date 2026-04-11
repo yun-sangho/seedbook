@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/car
 import { InvestmentItem } from "@web/features/investments/types/types";
 import { prepareMonthlyInvestmentSummary } from "@web/utils/monthly-summary-utils";
 import { calculateReturnRate, formatReturnRate, numberToKorean } from "@web/utils/number-format";
-import { getProfitColorClass, getProfitPrefix } from "@web/utils/profit-color";
+import { formatProfitKorean, getProfitColorClass } from "@web/utils/profit-color";
 import { columns } from "./monthly-summary-columns";
 import { DataTable } from "./monthly-summary-data-table";
 
@@ -67,8 +67,7 @@ export function InvestmentSummary({ investments }: InvestmentSummaryProps) {
             <div>
               <div className="text-sm text-muted-foreground mb-1">수익금</div>
               <div className={`text-xl font-semibold ${getProfitColorClass(totals.totalProfit)}`}>
-                {getProfitPrefix(totals.totalProfit)}
-                {numberToKorean(totals.totalProfit)}
+                {formatProfitKorean(totals.totalProfit)}
               </div>
             </div>
             <div>

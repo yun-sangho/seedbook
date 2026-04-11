@@ -2,10 +2,20 @@
 
 import { useState } from "react";
 import { Button } from "@web/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@web/components/ui/select";
 import { SortableItem } from "@web/components/ui/sortable-item";
 import { SortableList } from "@web/components/ui/sortable-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@web/components/ui/tabs";
-import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
+import {
+  type HoldingsSortOption,
+  useInvestmentStore,
+} from "@web/features/investments/stores/investment-store";
 import { InvestmentItem } from "@web/features/investments/types/types";
 import { Plus, TrendingUp } from "lucide-react";
 import { AddInvestmentModal } from "./add-investment-modal";
@@ -50,6 +60,11 @@ export function InvestmentManager() {
     (state) => state.setStockHoldingFromSearch
   );
   const removeStockHolding = useInvestmentStore((state) => state.removeStockHolding);
+  const addCashItem = useInvestmentStore((state) => state.addCashItem);
+  const updateCashItem = useInvestmentStore((state) => state.updateCashItem);
+  const removeCashItem = useInvestmentStore((state) => state.removeCashItem);
+  const holdingsSortOption = useInvestmentStore((state) => state.holdingsSortOption);
+  const setHoldingsSortOption = useInvestmentStore((state) => state.setHoldingsSortOption);
 
   const handleChange = (id: number, field: string, value: string) => {
     updateInvestment(id, field as keyof InvestmentItem, value);
@@ -116,6 +131,23 @@ export function InvestmentManager() {
       </TabsContent>
 
       <TabsContent value={InvestmentTab.ACOUNTS}>
+        <div className="flex justify-end mb-3">
+          <Select
+            value={holdingsSortOption}
+            onValueChange={(value) => setHoldingsSortOption(value as HoldingsSortOption)}
+          >
+            <SelectTrigger className="w-[180px] h-8 text-xs">
+              <SelectValue placeholder="보유 주식 정렬" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default">기본 순서</SelectItem>
+              <SelectItem value="priceDesc">주당가 높은 순</SelectItem>
+              <SelectItem value="priceAsc">주당가 낮은 순</SelectItem>
+              <SelectItem value="evalDesc">평가액 높은 순</SelectItem>
+              <SelectItem value="evalAsc">평가액 낮은 순</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <SortableList
           items={investments}
           onReorder={reorderInvestments}
@@ -141,6 +173,9 @@ export function InvestmentManager() {
                 onUpdateStockHolding={updateStockHolding}
                 onSetStockHoldingFromSearch={setStockHoldingFromSearch}
                 onRemoveStockHolding={removeStockHolding}
+                onAddCashItem={addCashItem}
+                onUpdateCashItem={updateCashItem}
+                onRemoveCashItem={removeCashItem}
               />
             </SortableItem>
           ))}

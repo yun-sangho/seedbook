@@ -6,7 +6,14 @@ import { parseNumericString } from "@web/utils/number-format";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { ACCOUNT_COLORS, COLOR_FAMILIES } from "../types/constants";
-import { InvestmentItem, InvestmentRecord, StockHolding } from "../types/types";
+import { CashItem, InvestmentItem, InvestmentRecord, StockHolding } from "../types/types";
+
+export type HoldingsSortOption =
+  | "default"
+  | "priceDesc"
+  | "priceAsc"
+  | "evalDesc"
+  | "evalAsc";
 
 // 현재 날짜를 YYYY-MM-DD 형식으로 반환하는 헬퍼 함수
 const getCurrentDate = (): string => {
@@ -28,6 +35,10 @@ interface InvestmentState {
   // UI 상태 (LocalStorage에 저장하지 않음)
   expandedFormId: number;
 
+  // 보유 주식 정렬 옵션 — 모든 계좌에 동일하게 적용되는 전역 UI 설정. LocalStorage 에 저장.
+  holdingsSortOption: HoldingsSortOption;
+  setHoldingsSortOption: (option: HoldingsSortOption) => void;
+
   addInvestmentWithTypeAndOwner: (accountType: string, accountOwner: string) => void;
   removeInvestment: (id: number) => void;
   updateInvestment: (id: number, field: keyof InvestmentItem, value: string | number) => void;
@@ -46,7 +57,16 @@ interface InvestmentState {
     initialInvestment: number,
     currentValue: number
   ) => void;
-  addStockHolding: (investmentId: number) => void;
+  addStockHolding: (
+    investmentId: number,
+    initial?: {
+      market: string;
+      ticker: string;
+      name: string;
+      currency: string;
+      quantity: number;
+    }
+  ) => void;
   updateStockHolding: (
     investmentId: number,
     holdingId: number,
@@ -59,6 +79,14 @@ interface InvestmentState {
     stock: { market: string; ticker: string; name: string; currency: string }
   ) => void;
   removeStockHolding: (investmentId: number, holdingId: number) => void;
+  addCashItem: (investmentId: number, initial?: { label: string; amount: number }) => void;
+  updateCashItem: (
+    investmentId: number,
+    cashItemId: number,
+    field: keyof CashItem,
+    value: string | number
+  ) => void;
+  removeCashItem: (investmentId: number, cashItemId: number) => void;
   setExpandedFormId: (id: number) => void;
   reorderInvestments: (reorderedInvestments: InvestmentItem[]) => void;
   resetStore: () => void;
@@ -72,6 +100,9 @@ export const useInvestmentStore = create<InvestmentState>()(
       customOwners: [],
       lastInvestmentId: 1,
       expandedFormId: 1,
+      holdingsSortOption: "default",
+
+      setHoldingsSortOption: (option) => set({ holdingsSortOption: option }),
 
       addInvestmentWithTypeAndOwner: (accountType: string, accountOwner: string) => {
         const { lastInvestmentId, investments } = get();
@@ -90,6 +121,7 @@ export const useInvestmentStore = create<InvestmentState>()(
               currentValue: 0,
               records: [],
               holdings: [],
+              cashItems: [],
               note: "",
               color: newColor,
             },
@@ -313,18 +345,18 @@ export const useInvestmentStore = create<InvestmentState>()(
         });
       },
 
-      addStockHolding: (investmentId) => {
+      addStockHolding: (investmentId, initial) => {
         set((state) => {
           const updatedInvestments = state.investments.map((item) => {
             if (item.id !== investmentId) return item;
             const maxId = item.holdings.reduce((max, h) => Math.max(max, h.id), 0);
             const newHolding: StockHolding = {
               id: maxId + 1,
-              market: "",
-              ticker: "",
-              name: "",
-              currency: "",
-              quantity: 0,
+              market: initial?.market ?? "",
+              ticker: initial?.ticker ?? "",
+              name: initial?.name ?? "",
+              currency: initial?.currency ?? "",
+              quantity: initial?.quantity ?? 0,
               memo: "",
             };
             return { ...item, holdings: [...item.holdings, newHolding] };
@@ -381,6 +413,54 @@ export const useInvestmentStore = create<InvestmentState>()(
         });
       },
 
+      addCashItem: (investmentId, initial) => {
+        set((state) => {
+          const updatedInvestments = state.investments.map((item) => {
+            if (item.id !== investmentId) return item;
+            const existing = item.cashItems ?? [];
+            const maxId = existing.reduce((max, c) => Math.max(max, c.id), 0);
+            const newCashItem: CashItem = {
+              id: maxId + 1,
+              label: initial?.label ?? "예수금",
+              amount: initial?.amount ?? 0,
+            };
+            return { ...item, cashItems: [...existing, newCashItem] };
+          });
+          return { investments: updatedInvestments };
+        });
+      },
+
+      updateCashItem: (investmentId, cashItemId, field, value) => {
+        set((state) => {
+          const updatedInvestments = state.investments.map((item) => {
+            if (item.id !== investmentId) return item;
+            const existing = item.cashItems ?? [];
+            const updatedCashItems = existing.map((c) => {
+              if (c.id !== cashItemId) return c;
+              if (field === "amount") {
+                const num =
+                  typeof value === "string" ? (value ? parseNumericString(value) : 0) : value;
+                return { ...c, amount: num };
+              }
+              return { ...c, [field]: value };
+            });
+            return { ...item, cashItems: updatedCashItems };
+          });
+          return { investments: updatedInvestments };
+        });
+      },
+
+      removeCashItem: (investmentId, cashItemId) => {
+        set((state) => {
+          const updatedInvestments = state.investments.map((item) => {
+            if (item.id !== investmentId) return item;
+            const existing = item.cashItems ?? [];
+            return { ...item, cashItems: existing.filter((c) => c.id !== cashItemId) };
+          });
+          return { investments: updatedInvestments };
+        });
+      },
+
       setExpandedFormId: (id) => {
         set({ expandedFormId: id });
       },
@@ -394,22 +474,25 @@ export const useInvestmentStore = create<InvestmentState>()(
           investments: [],
           lastInvestmentId: 1,
           expandedFormId: 1,
+          holdingsSortOption: "default",
         });
       },
     }),
     {
       name: "investment-storage", // localStorage에 저장될 키 이름
       storage: createJSONStorage(() => localStorage),
-      version: 2,
+      version: 3,
       // UI 관련 상태는 지속성 저장에서 제외 (성능 최적화)
       partialize: (state) => ({
         investments: state.investments,
         lastInvestmentId: state.lastInvestmentId,
+        holdingsSortOption: state.holdingsSortOption,
         // expandedFormId는 제외
       }),
       // 마이그레이션:
       //   v0 → v1: 만원 → 원 단위 변환
       //   v1 → v2: StockHolding 에 market/ticker/currency 기본값 주입
+      //   v2 → v3: InvestmentItem 에 cashItems 기본값 주입
       migrate: (persisted, version) => {
         const state = persisted as {
           investments: InvestmentItem[];
@@ -442,6 +525,13 @@ export const useInvestmentStore = create<InvestmentState>()(
           }));
         }
 
+        if (version < 3) {
+          state.investments = state.investments.map((inv) => ({
+            ...inv,
+            cashItems: inv.cashItems ?? [],
+          }));
+        }
+
         return state;
       },
       // 기존 데이터 마이그레이션: color 속성이 없는 투자에 색상 추가
@@ -462,6 +552,11 @@ export const useInvestmentStore = create<InvestmentState>()(
             if (!inv.holdings) {
               needsUpdate = true;
               updated = { ...updated, holdings: [] };
+            }
+            // cashItems 속성이 없는 경우 추가
+            if (!inv.cashItems) {
+              needsUpdate = true;
+              updated = { ...updated, cashItems: [] };
             }
             return updated;
           });
