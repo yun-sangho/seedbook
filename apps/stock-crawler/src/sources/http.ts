@@ -47,29 +47,32 @@ export async function fetchWithRetry(
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
+    let response: Response | undefined;
     try {
-      const response = await fetch(url, {
+      response = await fetch(url, {
         ...init,
         signal: controller.signal,
       });
+    } catch (err) {
+      // AbortError / 네트워크 에러 등 — 재시도 대상
+      lastError = err;
+    } finally {
+      clearTimeout(timer);
+    }
 
+    if (response) {
       if (response.ok) {
         return response;
       }
 
       if (!isRetriableStatus(response.status)) {
-        // 400/401/403/404 등은 재시도해도 달라지지 않는다.
+        // 400/401/403/404 등은 재시도해도 달라지지 않는다 — 즉시 실패.
         throw new Error(
           `${label} failed (non-retriable): ${response.status} ${response.statusText}`
         );
       }
 
       lastError = new Error(`${label} failed: ${response.status} ${response.statusText}`);
-    } catch (err) {
-      // AbortError / network error / 위의 retriable throw
-      lastError = err;
-    } finally {
-      clearTimeout(timer);
     }
 
     if (attempt < retries) {

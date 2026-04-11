@@ -9,7 +9,9 @@
     "start": "tsx src/index.ts",
     "crawl:stocks": "tsx src/jobs/sync-stock-list.ts",
     "crawl:prices": "tsx src/jobs/sync-stock-prices.ts",
-    "crawl:all": "tsx src/jobs/run-all.ts"
+    "crawl:all": "tsx src/jobs/run-all.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@seedbook/database": "workspace:*",
@@ -19,6 +21,7 @@
     "@types/node": "^22.7.5",
     "@types/node-cron": "^3.0.11",
     "tsx": "^4.19.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^3.2.4"
   }
 }
