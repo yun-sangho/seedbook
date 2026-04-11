@@ -1,4 +1,4 @@
-import { prisma } from "@seedbook/database";
+import { kstDateString, prisma } from "@seedbook/database";
 
 interface PriceQueryItem {
   market: string;
@@ -51,7 +51,9 @@ export async function POST(request: Request) {
       prices.push({
         market,
         ticker,
-        date: row.date.toISOString().slice(0, 10),
+        // DB 는 canonical KST 자정 instant (UTC) 를 저장한다. 클라이언트에는
+        // KST 기준 달력일 "YYYY-MM-DD" 로 변환해서 노출한다.
+        date: kstDateString(row.date),
         close: Number(row.close),
       });
     })

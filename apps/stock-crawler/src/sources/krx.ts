@@ -3,6 +3,7 @@
  * http://data.krx.co.kr 에서 전 종목 목록 및 시세 데이터를 가져옵니다.
  */
 
+import { kstDateStringCompact, kstMidnight } from "@seedbook/database";
 import { fetchWithRetry } from "./http.js";
 
 export interface KrxStockItem {
@@ -34,13 +35,6 @@ const HEADERS = {
   "Content-Type": "application/x-www-form-urlencoded",
 };
 
-function formatDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}${m}${d}`;
-}
-
 function parseNumber(value: string): bigint {
   const cleaned = value.replace(/,/g, "").trim();
   if (!cleaned || cleaned === "-") return 0n;
@@ -48,7 +42,8 @@ function parseNumber(value: string): bigint {
 }
 
 export async function fetchAllStocksWithPrices(date?: Date): Promise<KrxStockItem[]> {
-  const trdDd = formatDate(date ?? new Date());
+  // KRX 는 KST 기준 YYYYMMDD 날짜를 원한다.
+  const trdDd = kstDateStringCompact(date ?? new Date());
 
   const body = new URLSearchParams({
     bld: "dbms/MDC/STAT/standard/MDCSTAT01501",
@@ -88,12 +83,14 @@ export function parseStockList(items: KrxStockItem[]) {
 }
 
 export function parsePriceData(items: KrxStockItem[], date: Date) {
+  // DB 에는 "KST 거래일 자정" instant 를 저장 (naver.ts 와 동일 규칙).
+  const tradingDayInstant = kstMidnight(date);
   return items
     .filter((item) => parseNumber(item.TDD_CLSPRC) > 0n)
     .map((item) => ({
       stockMarket: item.MKT_NM,
       stockTicker: item.ISU_SRT_CD,
-      date,
+      date: tradingDayInstant,
       open: parseNumber(item.TDD_OPNPRC),
       high: parseNumber(item.TDD_HGPRC),
       low: parseNumber(item.TDD_LWPRC),

@@ -14,14 +14,19 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock("@seedbook/database", () => ({
-  prisma: {
-    stock: {
-      upsert: mocks.upsert,
-      updateMany: mocks.updateMany,
+// prisma 만 mock 하고 나머지 export 는 실제 구현을 통과시킨다.
+vi.mock("@seedbook/database", async () => {
+  const actual = await vi.importActual<typeof import("@seedbook/database")>("@seedbook/database");
+  return {
+    ...actual,
+    prisma: {
+      stock: {
+        upsert: mocks.upsert,
+        updateMany: mocks.updateMany,
+      },
     },
-  },
-}));
+  };
+});
 
 vi.mock("../sources/naver.js", () => ({
   fetchAllStocks: mocks.fetchAllStocks,

@@ -4,6 +4,7 @@
  * - 개별 종목 일봉 OHLCV: api.stock.naver.com/chart/domestic/item
  */
 
+import { kstDateStringCompact, kstMidnight } from "@seedbook/database";
 import { logger } from "../logger.js";
 import { fetchWithRetry } from "./http.js";
 
@@ -154,18 +155,12 @@ interface NaverChartItem {
   accumulatedTradingVolume: number;
 }
 
-function formatDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}${m}${d}`;
-}
-
 export async function fetchStockDailyPrice(
   ref: StockRef,
   date: Date
 ): Promise<StockPriceItem | null> {
-  const dateStr = formatDate(date);
+  // 네이버 API 는 KST 기준 YYYYMMDD 를 원한다. 컨테이너 TZ 와 무관하게 KST 로 포맷.
+  const dateStr = kstDateStringCompact(date);
   const url = `https://api.stock.naver.com/chart/domestic/item/${ref.ticker}/day?startDateTime=${dateStr}&endDateTime=${dateStr}`;
 
   try {
@@ -187,7 +182,10 @@ export async function fetchStockDailyPrice(
     return {
       stockMarket: ref.market,
       stockTicker: ref.ticker,
-      date,
+      // DB 에는 "해당 KST 거래일의 자정 (00:00 KST)" instant 를 canonical 값으로
+      // 저장한다. 16:30 KST 에 호출되든 새벽에 호출되든 같은 거래일이면 같은
+      // instant 가 되어야 unique index 가 중복을 정상 판정한다.
+      date: kstMidnight(date),
       open: BigInt(Math.round(item.openPrice)),
       high: BigInt(Math.round(item.highPrice)),
       low: BigInt(Math.round(item.lowPrice)),

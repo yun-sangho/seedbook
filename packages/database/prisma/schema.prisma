@@ -34,7 +34,11 @@ model StockPrice {
   id          Int      @id @default(autoincrement())
   stockMarket String
   stockTicker String
-  date        DateTime @db.Date
+  // 거래일 (trading day) 을 canonical instant 로 저장. 값은 항상 해당 거래일의
+  // KST 자정 (00:00 Asia/Seoul, = 전날 15:00 UTC) — 크롤러는 `kstMidnight()`
+  // 헬퍼로 계산해서 넣는다. 표시/쿼리 시 KST 기준으로 변환한다.
+  // 타입은 `timestamptz` — Postgres 가 UTC 로 저장하고 클라이언트 tz 로 읽어준다.
+  date        DateTime @db.Timestamptz(3)
   open        BigInt // 시가 (원)
   high        BigInt // 고가
   low         BigInt // 저가
