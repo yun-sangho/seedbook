@@ -32,6 +32,49 @@ describe("Investment Store", () => {
       expect(state.lastInvestmentId).toBe(1);
       expect(state.expandedFormId).toBe(1);
     });
+
+    it("holdingsSortOption defaults to 'default'", () => {
+      const state = useInvestmentStore.getState();
+      expect(state.holdingsSortOption).toBe("default");
+    });
+  });
+
+  describe("Holdings Sort Option", () => {
+    it("setHoldingsSortOption updates the global sort option", () => {
+      const { setHoldingsSortOption } = useInvestmentStore.getState();
+
+      setHoldingsSortOption("priceDesc");
+
+      expect(useInvestmentStore.getState().holdingsSortOption).toBe("priceDesc");
+    });
+
+    it("setHoldingsSortOption can cycle through all valid options", () => {
+      const { setHoldingsSortOption } = useInvestmentStore.getState();
+
+      setHoldingsSortOption("priceAsc");
+      expect(useInvestmentStore.getState().holdingsSortOption).toBe("priceAsc");
+
+      setHoldingsSortOption("evalDesc");
+      expect(useInvestmentStore.getState().holdingsSortOption).toBe("evalDesc");
+
+      setHoldingsSortOption("evalAsc");
+      expect(useInvestmentStore.getState().holdingsSortOption).toBe("evalAsc");
+
+      setHoldingsSortOption("default");
+      expect(useInvestmentStore.getState().holdingsSortOption).toBe("default");
+    });
+
+    it("holdingsSortOption is included in persisted state via partialize", () => {
+      const { setHoldingsSortOption } = useInvestmentStore.getState();
+      setHoldingsSortOption("evalDesc");
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const persistApi = (useInvestmentStore as any).persist;
+      const partialize = persistApi.getOptions().partialize;
+      const snapshot = partialize(useInvestmentStore.getState());
+
+      expect(snapshot.holdingsSortOption).toBe("evalDesc");
+    });
   });
 
   describe("Investment Management", () => {
@@ -512,6 +555,53 @@ describe("Investment Store", () => {
       });
     });
 
+    it("addStockHolding with initial data populates market/ticker/name/currency/quantity", () => {
+      const { addStockHolding } = useInvestmentStore.getState();
+
+      addStockHolding(2, {
+        market: "KOSPI",
+        ticker: "005930",
+        name: "삼성전자",
+        currency: "KRW",
+        quantity: 15,
+      });
+
+      const holdings = useInvestmentStore.getState().investments[0]!.holdings;
+      expect(holdings).toHaveLength(1);
+      expect(holdings[0]!).toMatchObject({
+        id: 1,
+        market: "KOSPI",
+        ticker: "005930",
+        name: "삼성전자",
+        currency: "KRW",
+        quantity: 15,
+        memo: "",
+      });
+    });
+
+    it("addStockHolding with initial data still assigns incrementing ids", () => {
+      const { addStockHolding } = useInvestmentStore.getState();
+
+      addStockHolding(2, {
+        market: "KOSPI",
+        ticker: "005930",
+        name: "삼성전자",
+        currency: "KRW",
+        quantity: 10,
+      });
+      addStockHolding(2, {
+        market: "KOSPI",
+        ticker: "000660",
+        name: "SK하이닉스",
+        currency: "KRW",
+        quantity: 5,
+      });
+
+      const holdings = useInvestmentStore.getState().investments[0]!.holdings;
+      expect(holdings.map((h) => h.id)).toEqual([1, 2]);
+      expect(holdings.map((h) => h.ticker)).toEqual(["005930", "000660"]);
+    });
+
     it("setStockHoldingFromSearch writes market/ticker/name/currency atomically", () => {
       const { addStockHolding, setStockHoldingFromSearch } =
         useInvestmentStore.getState();
@@ -696,6 +786,152 @@ describe("Investment Store", () => {
       expect(holding.ticker).toBe("005930");
       expect(holding.currency).toBe("KRW");
     });
+
+    it("v2 → v3 backfills missing cashItems on existing investments", () => {
+      const v2State = {
+        investments: [
+          {
+            id: 2,
+            accountName: "테스트",
+            accountType: "증권계좌",
+            accountOwner: "홍길동",
+            currency: "KRW",
+            initialInvestment: 0,
+            currentValue: 0,
+            records: [],
+            holdings: [
+              {
+                id: 1,
+                market: "KOSPI",
+                ticker: "005930",
+                name: "삼성전자",
+                currency: "KRW",
+                quantity: 10,
+                memo: "",
+              },
+            ],
+            note: "",
+            color: "#3b82f6",
+          },
+        ],
+        lastInvestmentId: 2,
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const persistApi = (useInvestmentStore as any).persist;
+      const migrated = persistApi.getOptions().migrate(v2State, 2);
+
+      expect(migrated.investments[0].cashItems).toEqual([]);
+      // holdings preserved
+      expect(migrated.investments[0].holdings[0].ticker).toBe("005930");
+    });
+  });
+
+  describe("Cash Items", () => {
+    beforeEach(() => {
+      const { addInvestmentWithTypeAndOwner } = useInvestmentStore.getState();
+      addInvestmentWithTypeAndOwner("증권계좌", "홍길동"); // id: 2
+    });
+
+    it("addCashItem appends a new item with default label 예수금 and amount 0", () => {
+      const { addCashItem } = useInvestmentStore.getState();
+
+      addCashItem(2);
+
+      const cashItems = useInvestmentStore.getState().investments[0]!.cashItems;
+      expect(cashItems).toHaveLength(1);
+      expect(cashItems[0]!).toMatchObject({
+        id: 1,
+        label: "예수금",
+        amount: 0,
+      });
+    });
+
+    it("addCashItem with initial data populates label and amount", () => {
+      const { addCashItem } = useInvestmentStore.getState();
+
+      addCashItem(2, { label: "CMA", amount: 500000 });
+
+      const cashItems = useInvestmentStore.getState().investments[0]!.cashItems;
+      expect(cashItems).toHaveLength(1);
+      expect(cashItems[0]!).toMatchObject({
+        id: 1,
+        label: "CMA",
+        amount: 500000,
+      });
+    });
+
+    it("addCashItem mixes with and without initial data on incrementing ids", () => {
+      const { addCashItem } = useInvestmentStore.getState();
+
+      addCashItem(2, { label: "CMA", amount: 500000 });
+      addCashItem(2);
+      addCashItem(2, { label: "MMF", amount: 1000000 });
+
+      const cashItems = useInvestmentStore.getState().investments[0]!.cashItems;
+      expect(cashItems.map((c) => ({ id: c.id, label: c.label, amount: c.amount }))).toEqual([
+        { id: 1, label: "CMA", amount: 500000 },
+        { id: 2, label: "예수금", amount: 0 },
+        { id: 3, label: "MMF", amount: 1000000 },
+      ]);
+    });
+
+    it("addCashItem assigns incrementing ids", () => {
+      const { addCashItem } = useInvestmentStore.getState();
+
+      addCashItem(2);
+      addCashItem(2);
+      addCashItem(2);
+
+      const cashItems = useInvestmentStore.getState().investments[0]!.cashItems;
+      expect(cashItems.map((c) => c.id)).toEqual([1, 2, 3]);
+    });
+
+    it("updateCashItem updates label field", () => {
+      const { addCashItem, updateCashItem } = useInvestmentStore.getState();
+      addCashItem(2);
+
+      updateCashItem(2, 1, "label", "CMA");
+
+      const cashItems = useInvestmentStore.getState().investments[0]!.cashItems;
+      expect(cashItems[0]!.label).toBe("CMA");
+    });
+
+    it("updateCashItem parses numeric string for amount", () => {
+      const { addCashItem, updateCashItem } = useInvestmentStore.getState();
+      addCashItem(2);
+
+      updateCashItem(2, 1, "amount", "1,000,000");
+
+      const cashItems = useInvestmentStore.getState().investments[0]!.cashItems;
+      expect(cashItems[0]!.amount).toBe(1000000);
+    });
+
+    it("updateCashItem treats empty string as 0", () => {
+      const { addCashItem, updateCashItem } = useInvestmentStore.getState();
+      addCashItem(2);
+      updateCashItem(2, 1, "amount", "500000");
+
+      updateCashItem(2, 1, "amount", "");
+
+      const cashItems = useInvestmentStore.getState().investments[0]!.cashItems;
+      expect(cashItems[0]!.amount).toBe(0);
+    });
+
+    it("removeCashItem removes only the specified item", () => {
+      const { addCashItem, updateCashItem, removeCashItem } = useInvestmentStore.getState();
+      addCashItem(2);
+      updateCashItem(2, 1, "label", "예수금");
+      addCashItem(2);
+      updateCashItem(2, 2, "label", "CMA");
+
+      removeCashItem(2, 1);
+
+      const cashItems = useInvestmentStore.getState().investments[0]!.cashItems;
+      expect(cashItems).toHaveLength(1);
+      expect(cashItems[0]!.label).toBe("CMA");
+    });
+
   });
 
   describe("Color Management", () => {

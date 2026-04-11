@@ -25,6 +25,15 @@ export interface StockHolding {
 }
 
 /**
+ * 현금성 자산 항목 (예수금, CMA, MMF 등)
+ */
+export interface CashItem {
+  id: number;
+  label: string; // 사용자 편집 가능 (기본값: "예수금")
+  amount: number; // 원 단위
+}
+
+/**
  * 계좌 타입 인터페이스
  */
 export interface InvestmentItem {
@@ -37,6 +46,7 @@ export interface InvestmentItem {
   currentValue: number; // 현재 평가금액
   records: InvestmentRecord[]; // 금액 변경 히스토리
   holdings: StockHolding[]; // 보유 주식 목록
+  cashItems: CashItem[]; // 현금성 자산 목록
   note: string;
   color: string; // 차트 표시 색상
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { forwardRef, useState } from "react";
 import {
   Command,
   CommandEmpty,
@@ -23,6 +23,8 @@ interface StockComboboxProps {
   onSelect: (stock: Stock) => void;
   placeholder?: string;
   className?: string;
+  /** 이미 선택된 종목 키("market:ticker"). 이 목록의 종목은 검색 결과에서 비활성화된다. */
+  disabledKeys?: Set<string>;
 }
 
 /**
@@ -33,12 +35,17 @@ interface StockComboboxProps {
  *   cmdk 의 `shouldFilter={false}` 를 사용한다.
  * - 선택 시 onSelect 콜백 호출 후 팝오버 닫힘.
  */
-export function StockCombobox({
-  value,
-  onSelect,
-  placeholder = "종목명 / 종목코드 검색",
-  className,
-}: StockComboboxProps) {
+export const StockCombobox = forwardRef<HTMLButtonElement, StockComboboxProps>(
+  function StockCombobox(
+    {
+      value,
+      onSelect,
+      placeholder = "종목명 / 종목코드 검색",
+      className,
+      disabledKeys,
+    },
+    ref,
+  ) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const { results, isLoading, error } = useStockSearch(query);
@@ -53,6 +60,7 @@ export function StockCombobox({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
+          ref={ref}
           type="button"
           className={cn(
             "flex min-w-0 flex-1 items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-left text-sm hover:bg-accent/40",
@@ -95,16 +103,30 @@ export function StockCombobox({
               <CommandGroup>
                 {results.map((stock) => {
                   const key = `${stock.market}:${stock.ticker}`;
+                  const isDisabled = disabledKeys?.has(key) ?? false;
                   return (
                     <CommandItem
                       key={key}
                       value={key}
-                      onSelect={() => handleSelect(stock)}
+                      disabled={isDisabled}
+                      onSelect={() => {
+                        if (isDisabled) return;
+                        handleSelect(stock);
+                      }}
+                      className={cn(
+                        isDisabled &&
+                          "opacity-50 cursor-not-allowed data-[disabled=true]:pointer-events-auto",
+                      )}
                     >
                       <div className="flex min-w-0 flex-1 items-center gap-2">
                         <span className="truncate font-medium">
                           {stock.name}
                         </span>
+                        {isDisabled && (
+                          <span className="text-[10px] text-muted-foreground">
+                            이미 추가됨
+                          </span>
+                        )}
                       </div>
                       <span className="flex-shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
                         {stock.market} · {stock.ticker}
@@ -119,4 +141,5 @@ export function StockCombobox({
       </PopoverContent>
     </Popover>
   );
-}
+  },
+);

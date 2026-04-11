@@ -34,6 +34,7 @@ describe("prepareStackedAreaChartData", () => {
       initialInvestment: record.initialInvestment,
     })),
     holdings: [],
+    cashItems: [],
     note: "",
     color,
   });
@@ -346,6 +347,7 @@ describe("prepareStackedAreaChartData", () => {
             { date: sameDate, currentValue: 1200, initialInvestment: 800 }, // 두 번째 기록 (이걸 사용해야 함)
           ],
           holdings: [],
+          cashItems: [],
           note: "",
           color: "#3b82f6",
         },
@@ -372,6 +374,7 @@ describe("prepareStackedAreaChartData", () => {
           currentValue: 1000,
           records: [{ date: sameDate, currentValue: 1000, initialInvestment: 800 }],
           holdings: [],
+          cashItems: [],
           note: "",
           color: "#3b82f6",
         },
@@ -385,6 +388,7 @@ describe("prepareStackedAreaChartData", () => {
           currentValue: 2000,
           records: [{ date: sameDate, currentValue: 2000, initialInvestment: 1500 }],
           holdings: [],
+          cashItems: [],
           note: "",
           color: "#10b981",
         },
@@ -418,6 +422,7 @@ describe("prepareStackedAreaChartData", () => {
             { date: futureDateString, currentValue: 1200, initialInvestment: 800 }, // 미래
           ],
           holdings: [],
+          cashItems: [],
           note: "",
           color: "#3b82f6",
         },
