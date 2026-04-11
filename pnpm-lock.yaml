@@ -27,6 +27,28 @@ importers:
         specifier: ^2.5.4
         version: 2.5.4
 
+  apps/stock-crawler:
+    dependencies:
+      '@seedbook/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      node-cron:
+        specifier: ^3.0.3
+        version: 3.0.3
+    devDependencies:
+      '@types/node':
+        specifier: ^22.7.5
+        version: 22.15.30
+      '@types/node-cron':
+        specifier: ^3.0.11
+        version: 3.0.11
+      tsx:
+        specifier: ^4.19.0
+        version: 4.20.5
+      typescript:
+        specifier: ^5.4.0
+        version: 5.8.2
+
   apps/web:
     dependencies:
       '@dnd-kit/core':
@@ -244,28 +266,6 @@ importers:
       typescript-eslint:
         specifier: ^8.35.0
         version: 8.35.0(eslint@9.30.0)(typescript@5.8.2)
-
-  packages/stock-crawler:
-    dependencies:
-      '@seedbook/database':
-        specifier: workspace:*
-        version: link:../database
-      node-cron:
-        specifier: ^3.0.3
-        version: 3.0.3
-    devDependencies:
-      '@types/node':
-        specifier: ^22.7.5
-        version: 22.15.30
-      '@types/node-cron':
-        specifier: ^3.0.11
-        version: 3.0.11
-      tsx:
-        specifier: ^4.19.0
-        version: 4.20.5
-      typescript:
-        specifier: ^5.4.0
-        version: 5.8.2
 
   packages/tailwind-config:
     devDependencies:
@@ -6302,6 +6302,7 @@ packages:
   /typescript@5.8.2:
     resolution: {integrity: sha512-aJn6wq13/afZp/jT9QZmwEjDqqvSGp1VT5GVg+f/t6/oVyrgXM6BY1h9BRh/O5p3PlUPAe+WuiEZOmb/49RqoQ==}
     engines: {node: '>=14.17'}
+    hasBin: true
     dev: true
 
   /ufo@1.6.1:

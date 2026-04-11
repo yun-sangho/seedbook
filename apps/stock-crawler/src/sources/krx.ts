@@ -3,6 +3,8 @@
  * http://data.krx.co.kr 에서 전 종목 목록 및 시세 데이터를 가져옵니다.
  */
 
+import { fetchWithRetry } from "./http.js";
+
 export interface KrxStockItem {
   ISU_CD: string; // ISIN 코드
   ISU_SRT_CD: string; // 단축코드 (6자리)
@@ -23,8 +25,7 @@ interface KrxResponse {
   OutBlock_1: KrxStockItem[];
 }
 
-const KRX_BASE_URL =
-  "http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd";
+const KRX_BASE_URL = "http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd";
 
 const HEADERS = {
   "User-Agent":
@@ -46,9 +47,7 @@ function parseNumber(value: string): bigint {
   return BigInt(cleaned);
 }
 
-export async function fetchAllStocksWithPrices(
-  date?: Date,
-): Promise<KrxStockItem[]> {
+export async function fetchAllStocksWithPrices(date?: Date): Promise<KrxStockItem[]> {
   const trdDd = formatDate(date ?? new Date());
 
   const body = new URLSearchParams({
@@ -61,18 +60,21 @@ export async function fetchAllStocksWithPrices(
     csvxls_is498: "false",
   });
 
-  const response = await fetch(KRX_BASE_URL, {
-    method: "POST",
-    headers: HEADERS,
-    body: body.toString(),
-  });
-
-  if (!response.ok) {
-    throw new Error(`KRX request failed: ${response.status}`);
-  }
+  const response = await fetchWithRetry(
+    KRX_BASE_URL,
+    {
+      method: "POST",
+      headers: HEADERS,
+      body: body.toString(),
+    },
+    { label: `KRX ${trdDd}` }
+  );
 
   const data = (await response.json()) as KrxResponse;
-  return data.OutBlock_1 ?? [];
+  if (!data || !Array.isArray(data.OutBlock_1)) {
+    throw new Error("KRX 응답 포맷 이상: OutBlock_1 이 배열이 아님");
+  }
+  return data.OutBlock_1;
 }
 
 export function parseStockList(items: KrxStockItem[]) {

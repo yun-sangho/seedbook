@@ -1,11 +1,20 @@
 import { prisma } from "@seedbook/database";
-
 import { logger } from "../logger.js";
 import { fetchAllStockPrices } from "../sources/naver.js";
 
 export async function syncStockPrices(date?: Date): Promise<void> {
   const targetDate = date ?? new Date();
   const dateStr = targetDate.toISOString().slice(0, 10);
+
+  // 주말은 시세 데이터가 없으므로 명시 인자가 없을 때 스킵한다 (불필요한 트래픽 방지).
+  // 명시 인자가 있을 경우(예: 스크립트로 과거 특정일 재수집)는 호출자 의도를 신뢰.
+  if (date === undefined) {
+    const day = targetDate.getDay(); // 0=일, 6=토
+    if (day === 0 || day === 6) {
+      logger.info(`주말(${dateStr}), 시세 수집 스킵`);
+      return;
+    }
+  }
 
   logger.info(`일봉 시세 수집 시작: ${dateStr}`);
 
@@ -47,8 +56,8 @@ export async function syncStockPrices(date?: Date): Promise<void> {
             marketCap: price.marketCap,
             change: price.change,
           },
-        }),
-      ),
+        })
+      )
     );
 
     upserted += batch.length;
