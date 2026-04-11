@@ -19,7 +19,10 @@ export function isJobRunning(): boolean {
   return isRunning;
 }
 
-async function runJob(name: string, fn: () => Promise<void>) {
+/** 작업 실행 래퍼. isRunning 락으로 동시 실행을 방지하고 에러를 로그한다.
+ *  스케줄러 cron 경로 뿐 아니라 index.ts 의 RUN_NOW 초기 실행도 이 래퍼를
+ *  통과시켜서 graceful shutdown 이 in-flight 상태를 관찰할 수 있게 한다. */
+export async function runJob(name: string, fn: () => Promise<void>) {
   if (isRunning) {
     logger.warn(`이전 작업이 실행 중이므로 ${name} 건너뜀`);
     return;

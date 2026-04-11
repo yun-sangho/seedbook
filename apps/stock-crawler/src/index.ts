@@ -2,24 +2,22 @@ import { prisma } from "@seedbook/database";
 import { syncStockList } from "./jobs/sync-stock-list.js";
 import { syncStockPrices } from "./jobs/sync-stock-prices.js";
 import { logger } from "./logger.js";
-import { isJobRunning, startScheduler } from "./scheduler.js";
+import { isJobRunning, runJob, startScheduler } from "./scheduler.js";
 
 logger.info("stock-crawler 시작");
 
-// RUN_NOW=true 이면 즉시 1회 실행 후 스케줄러 시작
+// RUN_NOW=true 이면 즉시 1회 실행 후 스케줄러 시작.
+// runJob 래퍼를 통과시켜야 isJobRunning() 이 true 로 켜지고, graceful shutdown
+// 이 이 초기 sync 를 기다릴 수 있다.
 if (process.env.RUN_NOW === "true") {
   logger.info("즉시 실행 모드 (RUN_NOW=true)");
-  syncStockList()
-    .then(() => syncStockPrices())
-    .then(() => {
-      logger.info("즉시 실행 완료, 스케줄러 시작");
-      startScheduler();
-    })
-    .catch((e) => {
-      logger.error("즉시 실행 실패", { error: String(e) });
-      // 초기 실행 실패해도 스케줄러는 기동한다 (다음 크론에서 재시도).
-      startScheduler();
-    });
+  void runJob("즉시 실행 (RUN_NOW)", async () => {
+    await syncStockList();
+    await syncStockPrices();
+  }).then(() => {
+    logger.info("즉시 실행 완료, 스케줄러 시작");
+    startScheduler();
+  });
 } else {
   startScheduler();
 }

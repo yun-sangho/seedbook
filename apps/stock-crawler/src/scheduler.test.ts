@@ -45,7 +45,7 @@ vi.mock("./jobs/sync-stock-prices.js", () => ({
   syncStockPrices: mocks.syncStockPrices,
 }));
 
-const { isJobRunning, startScheduler } = await import("./scheduler.js");
+const { isJobRunning, runJob, startScheduler } = await import("./scheduler.js");
 
 describe("scheduler", () => {
   beforeEach(() => {
@@ -116,5 +116,21 @@ describe("scheduler", () => {
     deferred2.resolve();
     await Promise.resolve();
     await Promise.resolve();
+  });
+
+  it("runJob 은 export 되어 있어야 하며 실행 중 isJobRunning() 이 true", async () => {
+    // index.ts 의 RUN_NOW 경로가 이 export 를 사용하므로 반드시 존재해야 한다.
+    expect(typeof runJob).toBe("function");
+
+    const deferred = defer<void>();
+    const task = runJob("RUN_NOW 시뮬레이션", () => deferred.promise);
+
+    // runJob 내부가 await fn() 에 도달하도록 마이크로태스크 한 번 진행
+    await Promise.resolve();
+    expect(isJobRunning()).toBe(true);
+
+    deferred.resolve();
+    await task;
+    expect(isJobRunning()).toBe(false);
   });
 });
