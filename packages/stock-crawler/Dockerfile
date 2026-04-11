@@ -30,9 +30,9 @@ FROM base AS production
 
 WORKDIR /app
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/database/node_modules ./packages/database/node_modules
-COPY --from=deps /app/packages/stock-crawler/node_modules ./packages/stock-crawler/node_modules
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/packages/database/node_modules ./packages/database/node_modules
+COPY --from=build /app/packages/stock-crawler/node_modules ./packages/stock-crawler/node_modules
 COPY --from=build /app/packages/database/ ./packages/database/
 COPY --from=build /app/packages/stock-crawler/ ./packages/stock-crawler/
 COPY --from=build /app/packages/typescript-config/ ./packages/typescript-config/
