@@ -73,6 +73,8 @@ docker compose logs web --tail 100    # inspect web service
 
 The web app builds with `output: 'standalone'` (see `apps/web/next.config.ts`) and runs as a non-root Node process on port `3001` inside the `web` service in `docker-compose.yml`. `apps/web/Dockerfile` follows the same multi-stage pattern as `apps/stock-crawler/Dockerfile` (base → deps → build → production).
 
+**Only use Next.js features that are supported by `output: 'standalone'`.** Do not add functionality that depends on Vercel-only infrastructure.
+
 Local dev is unchanged: run `pnpm dev` on the host (Turbopack) against the dev compose stack (`pnpm docker:dev`, which only starts postgres + crawler).
 
 ## Shell Command Rules
