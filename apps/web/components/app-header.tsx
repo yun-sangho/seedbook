@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { Separator } from "@web/components/ui/separator";
 import { SidebarTrigger } from "@web/components/ui/sidebar";
+import { UserMenu } from "@web/components/user-menu";
 
 const pageNames: Record<string, string> = {
   "/": "홈",
@@ -28,6 +29,9 @@ export function AppHeader() {
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="mr-2 h-4" />
       <h1 className="text-lg font-semibold">{pageName}</h1>
+      <div className="ml-auto">
+        <UserMenu />
+      </div>
     </header>
   );
 }
