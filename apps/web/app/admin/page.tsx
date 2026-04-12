@@ -10,6 +10,7 @@ import { useRealAssetsStore } from "@web/features/real-assets/stores/real-assets
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
 import { useAllStoresHydrated } from "@web/lib/zustand-hydration";
 import { Download, Upload } from "lucide-react";
+import { StorageModeCard } from "./_components/storage-mode-card";
 
 export default function AdminPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -142,6 +143,9 @@ export default function AdminPage() {
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-3xl font-bold">관리</h1>
       </div>
+
+      {/* 저장소 설정 */}
+      <StorageModeCard />
 
       {/* 데이터 요약 */}
       <Card>
