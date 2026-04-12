@@ -63,6 +63,7 @@ COPY apps/stock-crawler/ ./apps/stock-crawler/
 COPY pnpm-workspace.yaml package.json ./
 
 RUN pnpm --filter @seedbook/database prisma:generate
+RUN pnpm --filter @seedbook/database build
 
 COPY apps/stock-crawler/entrypoint.sh /app/entrypoint.sh
 
