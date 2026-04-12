@@ -56,3 +56,35 @@ USER nextjs
 EXPOSE 3001
 
 CMD ["node", "apps/web/server.js"]
+
+# --- Development ---
+FROM deps AS development
+
+WORKDIR /app
+
+# Shared packages (change infrequently — good cache layer)
+COPY packages/typescript-config/ ./packages/typescript-config/
+COPY packages/tailwind-config/ ./packages/tailwind-config/
+COPY packages/eslint-config/ ./packages/eslint-config/
+COPY packages/database/ ./packages/database/
+
+RUN pnpm --filter @seedbook/database prisma:generate
+
+# Web config files only — source directories come in via volume mounts
+COPY apps/web/package.json ./apps/web/
+COPY apps/web/next.config.ts ./apps/web/
+COPY apps/web/tsconfig.json ./apps/web/
+COPY apps/web/postcss.config.js ./apps/web/
+COPY apps/web/components.json ./apps/web/
+COPY apps/web/eslint.config.js ./apps/web/
+COPY apps/web/openapi-ts.config.ts ./apps/web/
+COPY apps/web/vitest.config.ts ./apps/web/
+COPY apps/web/vitest.setup.ts ./apps/web/
+
+ENV NODE_ENV=development
+ENV PORT=3001
+ENV HOSTNAME=0.0.0.0
+
+EXPOSE 3001
+
+CMD ["pnpm", "--filter", "@seedbook/web", "dev"]
