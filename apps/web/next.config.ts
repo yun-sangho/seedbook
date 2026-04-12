@@ -13,6 +13,14 @@ const nextConfig: NextConfig = {
   // Monorepo: trace files from the repo root so pnpm workspace symlinks
   // (e.g. @seedbook/database, @prisma/client) are included in the bundle.
   outputFileTracingRoot: path.join(__dirname, "../../"),
+  // Prisma's query engine (libquery_engine-*.so.node) is loaded via dlopen
+  // at runtime, so Next.js's static file tracer misses it and the standalone
+  // bundle ships without the .prisma/client directory. Force-include it.
+  outputFileTracingIncludes: {
+    "/**/*": [
+      "../../node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client/**",
+    ],
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

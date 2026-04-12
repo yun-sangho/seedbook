@@ -17,8 +17,8 @@
     "crawler:all": "pnpm --filter @seedbook/stock-crawler crawl:all",
     "db:migrate": "pnpm --filter @seedbook/database prisma:migrate",
     "db:generate": "pnpm --filter @seedbook/database prisma:generate",
-    "docker:dev": "docker compose -f docker-compose.dev.yml up --build",
-    "docker:prod": "docker compose up --build -d"
+    "docker:dev": "docker compose --env-file .env.local -f docker-compose.dev.yml up --build",
+    "docker:prod": "docker compose --env-file .env.local up --build -d"
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "0.84.1",
