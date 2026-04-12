@@ -17,15 +17,17 @@ describe("AssetPlanStore", () => {
         planName: "은퇴 준비 계획",
         planPeriod: 10,
         accountPlans: {
-          1: {
+          "1": {
             contributionAmount: "1000000", // 100만원
             contributionFrequency: "월",
             targetAnnualReturn: "7.0",
+            accountKind: "investment" as const,
           },
-          2: {
+          "2": {
             contributionAmount: "2000000", // 200만원
             contributionFrequency: "분기",
             targetAnnualReturn: "5.0",
+            accountKind: "investment" as const,
           },
         },
         totalMonthlyContribution: 1666700, // 원 단위로 저장
@@ -77,10 +79,11 @@ describe("AssetPlanStore", () => {
         planName: "원본 계획",
         planPeriod: 10,
         accountPlans: {
-          1: {
+          "1": {
             contributionAmount: "1000000",
             contributionFrequency: "월",
             targetAnnualReturn: "5.0",
+            accountKind: "investment" as const,
           },
         },
         totalMonthlyContribution: 1000000,
@@ -135,10 +138,11 @@ describe("AssetPlanStore", () => {
         planName: "조회 테스트 계획",
         planPeriod: 15,
         accountPlans: {
-          1: {
+          "1": {
             contributionAmount: "1500000",
             contributionFrequency: "월",
             targetAnnualReturn: "6.0",
+            accountKind: "investment" as const,
           },
         },
         totalMonthlyContribution: 1500000, // 원 단위
@@ -170,15 +174,17 @@ describe("AssetPlanStore", () => {
         planName: "단위 테스트",
         planPeriod: 10,
         accountPlans: {
-          1: {
+          "1": {
             contributionAmount: "1000000", // 100만원 입력
             contributionFrequency: "월",
             targetAnnualReturn: "7.0",
+            accountKind: "investment" as const,
           },
-          2: {
+          "2": {
             contributionAmount: "3000000", // 300만원 입력
             contributionFrequency: "분기", // 분기당 300만원 = 월 100만원
             targetAnnualReturn: "5.0",
+            accountKind: "investment" as const,
           },
         },
         totalMonthlyContribution: 2000000, // 100만 + 100만 = 200만원 (원 단위)
@@ -190,8 +196,8 @@ describe("AssetPlanStore", () => {
       const savedPlan = plans[0]!;
 
       expect(savedPlan.totalMonthlyContribution).toBe(2000000);
-      expect(savedPlan.accountPlans[1]!.contributionAmount).toBe("1000000");
-      expect(savedPlan.accountPlans[2]!.contributionAmount).toBe("3000000");
+      expect(savedPlan.accountPlans["1"]!.contributionAmount).toBe("1000000");
+      expect(savedPlan.accountPlans["2"]!.contributionAmount).toBe("3000000");
     });
 
     it("다양한 납입 주기의 월 환산 금액이 원 단위로 저장되어야 한다", () => {
@@ -202,18 +208,30 @@ describe("AssetPlanStore", () => {
         planName: "다양한 주기 테스트",
         planPeriod: 10,
         accountPlans: {
-          1: { contributionAmount: "1000000", contributionFrequency: "월", targetAnnualReturn: "7.0" },
-          2: {
+          "1": {
+            contributionAmount: "1000000",
+            contributionFrequency: "월",
+            targetAnnualReturn: "7.0",
+            accountKind: "investment" as const,
+          },
+          "2": {
             contributionAmount: "3000000",
             contributionFrequency: "분기",
             targetAnnualReturn: "7.0",
+            accountKind: "investment" as const,
           },
-          3: {
+          "3": {
             contributionAmount: "6000000",
             contributionFrequency: "반기",
             targetAnnualReturn: "7.0",
+            accountKind: "investment" as const,
           },
-          4: { contributionAmount: "12000000", contributionFrequency: "년", targetAnnualReturn: "7.0" },
+          "4": {
+            contributionAmount: "12000000",
+            contributionFrequency: "년",
+            targetAnnualReturn: "7.0",
+            accountKind: "investment" as const,
+          },
         },
         totalMonthlyContribution: 4000000, // 100만 + 100만 + 100만 + 100만 = 400만원
         averageTargetReturn: 7.0,
@@ -229,8 +247,18 @@ describe("AssetPlanStore", () => {
     it("실제 plan 생성 시 계산되는 totalMonthlyContribution이 원 단위여야 한다", () => {
       // 실제 UI에서 사용되는 것과 같은 방식으로 계산
       const accountPlans = {
-        1: { contributionAmount: "1000000", contributionFrequency: "월", targetAnnualReturn: "7.0" },
-        2: { contributionAmount: "2000000", contributionFrequency: "분기", targetAnnualReturn: "5.0" },
+        "1": {
+          contributionAmount: "1000000",
+          contributionFrequency: "월",
+          targetAnnualReturn: "7.0",
+          accountKind: "investment" as const,
+        },
+        "2": {
+          contributionAmount: "2000000",
+          contributionFrequency: "분기",
+          targetAnnualReturn: "5.0",
+          accountKind: "investment" as const,
+        },
       };
 
       // getMonthlyContribution 함수 로직 (원 단위)

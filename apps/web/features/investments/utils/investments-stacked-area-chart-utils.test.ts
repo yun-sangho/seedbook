@@ -14,14 +14,15 @@ describe("prepareStackedAreaChartData", () => {
     return date.toISOString().split("T")[0] || "";
   };
 
-  // 테스트용 투자 계좌 생성 헬퍼
+  // 테스트용 투자 계좌 생성 헬퍼. id 는 숫자 편의상 number 로 받아 내부에서
+  // 문자열로 변환 (InvestmentItem.id 는 UUID string).
   const createInvestment = (
     id: number,
     accountName: string,
     color: string,
     records: { daysAgo: number; currentValue: number; initialInvestment: number }[]
   ): InvestmentItem => ({
-    id,
+    id: String(id),
     accountName,
     accountType: "주식",
     accountOwner: "본인",
@@ -335,7 +336,7 @@ describe("prepareStackedAreaChartData", () => {
 
       const investments: InvestmentItem[] = [
         {
-          id: 1,
+          id: "1",
           accountName: "계좌1",
           accountType: "주식",
           accountOwner: "본인",
@@ -365,7 +366,7 @@ describe("prepareStackedAreaChartData", () => {
 
       const investments: InvestmentItem[] = [
         {
-          id: 1,
+          id: "1",
           accountName: "계좌1",
           accountType: "주식",
           accountOwner: "본인",
@@ -379,7 +380,7 @@ describe("prepareStackedAreaChartData", () => {
           color: "#3b82f6",
         },
         {
-          id: 2,
+          id: "2",
           accountName: "계좌2",
           accountType: "펀드",
           accountOwner: "본인",
@@ -410,7 +411,7 @@ describe("prepareStackedAreaChartData", () => {
 
       const investments: InvestmentItem[] = [
         {
-          id: 1,
+          id: "1",
           accountName: "계좌1",
           accountType: "주식",
           accountOwner: "본인",

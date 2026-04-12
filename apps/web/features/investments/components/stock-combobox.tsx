@@ -9,14 +9,10 @@ import {
   CommandItem,
   CommandList,
 } from "@web/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@web/components/ui/popover";
-import { cn } from "@web/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@web/components/ui/popover";
 import type { Stock } from "@web/features/investments/types/stock";
 import { useStockSearch } from "@web/features/investments/utils/use-stock-search";
+import { cn } from "@web/lib/utils";
 
 interface StockComboboxProps {
   value: Stock | null;
@@ -37,109 +33,95 @@ interface StockComboboxProps {
  */
 export const StockCombobox = forwardRef<HTMLButtonElement, StockComboboxProps>(
   function StockCombobox(
-    {
-      value,
-      onSelect,
-      placeholder = "종목명 / 종목코드 검색",
-      className,
-      disabledKeys,
-    },
-    ref,
+    { value, onSelect, placeholder = "종목명 / 종목코드 검색", className, disabledKeys },
+    ref
   ) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const { results, isLoading, error } = useStockSearch(query);
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState("");
+    const { results, isLoading, error } = useStockSearch(query);
 
-  const handleSelect = (stock: Stock) => {
-    onSelect(stock);
-    setOpen(false);
-    setQuery("");
-  };
+    const handleSelect = (stock: Stock) => {
+      onSelect(stock);
+      setOpen(false);
+      setQuery("");
+    };
 
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          ref={ref}
-          type="button"
-          className={cn(
-            "flex min-w-0 flex-1 items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-left text-sm hover:bg-accent/40",
-            "min-h-[34px]",
-            className,
-          )}
-        >
-          {value ? (
-            <>
-              <span className="truncate font-medium">{value.name}</span>
-              <span className="flex-shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                {value.market} · {value.ticker}
-              </span>
-            </>
-          ) : (
-            <span className="text-muted-foreground">{placeholder}</span>
-          )}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        className="w-[--radix-popover-trigger-width] min-w-[260px] p-0"
-      >
-        <Command shouldFilter={false}>
-          <CommandInput
-            placeholder={placeholder}
-            value={query}
-            onValueChange={setQuery}
-          />
-          <CommandList>
-            {query.trim().length === 0 ? (
-              <CommandEmpty>종목명 또는 종목코드를 입력하세요</CommandEmpty>
-            ) : isLoading ? (
-              <CommandEmpty>검색 중...</CommandEmpty>
-            ) : error ? (
-              <CommandEmpty>검색에 실패했습니다</CommandEmpty>
-            ) : results.length === 0 ? (
-              <CommandEmpty>검색 결과 없음</CommandEmpty>
-            ) : (
-              <CommandGroup>
-                {results.map((stock) => {
-                  const key = `${stock.market}:${stock.ticker}`;
-                  const isDisabled = disabledKeys?.has(key) ?? false;
-                  return (
-                    <CommandItem
-                      key={key}
-                      value={key}
-                      disabled={isDisabled}
-                      onSelect={() => {
-                        if (isDisabled) return;
-                        handleSelect(stock);
-                      }}
-                      className={cn(
-                        isDisabled &&
-                          "opacity-50 cursor-not-allowed data-[disabled=true]:pointer-events-auto",
-                      )}
-                    >
-                      <div className="flex min-w-0 flex-1 items-center gap-2">
-                        <span className="truncate font-medium">
-                          {stock.name}
-                        </span>
-                        {isDisabled && (
-                          <span className="text-[10px] text-muted-foreground">
-                            이미 추가됨
-                          </span>
-                        )}
-                      </div>
-                      <span className="flex-shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                        {stock.market} · {stock.ticker}
-                      </span>
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            ref={ref}
+            type="button"
+            className={cn(
+              "flex min-w-0 flex-1 items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-left text-sm hover:bg-accent/40",
+              "min-h-[34px]",
+              className
             )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-  },
+          >
+            {value ? (
+              <>
+                <span className="truncate font-medium">{value.name}</span>
+                <span className="flex-shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                  {value.market} · {value.ticker}
+                </span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">{placeholder}</span>
+            )}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          className="w-[--radix-popover-trigger-width] min-w-[260px] p-0"
+        >
+          <Command shouldFilter={false}>
+            <CommandInput placeholder={placeholder} value={query} onValueChange={setQuery} />
+            <CommandList>
+              {query.trim().length === 0 ? (
+                <CommandEmpty>종목명 또는 종목코드를 입력하세요</CommandEmpty>
+              ) : isLoading ? (
+                <CommandEmpty>검색 중...</CommandEmpty>
+              ) : error ? (
+                <CommandEmpty>검색에 실패했습니다</CommandEmpty>
+              ) : results.length === 0 ? (
+                <CommandEmpty>검색 결과 없음</CommandEmpty>
+              ) : (
+                <CommandGroup>
+                  {results.map((stock) => {
+                    const key = `${stock.market}:${stock.ticker}`;
+                    const isDisabled = disabledKeys?.has(key) ?? false;
+                    return (
+                      <CommandItem
+                        key={key}
+                        value={key}
+                        disabled={isDisabled}
+                        onSelect={() => {
+                          if (isDisabled) return;
+                          handleSelect(stock);
+                        }}
+                        className={cn(
+                          isDisabled &&
+                            "opacity-50 cursor-not-allowed data-[disabled=true]:pointer-events-auto"
+                        )}
+                      >
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                          <span className="truncate font-medium">{stock.name}</span>
+                          {isDisabled && (
+                            <span className="text-[10px] text-muted-foreground">이미 추가됨</span>
+                          )}
+                        </div>
+                        <span className="flex-shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                          {stock.market} · {stock.ticker}
+                        </span>
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    );
+  }
 );

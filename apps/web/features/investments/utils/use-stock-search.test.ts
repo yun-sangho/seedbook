@@ -31,7 +31,7 @@ describe("useStockSearch", () => {
       new Response(JSON.stringify({ results: mockStocks }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
-      }),
+      })
     );
 
     const { result } = renderHook(() => useStockSearch("삼성"));
@@ -56,9 +56,9 @@ describe("useStockSearch", () => {
   });
 
   it("encodes the query into the URL", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ results: [] }), { status: 200 }),
-    );
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify({ results: [] }), { status: 200 }));
 
     renderHook(() => useStockSearch("삼성 전자"));
 
@@ -69,20 +69,19 @@ describe("useStockSearch", () => {
     await waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledWith(
         "/api/stocks/search?q=%EC%82%BC%EC%84%B1%20%EC%A0%84%EC%9E%90",
-        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
       );
     });
   });
 
   it("resets to empty when query becomes empty after a search", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ results: mockStocks }), { status: 200 }),
+      new Response(JSON.stringify({ results: mockStocks }), { status: 200 })
     );
 
-    const { result, rerender } = renderHook(
-      ({ q }: { q: string }) => useStockSearch(q),
-      { initialProps: { q: "삼성" } },
-    );
+    const { result, rerender } = renderHook(({ q }: { q: string }) => useStockSearch(q), {
+      initialProps: { q: "삼성" },
+    });
 
     act(() => {
       vi.advanceTimersByTime(200);
@@ -99,9 +98,7 @@ describe("useStockSearch", () => {
   });
 
   it("falls back to empty array and sets error on network failure", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response("boom", { status: 500 }),
-    );
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("boom", { status: 500 }));
 
     const { result } = renderHook(() => useStockSearch("zzzzzz"));
 
@@ -128,21 +125,19 @@ describe("useStockSearch", () => {
               reject(err);
             });
           }
-        }),
+        })
     );
 
-    const { rerender } = renderHook(
-      ({ q }: { q: string }) => useStockSearch(q),
-      { initialProps: { q: "삼" } },
-    );
+    const { rerender } = renderHook(({ q }: { q: string }) => useStockSearch(q), {
+      initialProps: { q: "삼" },
+    });
 
     act(() => {
       vi.advanceTimersByTime(200);
     });
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
-    const firstSignal = (fetchSpy.mock.calls[0]?.[1] as RequestInit | undefined)
-      ?.signal;
+    const firstSignal = (fetchSpy.mock.calls[0]?.[1] as RequestInit | undefined)?.signal;
     expect(firstSignal?.aborted).toBe(false);
 
     rerender({ q: "삼성" });

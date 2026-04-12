@@ -8,10 +8,16 @@ import { useDebtsStore } from "@web/features/debts/stores/debts-store";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { useRealAssetsStore } from "@web/features/real-assets/stores/real-assets-store";
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
+import { useAllStoresHydrated } from "@web/lib/zustand-hydration";
 import { Download, Upload } from "lucide-react";
+import { StorageModeCard } from "./_components/storage-mode-card";
 
 export default function AdminPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // 하이드레이션이 끝나기 전에 내보내기 버튼이 눌리면 빈 JSON 을 저장하게 되어
+  // 사용자가 실제 데이터를 잃은 것처럼 오인할 수 있다. gate 가 통과된 이후에만
+  // 버튼을 활성화한다.
+  const storesHydrated = useAllStoresHydrated();
 
   const investments = useInvestmentStore((state) => state.investments);
   const savings = useSavingsStore((state) => state.savings);
@@ -61,46 +67,19 @@ export default function AdminPage() {
           return;
         }
 
-        // 데이터 복원 - store 상태 직접 설정
+        // 데이터 복원 - store 상태 직접 설정. ID 는 전부 문자열이라 별도의
+        // auto-increment 카운터가 없어 그대로 주입하면 된다.
         if (data.investments && Array.isArray(data.investments)) {
-          const maxId =
-            data.investments.length > 0
-              ? Math.max(...data.investments.map((inv: { id: number }) => inv.id))
-              : 0;
-          useInvestmentStore.setState({
-            investments: data.investments,
-            lastInvestmentId: maxId + 1,
-          });
+          useInvestmentStore.setState({ investments: data.investments });
         }
         if (data.savings && Array.isArray(data.savings)) {
-          const maxId =
-            data.savings.length > 0
-              ? Math.max(...data.savings.map((sav: { id: number }) => sav.id))
-              : 0;
-          useSavingsStore.setState({
-            savings: data.savings,
-            lastSavingsId: maxId + 1,
-          });
+          useSavingsStore.setState({ savings: data.savings });
         }
         if (data.realAssets && Array.isArray(data.realAssets)) {
-          const maxId =
-            data.realAssets.length > 0
-              ? Math.max(...data.realAssets.map((asset: { id: number }) => asset.id))
-              : 0;
-          useRealAssetsStore.setState({
-            realAssets: data.realAssets,
-            lastRealAssetId: maxId + 1,
-          });
+          useRealAssetsStore.setState({ realAssets: data.realAssets });
         }
         if (data.debts && Array.isArray(data.debts)) {
-          const maxId =
-            data.debts.length > 0
-              ? Math.max(...data.debts.map((debt: { id: number }) => debt.id))
-              : 0;
-          useDebtsStore.setState({
-            debts: data.debts,
-            lastDebtId: maxId + 1,
-          });
+          useDebtsStore.setState({ debts: data.debts });
         }
         if (data.progressPoints && Array.isArray(data.progressPoints)) {
           useProgressStore.getState().setProgressPoints(data.progressPoints);
@@ -137,6 +116,9 @@ export default function AdminPage() {
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-3xl font-bold">관리</h1>
       </div>
+
+      {/* 저장소 설정 */}
+      <StorageModeCard />
 
       {/* 데이터 요약 */}
       <Card>
@@ -176,7 +158,11 @@ export default function AdminPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-4">
-            <Button onClick={exportData} className="flex items-center gap-2">
+            <Button
+              onClick={exportData}
+              disabled={!storesHydrated}
+              className="flex items-center gap-2"
+            >
               <Download className="w-4 h-4" />
               데이터 내보내기 (JSON)
             </Button>
@@ -193,6 +179,7 @@ export default function AdminPage() {
               <Button
                 variant="outline"
                 onClick={() => fileInputRef.current?.click()}
+                disabled={!storesHydrated}
                 className="flex items-center gap-2"
               >
                 <Upload className="w-4 h-4" />

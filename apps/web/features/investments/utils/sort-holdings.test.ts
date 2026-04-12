@@ -3,9 +3,12 @@ import type { StockHolding } from "../types/types";
 import { sortHoldings, type SortPricePoint } from "./sort-holdings";
 import { stockPriceKey } from "./use-stock-prices";
 
-function makeHolding(overrides: Partial<StockHolding> & { id: number }): StockHolding {
+// 테스트 편의상 숫자 id 를 받아 내부에서 문자열로 변환한다. 실제 StockHolding.id
+// 는 UUID string 타입이지만 테스트 assertion 이 숫자 시퀀스로 더 읽기 쉬우므로
+// 입력은 number 로 유지.
+function makeHolding(overrides: Omit<Partial<StockHolding>, "id"> & { id: number }): StockHolding {
   return {
-    id: overrides.id,
+    id: String(overrides.id),
     market: overrides.market ?? "KOSPI",
     ticker: overrides.ticker ?? String(overrides.id).padStart(6, "0"),
     name: overrides.name ?? `종목${overrides.id}`,
@@ -26,10 +29,7 @@ function makePrices(entries: Array<[StockHolding, number]>): Map<string, SortPri
 describe("sortHoldings", () => {
   describe("default option", () => {
     it("returns the original array reference without copying", () => {
-      const holdings = [
-        makeHolding({ id: 1, quantity: 10 }),
-        makeHolding({ id: 2, quantity: 20 }),
-      ];
+      const holdings = [makeHolding({ id: 1, quantity: 10 }), makeHolding({ id: 2, quantity: 20 })];
       const prices = makePrices([
         [holdings[0]!, 1000],
         [holdings[1]!, 2000],
@@ -122,7 +122,7 @@ describe("sortHoldings", () => {
 
     it("pushes holdings with empty market/ticker to the end", () => {
       const legacy: StockHolding = {
-        id: 1,
+        id: "1",
         market: "",
         ticker: "",
         name: "legacy",
@@ -134,7 +134,7 @@ describe("sortHoldings", () => {
       const prices = makePrices([[normal, 1000]]);
 
       const result = sortHoldings([legacy, normal], prices, "priceDesc");
-      expect(result.map((h) => h.id)).toEqual([2, 1]);
+      expect(result.map((h) => h.id)).toEqual(["2", "1"]);
     });
 
     it("preserves relative order among holdings that all lack prices", () => {

@@ -13,8 +13,8 @@ import { SortableItem } from "@web/components/ui/sortable-item";
 import { SortableList } from "@web/components/ui/sortable-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@web/components/ui/tabs";
 import {
-  type HoldingsSortOption,
   useInvestmentStore,
+  type HoldingsSortOption,
 } from "@web/features/investments/stores/investment-store";
 import { InvestmentItem } from "@web/features/investments/types/types";
 import { Plus, TrendingUp } from "lucide-react";
@@ -56,9 +56,7 @@ export function InvestmentManager() {
   const removeInvestment = useInvestmentStore((state) => state.removeInvestment);
   const addStockHolding = useInvestmentStore((state) => state.addStockHolding);
   const updateStockHolding = useInvestmentStore((state) => state.updateStockHolding);
-  const setStockHoldingFromSearch = useInvestmentStore(
-    (state) => state.setStockHoldingFromSearch
-  );
+  const setStockHoldingFromSearch = useInvestmentStore((state) => state.setStockHoldingFromSearch);
   const removeStockHolding = useInvestmentStore((state) => state.removeStockHolding);
   const addCashItem = useInvestmentStore((state) => state.addCashItem);
   const updateCashItem = useInvestmentStore((state) => state.updateCashItem);
@@ -66,16 +64,16 @@ export function InvestmentManager() {
   const holdingsSortOption = useInvestmentStore((state) => state.holdingsSortOption);
   const setHoldingsSortOption = useInvestmentStore((state) => state.setHoldingsSortOption);
 
-  const handleChange = (id: number, field: string, value: string) => {
+  const handleChange = (id: string, field: string, value: string) => {
     updateInvestment(id, field as keyof InvestmentItem, value);
   };
 
-  const handleRemoveHistoryRecord = (id: number, date: string) => {
+  const handleRemoveHistoryRecord = (id: string, date: string) => {
     removeInvestmentHistoryRecord(id, date);
   };
 
   const handleAddHistory = (
-    itemId: number,
+    itemId: string,
     date: string,
     initialInvestment: number,
     currentValue: number

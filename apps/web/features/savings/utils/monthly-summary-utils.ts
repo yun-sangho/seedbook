@@ -25,7 +25,7 @@ export function prepareMonthlySavingsSummary(savings: SavingsItem[]): MonthlySum
 
   // 계좌별, 월별 최신 잔액을 저장할 Map
   // Map<accountId, Map<yearMonth, balance>>
-  const accountMonthlyData = new Map<number, Map<string, number>>();
+  const accountMonthlyData = new Map<string, Map<string, number>>();
 
   // 모든 계좌의 히스토리 수집
   savings.forEach((account) => {

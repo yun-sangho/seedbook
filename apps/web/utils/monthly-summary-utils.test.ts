@@ -6,7 +6,7 @@ describe("prepareMonthlyInvestmentSummary", () => {
   it("should return empty array when no records exist", () => {
     const investments: InvestmentItem[] = [
       {
-        id: 1,
+        id: "1",
         accountName: "Test Account",
         accountType: "ISA",
         accountOwner: "본인",
@@ -28,7 +28,7 @@ describe("prepareMonthlyInvestmentSummary", () => {
   it("should aggregate records by month and use the last record of each month", () => {
     const investments: InvestmentItem[] = [
       {
-        id: 1,
+        id: "1",
         accountName: "Account 1",
         accountType: "ISA",
         accountOwner: "본인",
@@ -69,7 +69,7 @@ describe("prepareMonthlyInvestmentSummary", () => {
   it("should aggregate multiple accounts for the same month", () => {
     const investments: InvestmentItem[] = [
       {
-        id: 1,
+        id: "1",
         accountName: "Account 1",
         accountType: "ISA",
         accountOwner: "본인",
@@ -83,7 +83,7 @@ describe("prepareMonthlyInvestmentSummary", () => {
         color: "#3b82f6",
       },
       {
-        id: 2,
+        id: "2",
         accountName: "Account 2",
         accountType: "일반계좌",
         accountOwner: "본인",
@@ -110,7 +110,7 @@ describe("prepareMonthlyInvestmentSummary", () => {
   it("should use the last record per account for each month", () => {
     const investments: InvestmentItem[] = [
       {
-        id: 1,
+        id: "1",
         accountName: "Account 1",
         accountType: "ISA",
         accountOwner: "본인",
@@ -128,7 +128,7 @@ describe("prepareMonthlyInvestmentSummary", () => {
         color: "#3b82f6",
       },
       {
-        id: 2,
+        id: "2",
         accountName: "Account 2",
         accountType: "일반계좌",
         accountOwner: "배우자",
@@ -158,7 +158,7 @@ describe("prepareMonthlyInvestmentSummary", () => {
   it("should calculate return rate correctly", () => {
     const investments: InvestmentItem[] = [
       {
-        id: 1,
+        id: "1",
         accountName: "Account 1",
         accountType: "ISA",
         accountOwner: "본인",
@@ -182,7 +182,7 @@ describe("prepareMonthlyInvestmentSummary", () => {
   it("should calculate profit and return rate based on previous month", () => {
     const investments: InvestmentItem[] = [
       {
-        id: 1,
+        id: "1",
         accountName: "Account 1",
         accountType: "ISA",
         accountOwner: "본인",

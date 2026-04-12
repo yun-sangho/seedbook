@@ -1,5 +1,6 @@
 "use client";
 
+import { createHybridStorage } from "@web/lib/hybrid-storage";
 import { getNextColor as getNextColorUtil } from "@web/utils/color-selection";
 import { parseNumericString } from "@web/utils/number-format";
 import { create } from "zustand";
@@ -17,17 +18,16 @@ const getNextColor = (existingAssets: RealAssetItem[]): string => {
 interface RealAssetsState {
   // 데이터
   realAssets: RealAssetItem[];
-  lastRealAssetId: number;
   customOwners: string[];
 
-  // UI 상태 (LocalStorage에 저장하지 않음)
-  expandedFormId: number;
+  // UI 상태 (LocalStorage에 저장하지 않음). "" 이면 펼친 폼 없음.
+  expandedFormId: string;
 
   // 액션
-  addRealAsset: () => void;
-  removeRealAsset: (id: number) => void;
-  updateRealAsset: (id: number, field: keyof RealAssetItem, value: string | number) => void;
-  setExpandedFormId: (id: number) => void;
+  addRealAsset: (initial?: { assetType?: string; assetOwner?: string }) => void;
+  removeRealAsset: (id: string) => void;
+  updateRealAsset: (id: string, field: keyof RealAssetItem, value: string | number) => void;
+  setExpandedFormId: (id: string) => void;
   reorderRealAssets: (reorderedAssets: RealAssetItem[]) => void;
   resetStore: () => void;
 }
@@ -37,22 +37,27 @@ export const useRealAssetsStore = create<RealAssetsState>()(
   persist(
     (set, get) => ({
       realAssets: [],
-      lastRealAssetId: 1,
       customOwners: [],
-      expandedFormId: 1,
+      expandedFormId: "",
 
-      addRealAsset: () => {
-        const { lastRealAssetId, realAssets } = get();
-        const newId = lastRealAssetId + 1;
+      addRealAsset: (initial) => {
+        const { realAssets } = get();
+        const newId = crypto.randomUUID();
         const newColor = getNextColor(realAssets);
+        const assetType = initial?.assetType ?? RealAssetType.REAL_ESTATE;
+        const assetOwner = initial?.assetOwner ?? DefaultOwnerType.SELF;
+        const assetName =
+          initial?.assetType && initial?.assetOwner
+            ? `${assetOwner}의 ${assetType}`
+            : `실물자산 #${realAssets.length + 1}`;
 
         set({
           realAssets: [
             {
               id: newId,
-              assetName: `실물자산 #${newId}`,
-              assetType: RealAssetType.REAL_ESTATE,
-              assetOwner: DefaultOwnerType.SELF,
+              assetName,
+              assetType,
+              assetOwner,
               currentValue: 0,
               purchaseValue: 0,
               purchaseDate: "",
@@ -61,7 +66,6 @@ export const useRealAssetsStore = create<RealAssetsState>()(
             },
             ...realAssets,
           ],
-          lastRealAssetId: newId,
           expandedFormId: newId, // 새로 추가된 폼을 자동으로 펼침
         });
       },
@@ -69,6 +73,7 @@ export const useRealAssetsStore = create<RealAssetsState>()(
       removeRealAsset: (id) => {
         set((state) => ({
           realAssets: state.realAssets.filter((item) => item.id !== id),
+          expandedFormId: state.expandedFormId === id ? "" : state.expandedFormId,
         }));
       },
 
@@ -111,63 +116,45 @@ export const useRealAssetsStore = create<RealAssetsState>()(
       resetStore: () => {
         set({
           realAssets: [],
-          lastRealAssetId: 1,
           customOwners: [],
-          expandedFormId: 1,
+          expandedFormId: "",
         });
       },
     }),
     {
-      name: "real-assets-storage", // localStorage에 저장될 키 이름
-      storage: createJSONStorage(() => localStorage),
-      version: 1,
+      name: "real-assets-storage", // 저장 backend key (local 모드면 localStorage, cloud 모드면 /api/storage)
+      storage: createJSONStorage(() => createHybridStorage("real-assets-storage")),
+      version: 2,
       // UI 관련 상태는 지속성 저장에서 제외 (성능 최적화)
       partialize: (state) => ({
         realAssets: state.realAssets,
-        lastRealAssetId: state.lastRealAssetId,
         customOwners: state.customOwners,
         // expandedFormId는 제외
       }),
-      // 만원 → 원 마이그레이션
+      // v0~v1 → v2 정규화: `lib/local-id-upgrade.ts` 가 선행 처리.
       migrate: (persisted, version) => {
-        if (version === 0) {
-          const state = persisted as {
-            realAssets: RealAssetItem[];
-            lastRealAssetId: number;
-            customOwners: string[];
-          };
-          const MANWON_TO_WON = 10000;
+        const state = persisted as {
+          realAssets?: RealAssetItem[];
+          customOwners?: string[];
+        } & Record<string, unknown>;
+        if (!state.realAssets) state.realAssets = [];
+        if (!state.customOwners) state.customOwners = [];
+        if (version < 2) {
           state.realAssets = state.realAssets.map((a) => ({
             ...a,
-            currentValue: a.currentValue * MANWON_TO_WON,
-            purchaseValue: a.purchaseValue * MANWON_TO_WON,
+            id: typeof a.id === "string" && a.id ? a.id : crypto.randomUUID(),
           }));
+          delete (state as { lastRealAssetId?: unknown }).lastRealAssetId;
         }
-        return persisted as {
-          realAssets: RealAssetItem[];
-          lastRealAssetId: number;
-          customOwners: string[];
-        };
+        return state;
       },
       // 기존 데이터 마이그레이션: color 속성이 없는 자산에 색상 추가
       onRehydrateStorage: () => (state) => {
         if (state) {
-          let needsUpdate = false;
-          const updatedAssets = state.realAssets.map((asset, index) => {
-            // color 속성이 없는 경우 추가
-            if (!asset.color) {
-              needsUpdate = true;
-              return {
-                ...asset,
-                color: ASSET_COLORS[index % ASSET_COLORS.length] || "#3b82f6",
-              };
-            }
-            return asset;
-          });
-
-          if (needsUpdate) {
-            state.realAssets = updatedAssets;
-          }
+          state.realAssets = state.realAssets.map((asset, index) => ({
+            ...asset,
+            color: asset.color || ASSET_COLORS[index % ASSET_COLORS.length] || "#3b82f6",
+          }));
         }
       },
     }

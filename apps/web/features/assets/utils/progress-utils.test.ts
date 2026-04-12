@@ -8,7 +8,7 @@ describe("generateCumulativeProgressPoints", () => {
   it("should generate progress points from investment records", () => {
     const investments: InvestmentItem[] = [
       {
-        id: 1,
+        id: "1",
         accountName: "Test Account",
         accountType: "ISA",
         accountOwner: "본인",
@@ -53,7 +53,7 @@ describe("generateCumulativeProgressPoints", () => {
   it("should merge multiple asset types on the same date", () => {
     const investments: InvestmentItem[] = [
       {
-        id: 1,
+        id: "1",
         accountName: "투자계좌",
         accountType: "ISA",
         accountOwner: "본인",
@@ -70,7 +70,7 @@ describe("generateCumulativeProgressPoints", () => {
 
     const savings: SavingsItem[] = [
       {
-        id: 1,
+        id: "1",
         accountName: "저축계좌",
         accountType: "입출금",
         accountOwner: "본인",
@@ -99,7 +99,7 @@ describe("generateCumulativeProgressPoints", () => {
   it("should calculate net assets correctly with loans", () => {
     const investments: InvestmentItem[] = [
       {
-        id: 1,
+        id: "1",
         accountName: "투자계좌",
         accountType: "ISA",
         accountOwner: "본인",
@@ -116,7 +116,7 @@ describe("generateCumulativeProgressPoints", () => {
 
     const loans: DebtsItem[] = [
       {
-        id: 1,
+        id: "1",
         loanName: "주택담보대출",
         loanType: "주택담보",
         loanOwner: "본인",
@@ -146,7 +146,7 @@ describe("generateCumulativeProgressPoints", () => {
   it("should accumulate values across multiple dates", () => {
     const investments: InvestmentItem[] = [
       {
-        id: 1,
+        id: "1",
         accountName: "계좌1",
         accountType: "ISA",
         accountOwner: "본인",
@@ -163,7 +163,7 @@ describe("generateCumulativeProgressPoints", () => {
         color: "#3b82f6",
       },
       {
-        id: 2,
+        id: "2",
         accountName: "계좌2",
         accountType: "퇴직연금",
         accountOwner: "본인",
@@ -204,7 +204,7 @@ describe("generateCumulativeProgressPoints", () => {
   it("should filter out invalid dates", () => {
     const investments: InvestmentItem[] = [
       {
-        id: 1,
+        id: "1",
         accountName: "계좌1",
         accountType: "ISA",
         accountOwner: "본인",

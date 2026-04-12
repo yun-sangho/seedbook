@@ -12,7 +12,7 @@ interface AddSavingsHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   item: SavingsItem;
-  onAddHistory: (itemId: number, date: string, balance: number) => void;
+  onAddHistory: (itemId: string, date: string, balance: number) => void;
 }
 
 export function AddSavingsHistoryModal({

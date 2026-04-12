@@ -15,7 +15,7 @@ import { numberToKorean } from "@web/utils/number-format";
 interface AccountPlanItemProps {
   investment: InvestmentItem;
   plan: { contributionAmount: string; contributionFrequency: string; targetAnnualReturn: string };
-  updateAccountPlan: (id: number, field: string, value: string) => void;
+  updateAccountPlan: (id: string, field: string, value: string) => void;
   formatNumber: (v: string) => string;
   getMonthlyContribution: (amount: string, frequency: string) => number;
 }

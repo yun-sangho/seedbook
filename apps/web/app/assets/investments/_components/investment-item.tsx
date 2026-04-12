@@ -22,17 +22,17 @@ import { AddStockHoldingModal } from "./add-stock-holding-modal";
 
 interface InvestmentItemComponentProps {
   item: InvestmentItem;
-  onUpdateItem: (id: number, field: keyof InvestmentItem, value: string) => void;
-  onRemoveHistoryRecord: (id: number, date: string) => void;
+  onUpdateItem: (id: string, field: keyof InvestmentItem, value: string) => void;
+  onRemoveHistoryRecord: (id: string, date: string) => void;
   onAddHistory: (
-    itemId: number,
+    itemId: string,
     date: string,
     initialInvestment: number,
     currentValue: number
   ) => void;
-  onRemoveInvestment: (id: number) => void;
+  onRemoveInvestment: (id: string) => void;
   onAddStockHolding: (
-    investmentId: number,
+    investmentId: string,
     initial?: {
       market: string;
       ticker: string;
@@ -42,25 +42,21 @@ interface InvestmentItemComponentProps {
     }
   ) => void;
   onUpdateStockHolding: (
-    investmentId: number,
-    holdingId: number,
+    investmentId: string,
+    holdingId: string,
     field: keyof StockHolding,
     value: string | number
   ) => void;
-  onSetStockHoldingFromSearch: (
-    investmentId: number,
-    holdingId: number,
-    stock: Stock
-  ) => void;
-  onRemoveStockHolding: (investmentId: number, holdingId: number) => void;
-  onAddCashItem: (investmentId: number, initial?: { label: string; amount: number }) => void;
+  onSetStockHoldingFromSearch: (investmentId: string, holdingId: string, stock: Stock) => void;
+  onRemoveStockHolding: (investmentId: string, holdingId: string) => void;
+  onAddCashItem: (investmentId: string, initial?: { label: string; amount: number }) => void;
   onUpdateCashItem: (
-    investmentId: number,
-    cashItemId: number,
+    investmentId: string,
+    cashItemId: string,
     field: keyof CashItem,
     value: string | number
   ) => void;
-  onRemoveCashItem: (investmentId: number, cashItemId: number) => void;
+  onRemoveCashItem: (investmentId: string, cashItemId: string) => void;
 }
 
 export function InvestmentItemComponent({
@@ -140,14 +136,7 @@ export function InvestmentItemComponent({
     if (!allHoldingsHavePrices) return;
     onUpdateItem(item.id, "currentValue", String(totalValue));
     setPendingHistorySync(false);
-  }, [
-    pendingHistorySync,
-    pricesLoading,
-    allHoldingsHavePrices,
-    totalValue,
-    item.id,
-    onUpdateItem,
-  ]);
+  }, [pendingHistorySync, pricesLoading, allHoldingsHavePrices, totalValue, item.id, onUpdateItem]);
 
   const handleColorChange = (color: string) => {
     onUpdateItem(item.id, "color", color);
@@ -157,8 +146,8 @@ export function InvestmentItemComponent({
   const markHistoryDirty = () => setPendingHistorySync(true);
 
   const handleUpdateStockHolding = (
-    investmentId: number,
-    holdingId: number,
+    investmentId: string,
+    holdingId: string,
     field: keyof StockHolding,
     value: string | number
   ) => {
@@ -167,22 +156,22 @@ export function InvestmentItemComponent({
   };
 
   const handleSetStockHoldingFromSearch = (
-    investmentId: number,
-    holdingId: number,
+    investmentId: string,
+    holdingId: string,
     stock: Stock
   ) => {
     onSetStockHoldingFromSearch(investmentId, holdingId, stock);
     markHistoryDirty();
   };
 
-  const handleRemoveStockHolding = (investmentId: number, holdingId: number) => {
+  const handleRemoveStockHolding = (investmentId: string, holdingId: string) => {
     onRemoveStockHolding(investmentId, holdingId);
     markHistoryDirty();
   };
 
   const handleUpdateCashItem = (
-    investmentId: number,
-    cashItemId: number,
+    investmentId: string,
+    cashItemId: string,
     field: keyof CashItem,
     value: string | number
   ) => {
@@ -190,7 +179,7 @@ export function InvestmentItemComponent({
     markHistoryDirty();
   };
 
-  const handleRemoveCashItem = (investmentId: number, cashItemId: number) => {
+  const handleRemoveCashItem = (investmentId: string, cashItemId: string) => {
     onRemoveCashItem(investmentId, cashItemId);
     markHistoryDirty();
   };
@@ -234,9 +223,7 @@ export function InvestmentItemComponent({
 
   const existingHoldingKeys = useMemo(() => {
     return new Set(
-      holdings
-        .filter((h) => h.market && h.ticker)
-        .map((h) => stockPriceKey(h.market, h.ticker))
+      holdings.filter((h) => h.market && h.ticker).map((h) => stockPriceKey(h.market, h.ticker))
     );
   }, [holdings]);
 
@@ -420,9 +407,7 @@ export function InvestmentItemComponent({
                           <div className="relative w-24">
                             <Input
                               type="text"
-                              value={
-                                holding.quantity > 0 ? holding.quantity.toLocaleString() : ""
-                              }
+                              value={holding.quantity > 0 ? holding.quantity.toLocaleString() : ""}
                               onChange={(e) =>
                                 handleUpdateStockHolding(
                                   item.id,

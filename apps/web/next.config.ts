@@ -17,9 +17,7 @@ const nextConfig: NextConfig = {
   // at runtime, so Next.js's static file tracer misses it and the standalone
   // bundle ships without the .prisma/client directory. Force-include it.
   outputFileTracingIncludes: {
-    "/**/*": [
-      "../../node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client/**",
-    ],
+    "/**/*": ["../../node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client/**"],
   },
   typescript: {
     ignoreBuildErrors: true,

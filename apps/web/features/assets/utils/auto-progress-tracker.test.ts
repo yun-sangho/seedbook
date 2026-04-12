@@ -14,7 +14,7 @@ describe("auto-progress-tracker", () => {
     useInvestmentStore.getState().resetStore?.();
     useSavingsStore.getState().resetStore?.();
     useRealAssetsStore.getState().resetStore?.();
-    useDebtsStore.setState({ debts: [], lastDebtId: 0 });
+    useDebtsStore.setState({ debts: [] });
     useProgressStore.getState().clearProgressPoints();
 
     // 타이머 mock 설정
@@ -38,7 +38,7 @@ describe("auto-progress-tracker", () => {
     // 투자 추가
     useInvestmentStore.getState().addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
     const investments = useInvestmentStore.getState().investments;
-    const investmentId = investments[0]?.id || 1;
+    const investmentId = investments[0]?.id || "";
 
     // 투자 금액 업데이트
     useInvestmentStore.getState().updateInvestment(investmentId, "currentValue", 100000);
@@ -59,7 +59,7 @@ describe("auto-progress-tracker", () => {
     // 저축 추가
     useSavingsStore.getState().addSavingsWithTypeAndOwner("예금", "홍길동");
     const savings = useSavingsStore.getState().savings;
-    const savingsId = savings[0]?.id || 1;
+    const savingsId = savings[0]?.id || "";
 
     // 저축 금액 업데이트
     useSavingsStore.getState().updateSavings(savingsId, "balance", 50000);
@@ -80,7 +80,7 @@ describe("auto-progress-tracker", () => {
     // 실물자산 추가
     useRealAssetsStore.getState().addRealAsset();
     const realAssets = useRealAssetsStore.getState().realAssets;
-    const assetId = realAssets[0]?.id || 1;
+    const assetId = realAssets[0]?.id || "";
 
     // 실물자산 금액 업데이트
     useRealAssetsStore.getState().updateRealAsset(assetId, "currentValue", 200000);
@@ -101,7 +101,7 @@ describe("auto-progress-tracker", () => {
     // 대출 추가
     useDebtsStore.getState().addDebt();
     const loans = useDebtsStore.getState().debts;
-    const loanId = loans[0]?.id || 1;
+    const loanId = loans[0]?.id || "";
 
     // 대출 금액 업데이트
     useDebtsStore.getState().updateDebt(loanId, "amount", 30000);
@@ -122,21 +122,21 @@ describe("auto-progress-tracker", () => {
     // 투자 추가
     useInvestmentStore.getState().addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
     const investments = useInvestmentStore.getState().investments;
-    const investmentId = investments[0]?.id || 1;
+    const investmentId = investments[0]?.id || "";
     useInvestmentStore.getState().updateInvestment(investmentId, "currentValue", 100000);
 
     // 100ms 후 저축 추가
     vi.advanceTimersByTime(100);
     useSavingsStore.getState().addSavingsWithTypeAndOwner("예금", "홍길동");
     const savings = useSavingsStore.getState().savings;
-    const savingsId = savings[0]?.id || 1;
+    const savingsId = savings[0]?.id || "";
     useSavingsStore.getState().updateSavings(savingsId, "balance", 50000);
 
     // 200ms 후 대출 추가
     vi.advanceTimersByTime(200);
     useDebtsStore.getState().addDebt();
     const loans = useDebtsStore.getState().debts;
-    const loanId = loans[0]?.id || 1;
+    const loanId = loans[0]?.id || "";
     useDebtsStore.getState().updateDebt(loanId, "amount", 30000);
 
     // 마지막 변경으로부터 500ms 대기
@@ -158,7 +158,7 @@ describe("auto-progress-tracker", () => {
     // 첫 번째 변경
     useInvestmentStore.getState().addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
     const investments = useInvestmentStore.getState().investments;
-    const investmentId = investments[0]?.id || 1;
+    const investmentId = investments[0]?.id || "";
     useInvestmentStore.getState().updateInvestment(investmentId, "currentValue", 100000);
 
     vi.advanceTimersByTime(500);
@@ -184,7 +184,7 @@ describe("auto-progress-tracker", () => {
     // 변경사항 발생
     useInvestmentStore.getState().addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
     const investments = useInvestmentStore.getState().investments;
-    const investmentId = investments[0]?.id || 1;
+    const investmentId = investments[0]?.id || "";
     useInvestmentStore.getState().updateInvestment(investmentId, "currentValue", 100000);
 
     vi.advanceTimersByTime(500);
@@ -200,7 +200,7 @@ describe("auto-progress-tracker", () => {
     // 투자 추가 (currentValue는 0)
     useInvestmentStore.getState().addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
     const investments = useInvestmentStore.getState().investments;
-    const investmentId = investments[0]?.id || 1;
+    const investmentId = investments[0]?.id || "";
 
     // 이름만 변경 (총액은 변화 없음)
     useInvestmentStore.getState().updateInvestment(investmentId, "accountName", "새 이름");
@@ -221,7 +221,7 @@ describe("auto-progress-tracker", () => {
     // 첫 번째 날짜에 투자 추가
     useInvestmentStore.getState().addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
     const investments = useInvestmentStore.getState().investments;
-    const investmentId = investments[0]?.id || 1;
+    const investmentId = investments[0]?.id || "";
     useInvestmentStore.getState().updateInvestment(investmentId, "currentValue", 100000);
 
     vi.advanceTimersByTime(500);
@@ -232,7 +232,7 @@ describe("auto-progress-tracker", () => {
     // 두 번째 날짜에 저축 추가
     useSavingsStore.getState().addSavingsWithTypeAndOwner("예금", "홍길동");
     const savings = useSavingsStore.getState().savings;
-    const savingsId = savings[0]?.id || 1;
+    const savingsId = savings[0]?.id || "";
     useSavingsStore.getState().updateSavings(savingsId, "balance", 50000);
 
     vi.advanceTimersByTime(500);
@@ -241,7 +241,7 @@ describe("auto-progress-tracker", () => {
     vi.setSystemTime(new Date("2024-01-03"));
     useRealAssetsStore.getState().addRealAsset();
     const realAssets = useRealAssetsStore.getState().realAssets;
-    const assetId = realAssets[0]?.id || 1;
+    const assetId = realAssets[0]?.id || "";
     useRealAssetsStore.getState().updateRealAsset(assetId, "currentValue", 200000);
 
     vi.advanceTimersByTime(500);
@@ -284,7 +284,7 @@ describe("auto-progress-tracker", () => {
     // 저축 추가 및 금액 설정
     useSavingsStore.getState().addSavingsWithTypeAndOwner("예금", "홍길동");
     const savings = useSavingsStore.getState().savings;
-    const savingsId = savings[0]?.id || 1;
+    const savingsId = savings[0]?.id || "";
     useSavingsStore.getState().updateSavings(savingsId, "balance", 50000);
 
     vi.advanceTimersByTime(500);
@@ -313,7 +313,7 @@ describe("auto-progress-tracker", () => {
     // 실물자산 추가 및 금액 설정
     useRealAssetsStore.getState().addRealAsset();
     const realAssets = useRealAssetsStore.getState().realAssets;
-    const assetId = realAssets[0]?.id || 1;
+    const assetId = realAssets[0]?.id || "";
     useRealAssetsStore.getState().updateRealAsset(assetId, "currentValue", 200000);
 
     vi.advanceTimersByTime(500);
@@ -342,7 +342,7 @@ describe("auto-progress-tracker", () => {
     // 대출 추가 및 금액 설정
     useDebtsStore.getState().addDebt();
     const loans = useDebtsStore.getState().debts;
-    const loanId = loans[0]?.id || 1;
+    const loanId = loans[0]?.id || "";
     useDebtsStore.getState().updateDebt(loanId, "amount", 30000);
 
     vi.advanceTimersByTime(500);

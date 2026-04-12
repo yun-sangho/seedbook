@@ -28,13 +28,12 @@ export function AddInvestmentModal({
   const addInvestmentWithTypeAndOwner = useInvestmentStore(
     (state) => state.addInvestmentWithTypeAndOwner
   );
-  const customOwners = useInvestmentStore((state) => state.customOwners);
 
   const [selectedAccountType, setSelectedAccountType] = useState<string>("");
   const [selectedOwner, setSelectedOwner] = useState<string>("");
 
-  // 계좌 소유자 옵션 (기본 + 사용자 추가)
-  const accountOwners = [...DEFAULT_OWNERS, ...customOwners];
+  // 계좌 소유자 옵션
+  const accountOwners = [...DEFAULT_OWNERS];
 
   const handleAddAccount = () => {
     if (selectedAccountType && selectedOwner) {

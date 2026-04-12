@@ -1,5 +1,6 @@
 "use client";
 
+import { createHybridStorage } from "@web/lib/hybrid-storage";
 import { getNextColor as getNextColorUtil } from "@web/utils/color-selection";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -12,23 +13,22 @@ import type { SavingsItem, SavingsRecord } from "../types/types";
 interface SavingsState {
   // 데이터 (localStorage에 저장)
   savings: SavingsItem[];
-  lastSavingsId: number;
 
-  // UI 상태 (저장 안됨)
-  expandedFormId: number;
+  // UI 상태 (저장 안됨). 빈 문자열이면 "펼친 폼 없음".
+  expandedFormId: string;
 
   // 계좌 관리 액션
   addSavingsWithTypeAndOwner: (type: string, owner: string) => void;
-  removeSavings: (id: number) => void;
-  updateSavings: <K extends keyof SavingsItem>(id: number, field: K, value: SavingsItem[K]) => void;
+  removeSavings: (id: string) => void;
+  updateSavings: <K extends keyof SavingsItem>(id: string, field: K, value: SavingsItem[K]) => void;
   reorderSavings: (reorderedSavings: SavingsItem[]) => void;
 
   // 히스토리 관리 액션
-  addHistoryRecord: (id: number, date: string, balance: number) => void;
-  removeSavingsHistoryRecord: (id: number, date: string) => void;
+  addHistoryRecord: (id: string, date: string, balance: number) => void;
+  removeSavingsHistoryRecord: (id: string, date: string) => void;
 
   // UI 상태
-  setExpandedFormId: (id: number) => void;
+  setExpandedFormId: (id: string) => void;
 
   // 스토어 초기화
   resetStore: () => void;
@@ -46,11 +46,9 @@ const getNextColor = (existingSavings: SavingsItem[]): string => {
 /**
  * 초기 상태
  */
-const initialState = {
+const initialState: Pick<SavingsState, "savings" | "expandedFormId"> = {
   savings: [],
-  customOwners: [],
-  lastSavingsId: 1,
-  expandedFormId: 1,
+  expandedFormId: "",
 };
 
 /**
@@ -64,7 +62,7 @@ export const useSavingsStore = create<SavingsState>()(
       // 유형+소유자 지정 계좌 추가
       addSavingsWithTypeAndOwner: (type: string, owner: string) =>
         set((state) => {
-          const newId = state.lastSavingsId + 1;
+          const newId = crypto.randomUUID();
           const newColor = getNextColor(state.savings);
 
           return {
@@ -82,16 +80,15 @@ export const useSavingsStore = create<SavingsState>()(
                 color: newColor,
               },
             ],
-            lastSavingsId: newId,
             expandedFormId: newId,
           };
         }),
 
       // 계좌 삭제
-      removeSavings: (id: number) =>
+      removeSavings: (id: string) =>
         set((state) => ({
           savings: state.savings.filter((item) => item.id !== id),
-          expandedFormId: state.expandedFormId === id ? -1 : state.expandedFormId,
+          expandedFormId: state.expandedFormId === id ? "" : state.expandedFormId,
         })),
 
       // 계좌 정보 업데이트
@@ -222,28 +219,26 @@ export const useSavingsStore = create<SavingsState>()(
     }),
     {
       name: "savings-storage",
-      storage: createJSONStorage(() => localStorage),
-      version: 1,
+      storage: createJSONStorage(() => createHybridStorage("savings-storage")),
+      version: 2,
       partialize: (state) => ({
         savings: state.savings,
-        lastSavingsId: state.lastSavingsId,
-        // expandedFormId는 UI 상태이므로 제외
+        // expandedFormId 는 UI 상태이므로 제외
       }),
-      // 만원 → 원 마이그레이션
+      // v0~v1 → v2 정규화 마이그레이션은 `lib/local-id-upgrade.ts` 가 선행
+      // 실행되어 localStorage envelope 을 새 shape 으로 재작성한다. 여기선
+      // 누락된 ID 에 대한 방어망만 둔다.
       migrate: (persisted, version) => {
-        if (version === 0) {
-          const state = persisted as { savings: SavingsItem[]; lastSavingsId: number };
-          const MANWON_TO_WON = 10000;
+        const state = persisted as { savings?: SavingsItem[] } & Record<string, unknown>;
+        if (!state.savings) state.savings = [];
+        if (version < 2) {
           state.savings = state.savings.map((s) => ({
             ...s,
-            balance: s.balance * MANWON_TO_WON,
-            records: (s.records || []).map((r) => ({
-              ...r,
-              balance: r.balance * MANWON_TO_WON,
-            })),
+            id: typeof s.id === "string" && s.id ? s.id : crypto.randomUUID(),
           }));
+          delete (state as { lastSavingsId?: unknown }).lastSavingsId;
         }
-        return persisted as { savings: SavingsItem[]; lastSavingsId: number };
+        return state;
       },
       onRehydrateStorage: () => (state) => {
         // localStorage에서 로드 후 color 속성 없으면 추가 (마이그레이션)

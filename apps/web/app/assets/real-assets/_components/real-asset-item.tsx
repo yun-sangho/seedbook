@@ -24,8 +24,8 @@ import { Trash2 } from "lucide-react";
 
 interface RealAssetItemComponentProps {
   item: RealAssetItem;
-  onUpdateAsset: (id: number, field: keyof RealAssetItem, value: string | number) => void;
-  onRemoveAsset: (id: number) => void;
+  onUpdateAsset: (id: string, field: keyof RealAssetItem, value: string | number) => void;
+  onRemoveAsset: (id: string) => void;
 }
 
 export function RealAssetItemComponent({

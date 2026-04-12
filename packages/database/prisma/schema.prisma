@@ -69,6 +69,19 @@ model User {
   sessions      Session[]
   accounts      Account[]
 
+  // 자산 데이터 (정규화된 도메인 테이블들)
+  investmentAccounts    InvestmentAccount[]
+  savingsAccounts       SavingsAccount[]
+  debts                 Debt[]
+  realAssets            RealAsset[]
+  realAssetCustomOwners RealAssetCustomOwner[]
+  assetPlans            AssetPlan[]
+  assetProgressPoints   AssetProgressPoint[]
+
+  // 유저 설정 / UI 선호도 (데이터와 별도 분리)
+  preference UserPreference?
+  listOrders UserListOrder[]
+
   @@map("user")
   @@schema("seedbook")
 }
@@ -117,5 +130,284 @@ model Verification {
   updatedAt  DateTime?
 
   @@map("verification")
+  @@schema("seedbook")
+}
+
+// ============================================================================
+// 자산 데이터 (seedbook 스키마)
+// ============================================================================
+//
+// 설계 원칙:
+//   1. 모든 금액은 BigInt (원 단위). JSON 경계에서 Number 로 캐스팅 — 현실적인
+//      자산 규모는 JS Number.MAX_SAFE_INTEGER 에 한참 못 미침.
+//   2. id 는 클라이언트가 `crypto.randomUUID()` 로 생성해 보낸다. 서버는
+//      받은 그대로 저장만 함. Postgres 는 `@db.Uuid` (16 bytes native binary)
+//      로 저장해 TEXT (36 bytes) 대비 2.5 배 공간을 절약한다.
+//   3. 표시 순서 / 계정 정렬옵션 같은 UI 선호도는 데이터 테이블에 섞지 않고
+//      `UserPreference`, `UserListOrder` 로 분리한다.
+//   4. 스냅샷 날짜는 `@db.Date` (시간대 없음) — 하루 1 포인트.
+// ============================================================================
+
+// ─── Investments ───────────────────────────────────────────────────────────
+
+model InvestmentAccount {
+  id                String   @id @db.Uuid // 클라이언트가 생성한 UUID (16 bytes native)
+  userId            String
+  accountName       String
+  accountType       String
+  accountOwner      String
+  currency          String
+  initialInvestment BigInt // 현재 투자 원금 (원)
+  currentValue      BigInt // 현재 평가 금액 (원)
+  note              String   @default("")
+  color             String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  records   InvestmentRecord[]
+  holdings  StockHolding[]
+  cashItems CashItem[]
+
+  @@index([userId])
+  @@map("investment_account")
+  @@schema("seedbook")
+}
+
+model InvestmentRecord {
+  accountId         String   @db.Uuid
+  date              DateTime @db.Date // 같은 계좌는 하루 1건만 존재
+  initialInvestment BigInt
+  currentValue      BigInt
+
+  account InvestmentAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@id([accountId, date])
+  @@index([accountId, date])
+  @@map("investment_record")
+  @@schema("seedbook")
+}
+
+model StockHolding {
+  id        String @id @db.Uuid // 클라이언트가 생성한 UUID (16 bytes native)
+  accountId String @db.Uuid
+  // Stock 마스터에서 복제된 정보. FK 를 걸지 않는 이유: 사용자가 직접 편집할 수
+  // 있고, 마스터에 없는 종목 (해외 소형주 등) 도 수동 입력 가능해야 함.
+  market   String
+  ticker   String
+  name     String
+  currency String
+  quantity Float // 분수 수량 지원 (예: 0.5 주)
+  memo     String @default("")
+
+  account InvestmentAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@map("stock_holding")
+  @@schema("seedbook")
+}
+
+model CashItem {
+  id        String @id @db.Uuid // 클라이언트가 생성한 UUID (16 bytes native)
+  accountId String @db.Uuid
+  label     String // "예수금", "CMA" 등 사용자 편집 가능
+  amount    BigInt
+
+  account InvestmentAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@map("cash_item")
+  @@schema("seedbook")
+}
+
+// ─── Savings ───────────────────────────────────────────────────────────────
+
+model SavingsAccount {
+  id           String   @id @db.Uuid // 클라이언트가 생성한 UUID (16 bytes native)
+  userId       String
+  accountName  String
+  accountType  String
+  accountOwner String
+  currency     String
+  balance      BigInt
+  interestRate Float?
+  note         String   @default("")
+  color        String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  records SavingsRecord[]
+
+  @@index([userId])
+  @@map("savings_account")
+  @@schema("seedbook")
+}
+
+model SavingsRecord {
+  accountId String   @db.Uuid
+  date      DateTime @db.Date
+  balance   BigInt
+
+  account SavingsAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@id([accountId, date])
+  @@index([accountId, date])
+  @@map("savings_record")
+  @@schema("seedbook")
+}
+
+// ─── Debts ─────────────────────────────────────────────────────────────────
+
+model Debt {
+  id             String    @id @db.Uuid // 클라이언트가 생성한 UUID (16 bytes native)
+  userId         String
+  loanName       String
+  loanType       String
+  loanOwner      String
+  lender         String
+  amount         BigInt
+  interestRate   Float
+  maturityDate   DateTime? @db.Date
+  monthlyPayment BigInt
+  note           String    @default("")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("debt")
+  @@schema("seedbook")
+}
+
+// ─── Real Assets ───────────────────────────────────────────────────────────
+
+model RealAsset {
+  id            String    @id @db.Uuid // 클라이언트가 생성한 UUID (16 bytes native)
+  userId        String
+  assetName     String
+  assetType     String
+  assetOwner    String
+  currentValue  BigInt
+  purchaseValue BigInt
+  purchaseDate  DateTime? @db.Date
+  note          String    @default("")
+  color         String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("real_asset")
+  @@schema("seedbook")
+}
+
+model RealAssetCustomOwner {
+  userId String
+  name   String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, name])
+  @@map("real_asset_custom_owner")
+  @@schema("seedbook")
+}
+
+// ─── Asset Plans ───────────────────────────────────────────────────────────
+
+model AssetPlan {
+  id                       String   @id @db.Uuid // 클라이언트가 생성한 UUID (16 bytes native)
+  userId                   String
+  planName                 String
+  planPeriod               Int // 년
+  totalMonthlyContribution BigInt
+  averageTargetReturn      Float
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  user         User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountItems AssetPlanAccountItem[]
+
+  @@index([userId])
+  @@map("asset_plan")
+  @@schema("seedbook")
+}
+
+// 한 plan 이 여러 계좌(투자/저축) 에 대한 계획 항목을 갖는다.
+// `accountKind` 는 discriminator — FK 제약은 걸지 않음 (polymorphic 참조).
+// 앱 레벨에서 investment/savings 계좌가 존재하는지 검증.
+model AssetPlanAccountItem {
+  planId                String   @db.Uuid
+  accountId             String   @db.Uuid
+  accountKind           String // "investment" | "savings"
+  contributionAmount    BigInt
+  contributionFrequency String // "월" | "분기" | "반기" | "년"
+  targetAnnualReturn    Float
+
+  plan AssetPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@id([planId, accountId])
+  @@index([planId])
+  @@map("asset_plan_account_item")
+  @@schema("seedbook")
+}
+
+// ─── Progress ──────────────────────────────────────────────────────────────
+
+model AssetProgressPoint {
+  userId      String
+  date        DateTime @db.Date
+  totalAssets BigInt
+  netAssets   BigInt
+  investments BigInt
+  savings     BigInt
+  realAssets  BigInt
+  loans       BigInt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, date])
+  @@index([userId, date])
+  @@map("asset_progress_point")
+  @@schema("seedbook")
+}
+
+// ============================================================================
+// 유저 설정 / UI 선호도 (데이터와 분리)
+// ============================================================================
+//
+// 원칙: "자산 데이터" 테이블 (account, debt, ...) 에는 순수 데이터 필드만 둔다.
+// 화면 표시 순서, 정렬 옵션, 기타 설정은 모두 여기서 관리 — 추후 디바이스별
+// 로컬 설정과 서버 설정을 나눌 때도 이 쪽만 확장하면 된다.
+// ============================================================================
+
+// 1 유저 1 행. 단일 값 UI 설정들의 보금자리.
+model UserPreference {
+  userId             String @id
+  holdingsSortOption String @default("default")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preference")
+  @@schema("seedbook")
+}
+
+// 유저가 지정한 리스트 정렬 순서. domain 별로 1 행. `order` 는 해당 리스트의
+// entity id 를 순서대로 담은 `text[]`. 리스트에 없는 id (신규 추가) 는 끝에
+// 붙여서 렌더.
+//
+// domain 예시: "investment-accounts" | "savings-accounts" | "real-assets" |
+// "debts" | "asset-plans"
+model UserListOrder {
+  userId String
+  domain String
+  order  String[] // Postgres text[]
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, domain])
+  @@index([userId])
+  @@map("user_list_order")
   @@schema("seedbook")
 }

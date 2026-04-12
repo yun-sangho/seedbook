@@ -24,8 +24,8 @@ import { Trash2 } from "lucide-react";
 
 interface DebtItemComponentProps {
   item: DebtsItem;
-  onUpdateDebt: <K extends keyof DebtsItem>(id: number, key: K, value: DebtsItem[K]) => void;
-  onRemoveDebt: (id: number) => void;
+  onUpdateDebt: <K extends keyof DebtsItem>(id: string, key: K, value: DebtsItem[K]) => void;
+  onRemoveDebt: (id: string) => void;
 }
 
 export function DebtItemComponent({ item, onUpdateDebt, onRemoveDebt }: DebtItemComponentProps) {

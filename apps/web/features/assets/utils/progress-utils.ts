@@ -132,10 +132,10 @@ export function generateCumulativeProgressPoints(
   const assetsByDate = new Map<
     string,
     {
-      investments: Map<number, number>;
-      savings: Map<number, number>;
-      realAssets: Map<number, number>;
-      loans: Map<number, number>;
+      investments: Map<string, number>;
+      savings: Map<string, number>;
+      realAssets: Map<string, number>;
+      loans: Map<string, number>;
     }
   >();
 
@@ -194,10 +194,10 @@ export function generateCumulativeProgressPoints(
 
   const progressPoints: AssetProgressPoint[] = [];
   const latestValues = {
-    investments: new Map<number, number>(),
-    savings: new Map<number, number>(),
-    realAssets: new Map<number, number>(),
-    loans: new Map<number, number>(),
+    investments: new Map<string, number>(),
+    savings: new Map<string, number>(),
+    realAssets: new Map<string, number>(),
+    loans: new Map<string, number>(),
   };
 
   // 각 날짜별로 누적 계산
