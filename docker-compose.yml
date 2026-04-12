@@ -31,5 +31,29 @@ services:
       CRON_AFTERNOON: ${CRON_AFTERNOON:-30 16 * * 1-5}
       NODE_ENV: production
 
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: production
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-seedbook}:${POSTGRES_PASSWORD:-seedbook}@postgres:5432/${POSTGRES_DB:-seedbook}
+      # better-auth refuses to boot with the built-in default secret. The
+      # fallback below is a clearly-marked placeholder so the image starts
+      # in local/dev; production deployments MUST override via .env.
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-placeholder-override-in-production-8f2k1m9xq7h4}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3001}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      NODE_ENV: production
+      PORT: "3001"
+      HOSTNAME: "0.0.0.0"
+    ports:
+      - "${WEB_PORT:-3001}:3001"
+
 volumes:
   postgres_data:

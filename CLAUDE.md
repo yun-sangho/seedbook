@@ -62,6 +62,21 @@ Vitest with jsdom and globals. Tests live alongside source as `*.test.ts`. Focus
 - Search existing utils before adding new ones; mirror established patterns
 - Do not disable lint rules unless necessary; explain in comment if you must
 
+## Deployment
+
+Self-hosted via Docker Compose (no Vercel dependency):
+
+```bash
+pnpm docker:prod                      # build & start postgres + stock-crawler + web
+docker compose logs web --tail 100    # inspect web service
+```
+
+The web app builds with `output: 'standalone'` (see `apps/web/next.config.ts`) and runs as a non-root Node process on port `3001` inside the `web` service in `docker-compose.yml`. `apps/web/Dockerfile` follows the same multi-stage pattern as `apps/stock-crawler/Dockerfile` (base → deps → build → production).
+
+**Only use Next.js features that are supported by `output: 'standalone'`.** Do not add functionality that depends on Vercel-only infrastructure.
+
+Local dev is unchanged: run `pnpm dev` on the host (Turbopack) against the dev compose stack (`pnpm docker:dev`, which only starts postgres + crawler).
+
 ## Shell Command Rules
 
 **Do not wrap docker/pnpm/git commands in `for` loops** (or any shell construct that starts with a non-excluded keyword like `for`, `while`, `if`). The sandbox decides "inside vs outside" by matching the first token of the command string against `excludedCommands`; a `for` loop starts with `for`, so the whole invocation runs *inside* the sandbox, and the docker/pnpm/git call inside the loop then hits `operation not permitted` when it tries to reach docker.sock or similar resources. Run each command as a separate Bash call, or chain with `&&` / `;` starting with the excluded keyword (e.g., `docker compose logs ... && docker compose ps`).

@@ -23,6 +23,11 @@ COPY packages/database/ ./packages/database/
 COPY apps/stock-crawler/ ./apps/stock-crawler/
 
 RUN pnpm --filter @seedbook/database prisma:generate
+# @seedbook/database 의 package.json 은 main/types 를 dist/ 로 가리키는데
+# NodeNext resolution 을 쓰는 stock-crawler tsc 는 dist 가 없으면 타입을
+# 찾지 못한다. Next.js (swc) 는 src 를 직접 transpile 하므로 web 쪽은
+# 영향 없지만, 컨테이너 빌드에서는 여기서 명시적으로 먼저 컴파일한다.
+RUN pnpm --filter @seedbook/database build
 RUN pnpm --filter @seedbook/stock-crawler build
 
 # --- Production ---

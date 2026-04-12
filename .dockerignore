@@ -1,0 +1,26 @@
+# Dependencies and build outputs should be produced inside the image,
+# not copied from the host (host artifacts may target a different OS/ABI —
+# Prisma engines in particular must be generated on the target platform).
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+
+# Test artifacts
+**/coverage
+**/test-results
+**/playwright-report
+
+# Local environment — never ship dev secrets into an image
+**/.env.local
+**/.env.*.local
+
+# Editor and VCS metadata
+.git
+.github
+.vscode
+.idea
+**/*.log
+
+# Docs are not needed at build time
+**/*.md

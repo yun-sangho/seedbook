@@ -11,7 +11,10 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
     include: ["**/*.{test,spec}.{js,jsx,ts,tsx}"],
-    exclude: ["**/node_modules/**", "e2e/**"],
+    // .next/standalone/** is excluded because Next.js's file tracer copies
+    // workspace source (including *.test.ts) into that directory, and vitest
+    // would otherwise try to run those copies with unresolvable imports.
+    exclude: ["**/node_modules/**", "e2e/**", "**/.next/**"],
     coverage: {
       reporter: ["text", "json", "html"],
     },
