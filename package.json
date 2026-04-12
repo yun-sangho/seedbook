@@ -17,7 +17,9 @@
     "crawler:all": "pnpm --filter @seedbook/stock-crawler crawl:all",
     "db:migrate": "pnpm --filter @seedbook/database prisma:migrate",
     "db:generate": "pnpm --filter @seedbook/database prisma:generate",
-    "docker:dev": "docker compose --env-file .env.local -f docker-compose.dev.yml up --build",
+    "docker:dev": "bash scripts/docker-dev.sh up --build",
+    "docker:dev:down": "bash scripts/docker-dev.sh down",
+    "docker:dev:logs": "bash scripts/docker-dev.sh logs -f",
     "docker:prod": "docker compose --env-file .env.local up --build -d"
   },
   "devDependencies": {

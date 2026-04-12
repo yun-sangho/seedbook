@@ -1,3 +1,5 @@
+name: ${COMPOSE_PROJECT_NAME:-seedbook-dev}
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -6,8 +8,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-seedbook}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-seedbook}
       POSTGRES_DB: ${POSTGRES_DB:-seedbook}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data_dev:/var/lib/postgresql/data
     healthcheck:
@@ -33,6 +33,38 @@ services:
       NODE_ENV: development
     volumes:
       - ./apps/stock-crawler/src:/app/apps/stock-crawler/src
+      - ./packages/database/src:/app/packages/database/src
+      - ./packages/database/prisma:/app/packages/database/prisma
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: development
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-seedbook}:${POSTGRES_PASSWORD:-seedbook}@postgres:5432/${POSTGRES_DB:-seedbook}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-placeholder-override-in-production-8f2k1m9xq7h4}
+      BETTER_AUTH_URL: http://localhost:${WEB_PORT:-3001}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      NODE_ENV: development
+      PORT: "3001"
+      HOSTNAME: "0.0.0.0"
+    ports:
+      - "${WEB_PORT:-3001}:3001"
+    volumes:
+      - ./apps/web/app:/app/apps/web/app
+      - ./apps/web/components:/app/apps/web/components
+      - ./apps/web/features:/app/apps/web/features
+      - ./apps/web/hooks:/app/apps/web/hooks
+      - ./apps/web/lib:/app/apps/web/lib
+      - ./apps/web/types:/app/apps/web/types
+      - ./apps/web/utils:/app/apps/web/utils
+      - ./apps/web/public:/app/apps/web/public
       - ./packages/database/src:/app/packages/database/src
       - ./packages/database/prisma:/app/packages/database/prisma
 

@@ -1,3 +1,5 @@
+name: ${COMPOSE_PROJECT_NAME:-seedbook}
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -6,8 +8,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-seedbook}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-seedbook}
       POSTGRES_DB: ${POSTGRES_DB:-seedbook}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

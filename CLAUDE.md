@@ -12,9 +12,21 @@ pnpm check-types                      # TypeScript type checking
 pnpm format                           # Prettier + import sort + tailwind class sort
 pnpm --filter @seedbook/web test      # Run Vitest tests
 pnpm --filter @seedbook/web test:watch
+pnpm docker:dev                       # Docker Compose dev (postgres + stock-crawler + web)
+pnpm docker:dev:down                  # Stop dev stack
+pnpm docker:dev:logs                  # Tail dev stack logs
 ```
 
 Requires Node >= 22, pnpm 8.
+
+### Worktree-aware Docker Dev
+
+`pnpm docker:dev`는 `scripts/docker-dev.sh` 래퍼를 통해 실행된다. 워크트리 디렉토리를 자동 감지하여 `COMPOSE_PROJECT_NAME`과 `WEB_PORT`를 계산하므로, 여러 워크트리에서 동시에 독립된 Docker 스택을 실행할 수 있다.
+
+- main repo: `WEB_PORT=3001`
+- worktree: 디렉토리 이름 해시 기반 자동 배분 (3002~3050)
+- 수동 오버라이드: `WEB_PORT=3005 pnpm docker:dev`
+- Postgres는 호스트에 포트를 노출하지 않는다. DB 접근: `docker compose exec postgres psql -U seedbook`
 
 ## Architecture
 
@@ -75,7 +87,7 @@ The web app builds with `output: 'standalone'` (see `apps/web/next.config.ts`) a
 
 **Only use Next.js features that are supported by `output: 'standalone'`.** Do not add functionality that depends on Vercel-only infrastructure.
 
-Local dev is unchanged: run `pnpm dev` on the host (Turbopack) against the dev compose stack (`pnpm docker:dev`, which only starts postgres + crawler).
+Local dev: `pnpm docker:dev`로 postgres + stock-crawler + web을 모두 Docker에서 실행. 워크트리별 자동 포트 격리 지원 (위 "Worktree-aware Docker Dev" 참조). 호스트에서 직접 실행하려면 `pnpm dev`.
 
 ## Shell Command Rules
 
