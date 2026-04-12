@@ -4,7 +4,7 @@
 
 -- CreateTable (Investments)
 CREATE TABLE "seedbook"."investment_account" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "userId" TEXT NOT NULL,
     "accountName" TEXT NOT NULL,
     "accountType" TEXT NOT NULL,
@@ -23,7 +23,7 @@ CREATE TABLE "seedbook"."investment_account" (
 CREATE INDEX "investment_account_userId_idx" ON "seedbook"."investment_account"("userId");
 
 CREATE TABLE "seedbook"."investment_record" (
-    "accountId" TEXT NOT NULL,
+    "accountId" UUID NOT NULL,
     "date" DATE NOT NULL,
     "initialInvestment" BIGINT NOT NULL,
     "currentValue" BIGINT NOT NULL,
@@ -34,8 +34,8 @@ CREATE TABLE "seedbook"."investment_record" (
 CREATE INDEX "investment_record_accountId_date_idx" ON "seedbook"."investment_record"("accountId", "date");
 
 CREATE TABLE "seedbook"."stock_holding" (
-    "id" TEXT NOT NULL,
-    "accountId" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "accountId" UUID NOT NULL,
     "market" TEXT NOT NULL,
     "ticker" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -49,8 +49,8 @@ CREATE TABLE "seedbook"."stock_holding" (
 CREATE INDEX "stock_holding_accountId_idx" ON "seedbook"."stock_holding"("accountId");
 
 CREATE TABLE "seedbook"."cash_item" (
-    "id" TEXT NOT NULL,
-    "accountId" TEXT NOT NULL,
+    "id" UUID NOT NULL,
+    "accountId" UUID NOT NULL,
     "label" TEXT NOT NULL,
     "amount" BIGINT NOT NULL,
 
@@ -61,7 +61,7 @@ CREATE INDEX "cash_item_accountId_idx" ON "seedbook"."cash_item"("accountId");
 
 -- CreateTable (Savings)
 CREATE TABLE "seedbook"."savings_account" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "userId" TEXT NOT NULL,
     "accountName" TEXT NOT NULL,
     "accountType" TEXT NOT NULL,
@@ -80,7 +80,7 @@ CREATE TABLE "seedbook"."savings_account" (
 CREATE INDEX "savings_account_userId_idx" ON "seedbook"."savings_account"("userId");
 
 CREATE TABLE "seedbook"."savings_record" (
-    "accountId" TEXT NOT NULL,
+    "accountId" UUID NOT NULL,
     "date" DATE NOT NULL,
     "balance" BIGINT NOT NULL,
 
@@ -91,7 +91,7 @@ CREATE INDEX "savings_record_accountId_date_idx" ON "seedbook"."savings_record"(
 
 -- CreateTable (Debts)
 CREATE TABLE "seedbook"."debt" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "userId" TEXT NOT NULL,
     "loanName" TEXT NOT NULL,
     "loanType" TEXT NOT NULL,
@@ -112,7 +112,7 @@ CREATE INDEX "debt_userId_idx" ON "seedbook"."debt"("userId");
 
 -- CreateTable (Real Assets)
 CREATE TABLE "seedbook"."real_asset" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "userId" TEXT NOT NULL,
     "assetName" TEXT NOT NULL,
     "assetType" TEXT NOT NULL,
@@ -139,7 +139,7 @@ CREATE TABLE "seedbook"."real_asset_custom_owner" (
 
 -- CreateTable (Asset Plans)
 CREATE TABLE "seedbook"."asset_plan" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL,
     "userId" TEXT NOT NULL,
     "planName" TEXT NOT NULL,
     "planPeriod" INTEGER NOT NULL,
@@ -154,8 +154,8 @@ CREATE TABLE "seedbook"."asset_plan" (
 CREATE INDEX "asset_plan_userId_idx" ON "seedbook"."asset_plan"("userId");
 
 CREATE TABLE "seedbook"."asset_plan_account_item" (
-    "planId" TEXT NOT NULL,
-    "accountId" TEXT NOT NULL,
+    "planId" UUID NOT NULL,
+    "accountId" UUID NOT NULL,
     "accountKind" TEXT NOT NULL,
     "contributionAmount" BIGINT NOT NULL,
     "contributionFrequency" TEXT NOT NULL,

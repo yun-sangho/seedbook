@@ -141,7 +141,8 @@ model Verification {
 //   1. 모든 금액은 BigInt (원 단위). JSON 경계에서 Number 로 캐스팅 — 현실적인
 //      자산 규모는 JS Number.MAX_SAFE_INTEGER 에 한참 못 미침.
 //   2. id 는 클라이언트가 `crypto.randomUUID()` 로 생성해 보낸다. 서버는
-//      받은 그대로 저장만 함 (auto-increment / cuid 대체 없음).
+//      받은 그대로 저장만 함. Postgres 는 `@db.Uuid` (16 bytes native binary)
+//      로 저장해 TEXT (36 bytes) 대비 2.5 배 공간을 절약한다.
 //   3. 표시 순서 / 계정 정렬옵션 같은 UI 선호도는 데이터 테이블에 섞지 않고
 //      `UserPreference`, `UserListOrder` 로 분리한다.
 //   4. 스냅샷 날짜는 `@db.Date` (시간대 없음) — 하루 1 포인트.
@@ -150,7 +151,7 @@ model Verification {
 // ─── Investments ───────────────────────────────────────────────────────────
 
 model InvestmentAccount {
-  id                String   @id // 클라이언트가 생성한 UUID
+  id                String   @id @db.Uuid // 클라이언트가 생성한 UUID (16 bytes native)
   userId            String
   accountName       String
   accountType       String
@@ -174,7 +175,7 @@ model InvestmentAccount {
 }
 
 model InvestmentRecord {
-  accountId         String
+  accountId         String   @db.Uuid
   date              DateTime @db.Date // 같은 계좌는 하루 1건만 존재
   initialInvestment BigInt
   currentValue      BigInt
@@ -188,8 +189,8 @@ model InvestmentRecord {
 }
 
 model StockHolding {
-  id        String @id // 클라이언트가 생성한 UUID
-  accountId String
+  id        String @id @db.Uuid // 클라이언트가 생성한 UUID (16 bytes native)
+  accountId String @db.Uuid
   // Stock 마스터에서 복제된 정보. FK 를 걸지 않는 이유: 사용자가 직접 편집할 수
   // 있고, 마스터에 없는 종목 (해외 소형주 등) 도 수동 입력 가능해야 함.
   market   String
@@ -207,8 +208,8 @@ model StockHolding {
 }
 
 model CashItem {
-  id        String @id // 클라이언트가 생성한 UUID
-  accountId String
+  id        String @id @db.Uuid // 클라이언트가 생성한 UUID (16 bytes native)
+  accountId String @db.Uuid
   label     String // "예수금", "CMA" 등 사용자 편집 가능
   amount    BigInt
 
@@ -222,7 +223,7 @@ model CashItem {
 // ─── Savings ───────────────────────────────────────────────────────────────
 
 model SavingsAccount {
-  id           String   @id // 클라이언트가 생성한 UUID
+  id           String   @id @db.Uuid // 클라이언트가 생성한 UUID (16 bytes native)
   userId       String
   accountName  String
   accountType  String
@@ -244,7 +245,7 @@ model SavingsAccount {
 }
 
 model SavingsRecord {
-  accountId String
+  accountId String   @db.Uuid
   date      DateTime @db.Date
   balance   BigInt
 
@@ -259,7 +260,7 @@ model SavingsRecord {
 // ─── Debts ─────────────────────────────────────────────────────────────────
 
 model Debt {
-  id             String    @id // 클라이언트가 생성한 UUID
+  id             String    @id @db.Uuid // 클라이언트가 생성한 UUID (16 bytes native)
   userId         String
   loanName       String
   loanType       String
@@ -283,7 +284,7 @@ model Debt {
 // ─── Real Assets ───────────────────────────────────────────────────────────
 
 model RealAsset {
-  id            String    @id // 클라이언트가 생성한 UUID
+  id            String    @id @db.Uuid // 클라이언트가 생성한 UUID (16 bytes native)
   userId        String
   assetName     String
   assetType     String
@@ -316,7 +317,7 @@ model RealAssetCustomOwner {
 // ─── Asset Plans ───────────────────────────────────────────────────────────
 
 model AssetPlan {
-  id                       String   @id // 클라이언트가 생성한 UUID (예: "plan_...")
+  id                       String   @id @db.Uuid // 클라이언트가 생성한 UUID (16 bytes native)
   userId                   String
   planName                 String
   planPeriod               Int // 년
@@ -337,8 +338,8 @@ model AssetPlan {
 // `accountKind` 는 discriminator — FK 제약은 걸지 않음 (polymorphic 참조).
 // 앱 레벨에서 investment/savings 계좌가 존재하는지 검증.
 model AssetPlanAccountItem {
-  planId                String
-  accountId             String
+  planId                String   @db.Uuid
+  accountId             String   @db.Uuid
   accountKind           String // "investment" | "savings"
   contributionAmount    BigInt
   contributionFrequency String // "월" | "분기" | "반기" | "년"
