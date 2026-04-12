@@ -1,12 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useAssetPlanStore } from "@web/features/asset-plan/stores/asset-plan-store";
 import { useProgressStore } from "@web/features/assets/stores/progress-store";
 import { useDebtsStore } from "@web/features/debts/stores/debts-store";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { useRealAssetsStore } from "@web/features/real-assets/stores/real-assets-store";
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
-import { useEffect, useState } from "react";
 
 /**
  * Zustand `persist` 미들웨어가 부착한 최소 API.
@@ -61,7 +61,5 @@ export function useAllStoresHydrated(): boolean {
   const planHydrated = useStoreHydrated(useAssetPlanStore);
   const progHydrated = useStoreHydrated(useProgressStore);
 
-  return (
-    invHydrated && savHydrated && debHydrated && realHydrated && planHydrated && progHydrated
-  );
+  return invHydrated && savHydrated && debHydrated && realHydrated && planHydrated && progHydrated;
 }

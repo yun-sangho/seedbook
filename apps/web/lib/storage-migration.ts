@@ -24,9 +24,7 @@ export type MigrationProgress = {
  * `PUT /api/storage/[key]` 한다. 빈 key 는 스킵 (빈 store 로 cloud 를
  * 덮어쓰지 않도록).
  */
-export async function uploadAllToCloud(
-  onProgress?: (p: MigrationProgress) => void
-): Promise<void> {
+export async function uploadAllToCloud(onProgress?: (p: MigrationProgress) => void): Promise<void> {
   for (let i = 0; i < CLOUD_STORE_KEYS.length; i += 1) {
     const key = CLOUD_STORE_KEYS[i]!;
     const raw = readLocalEnvelope(key);

@@ -1,10 +1,10 @@
 import {
   bigIntToNumber,
-  type DomainTranslator,
-  type Envelope,
   formatDate,
   parseDate,
   toBigInt,
+  type DomainTranslator,
+  type Envelope,
 } from "./types";
 
 const DOMAIN = "real-assets";
@@ -69,9 +69,7 @@ export const realAssetsTranslator: DomainTranslator = {
     const realAssets = Array.isArray(state.realAssets)
       ? (state.realAssets as RealAssetPayload[])
       : [];
-    const customOwners = Array.isArray(state.customOwners)
-      ? (state.customOwners as string[])
-      : [];
+    const customOwners = Array.isArray(state.customOwners) ? (state.customOwners as string[]) : [];
 
     await prisma.$transaction(async (tx) => {
       const order = realAssets.map((a) => a.id);

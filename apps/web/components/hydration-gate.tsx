@@ -1,8 +1,8 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useAllStoresHydrated } from "@web/lib/zustand-hydration";
 import { Loader2 } from "lucide-react";
-import type { ReactNode } from "react";
 
 /**
  * 모든 persist store 가 하이드레이션을 마친 뒤에만 자식을 렌더한다.

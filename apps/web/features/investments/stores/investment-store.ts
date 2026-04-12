@@ -9,12 +9,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { ACCOUNT_COLORS, COLOR_FAMILIES } from "../types/constants";
 import { CashItem, InvestmentItem, InvestmentRecord, StockHolding } from "../types/types";
 
-export type HoldingsSortOption =
-  | "default"
-  | "priceDesc"
-  | "priceAsc"
-  | "evalDesc"
-  | "evalAsc";
+export type HoldingsSortOption = "default" | "priceDesc" | "priceAsc" | "evalDesc" | "evalAsc";
 
 // 현재 날짜를 YYYY-MM-DD 형식으로 반환하는 헬퍼 함수
 const getCurrentDate = (): string => {

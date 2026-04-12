@@ -1,7 +1,7 @@
-import { config as loadEnv } from "dotenv";
 import { existsSync } from "fs";
 import { dirname, resolve } from "path";
 import { PrismaClient } from "@prisma/client";
+import { config as loadEnv } from "dotenv";
 
 // 패키지 자체의 .env.local 을 PrismaClient 생성 전에 로드한다.
 // 이렇게 하면 이 패키지를 import 하는 모든 소비자(stock-crawler, Next.js API

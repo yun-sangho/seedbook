@@ -105,9 +105,7 @@ export function AddStockHoldingModal({
                 </div>
               )}
             </div>
-            {errors.quantity && (
-              <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>
-            )}
+            {errors.quantity && <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>}
           </div>
 
           <div className="flex gap-2 pt-4">

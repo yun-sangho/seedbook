@@ -179,9 +179,10 @@ function upgradeAssetPlanEnvelope(
         // 매칭 실패 — 해당 계좌가 삭제된 뒤 남은 stale 참조. 기본적으로
         // investment 로 추정하되 key 는 그대로 두어 envelope 는 유효하게 유지.
         newKey = rawKey;
-        accountKind = typeof valueObj.accountKind === "string"
-          ? (valueObj.accountKind as "investment" | "savings")
-          : "investment";
+        accountKind =
+          typeof valueObj.accountKind === "string"
+            ? (valueObj.accountKind as "investment" | "savings")
+            : "investment";
       }
 
       upgraded[newKey] = { ...valueObj, accountKind };
@@ -211,9 +212,7 @@ export function upgradeLocalIdsIfNeeded(): void {
     const savingsIdMap = new Map<string, string>();
 
     const changed = {
-      investment: investmentEnv
-        ? upgradeInvestmentEnvelope(investmentEnv, investmentIdMap)
-        : false,
+      investment: investmentEnv ? upgradeInvestmentEnvelope(investmentEnv, investmentIdMap) : false,
       savings: savingsEnv ? upgradeSavingsEnvelope(savingsEnv, savingsIdMap) : false,
       debts: debtsEnv ? upgradeDebtsEnvelope(debtsEnv) : false,
       realAssets: realAssetsEnv ? upgradeRealAssetsEnvelope(realAssetsEnv) : false,

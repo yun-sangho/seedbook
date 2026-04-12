@@ -1,14 +1,10 @@
 "use client";
 
-import { LogOut } from "lucide-react";
-import { authClient, useSession } from "@web/lib/auth-client";
 import { Button } from "@web/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@web/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@web/components/ui/popover";
+import { authClient, useSession } from "@web/lib/auth-client";
 import { cn } from "@web/lib/utils";
+import { LogOut } from "lucide-react";
 
 function getInitials(name: string | null | undefined) {
   if (!name) return "?";

@@ -5,8 +5,7 @@ import { Button } from "@web/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@web/components/ui/dialog";
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
-import { parseNumericString } from "@web/utils/number-format";
-import { numberToKorean } from "@web/utils/number-format";
+import { numberToKorean, parseNumericString } from "@web/utils/number-format";
 
 interface AddCashItemModalProps {
   isOpen: boolean;
@@ -15,12 +14,7 @@ interface AddCashItemModalProps {
   onAdd: (label: string, amount: number) => void;
 }
 
-export function AddCashItemModal({
-  isOpen,
-  onClose,
-  accountName,
-  onAdd,
-}: AddCashItemModalProps) {
+export function AddCashItemModal({ isOpen, onClose, accountName, onAdd }: AddCashItemModalProps) {
   const [label, setLabel] = useState("예수금");
   const [amount, setAmount] = useState("");
   const [errors, setErrors] = useState<{ label?: string; amount?: string }>({});

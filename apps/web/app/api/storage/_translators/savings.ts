@@ -1,10 +1,4 @@
-import {
-  bigIntToNumber,
-  type DomainTranslator,
-  formatDate,
-  parseDate,
-  toBigInt,
-} from "./types";
+import { bigIntToNumber, formatDate, parseDate, toBigInt, type DomainTranslator } from "./types";
 
 /**
  * `savings-storage` 번역기.
@@ -76,9 +70,7 @@ export const savingsTranslator: DomainTranslator = {
 
   async write(prisma, userId, envelope) {
     const state = envelope.state ?? {};
-    const savings = Array.isArray(state.savings)
-      ? (state.savings as SavingsItemPayload[])
-      : [];
+    const savings = Array.isArray(state.savings) ? (state.savings as SavingsItemPayload[]) : [];
 
     await prisma.$transaction(async (tx) => {
       const order = savings.map((s) => s.id);

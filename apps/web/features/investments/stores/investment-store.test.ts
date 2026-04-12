@@ -627,8 +627,7 @@ describe("Investment Store", () => {
     });
 
     it("setStockHoldingFromSearch writes market/ticker/name/currency atomically", () => {
-      const { addStockHolding, setStockHoldingFromSearch } =
-        useInvestmentStore.getState();
+      const { addStockHolding, setStockHoldingFromSearch } = useInvestmentStore.getState();
 
       addStockHolding(investmentId);
       const holdingId = useInvestmentStore.getState().investments[0]!.holdings[0]!.id;
@@ -670,8 +669,7 @@ describe("Investment Store", () => {
     });
 
     it("setStockHoldingFromSearch overwrites a previously selected stock", () => {
-      const { addStockHolding, setStockHoldingFromSearch } =
-        useInvestmentStore.getState();
+      const { addStockHolding, setStockHoldingFromSearch } = useInvestmentStore.getState();
 
       addStockHolding(investmentId);
       const holdingId = useInvestmentStore.getState().investments[0]!.holdings[0]!.id;
@@ -702,8 +700,7 @@ describe("Investment Store", () => {
         useInvestmentStore.getState();
 
       addStockHolding(investmentId);
-      const firstHoldingId =
-        useInvestmentStore.getState().investments[0]!.holdings[0]!.id;
+      const firstHoldingId = useInvestmentStore.getState().investments[0]!.holdings[0]!.id;
       setStockHoldingFromSearch(investmentId, firstHoldingId, {
         market: "KOSPI",
         ticker: "005930",
@@ -711,8 +708,7 @@ describe("Investment Store", () => {
         currency: "KRW",
       });
       addStockHolding(investmentId);
-      const secondHoldingId =
-        useInvestmentStore.getState().investments[0]!.holdings[1]!.id;
+      const secondHoldingId = useInvestmentStore.getState().investments[0]!.holdings[1]!.id;
       setStockHoldingFromSearch(investmentId, secondHoldingId, {
         market: "KOSPI",
         ticker: "000660",
@@ -928,8 +924,7 @@ describe("Investment Store", () => {
     it("updateCashItem updates label field", () => {
       const { addCashItem, updateCashItem } = useInvestmentStore.getState();
       addCashItem(investmentId);
-      const cashItemId =
-        useInvestmentStore.getState().investments[0]!.cashItems[0]!.id;
+      const cashItemId = useInvestmentStore.getState().investments[0]!.cashItems[0]!.id;
 
       updateCashItem(investmentId, cashItemId, "label", "CMA");
 
@@ -940,8 +935,7 @@ describe("Investment Store", () => {
     it("updateCashItem parses numeric string for amount", () => {
       const { addCashItem, updateCashItem } = useInvestmentStore.getState();
       addCashItem(investmentId);
-      const cashItemId =
-        useInvestmentStore.getState().investments[0]!.cashItems[0]!.id;
+      const cashItemId = useInvestmentStore.getState().investments[0]!.cashItems[0]!.id;
 
       updateCashItem(investmentId, cashItemId, "amount", "1,000,000");
 
@@ -952,8 +946,7 @@ describe("Investment Store", () => {
     it("updateCashItem treats empty string as 0", () => {
       const { addCashItem, updateCashItem } = useInvestmentStore.getState();
       addCashItem(investmentId);
-      const cashItemId =
-        useInvestmentStore.getState().investments[0]!.cashItems[0]!.id;
+      const cashItemId = useInvestmentStore.getState().investments[0]!.cashItems[0]!.id;
       updateCashItem(investmentId, cashItemId, "amount", "500000");
 
       updateCashItem(investmentId, cashItemId, "amount", "");
@@ -965,12 +958,10 @@ describe("Investment Store", () => {
     it("removeCashItem removes only the specified item", () => {
       const { addCashItem, updateCashItem, removeCashItem } = useInvestmentStore.getState();
       addCashItem(investmentId);
-      const firstCashItemId =
-        useInvestmentStore.getState().investments[0]!.cashItems[0]!.id;
+      const firstCashItemId = useInvestmentStore.getState().investments[0]!.cashItems[0]!.id;
       updateCashItem(investmentId, firstCashItemId, "label", "예수금");
       addCashItem(investmentId);
-      const secondCashItemId =
-        useInvestmentStore.getState().investments[0]!.cashItems[1]!.id;
+      const secondCashItemId = useInvestmentStore.getState().investments[0]!.cashItems[1]!.id;
       updateCashItem(investmentId, secondCashItemId, "label", "CMA");
 
       removeCashItem(investmentId, firstCashItemId);

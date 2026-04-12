@@ -1,11 +1,11 @@
-import { describe, expect, it, beforeEach } from "vitest";
-import { createMockPrisma } from "./mock-prisma.test-util";
-import { investmentTranslator } from "./investment";
-import { savingsTranslator } from "./savings";
-import { debtsTranslator } from "./debts";
-import { realAssetsTranslator } from "./real-assets";
+import { beforeEach, describe, expect, it } from "vitest";
 import { assetPlanTranslator } from "./asset-plan";
+import { debtsTranslator } from "./debts";
+import { investmentTranslator } from "./investment";
+import { createMockPrisma } from "./mock-prisma.test-util";
 import { progressTranslator } from "./progress";
+import { realAssetsTranslator } from "./real-assets";
+import { savingsTranslator } from "./savings";
 import type { Envelope } from "./types";
 
 /**
@@ -55,9 +55,7 @@ describe("investment translator round-trip", () => {
               memo: "",
             },
           ],
-          cashItems: [
-            { id: "cash-uuid-1", label: "예수금", amount: 500000 },
-          ],
+          cashItems: [{ id: "cash-uuid-1", label: "예수금", amount: 500000 }],
         },
       ],
       holdingsSortOption: "evalDesc",

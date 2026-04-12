@@ -68,6 +68,5 @@ export const useSyncStatusStore = create<SyncStatusState>((set) => ({
       return { state: "error", pendingKeys: next, lastError: error };
     }),
 
-  markUnauthenticated: () =>
-    set({ state: "unauthenticated", lastError: "session expired" }),
+  markUnauthenticated: () => set({ state: "unauthenticated", lastError: "session expired" }),
 }));

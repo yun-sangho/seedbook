@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { useSyncStatusStore } from "@web/features/settings/stores/sync-status-store";
-import { createHybridStorage, __resetHybridStorageForTests } from "./hybrid-storage";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { __resetHybridStorageForTests, createHybridStorage } from "./hybrid-storage";
 import { setStorageMode, STORAGE_MODE_KEY } from "./storage-mode";
 
 /**
@@ -26,14 +26,14 @@ describe("createHybridStorage (local mode)", () => {
 
   it("local 모드에서 setItem / getItem 이 localStorage 를 round-trip 한다", () => {
     const storage = createHybridStorage("investment-storage");
-    storage.setItem("investment-storage", "{\"state\":{}}");
+    storage.setItem("investment-storage", '{"state":{}}');
     const result = storage.getItem("investment-storage");
-    expect(result).toBe("{\"state\":{}}");
+    expect(result).toBe('{"state":{}}');
   });
 
   it("local 모드에서 removeItem 이 localStorage 에서 key 를 제거한다", () => {
     const storage = createHybridStorage("savings-storage");
-    storage.setItem("savings-storage", "{\"state\":{}}");
+    storage.setItem("savings-storage", '{"state":{}}');
     storage.removeItem("savings-storage");
     expect(window.localStorage.getItem("savings-storage")).toBeNull();
   });

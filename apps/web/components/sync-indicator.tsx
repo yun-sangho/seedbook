@@ -1,9 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useSyncStatusStore } from "@web/features/settings/stores/sync-status-store";
 import { getStorageMode } from "@web/lib/storage-mode";
 import { AlertCircle, Check, CloudOff, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
 
 /**
  * 클라우드 저장 모드에서만 헤더에 노출되는 동기화 상태 뱃지.

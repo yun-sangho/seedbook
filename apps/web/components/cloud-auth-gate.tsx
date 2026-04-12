@@ -1,10 +1,10 @@
 "use client";
 
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@web/components/ui/button";
 import { authClient, useSession } from "@web/lib/auth-client";
 import { getStorageMode, setStorageMode } from "@web/lib/storage-mode";
 import { CloudOff } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
 
 /**
  * 클라우드 저장 모드에서 세션이 없으면 로그인 화면을 강제 노출한다.
@@ -45,8 +45,7 @@ export function CloudAuthGate({ children }: { children: ReactNode }) {
         <div className="space-y-1">
           <h2 className="text-lg font-semibold">로그인이 필요합니다</h2>
           <p className="text-sm text-muted-foreground">
-            클라우드 저장 모드에서는 카카오 계정으로 로그인해야 자산 데이터를
-            불러올 수 있습니다.
+            클라우드 저장 모드에서는 카카오 계정으로 로그인해야 자산 데이터를 불러올 수 있습니다.
           </p>
         </div>
         <div className="flex flex-col gap-2 w-full">

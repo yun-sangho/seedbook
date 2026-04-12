@@ -1,4 +1,4 @@
-import { type DomainTranslator, type Envelope, bigIntToNumber, toBigInt } from "./types";
+import { bigIntToNumber, toBigInt, type DomainTranslator, type Envelope } from "./types";
 
 const DOMAIN = "asset-plans";
 const VERSION = 2;

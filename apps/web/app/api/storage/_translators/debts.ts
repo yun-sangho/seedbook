@@ -1,10 +1,10 @@
 import {
   bigIntToNumber,
-  type DomainTranslator,
-  type Envelope,
   formatDate,
   parseDate,
   toBigInt,
+  type DomainTranslator,
+  type Envelope,
 } from "./types";
 
 const DOMAIN = "debts";
@@ -75,9 +75,9 @@ export const debtsTranslator: DomainTranslator = {
       });
 
       const incomingIds = new Set(debts.map((d) => d.id));
-      const existingIds = (
-        await tx.debt.findMany({ where: { userId }, select: { id: true } })
-      ).map((r) => r.id);
+      const existingIds = (await tx.debt.findMany({ where: { userId }, select: { id: true } })).map(
+        (r) => r.id
+      );
       const toDelete = existingIds.filter((id) => !incomingIds.has(id));
       if (toDelete.length > 0) {
         await tx.debt.deleteMany({ where: { id: { in: toDelete } } });

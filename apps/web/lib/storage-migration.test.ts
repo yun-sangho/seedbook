@@ -40,7 +40,7 @@ describe("hasAnyLocalData", () => {
   });
 
   it("아무 cloud key 라도 있으면 true", () => {
-    window.localStorage.setItem("investment-storage", "{\"state\":{}}");
+    window.localStorage.setItem("investment-storage", '{"state":{}}');
     expect(hasAnyLocalData()).toBe(true);
   });
 });

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Button } from "@web/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
 import {
@@ -11,16 +12,15 @@ import {
   DialogTitle,
 } from "@web/components/ui/dialog";
 import { authClient, useSession } from "@web/lib/auth-client";
-import { getStorageMode, setStorageMode, type StorageMode } from "@web/lib/storage-mode";
 import {
   CLOUD_STORE_LABELS,
   downloadAllFromCloud,
   hasAnyLocalData,
-  type MigrationProgress,
   uploadAllToCloud,
+  type MigrationProgress,
 } from "@web/lib/storage-migration";
+import { getStorageMode, setStorageMode, type StorageMode } from "@web/lib/storage-mode";
 import { Cloud, HardDrive, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
 
 type DialogState =
   | { kind: "closed" }
@@ -117,9 +117,7 @@ export function StorageModeCard() {
 
         {!loggedIn && !sessionPending && (
           <div className="flex items-center justify-between gap-4 rounded-md border p-3 text-sm">
-            <p className="text-muted-foreground">
-              클라우드 저장을 사용하려면 먼저 로그인해주세요.
-            </p>
+            <p className="text-muted-foreground">클라우드 저장을 사용하려면 먼저 로그인해주세요.</p>
             <Button
               size="sm"
               onClick={() =>
@@ -209,8 +207,8 @@ function ModeSwitchDialog({
             <DialogHeader>
               <DialogTitle>클라우드 저장으로 전환</DialogTitle>
               <DialogDescription>
-                현재 브라우저에 저장된 데이터를 클라우드로 업로드합니다. 클라우드에
-                기존 데이터가 있으면 <strong>덮어씁니다</strong>. 계속하시겠습니까?
+                현재 브라우저에 저장된 데이터를 클라우드로 업로드합니다. 클라우드에 기존 데이터가
+                있으면 <strong>덮어씁니다</strong>. 계속하시겠습니까?
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -227,9 +225,8 @@ function ModeSwitchDialog({
             <DialogHeader>
               <DialogTitle>브라우저 저장으로 전환</DialogTitle>
               <DialogDescription>
-                클라우드 데이터를 이 브라우저로 복사합니다. 이 브라우저에 남아
-                있는 기존 데이터는 <strong>덮어씁니다</strong>. 전환 전에 JSON
-                백업을 내보내는 것을 권장합니다.
+                클라우드 데이터를 이 브라우저로 복사합니다. 이 브라우저에 남아 있는 기존 데이터는{" "}
+                <strong>덮어씁니다</strong>. 전환 전에 JSON 백업을 내보내는 것을 권장합니다.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -289,7 +286,9 @@ function renderProgressText(
   direction: "to-cloud" | "to-local"
 ): string {
   if (!progress) {
-    return direction === "to-cloud" ? "업로드를 준비하고 있습니다..." : "다운로드를 준비하고 있습니다...";
+    return direction === "to-cloud"
+      ? "업로드를 준비하고 있습니다..."
+      : "다운로드를 준비하고 있습니다...";
   }
   const verb = direction === "to-cloud" ? "업로드 중" : "다운로드 중";
   return `${CLOUD_STORE_LABELS[progress.key]} ${verb} (${progress.index + 1}/${progress.total})`;

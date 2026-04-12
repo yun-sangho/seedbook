@@ -31,8 +31,7 @@ export function sortHoldings(
     return price == null ? null : price * h.quantity;
   };
 
-  const keyFn =
-    option === "priceDesc" || option === "priceAsc" ? getPrice : getEval;
+  const keyFn = option === "priceDesc" || option === "priceAsc" ? getPrice : getEval;
   const direction = option === "priceDesc" || option === "evalDesc" ? -1 : 1;
 
   return [...holdings].sort((a, b) => {

@@ -120,7 +120,10 @@ export function createMockPrisma() {
     userListOrder: new InMemoryTable(["userId", "domain"]),
   };
 
-  function makeDelegate(table: InMemoryTable, _includes?: Record<string, { table: InMemoryTable; fk: string; parentKey: string }>) {
+  function makeDelegate(
+    table: InMemoryTable,
+    _includes?: Record<string, { table: InMemoryTable; fk: string; parentKey: string }>
+  ) {
     return {
       findMany: async (args?: { where?: Row; include?: Row; select?: Row; orderBy?: unknown }) => {
         const rows = table.findMany(args);

@@ -1,9 +1,9 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { SyncIndicator } from "@web/components/sync-indicator";
 import { Separator } from "@web/components/ui/separator";
 import { SidebarTrigger } from "@web/components/ui/sidebar";
-import { SyncIndicator } from "@web/components/sync-indicator";
 import { UserMenu } from "@web/components/user-menu";
 
 const pageNames: Record<string, string> = {

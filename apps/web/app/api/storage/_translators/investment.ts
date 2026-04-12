@@ -1,10 +1,10 @@
 import {
   bigIntToNumber,
-  type DomainTranslator,
-  type Envelope,
   formatDate,
   parseDate,
   toBigInt,
+  type DomainTranslator,
+  type Envelope,
 } from "./types";
 
 /**

@@ -47,7 +47,9 @@ describe("upgradeLocalIdsIfNeeded", () => {
               initialInvestment: 0,
               currentValue: 0,
               records: [],
-              holdings: [{ id: 5, market: "", ticker: "", name: "", currency: "", quantity: 0, memo: "" }],
+              holdings: [
+                { id: 5, market: "", ticker: "", name: "", currency: "", quantity: 0, memo: "" },
+              ],
               cashItems: [{ id: 1, label: "예수금", amount: 0 }],
               note: "",
               color: "#000",
@@ -130,8 +132,16 @@ describe("upgradeLocalIdsIfNeeded", () => {
               planName: "p",
               planPeriod: 30,
               accountPlans: {
-                "2": { contributionAmount: "100", contributionFrequency: "월", targetAnnualReturn: "5" },
-                "7": { contributionAmount: "50", contributionFrequency: "월", targetAnnualReturn: "3" },
+                "2": {
+                  contributionAmount: "100",
+                  contributionFrequency: "월",
+                  targetAnnualReturn: "5",
+                },
+                "7": {
+                  contributionAmount: "50",
+                  contributionFrequency: "월",
+                  targetAnnualReturn: "3",
+                },
               },
               totalMonthlyContribution: 150,
               averageTargetReturn: 4,

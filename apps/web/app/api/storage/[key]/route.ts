@@ -1,7 +1,7 @@
+import { prisma } from "@seedbook/database";
 import { TRANSLATORS, type Envelope } from "@web/app/api/storage/_translators";
 import { auth } from "@web/lib/auth";
 import { isCloudStoreKey } from "@web/lib/storage-mode";
-import { prisma } from "@seedbook/database";
 
 /**
  * 사용자 자산 데이터의 클라우드 저장 엔드포인트.
