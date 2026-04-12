@@ -25,14 +25,13 @@ interface AddSavingsModalProps {
 
 export function AddSavingsModal({ isOpen, onClose, onSavingsAdded }: AddSavingsModalProps) {
   const addSavingsWithTypeAndOwner = useSavingsStore((state) => state.addSavingsWithTypeAndOwner);
-  const customOwners = useSavingsStore((state) => state.customOwners);
 
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedAccountType, setSelectedAccountType] = useState<string>("");
   const [selectedOwner, setSelectedOwner] = useState<string>("");
 
-  // 계좌 소유자 옵션 (기본 + 사용자 추가)
-  const accountOwners = [...DEFAULT_OWNERS, ...customOwners];
+  // 계좌 소유자 옵션
+  const accountOwners = [...DEFAULT_OWNERS];
 
   // 선택된 카테고리의 계좌 타입 목록
   const availableAccountTypes = selectedCategory

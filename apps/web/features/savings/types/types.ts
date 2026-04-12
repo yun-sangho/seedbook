@@ -21,7 +21,7 @@ export interface CheckingAccountRecord {
  * - 이율은 선택적 (요구불 이자가 있는 경우)
  */
 export interface CheckingAccount {
-  id: number;
+  id: string;
   accountName: string; // 계좌명 (예: "KB국민은행 입출금")
   category: SavingsCategory.CHECKING; // 카테고리
   accountType: CheckingAccountType.CHECKING; // 계좌 타입
@@ -47,7 +47,7 @@ export interface DepositAccountRecord {
  * - 계좌 타입: 저축
  */
 export interface SavingsDepositAccount {
-  id: number;
+  id: string;
   accountName: string; // 계좌명
   category: SavingsCategory.DEPOSIT; // 카테고리
   accountType: DepositAccountType.SAVINGS_DEPOSIT; // 계좌 타입: 저축
@@ -65,7 +65,7 @@ export interface SavingsDepositAccount {
  * - 계좌 타입: 적금
  */
 export interface InstallmentSavingsAccount {
-  id: number;
+  id: string;
   accountName: string; // 계좌명
   category: SavingsCategory.DEPOSIT; // 카테고리
   accountType: DepositAccountType.INSTALLMENT_SAVINGS; // 계좌 타입: 적금
@@ -92,7 +92,7 @@ export interface HousingAccountRecord {
  * - 계좌 타입: 주택청약
  */
 export interface HousingSubscriptionAccount {
-  id: number;
+  id: string;
   accountName: string; // 계좌명
   category: SavingsCategory.HOUSING; // 카테고리
   accountType: HousingAccountType.HOUSING_SUBSCRIPTION; // 계좌 타입: 주택청약
@@ -182,7 +182,7 @@ export interface SavingsRecord {
  * 현재 구현에서 실제로 사용하는 범용 계좌 타입
  */
 export interface SavingsItem {
-  id: number;
+  id: string;
   accountName: string; // 계좌명
   accountType: string; // 계좌 타입 (입출금, 저축, 적금, 주택청약 등)
   accountOwner: string; // 계좌 소유자 (본인, 배우자 등)

@@ -67,46 +67,19 @@ export default function AdminPage() {
           return;
         }
 
-        // 데이터 복원 - store 상태 직접 설정
+        // 데이터 복원 - store 상태 직접 설정. ID 는 전부 문자열이라 별도의
+        // auto-increment 카운터가 없어 그대로 주입하면 된다.
         if (data.investments && Array.isArray(data.investments)) {
-          const maxId =
-            data.investments.length > 0
-              ? Math.max(...data.investments.map((inv: { id: number }) => inv.id))
-              : 0;
-          useInvestmentStore.setState({
-            investments: data.investments,
-            lastInvestmentId: maxId + 1,
-          });
+          useInvestmentStore.setState({ investments: data.investments });
         }
         if (data.savings && Array.isArray(data.savings)) {
-          const maxId =
-            data.savings.length > 0
-              ? Math.max(...data.savings.map((sav: { id: number }) => sav.id))
-              : 0;
-          useSavingsStore.setState({
-            savings: data.savings,
-            lastSavingsId: maxId + 1,
-          });
+          useSavingsStore.setState({ savings: data.savings });
         }
         if (data.realAssets && Array.isArray(data.realAssets)) {
-          const maxId =
-            data.realAssets.length > 0
-              ? Math.max(...data.realAssets.map((asset: { id: number }) => asset.id))
-              : 0;
-          useRealAssetsStore.setState({
-            realAssets: data.realAssets,
-            lastRealAssetId: maxId + 1,
-          });
+          useRealAssetsStore.setState({ realAssets: data.realAssets });
         }
         if (data.debts && Array.isArray(data.debts)) {
-          const maxId =
-            data.debts.length > 0
-              ? Math.max(...data.debts.map((debt: { id: number }) => debt.id))
-              : 0;
-          useDebtsStore.setState({
-            debts: data.debts,
-            lastDebtId: maxId + 1,
-          });
+          useDebtsStore.setState({ debts: data.debts });
         }
         if (data.progressPoints && Array.isArray(data.progressPoints)) {
           useProgressStore.getState().setProgressPoints(data.progressPoints);

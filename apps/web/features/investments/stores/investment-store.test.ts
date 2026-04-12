@@ -29,8 +29,7 @@ describe("Investment Store", () => {
     it("should have correct initial state", () => {
       const state = useInvestmentStore.getState();
       expect(state.investments).toEqual([]);
-      expect(state.lastInvestmentId).toBe(1);
-      expect(state.expandedFormId).toBe(1);
+      expect(state.expandedFormId).toBe("");
     });
 
     it("holdingsSortOption defaults to 'default'", () => {
@@ -95,29 +94,35 @@ describe("Investment Store", () => {
       const { addInvestmentWithTypeAndOwner, removeInvestment } = useInvestmentStore.getState();
 
       addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      const firstId = useInvestmentStore.getState().investments[0]!.id;
       addInvestmentWithTypeAndOwner("예금계좌", "김철수");
+      const secondId = useInvestmentStore.getState().investments[0]!.id;
 
       let state = useInvestmentStore.getState();
       expect(state.investments).toHaveLength(2);
 
-      removeInvestment(2);
+      // Remove the first-added (older) investment; second-added should remain.
+      removeInvestment(firstId);
 
       state = useInvestmentStore.getState();
       expect(state.investments).toHaveLength(1);
-      expect(state.investments[0]!.id).toBe(3);
+      expect(state.investments[0]!.id).toBe(secondId);
     });
   });
 
   describe("Investment Updates", () => {
+    let investmentId: string;
+
     beforeEach(() => {
       const { addInvestmentWithTypeAndOwner } = useInvestmentStore.getState();
       addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      investmentId = useInvestmentStore.getState().investments[0]!.id;
     });
 
     it("should update investment field", () => {
       const { updateInvestment } = useInvestmentStore.getState();
 
-      updateInvestment(2, "accountName", "새로운 계좌명");
+      updateInvestment(investmentId, "accountName", "새로운 계좌명");
 
       const state = useInvestmentStore.getState();
       expect(state.investments[0]!.accountName).toBe("새로운 계좌명");
@@ -126,7 +131,7 @@ describe("Investment Store", () => {
     it("should create record when updating currentValue", () => {
       const { updateInvestment } = useInvestmentStore.getState();
 
-      updateInvestment(2, "currentValue", "1000000");
+      updateInvestment(investmentId, "currentValue", "1000000");
 
       const state = useInvestmentStore.getState();
       const investment = state.investments[0]!;
@@ -142,7 +147,7 @@ describe("Investment Store", () => {
     it("should create record when updating initialInvestment", () => {
       const { updateInvestment } = useInvestmentStore.getState();
 
-      updateInvestment(2, "initialInvestment", "500000");
+      updateInvestment(investmentId, "initialInvestment", "500000");
 
       const state = useInvestmentStore.getState();
       const investment = state.investments[0]!;
@@ -159,10 +164,10 @@ describe("Investment Store", () => {
       const { updateInvestment } = useInvestmentStore.getState();
 
       // First update
-      updateInvestment(2, "currentValue", "1000000");
+      updateInvestment(investmentId, "currentValue", "1000000");
 
       // Second update on same day
-      updateInvestment(2, "currentValue", "1200000");
+      updateInvestment(investmentId, "currentValue", "1200000");
 
       const state = useInvestmentStore.getState();
       const investment = state.investments[0]!;
@@ -172,15 +177,18 @@ describe("Investment Store", () => {
   });
 
   describe("History Record Management", () => {
+    let investmentId: string;
+
     beforeEach(() => {
       const { addInvestmentWithTypeAndOwner } = useInvestmentStore.getState();
       addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      investmentId = useInvestmentStore.getState().investments[0]!.id;
     });
 
     it("should add history record", () => {
       const { addHistoryRecord } = useInvestmentStore.getState();
 
-      addHistoryRecord(2, "2024-01-10", 500000, 600000);
+      addHistoryRecord(investmentId, "2024-01-10", 500000, 600000);
 
       const state = useInvestmentStore.getState();
       const investment = state.investments[0]!;
@@ -196,10 +204,10 @@ describe("Investment Store", () => {
       const { addHistoryRecord } = useInvestmentStore.getState();
 
       // Add first record
-      addHistoryRecord(2, "2024-01-10", 500000, 600000);
+      addHistoryRecord(investmentId, "2024-01-10", 500000, 600000);
 
       // Add second record with same date (should replace)
-      addHistoryRecord(2, "2024-01-10", 700000, 800000);
+      addHistoryRecord(investmentId, "2024-01-10", 700000, 800000);
 
       const state = useInvestmentStore.getState();
       const investment = state.investments[0]!;
@@ -214,9 +222,9 @@ describe("Investment Store", () => {
     it("should sort records by date (latest first)", () => {
       const { addHistoryRecord } = useInvestmentStore.getState();
 
-      addHistoryRecord(2, "2024-01-10", 500000, 600000);
-      addHistoryRecord(2, "2024-01-05", 400000, 450000);
-      addHistoryRecord(2, "2024-01-15", 600000, 700000);
+      addHistoryRecord(investmentId, "2024-01-10", 500000, 600000);
+      addHistoryRecord(investmentId, "2024-01-05", 400000, 450000);
+      addHistoryRecord(investmentId, "2024-01-15", 600000, 700000);
 
       const state = useInvestmentStore.getState();
       const dates = state.investments[0]!.records.map((r) => r.date);
@@ -226,7 +234,7 @@ describe("Investment Store", () => {
     it("should add investment record with defaults", () => {
       const { addInvestmentRecord } = useInvestmentStore.getState();
 
-      addInvestmentRecord(2);
+      addInvestmentRecord(investmentId);
 
       const state = useInvestmentStore.getState();
       const investment = state.investments[0]!;
@@ -242,10 +250,10 @@ describe("Investment Store", () => {
       const { addHistoryRecord, addInvestmentRecord } = useInvestmentStore.getState();
 
       // Add existing record with initialInvestment
-      addHistoryRecord(2, "2024-01-10", 500000, 600000);
+      addHistoryRecord(investmentId, "2024-01-10", 500000, 600000);
 
       // Add new record without specifying initialInvestment
-      addInvestmentRecord(2, { currentValue: 700000 });
+      addInvestmentRecord(investmentId, { currentValue: 700000 });
 
       const state = useInvestmentStore.getState();
       const investment = state.investments[0]!;
@@ -263,7 +271,7 @@ describe("Investment Store", () => {
     it("should add investment record with custom values", () => {
       const { addInvestmentRecord } = useInvestmentStore.getState();
 
-      addInvestmentRecord(2, {
+      addInvestmentRecord(investmentId, {
         initialInvestment: 1000000,
         currentValue: 1200000,
       });
@@ -280,8 +288,8 @@ describe("Investment Store", () => {
     it("should update investment record", () => {
       const { addInvestmentRecord, updateInvestmentRecord } = useInvestmentStore.getState();
 
-      addInvestmentRecord(2);
-      updateInvestmentRecord(2, 0, "currentValue", "1500000");
+      addInvestmentRecord(investmentId);
+      updateInvestmentRecord(investmentId, 0, "currentValue", "1500000");
 
       const state = useInvestmentStore.getState();
       const investment = state.investments[0]!;
@@ -291,20 +299,20 @@ describe("Investment Store", () => {
     it("should remove investment record but keep at least one", () => {
       const { addInvestmentRecord, removeInvestmentRecord } = useInvestmentStore.getState();
 
-      addInvestmentRecord(2);
-      addInvestmentRecord(2);
+      addInvestmentRecord(investmentId);
+      addInvestmentRecord(investmentId);
 
       let state = useInvestmentStore.getState();
       const investment = state.investments[0]!;
       expect(investment.records).toHaveLength(2);
 
-      removeInvestmentRecord(2, 0);
+      removeInvestmentRecord(investmentId, 0);
 
       state = useInvestmentStore.getState();
       expect(state.investments[0]!.records).toHaveLength(1);
 
       // Try to remove the last record - should not be removed
-      removeInvestmentRecord(2, 0);
+      removeInvestmentRecord(investmentId, 0);
 
       state = useInvestmentStore.getState();
       expect(state.investments[0]!.records).toHaveLength(1);
@@ -313,22 +321,22 @@ describe("Investment Store", () => {
     it("should remove history record by date (except latest)", () => {
       const { addHistoryRecord, removeInvestmentHistoryRecord } = useInvestmentStore.getState();
 
-      addHistoryRecord(2, "2024-01-10", 500000, 600000);
-      addHistoryRecord(2, "2024-01-15", 600000, 700000);
-      addHistoryRecord(2, "2024-01-05", 400000, 450000);
+      addHistoryRecord(investmentId, "2024-01-10", 500000, 600000);
+      addHistoryRecord(investmentId, "2024-01-15", 600000, 700000);
+      addHistoryRecord(investmentId, "2024-01-05", 400000, 450000);
 
       let state = useInvestmentStore.getState();
       const investment = state.investments[0]!;
       expect(investment.records).toHaveLength(3);
 
       // Try to remove latest record (should not be removed)
-      removeInvestmentHistoryRecord(2, "2024-01-15");
+      removeInvestmentHistoryRecord(investmentId, "2024-01-15");
 
       state = useInvestmentStore.getState();
       expect(state.investments[0]!.records).toHaveLength(3);
 
       // Remove non-latest record (should be removed)
-      removeInvestmentHistoryRecord(2, "2024-01-10");
+      removeInvestmentHistoryRecord(investmentId, "2024-01-10");
 
       state = useInvestmentStore.getState();
       expect(state.investments[0]!.records).toHaveLength(2);
@@ -343,41 +351,44 @@ describe("Investment Store", () => {
     it("should set expanded form id", () => {
       const { setExpandedFormId } = useInvestmentStore.getState();
 
-      setExpandedFormId(5);
+      setExpandedFormId("5");
 
       const state = useInvestmentStore.getState();
-      expect(state.expandedFormId).toBe(5);
+      expect(state.expandedFormId).toBe("5");
     });
 
     it("should update expandedFormId when updating different investment", () => {
       const { addInvestmentWithTypeAndOwner, updateInvestment } = useInvestmentStore.getState();
 
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동"); // id: 2
-      addInvestmentWithTypeAndOwner("예금계좌", "김철수"); // id: 3
+      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      const firstId = useInvestmentStore.getState().investments[0]!.id;
+      addInvestmentWithTypeAndOwner("예금계좌", "김철수");
+      const secondId = useInvestmentStore.getState().investments[0]!.id;
 
-      // Initially expanded form is 3 (last added)
+      // Initially expanded form is the last added one
       let state = useInvestmentStore.getState();
-      expect(state.expandedFormId).toBe(3);
+      expect(state.expandedFormId).toBe(secondId);
 
-      // Update investment 2 - should change expandedFormId to 2
-      updateInvestment(2, "accountName", "Updated");
+      // Update the older investment - should change expandedFormId to that id
+      updateInvestment(firstId, "accountName", "Updated");
 
       state = useInvestmentStore.getState();
-      expect(state.expandedFormId).toBe(2);
+      expect(state.expandedFormId).toBe(firstId);
     });
 
     it("should not change expandedFormId when updating currently expanded investment", () => {
       const { addInvestmentWithTypeAndOwner, setExpandedFormId, updateInvestment } =
         useInvestmentStore.getState();
 
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동"); // id: 2
-      setExpandedFormId(2);
+      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      const id = useInvestmentStore.getState().investments[0]!.id;
+      setExpandedFormId(id);
 
       // Update the currently expanded investment
-      updateInvestment(2, "accountName", "Updated");
+      updateInvestment(id, "accountName", "Updated");
 
       const state = useInvestmentStore.getState();
-      expect(state.expandedFormId).toBe(2); // Should remain the same
+      expect(state.expandedFormId).toBe(id); // Should remain the same
     });
   });
 
@@ -388,12 +399,12 @@ describe("Investment Store", () => {
 
       // Add some data
       addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
-      setExpandedFormId(5);
+      setExpandedFormId("5");
 
       // Verify data was added
       let state = useInvestmentStore.getState();
       expect(state.investments).toHaveLength(1);
-      expect(state.expandedFormId).toBe(5);
+      expect(state.expandedFormId).toBe("5");
 
       // Reset store
       resetStore();
@@ -401,8 +412,7 @@ describe("Investment Store", () => {
       // Verify reset
       state = useInvestmentStore.getState();
       expect(state.investments).toEqual([]);
-      expect(state.lastInvestmentId).toBe(1);
-      expect(state.expandedFormId).toBe(1);
+      expect(state.expandedFormId).toBe("");
     });
   });
 
@@ -412,14 +422,17 @@ describe("Investment Store", () => {
         useInvestmentStore.getState();
 
       // Add three investments
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동"); // id: 2
-      addInvestmentWithTypeAndOwner("예금계좌", "김철수"); // id: 3
-      addInvestmentWithTypeAndOwner("연금계좌", "박영희"); // id: 4
+      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      const idA = useInvestmentStore.getState().investments[0]!.id;
+      addInvestmentWithTypeAndOwner("예금계좌", "김철수");
+      const idB = useInvestmentStore.getState().investments[0]!.id;
+      addInvestmentWithTypeAndOwner("연금계좌", "박영희");
+      const idC = useInvestmentStore.getState().investments[0]!.id;
 
       // Update names to identify them
-      updateInvestment(2, "accountName", "First");
-      updateInvestment(3, "accountName", "Second");
-      updateInvestment(4, "accountName", "Third");
+      updateInvestment(idA, "accountName", "First");
+      updateInvestment(idB, "accountName", "Second");
+      updateInvestment(idC, "accountName", "Third");
 
       let state = useInvestmentStore.getState();
       // Investments are prepended, so order is: [Third, Second, First]
@@ -438,11 +451,13 @@ describe("Investment Store", () => {
         useInvestmentStore.getState();
 
       // Add investments with history
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동"); // id: 2
-      addHistoryRecord(2, "2024-01-10", 500000, 600000);
+      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      const idA = useInvestmentStore.getState().investments[0]!.id;
+      addHistoryRecord(idA, "2024-01-10", 500000, 600000);
 
-      addInvestmentWithTypeAndOwner("예금계좌", "김철수"); // id: 3
-      addHistoryRecord(3, "2024-01-12", 1000000, 1100000);
+      addInvestmentWithTypeAndOwner("예금계좌", "김철수");
+      const idB = useInvestmentStore.getState().investments[0]!.id;
+      addHistoryRecord(idB, "2024-01-12", 1000000, 1100000);
 
       let state = useInvestmentStore.getState();
       const originalFirst = state.investments[0]!;
@@ -453,11 +468,11 @@ describe("Investment Store", () => {
 
       state = useInvestmentStore.getState();
       // Verify data integrity
-      expect(state.investments[0]!.id).toBe(2);
+      expect(state.investments[0]!.id).toBe(idA);
       expect(state.investments[0]!.records).toHaveLength(1);
       expect(state.investments[0]!.records[0]!.currentValue).toBe(600000);
 
-      expect(state.investments[1]!.id).toBe(3);
+      expect(state.investments[1]!.id).toBe(idB);
       expect(state.investments[1]!.records).toHaveLength(1);
       expect(state.investments[1]!.records[0]!.currentValue).toBe(1100000);
     });
@@ -492,15 +507,17 @@ describe("Investment Store", () => {
       const { addInvestmentWithTypeAndOwner, addHistoryRecord } = useInvestmentStore.getState();
 
       // Add two investments
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동"); // id: 2
-      addInvestmentWithTypeAndOwner("예금계좌", "김철수"); // id: 3
+      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      const idA = useInvestmentStore.getState().investments[0]!.id;
+      addInvestmentWithTypeAndOwner("예금계좌", "김철수");
+      const idB = useInvestmentStore.getState().investments[0]!.id;
 
       // Add history to first investment
-      addHistoryRecord(2, "2024-01-10", 500000, 600000);
-      addHistoryRecord(2, "2024-01-15", 600000, 700000);
+      addHistoryRecord(idA, "2024-01-10", 500000, 600000);
+      addHistoryRecord(idA, "2024-01-15", 600000, 700000);
 
       // Add history to second investment
-      addHistoryRecord(3, "2024-01-12", 1000000, 1100000);
+      addHistoryRecord(idB, "2024-01-12", 1000000, 1100000);
 
       const state = useInvestmentStore.getState();
       expect(state.investments).toHaveLength(2);
@@ -512,10 +529,11 @@ describe("Investment Store", () => {
       const { addInvestmentWithTypeAndOwner, updateInvestment } = useInvestmentStore.getState();
 
       addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      const id = useInvestmentStore.getState().investments[0]!.id;
 
       // Update both initial investment and current value
-      updateInvestment(2, "initialInvestment", "500000");
-      updateInvestment(2, "currentValue", "600000");
+      updateInvestment(id, "initialInvestment", "500000");
+      updateInvestment(id, "currentValue", "600000");
 
       const state = useInvestmentStore.getState();
       const investment = state.investments[0]!;
@@ -531,21 +549,23 @@ describe("Investment Store", () => {
   });
 
   describe("Stock Holdings", () => {
+    let investmentId: string;
+
     beforeEach(() => {
       const { addInvestmentWithTypeAndOwner } = useInvestmentStore.getState();
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동"); // id: 2
+      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      investmentId = useInvestmentStore.getState().investments[0]!.id;
     });
 
     it("adds a blank holding with empty market/ticker/currency", () => {
       const { addStockHolding } = useInvestmentStore.getState();
 
-      addStockHolding(2);
+      addStockHolding(investmentId);
 
       const state = useInvestmentStore.getState();
       const holdings = state.investments[0]!.holdings;
       expect(holdings).toHaveLength(1);
       expect(holdings[0]!).toMatchObject({
-        id: 1,
         market: "",
         ticker: "",
         name: "",
@@ -553,12 +573,13 @@ describe("Investment Store", () => {
         quantity: 0,
         memo: "",
       });
+      expect(typeof holdings[0]!.id).toBe("string");
     });
 
     it("addStockHolding with initial data populates market/ticker/name/currency/quantity", () => {
       const { addStockHolding } = useInvestmentStore.getState();
 
-      addStockHolding(2, {
+      addStockHolding(investmentId, {
         market: "KOSPI",
         ticker: "005930",
         name: "삼성전자",
@@ -569,7 +590,6 @@ describe("Investment Store", () => {
       const holdings = useInvestmentStore.getState().investments[0]!.holdings;
       expect(holdings).toHaveLength(1);
       expect(holdings[0]!).toMatchObject({
-        id: 1,
         market: "KOSPI",
         ticker: "005930",
         name: "삼성전자",
@@ -577,19 +597,20 @@ describe("Investment Store", () => {
         quantity: 15,
         memo: "",
       });
+      expect(typeof holdings[0]!.id).toBe("string");
     });
 
-    it("addStockHolding with initial data still assigns incrementing ids", () => {
+    it("addStockHolding with initial data assigns a unique id per holding", () => {
       const { addStockHolding } = useInvestmentStore.getState();
 
-      addStockHolding(2, {
+      addStockHolding(investmentId, {
         market: "KOSPI",
         ticker: "005930",
         name: "삼성전자",
         currency: "KRW",
         quantity: 10,
       });
-      addStockHolding(2, {
+      addStockHolding(investmentId, {
         market: "KOSPI",
         ticker: "000660",
         name: "SK하이닉스",
@@ -598,16 +619,20 @@ describe("Investment Store", () => {
       });
 
       const holdings = useInvestmentStore.getState().investments[0]!.holdings;
-      expect(holdings.map((h) => h.id)).toEqual([1, 2]);
       expect(holdings.map((h) => h.ticker)).toEqual(["005930", "000660"]);
+      // Each holding receives a distinct string id (UUID)
+      expect(holdings[0]!.id).not.toBe(holdings[1]!.id);
+      expect(typeof holdings[0]!.id).toBe("string");
+      expect(typeof holdings[1]!.id).toBe("string");
     });
 
     it("setStockHoldingFromSearch writes market/ticker/name/currency atomically", () => {
       const { addStockHolding, setStockHoldingFromSearch } =
         useInvestmentStore.getState();
 
-      addStockHolding(2);
-      setStockHoldingFromSearch(2, 1, {
+      addStockHolding(investmentId);
+      const holdingId = useInvestmentStore.getState().investments[0]!.holdings[0]!.id;
+      setStockHoldingFromSearch(investmentId, holdingId, {
         market: "KOSPI",
         ticker: "005930",
         name: "삼성전자",
@@ -627,11 +652,12 @@ describe("Investment Store", () => {
       const { addStockHolding, updateStockHolding, setStockHoldingFromSearch } =
         useInvestmentStore.getState();
 
-      addStockHolding(2);
-      updateStockHolding(2, 1, "quantity", "10");
-      updateStockHolding(2, 1, "memo", "중장기 보유");
+      addStockHolding(investmentId);
+      const holdingId = useInvestmentStore.getState().investments[0]!.holdings[0]!.id;
+      updateStockHolding(investmentId, holdingId, "quantity", "10");
+      updateStockHolding(investmentId, holdingId, "memo", "중장기 보유");
 
-      setStockHoldingFromSearch(2, 1, {
+      setStockHoldingFromSearch(investmentId, holdingId, {
         market: "KOSPI",
         ticker: "005930",
         name: "삼성전자",
@@ -647,14 +673,15 @@ describe("Investment Store", () => {
       const { addStockHolding, setStockHoldingFromSearch } =
         useInvestmentStore.getState();
 
-      addStockHolding(2);
-      setStockHoldingFromSearch(2, 1, {
+      addStockHolding(investmentId);
+      const holdingId = useInvestmentStore.getState().investments[0]!.holdings[0]!.id;
+      setStockHoldingFromSearch(investmentId, holdingId, {
         market: "KOSPI",
         ticker: "005930",
         name: "삼성전자",
         currency: "KRW",
       });
-      setStockHoldingFromSearch(2, 1, {
+      setStockHoldingFromSearch(investmentId, holdingId, {
         market: "NASDAQ",
         ticker: "AAPL",
         name: "Apple Inc.",
@@ -674,22 +701,26 @@ describe("Investment Store", () => {
       const { addStockHolding, setStockHoldingFromSearch, removeStockHolding } =
         useInvestmentStore.getState();
 
-      addStockHolding(2);
-      setStockHoldingFromSearch(2, 1, {
+      addStockHolding(investmentId);
+      const firstHoldingId =
+        useInvestmentStore.getState().investments[0]!.holdings[0]!.id;
+      setStockHoldingFromSearch(investmentId, firstHoldingId, {
         market: "KOSPI",
         ticker: "005930",
         name: "삼성전자",
         currency: "KRW",
       });
-      addStockHolding(2);
-      setStockHoldingFromSearch(2, 2, {
+      addStockHolding(investmentId);
+      const secondHoldingId =
+        useInvestmentStore.getState().investments[0]!.holdings[1]!.id;
+      setStockHoldingFromSearch(investmentId, secondHoldingId, {
         market: "KOSPI",
         ticker: "000660",
         name: "SK하이닉스",
         currency: "KRW",
       });
 
-      removeStockHolding(2, 1);
+      removeStockHolding(investmentId, firstHoldingId);
 
       const holdings = useInvestmentStore.getState().investments[0]!.holdings;
       expect(holdings).toHaveLength(1);
@@ -698,60 +729,66 @@ describe("Investment Store", () => {
   });
 
   describe("Persist Migration", () => {
-    it("v1 → v2 backfills missing market/ticker/currency on legacy holdings", () => {
-      // Import the raw persist config isn't exposed, so we re-import and
-      // drive the migrate function through the storage roundtrip by calling
-      // it directly. The migrate function lives on the persist middleware's
-      // options; easiest is to rehydrate a payload manually.
-      //
-      // We re-use the module under test by invoking the migrate logic via the
-      // store's configured migrate path: write to localStorage in v1 format
-      // and then reload.
+    it("v1 → v4 assigns UUID ids to legacy numeric-id investments and holdings", () => {
+      // The v4 migration is a safety net: the bootstrap upgrade in
+      // `lib/local-id-upgrade.ts` rewrites the localStorage envelope before
+      // hydration, but the migrate function still defends against legacy
+      // (numeric-id) payloads by re-assigning UUIDs.
       const legacyState = {
-        state: {
-          investments: [
-            {
-              id: 2,
-              accountName: "테스트",
-              accountType: "증권계좌",
-              accountOwner: "홍길동",
-              currency: "KRW",
-              initialInvestment: 0,
-              currentValue: 0,
-              records: [],
-              holdings: [
-                { id: 1, name: "삼성전자", quantity: 10, memo: "" },
-              ],
-              note: "",
-              color: "#3b82f6",
-            },
-          ],
-          lastInvestmentId: 2,
-        },
-        version: 1,
+        investments: [
+          {
+            id: 2,
+            accountName: "테스트",
+            accountType: "증권계좌",
+            accountOwner: "홍길동",
+            currency: "KRW",
+            initialInvestment: 0,
+            currentValue: 0,
+            records: [],
+            holdings: [
+              {
+                id: 1,
+                market: "KOSPI",
+                ticker: "005930",
+                name: "삼성전자",
+                currency: "KRW",
+                quantity: 10,
+                memo: "",
+              },
+            ],
+            note: "",
+            color: "#3b82f6",
+          },
+        ],
+        lastInvestmentId: 2,
       };
 
       // Drive the store's persist.migrate directly.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const persistApi = (useInvestmentStore as any).persist;
-      const migrated = persistApi.getOptions().migrate(
-        legacyState.state,
-        legacyState.version,
-      );
+      const migrated = persistApi.getOptions().migrate(legacyState, 1);
 
+      // Investment id rewritten to a UUID string.
+      expect(typeof migrated.investments[0].id).toBe("string");
+      expect(migrated.investments[0].id).not.toBe(2);
+      // Holding id rewritten to a UUID string while other fields preserved.
       const holding = migrated.investments[0].holdings[0];
-      expect(holding.market).toBe("");
-      expect(holding.ticker).toBe("");
-      expect(holding.currency).toBe("");
+      expect(typeof holding.id).toBe("string");
+      expect(holding.id).not.toBe(1);
+      expect(holding.market).toBe("KOSPI");
+      expect(holding.ticker).toBe("005930");
+      expect(holding.currency).toBe("KRW");
       expect(holding.name).toBe("삼성전자");
       expect(holding.quantity).toBe(10);
+      // Legacy lastInvestmentId field dropped.
+      expect(migrated.lastInvestmentId).toBeUndefined();
     });
 
-    it("v1 → v2 leaves already-populated holding fields intact", () => {
-      const v1WithModernFields = {
+    it("v1 → v4 preserves string ids that are already UUIDs", () => {
+      const alreadyUuidState = {
         investments: [
           {
-            id: 2,
+            id: "11111111-2222-3333-4444-555555555555",
             accountName: "테스트",
             accountType: "증권계좌",
             accountOwner: "홍길동",
@@ -761,7 +798,7 @@ describe("Investment Store", () => {
             records: [],
             holdings: [
               {
-                id: 1,
+                id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
                 market: "KOSPI",
                 ticker: "005930",
                 name: "삼성전자",
@@ -774,21 +811,22 @@ describe("Investment Store", () => {
             color: "#3b82f6",
           },
         ],
-        lastInvestmentId: 2,
       };
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const persistApi = (useInvestmentStore as any).persist;
-      const migrated = persistApi.getOptions().migrate(v1WithModernFields, 1);
+      const migrated = persistApi.getOptions().migrate(alreadyUuidState, 1);
 
+      expect(migrated.investments[0].id).toBe("11111111-2222-3333-4444-555555555555");
       const holding = migrated.investments[0].holdings[0];
+      expect(holding.id).toBe("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
       expect(holding.market).toBe("KOSPI");
       expect(holding.ticker).toBe("005930");
       expect(holding.currency).toBe("KRW");
     });
 
-    it("v2 → v3 backfills missing cashItems on existing investments", () => {
-      const v2State = {
+    it("v1 → v4 assigns UUID ids to legacy numeric-id cash items", () => {
+      const legacyStateWithCash = {
         investments: [
           {
             id: 2,
@@ -799,17 +837,8 @@ describe("Investment Store", () => {
             initialInvestment: 0,
             currentValue: 0,
             records: [],
-            holdings: [
-              {
-                id: 1,
-                market: "KOSPI",
-                ticker: "005930",
-                name: "삼성전자",
-                currency: "KRW",
-                quantity: 10,
-                memo: "",
-              },
-            ],
+            holdings: [],
+            cashItems: [{ id: 1, label: "예수금", amount: 100000 }],
             note: "",
             color: "#3b82f6",
           },
@@ -819,79 +848,90 @@ describe("Investment Store", () => {
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const persistApi = (useInvestmentStore as any).persist;
-      const migrated = persistApi.getOptions().migrate(v2State, 2);
+      const migrated = persistApi.getOptions().migrate(legacyStateWithCash, 2);
 
-      expect(migrated.investments[0].cashItems).toEqual([]);
-      // holdings preserved
-      expect(migrated.investments[0].holdings[0].ticker).toBe("005930");
+      const cashItem = migrated.investments[0].cashItems[0];
+      expect(typeof cashItem.id).toBe("string");
+      expect(cashItem.id).not.toBe(1);
+      expect(cashItem.label).toBe("예수금");
+      expect(cashItem.amount).toBe(100000);
+      // holdings remain an empty array
+      expect(migrated.investments[0].holdings).toEqual([]);
     });
   });
 
   describe("Cash Items", () => {
+    let investmentId: string;
+
     beforeEach(() => {
       const { addInvestmentWithTypeAndOwner } = useInvestmentStore.getState();
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동"); // id: 2
+      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      investmentId = useInvestmentStore.getState().investments[0]!.id;
     });
 
     it("addCashItem appends a new item with default label 예수금 and amount 0", () => {
       const { addCashItem } = useInvestmentStore.getState();
 
-      addCashItem(2);
+      addCashItem(investmentId);
 
       const cashItems = useInvestmentStore.getState().investments[0]!.cashItems;
       expect(cashItems).toHaveLength(1);
       expect(cashItems[0]!).toMatchObject({
-        id: 1,
         label: "예수금",
         amount: 0,
       });
+      expect(typeof cashItems[0]!.id).toBe("string");
     });
 
     it("addCashItem with initial data populates label and amount", () => {
       const { addCashItem } = useInvestmentStore.getState();
 
-      addCashItem(2, { label: "CMA", amount: 500000 });
+      addCashItem(investmentId, { label: "CMA", amount: 500000 });
 
       const cashItems = useInvestmentStore.getState().investments[0]!.cashItems;
       expect(cashItems).toHaveLength(1);
       expect(cashItems[0]!).toMatchObject({
-        id: 1,
         label: "CMA",
         amount: 500000,
       });
+      expect(typeof cashItems[0]!.id).toBe("string");
     });
 
-    it("addCashItem mixes with and without initial data on incrementing ids", () => {
+    it("addCashItem mixes with and without initial data preserving order", () => {
       const { addCashItem } = useInvestmentStore.getState();
 
-      addCashItem(2, { label: "CMA", amount: 500000 });
-      addCashItem(2);
-      addCashItem(2, { label: "MMF", amount: 1000000 });
+      addCashItem(investmentId, { label: "CMA", amount: 500000 });
+      addCashItem(investmentId);
+      addCashItem(investmentId, { label: "MMF", amount: 1000000 });
 
       const cashItems = useInvestmentStore.getState().investments[0]!.cashItems;
-      expect(cashItems.map((c) => ({ id: c.id, label: c.label, amount: c.amount }))).toEqual([
-        { id: 1, label: "CMA", amount: 500000 },
-        { id: 2, label: "예수금", amount: 0 },
-        { id: 3, label: "MMF", amount: 1000000 },
+      expect(cashItems.map((c) => ({ label: c.label, amount: c.amount }))).toEqual([
+        { label: "CMA", amount: 500000 },
+        { label: "예수금", amount: 0 },
+        { label: "MMF", amount: 1000000 },
       ]);
     });
 
-    it("addCashItem assigns incrementing ids", () => {
+    it("addCashItem assigns a unique id per item", () => {
       const { addCashItem } = useInvestmentStore.getState();
 
-      addCashItem(2);
-      addCashItem(2);
-      addCashItem(2);
+      addCashItem(investmentId);
+      addCashItem(investmentId);
+      addCashItem(investmentId);
 
       const cashItems = useInvestmentStore.getState().investments[0]!.cashItems;
-      expect(cashItems.map((c) => c.id)).toEqual([1, 2, 3]);
+      const ids = cashItems.map((c) => c.id);
+      expect(new Set(ids).size).toBe(3);
+      ids.forEach((id) => expect(typeof id).toBe("string"));
     });
 
     it("updateCashItem updates label field", () => {
       const { addCashItem, updateCashItem } = useInvestmentStore.getState();
-      addCashItem(2);
+      addCashItem(investmentId);
+      const cashItemId =
+        useInvestmentStore.getState().investments[0]!.cashItems[0]!.id;
 
-      updateCashItem(2, 1, "label", "CMA");
+      updateCashItem(investmentId, cashItemId, "label", "CMA");
 
       const cashItems = useInvestmentStore.getState().investments[0]!.cashItems;
       expect(cashItems[0]!.label).toBe("CMA");
@@ -899,9 +939,11 @@ describe("Investment Store", () => {
 
     it("updateCashItem parses numeric string for amount", () => {
       const { addCashItem, updateCashItem } = useInvestmentStore.getState();
-      addCashItem(2);
+      addCashItem(investmentId);
+      const cashItemId =
+        useInvestmentStore.getState().investments[0]!.cashItems[0]!.id;
 
-      updateCashItem(2, 1, "amount", "1,000,000");
+      updateCashItem(investmentId, cashItemId, "amount", "1,000,000");
 
       const cashItems = useInvestmentStore.getState().investments[0]!.cashItems;
       expect(cashItems[0]!.amount).toBe(1000000);
@@ -909,10 +951,12 @@ describe("Investment Store", () => {
 
     it("updateCashItem treats empty string as 0", () => {
       const { addCashItem, updateCashItem } = useInvestmentStore.getState();
-      addCashItem(2);
-      updateCashItem(2, 1, "amount", "500000");
+      addCashItem(investmentId);
+      const cashItemId =
+        useInvestmentStore.getState().investments[0]!.cashItems[0]!.id;
+      updateCashItem(investmentId, cashItemId, "amount", "500000");
 
-      updateCashItem(2, 1, "amount", "");
+      updateCashItem(investmentId, cashItemId, "amount", "");
 
       const cashItems = useInvestmentStore.getState().investments[0]!.cashItems;
       expect(cashItems[0]!.amount).toBe(0);
@@ -920,18 +964,21 @@ describe("Investment Store", () => {
 
     it("removeCashItem removes only the specified item", () => {
       const { addCashItem, updateCashItem, removeCashItem } = useInvestmentStore.getState();
-      addCashItem(2);
-      updateCashItem(2, 1, "label", "예수금");
-      addCashItem(2);
-      updateCashItem(2, 2, "label", "CMA");
+      addCashItem(investmentId);
+      const firstCashItemId =
+        useInvestmentStore.getState().investments[0]!.cashItems[0]!.id;
+      updateCashItem(investmentId, firstCashItemId, "label", "예수금");
+      addCashItem(investmentId);
+      const secondCashItemId =
+        useInvestmentStore.getState().investments[0]!.cashItems[1]!.id;
+      updateCashItem(investmentId, secondCashItemId, "label", "CMA");
 
-      removeCashItem(2, 1);
+      removeCashItem(investmentId, firstCashItemId);
 
       const cashItems = useInvestmentStore.getState().investments[0]!.cashItems;
       expect(cashItems).toHaveLength(1);
       expect(cashItems[0]!.label).toBe("CMA");
     });
-
   });
 
   describe("Color Management", () => {
@@ -966,9 +1013,10 @@ describe("Investment Store", () => {
       const { addInvestmentWithTypeAndOwner, updateInvestment } = useInvestmentStore.getState();
 
       addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      const id = useInvestmentStore.getState().investments[0]!.id;
       const initialColor = useInvestmentStore.getState().investments[0]!.color;
 
-      updateInvestment(2, "color", "#ff0000");
+      updateInvestment(id, "color", "#ff0000");
 
       const state = useInvestmentStore.getState();
       expect(state.investments[0]!.color).toBe("#ff0000");

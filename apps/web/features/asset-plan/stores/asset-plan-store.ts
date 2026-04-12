@@ -11,7 +11,7 @@ export const useAssetPlanStore = create<AssetPlanStore>()(
       addPlan: (planData) => {
         const newPlan: AssetPlan = {
           ...planData,
-          id: `plan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          id: crypto.randomUUID(),
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -42,7 +42,7 @@ export const useAssetPlanStore = create<AssetPlanStore>()(
     {
       name: "asset-plan-storage",
       storage: createJSONStorage(() => createHybridStorage("asset-plan-storage")),
-      version: 1,
+      version: 2,
       // 날짜 객체를 JSON으로 직렬화/역직렬화하기 위한 설정
       partialize: (state) => ({
         plans: state.plans.map((plan) => ({
@@ -51,34 +51,13 @@ export const useAssetPlanStore = create<AssetPlanStore>()(
           updatedAt: plan.updatedAt.toISOString(),
         })),
       }),
-      // 만원 → 원 마이그레이션
-      migrate: (persisted, version) => {
+      // v0~v1 → v2 정규화 마이그레이션은 `lib/local-id-upgrade.ts` 가 선행
+      // 실행되어 accountPlans 의 숫자 키를 투자/저축 UUID 로 변환 + accountKind
+      // discriminator 를 주입한다. 여기는 방어망 + 누락 필드 보정만.
+      migrate: (persisted) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const state = persisted as any;
-        if (version === 0 && state.plans) {
-          const MANWON_TO_WON = 10000;
-          state.plans = state.plans.map((plan: Record<string, unknown>) => ({
-            ...plan,
-            totalMonthlyContribution:
-              (plan.totalMonthlyContribution as number) * MANWON_TO_WON,
-            accountPlans: Object.fromEntries(
-              Object.entries(
-                plan.accountPlans as Record<
-                  string,
-                  { contributionAmount: string; contributionFrequency: string; targetAnnualReturn: string }
-                >
-              ).map(([id, ap]) => [
-                id,
-                {
-                  ...ap,
-                  contributionAmount: String(
-                    parseFloat(ap.contributionAmount.replace(/,/g, "")) * MANWON_TO_WON
-                  ),
-                },
-              ])
-            ),
-          }));
-        }
+        if (!state.plans) state.plans = [];
         return state;
       },
       // 로컬스토리지에서 읽어올 때 날짜 객체로 복원

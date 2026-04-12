@@ -1,5 +1,9 @@
 "use client";
 
+// side-effect import: 레거시 number ID 를 UUID 로 일회성 업그레이드한다.
+// 이 import 가 store 파일보다 앞서 실행되도록 hybrid-storage 가 소유한다.
+import "./local-id-upgrade";
+
 import { useSyncStatusStore } from "@web/features/settings/stores/sync-status-store";
 import type { StateStorage } from "zustand/middleware";
 import { getStorageMode } from "./storage-mode";

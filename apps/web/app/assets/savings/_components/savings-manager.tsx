@@ -50,7 +50,7 @@ export function SavingsManager() {
 
   // 계좌 정보 업데이트 핸들러
   const handleUpdateItem = (
-    id: number,
+    id: string,
     field: keyof import("@web/features/savings/types/types").SavingsItem,
     value: string
   ) => {

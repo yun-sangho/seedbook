@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { useSyncStatusStore } from "@web/features/settings/stores/sync-status-store";
 import { createHybridStorage, __resetHybridStorageForTests } from "./hybrid-storage";
 import { setStorageMode, STORAGE_MODE_KEY } from "./storage-mode";

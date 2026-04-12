@@ -29,8 +29,7 @@ describe("Savings Store", () => {
     it("should have correct initial state", () => {
       const state = useSavingsStore.getState();
       expect(state.savings).toEqual([]);
-      expect(state.lastSavingsId).toBe(1);
-      expect(state.expandedFormId).toBe(1);
+      expect(state.expandedFormId).toBe("");
     });
   });
 
@@ -52,43 +51,50 @@ describe("Savings Store", () => {
       const { addSavingsWithTypeAndOwner, removeSavings } = useSavingsStore.getState();
 
       addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      const firstId = useSavingsStore.getState().savings[0]!.id;
       addSavingsWithTypeAndOwner("적금", "김철수");
+      // savings are appended, so the second added is at index 1
+      const secondId = useSavingsStore.getState().savings[1]!.id;
 
       let state = useSavingsStore.getState();
       expect(state.savings).toHaveLength(2);
 
-      removeSavings(2);
+      removeSavings(firstId);
 
       state = useSavingsStore.getState();
       expect(state.savings).toHaveLength(1);
-      expect(state.savings[0]!.id).toBe(3);
+      expect(state.savings[0]!.id).toBe(secondId);
     });
 
     it("should reset expandedFormId when removing the expanded account", () => {
       const { addSavingsWithTypeAndOwner, removeSavings } = useSavingsStore.getState();
 
       addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      const id = useSavingsStore.getState().savings[0]!.id;
 
       let state = useSavingsStore.getState();
-      expect(state.expandedFormId).toBe(2);
+      expect(state.expandedFormId).toBe(id);
 
-      removeSavings(2);
+      removeSavings(id);
 
       state = useSavingsStore.getState();
-      expect(state.expandedFormId).toBe(-1);
+      expect(state.expandedFormId).toBe("");
     });
   });
 
   describe("Savings Updates", () => {
+    let savingsId: string;
+
     beforeEach(() => {
       const { addSavingsWithTypeAndOwner } = useSavingsStore.getState();
       addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      savingsId = useSavingsStore.getState().savings[0]!.id;
     });
 
     it("should update savings field", () => {
       const { updateSavings } = useSavingsStore.getState();
 
-      updateSavings(2, "accountName", "새로운 계좌명");
+      updateSavings(savingsId, "accountName", "새로운 계좌명");
 
       const state = useSavingsStore.getState();
       expect(state.savings[0]!.accountName).toBe("새로운 계좌명");
@@ -97,7 +103,7 @@ describe("Savings Store", () => {
     it("should create record when updating balance", () => {
       const { updateSavings } = useSavingsStore.getState();
 
-      updateSavings(2, "balance", 1000000);
+      updateSavings(savingsId, "balance", 1000000);
 
       const state = useSavingsStore.getState();
       const savings = state.savings[0]!;
@@ -113,10 +119,10 @@ describe("Savings Store", () => {
       const { updateSavings } = useSavingsStore.getState();
 
       // First update
-      updateSavings(2, "balance", 1000000);
+      updateSavings(savingsId, "balance", 1000000);
 
       // Second update on same day
-      updateSavings(2, "balance", 1200000);
+      updateSavings(savingsId, "balance", 1200000);
 
       const state = useSavingsStore.getState();
       const savings = state.savings[0]!;
@@ -127,7 +133,7 @@ describe("Savings Store", () => {
     it("should update interest rate", () => {
       const { updateSavings } = useSavingsStore.getState();
 
-      updateSavings(2, "interestRate", 3.5);
+      updateSavings(savingsId, "interestRate", 3.5);
 
       const state = useSavingsStore.getState();
       expect(state.savings[0]!.interestRate).toBe(3.5);
@@ -135,15 +141,18 @@ describe("Savings Store", () => {
   });
 
   describe("History Record Management", () => {
+    let savingsId: string;
+
     beforeEach(() => {
       const { addSavingsWithTypeAndOwner } = useSavingsStore.getState();
       addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      savingsId = useSavingsStore.getState().savings[0]!.id;
     });
 
     it("should add history record", () => {
       const { addHistoryRecord } = useSavingsStore.getState();
 
-      addHistoryRecord(2, "2024-01-10", 500000);
+      addHistoryRecord(savingsId, "2024-01-10", 500000);
 
       const state = useSavingsStore.getState();
       const savings = state.savings[0]!;
@@ -158,10 +167,10 @@ describe("Savings Store", () => {
       const { addHistoryRecord } = useSavingsStore.getState();
 
       // Add first record
-      addHistoryRecord(2, "2024-01-10", 500000);
+      addHistoryRecord(savingsId, "2024-01-10", 500000);
 
       // Add second record with same date (should replace)
-      addHistoryRecord(2, "2024-01-10", 700000);
+      addHistoryRecord(savingsId, "2024-01-10", 700000);
 
       const state = useSavingsStore.getState();
       const savings = state.savings[0]!;
@@ -175,9 +184,9 @@ describe("Savings Store", () => {
     it("should sort records by date (latest first)", () => {
       const { addHistoryRecord } = useSavingsStore.getState();
 
-      addHistoryRecord(2, "2024-01-10", 500000);
-      addHistoryRecord(2, "2024-01-05", 400000);
-      addHistoryRecord(2, "2024-01-15", 600000);
+      addHistoryRecord(savingsId, "2024-01-10", 500000);
+      addHistoryRecord(savingsId, "2024-01-05", 400000);
+      addHistoryRecord(savingsId, "2024-01-15", 600000);
 
       const state = useSavingsStore.getState();
       const dates = state.savings[0]!.records.map((r) => r.date);
@@ -187,16 +196,16 @@ describe("Savings Store", () => {
     it("should remove history record by date", () => {
       const { addHistoryRecord, removeSavingsHistoryRecord } = useSavingsStore.getState();
 
-      addHistoryRecord(2, "2024-01-10", 500000);
-      addHistoryRecord(2, "2024-01-15", 600000);
-      addHistoryRecord(2, "2024-01-05", 400000);
+      addHistoryRecord(savingsId, "2024-01-10", 500000);
+      addHistoryRecord(savingsId, "2024-01-15", 600000);
+      addHistoryRecord(savingsId, "2024-01-05", 400000);
 
       let state = useSavingsStore.getState();
       const savings = state.savings[0]!;
       expect(savings.records).toHaveLength(3);
 
       // Remove record
-      removeSavingsHistoryRecord(2, "2024-01-10");
+      removeSavingsHistoryRecord(savingsId, "2024-01-10");
 
       state = useSavingsStore.getState();
       expect(state.savings[0]!.records).toHaveLength(2);
@@ -206,9 +215,9 @@ describe("Savings Store", () => {
     it("should handle removing non-existent record", () => {
       const { addHistoryRecord, removeSavingsHistoryRecord } = useSavingsStore.getState();
 
-      addHistoryRecord(2, "2024-01-10", 500000);
+      addHistoryRecord(savingsId, "2024-01-10", 500000);
 
-      removeSavingsHistoryRecord(2, "2024-01-20");
+      removeSavingsHistoryRecord(savingsId, "2024-01-20");
 
       const state = useSavingsStore.getState();
       expect(state.savings[0]!.records).toHaveLength(1);
@@ -219,10 +228,10 @@ describe("Savings Store", () => {
     it("should set expanded form id", () => {
       const { setExpandedFormId } = useSavingsStore.getState();
 
-      setExpandedFormId(5);
+      setExpandedFormId("5");
 
       const state = useSavingsStore.getState();
-      expect(state.expandedFormId).toBe(5);
+      expect(state.expandedFormId).toBe("5");
     });
 
     it("should set expandedFormId when adding new savings", () => {
@@ -231,7 +240,7 @@ describe("Savings Store", () => {
       addSavingsWithTypeAndOwner("정기예금", "홍길동");
 
       const state = useSavingsStore.getState();
-      expect(state.expandedFormId).toBe(2); // New account ID
+      expect(state.expandedFormId).toBe(state.savings[0]!.id); // New account ID
     });
   });
 
@@ -242,12 +251,12 @@ describe("Savings Store", () => {
 
       // Add some data
       addSavingsWithTypeAndOwner("정기예금", "홍길동");
-      setExpandedFormId(5);
+      setExpandedFormId("5");
 
       // Verify data was added
       let state = useSavingsStore.getState();
       expect(state.savings).toHaveLength(1);
-      expect(state.expandedFormId).toBe(5);
+      expect(state.expandedFormId).toBe("5");
 
       // Reset store
       resetStore();
@@ -255,8 +264,7 @@ describe("Savings Store", () => {
       // Verify reset
       state = useSavingsStore.getState();
       expect(state.savings).toEqual([]);
-      expect(state.lastSavingsId).toBe(1);
-      expect(state.expandedFormId).toBe(1);
+      expect(state.expandedFormId).toBe("");
     });
   });
 
@@ -266,14 +274,17 @@ describe("Savings Store", () => {
         useSavingsStore.getState();
 
       // Add three savings accounts
-      addSavingsWithTypeAndOwner("정기예금", "홍길동"); // id: 2
-      addSavingsWithTypeAndOwner("적금", "김철수"); // id: 3
-      addSavingsWithTypeAndOwner("정기적금", "박영희"); // id: 4
+      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      const idA = useSavingsStore.getState().savings[0]!.id;
+      addSavingsWithTypeAndOwner("적금", "김철수");
+      const idB = useSavingsStore.getState().savings[1]!.id;
+      addSavingsWithTypeAndOwner("정기적금", "박영희");
+      const idC = useSavingsStore.getState().savings[2]!.id;
 
       // Update names to identify them
-      updateSavings(2, "accountName", "First");
-      updateSavings(3, "accountName", "Second");
-      updateSavings(4, "accountName", "Third");
+      updateSavings(idA, "accountName", "First");
+      updateSavings(idB, "accountName", "Second");
+      updateSavings(idC, "accountName", "Third");
 
       let state = useSavingsStore.getState();
       // Savings are appended, so order is: [First, Second, Third]
@@ -292,11 +303,13 @@ describe("Savings Store", () => {
         useSavingsStore.getState();
 
       // Add savings with history
-      addSavingsWithTypeAndOwner("정기예금", "홍길동"); // id: 2
-      addHistoryRecord(2, "2024-01-10", 500000);
+      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      const idA = useSavingsStore.getState().savings[0]!.id;
+      addHistoryRecord(idA, "2024-01-10", 500000);
 
-      addSavingsWithTypeAndOwner("적금", "김철수"); // id: 3
-      addHistoryRecord(3, "2024-01-12", 1000000);
+      addSavingsWithTypeAndOwner("적금", "김철수");
+      const idB = useSavingsStore.getState().savings[1]!.id;
+      addHistoryRecord(idB, "2024-01-12", 1000000);
 
       let state = useSavingsStore.getState();
       const originalFirst = state.savings[0]!;
@@ -307,11 +320,11 @@ describe("Savings Store", () => {
 
       state = useSavingsStore.getState();
       // Verify data integrity
-      expect(state.savings[0]!.id).toBe(3);
+      expect(state.savings[0]!.id).toBe(idB);
       expect(state.savings[0]!.records).toHaveLength(1);
       expect(state.savings[0]!.records[0]!.balance).toBe(1000000);
 
-      expect(state.savings[1]!.id).toBe(2);
+      expect(state.savings[1]!.id).toBe(idA);
       expect(state.savings[1]!.records).toHaveLength(1);
       expect(state.savings[1]!.records[0]!.balance).toBe(500000);
     });
@@ -346,15 +359,17 @@ describe("Savings Store", () => {
       const { addSavingsWithTypeAndOwner, addHistoryRecord } = useSavingsStore.getState();
 
       // Add two savings accounts
-      addSavingsWithTypeAndOwner("정기예금", "홍길동"); // id: 2
-      addSavingsWithTypeAndOwner("적금", "김철수"); // id: 3
+      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      const idA = useSavingsStore.getState().savings[0]!.id;
+      addSavingsWithTypeAndOwner("적금", "김철수");
+      const idB = useSavingsStore.getState().savings[1]!.id;
 
       // Add history to first account
-      addHistoryRecord(2, "2024-01-10", 500000);
-      addHistoryRecord(2, "2024-01-15", 600000);
+      addHistoryRecord(idA, "2024-01-10", 500000);
+      addHistoryRecord(idA, "2024-01-15", 600000);
 
       // Add history to second account
-      addHistoryRecord(3, "2024-01-12", 1000000);
+      addHistoryRecord(idB, "2024-01-12", 1000000);
 
       const state = useSavingsStore.getState();
       expect(state.savings).toHaveLength(2);
@@ -366,10 +381,11 @@ describe("Savings Store", () => {
       const { addSavingsWithTypeAndOwner, updateSavings } = useSavingsStore.getState();
 
       addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      const id = useSavingsStore.getState().savings[0]!.id;
 
       // Update balance and interest rate
-      updateSavings(2, "balance", 500000);
-      updateSavings(2, "interestRate", 3.5);
+      updateSavings(id, "balance", 500000);
+      updateSavings(id, "interestRate", 3.5);
 
       const state = useSavingsStore.getState();
       const savings = state.savings[0]!;
@@ -387,12 +403,13 @@ describe("Savings Store", () => {
         useSavingsStore.getState();
 
       addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      const id = useSavingsStore.getState().savings[0]!.id;
 
       // Add a past record
-      addHistoryRecord(2, "2024-01-10", 400000);
+      addHistoryRecord(id, "2024-01-10", 400000);
 
       // Update current balance (today's date)
-      updateSavings(2, "balance", 500000);
+      updateSavings(id, "balance", 500000);
 
       const state = useSavingsStore.getState();
       const savings = state.savings[0]!;
@@ -434,9 +451,10 @@ describe("Savings Store", () => {
       const { addSavingsWithTypeAndOwner, updateSavings } = useSavingsStore.getState();
 
       addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      const id = useSavingsStore.getState().savings[0]!.id;
       const initialColor = useSavingsStore.getState().savings[0]!.color;
 
-      updateSavings(2, "color", "#ff0000");
+      updateSavings(id, "color", "#ff0000");
 
       const state = useSavingsStore.getState();
       expect(state.savings[0]!.color).toBe("#ff0000");
@@ -451,7 +469,7 @@ describe("Savings Store", () => {
       addSavingsWithTypeAndOwner("정기예금", "홍길동");
 
       // Try to update non-existent ID
-      updateSavings(999, "accountName", "Should not work");
+      updateSavings("nonexistent-id", "accountName", "Should not work");
 
       const state = useSavingsStore.getState();
       expect(state.savings[0]!.accountName).toBe("홍길동의 정기예금 계좌");
@@ -463,7 +481,7 @@ describe("Savings Store", () => {
       addSavingsWithTypeAndOwner("정기예금", "홍길동");
 
       // Try to add history to non-existent ID
-      addHistoryRecord(999, "2024-01-10", 500000);
+      addHistoryRecord("nonexistent-id", "2024-01-10", 500000);
 
       const state = useSavingsStore.getState();
       expect(state.savings[0]!.records).toHaveLength(0);
@@ -483,16 +501,17 @@ describe("Savings Store", () => {
         useSavingsStore.getState();
 
       addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      const id = useSavingsStore.getState().savings[0]!.id;
 
       // Add past records
-      addHistoryRecord(2, "2024-01-01", 100000);
-      addHistoryRecord(2, "2024-01-05", 200000);
+      addHistoryRecord(id, "2024-01-01", 100000);
+      addHistoryRecord(id, "2024-01-05", 200000);
 
       // Update current balance
-      updateSavings(2, "balance", 300000);
+      updateSavings(id, "balance", 300000);
 
       // Add another past record
-      addHistoryRecord(2, "2024-01-10", 250000);
+      addHistoryRecord(id, "2024-01-10", 250000);
 
       const state = useSavingsStore.getState();
       const dates = state.savings[0]!.records.map((r) => r.date);

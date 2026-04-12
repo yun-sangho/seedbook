@@ -6,7 +6,7 @@ import { prepareSavingsStackedAreaChartData } from "./savings-stacked-area-chart
 describe("prepareSavingsStackedAreaChartData", () => {
   const mockSavings: SavingsItem[] = [
     {
-      id: 1,
+      id: "1",
       accountName: "입출금 계좌",
       accountType: "입출금",
       accountOwner: "본인",
@@ -21,7 +21,7 @@ describe("prepareSavingsStackedAreaChartData", () => {
       color: "#3b82f6",
     },
     {
-      id: 2,
+      id: "2",
       accountName: "정기예금",
       accountType: "정기예금",
       accountOwner: "본인",
@@ -81,7 +81,7 @@ describe("prepareSavingsStackedAreaChartData", () => {
     const savingsWithNoHistory: SavingsItem[] = [
       ...mockSavings,
       {
-        id: 3,
+        id: "3",
         accountName: "신규 계좌",
         accountType: "입출금",
         accountOwner: "본인",
@@ -102,7 +102,7 @@ describe("prepareSavingsStackedAreaChartData", () => {
   it("모든 계좌에 히스토리가 없으면 빈 데이터를 반환해야 함", () => {
     const savingsWithNoHistory: SavingsItem[] = [
       {
-        id: 1,
+        id: "1",
         accountName: "계좌 1",
         accountType: "입출금",
         accountOwner: "본인",
@@ -127,7 +127,7 @@ describe("prepareSavingsStackedAreaChartData", () => {
 
     const savingsWithTimeRange: SavingsItem[] = [
       {
-        id: 1,
+        id: "1",
         accountName: "테스트 계좌",
         accountType: "입출금",
         accountOwner: "본인",
@@ -171,7 +171,7 @@ describe("prepareSavingsStackedAreaChartData", () => {
   it("같은 날짜에 여러 기록이 있으면 마지막 값을 사용해야 함", () => {
     const savingsWithDuplicateDates: SavingsItem[] = [
       {
-        id: 1,
+        id: "1",
         accountName: "테스트 계좌",
         accountType: "입출금",
         accountOwner: "본인",
@@ -199,7 +199,7 @@ describe("prepareSavingsStackedAreaChartData", () => {
 
     const savingsWithFutureData: SavingsItem[] = [
       {
-        id: 1,
+        id: "1",
         accountName: "테스트 계좌",
         accountType: "입출금",
         accountOwner: "본인",

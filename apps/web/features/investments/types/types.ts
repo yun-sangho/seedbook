@@ -15,7 +15,7 @@ export interface InvestmentRecord {
  * 사용자가 직접 편집 가능한 localStorage 자료이기 때문.
  */
 export interface StockHolding {
-  id: number;
+  id: string; // `crypto.randomUUID()` 로 생성된 UUID
   market: string; // "KOSPI" | "KOSDAQ" | 향후 "NASDAQ" 등. 비어있으면 레거시(이름만 있음).
   ticker: string; // 종목 티커. 비어있으면 레거시.
   name: string; // 종목명
@@ -28,7 +28,7 @@ export interface StockHolding {
  * 현금성 자산 항목 (예수금, CMA, MMF 등)
  */
 export interface CashItem {
-  id: number;
+  id: string; // `crypto.randomUUID()` 로 생성된 UUID
   label: string; // 사용자 편집 가능 (기본값: "예수금")
   amount: number; // 원 단위
 }
@@ -37,7 +37,7 @@ export interface CashItem {
  * 계좌 타입 인터페이스
  */
 export interface InvestmentItem {
-  id: number;
+  id: string; // `crypto.randomUUID()` 로 생성된 UUID
   accountName: string;
   accountType: string;
   accountOwner: string;

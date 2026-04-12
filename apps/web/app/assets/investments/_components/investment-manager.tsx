@@ -66,16 +66,16 @@ export function InvestmentManager() {
   const holdingsSortOption = useInvestmentStore((state) => state.holdingsSortOption);
   const setHoldingsSortOption = useInvestmentStore((state) => state.setHoldingsSortOption);
 
-  const handleChange = (id: number, field: string, value: string) => {
+  const handleChange = (id: string, field: string, value: string) => {
     updateInvestment(id, field as keyof InvestmentItem, value);
   };
 
-  const handleRemoveHistoryRecord = (id: number, date: string) => {
+  const handleRemoveHistoryRecord = (id: string, date: string) => {
     removeInvestmentHistoryRecord(id, date);
   };
 
   const handleAddHistory = (
-    itemId: number,
+    itemId: string,
     date: string,
     initialInvestment: number,
     currentValue: number

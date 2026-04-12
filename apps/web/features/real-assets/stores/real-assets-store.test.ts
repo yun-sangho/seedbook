@@ -23,8 +23,7 @@ describe("Real Assets Store", () => {
     it("should have correct initial state with empty real assets", () => {
       const state = useRealAssetsStore.getState();
       expect(state.realAssets).toHaveLength(0);
-      expect(state.lastRealAssetId).toBe(1);
-      expect(state.expandedFormId).toBe(1);
+      expect(state.expandedFormId).toBe("");
     });
   });
 
@@ -37,16 +36,16 @@ describe("Real Assets Store", () => {
       const state = useRealAssetsStore.getState();
       expect(state.realAssets).toHaveLength(1);
       expect(state.realAssets[0]).toMatchObject({
-        id: 2,
-        assetName: "실물자산 #2",
+        assetName: "실물자산 #1",
         assetType: "부동산",
         assetOwner: "본인",
       });
-      expect(state.lastRealAssetId).toBe(2);
-      expect(state.expandedFormId).toBe(2);
+      const id = state.realAssets[0]!.id;
+      expect(typeof id).toBe("string");
+      expect(state.expandedFormId).toBe(id);
     });
 
-    it("should add multiple real assets with incrementing IDs", () => {
+    it("should add multiple real assets with unique string IDs", () => {
       const { addRealAsset } = useRealAssetsStore.getState();
 
       addRealAsset();
@@ -55,32 +54,35 @@ describe("Real Assets Store", () => {
 
       const state = useRealAssetsStore.getState();
       expect(state.realAssets).toHaveLength(3);
-      expect(state.realAssets.map((a) => a.id)).toEqual([4, 3, 2]); // Prepended order
-      expect(state.lastRealAssetId).toBe(4);
+      const ids = state.realAssets.map((a) => a.id);
+      expect(new Set(ids).size).toBe(3);
+      ids.forEach((id) => expect(typeof id).toBe("string"));
     });
 
     it("should remove a real asset", () => {
       const { addRealAsset, removeRealAsset } = useRealAssetsStore.getState();
 
       addRealAsset();
+      const firstId = useRealAssetsStore.getState().realAssets[0]!.id;
       addRealAsset();
 
       let state = useRealAssetsStore.getState();
       expect(state.realAssets).toHaveLength(2);
 
-      removeRealAsset(2);
+      removeRealAsset(firstId);
 
       state = useRealAssetsStore.getState();
       expect(state.realAssets).toHaveLength(1);
-      expect(state.realAssets.find((a) => a.id === 2)).toBeUndefined();
+      expect(state.realAssets.find((a) => a.id === firstId)).toBeUndefined();
     });
 
     it("should remove asset by id", () => {
       const { addRealAsset, removeRealAsset } = useRealAssetsStore.getState();
 
-      addRealAsset(); // id: 2
+      addRealAsset();
+      const id = useRealAssetsStore.getState().realAssets[0]!.id;
 
-      removeRealAsset(2);
+      removeRealAsset(id);
 
       const state = useRealAssetsStore.getState();
       expect(state.realAssets).toHaveLength(0);
@@ -91,9 +93,10 @@ describe("Real Assets Store", () => {
     it("should update asset name", () => {
       const { addRealAsset, updateRealAsset } = useRealAssetsStore.getState();
 
-      addRealAsset(); // id: 2
+      addRealAsset();
+      const id = useRealAssetsStore.getState().realAssets[0]!.id;
 
-      updateRealAsset(2, "assetName", "우리집");
+      updateRealAsset(id, "assetName", "우리집");
 
       const state = useRealAssetsStore.getState();
       expect(state.realAssets[0]!.assetName).toBe("우리집");
@@ -102,9 +105,10 @@ describe("Real Assets Store", () => {
     it("should update asset type", () => {
       const { addRealAsset, updateRealAsset } = useRealAssetsStore.getState();
 
-      addRealAsset(); // id: 2
+      addRealAsset();
+      const id = useRealAssetsStore.getState().realAssets[0]!.id;
 
-      updateRealAsset(2, "assetType", "자동차");
+      updateRealAsset(id, "assetType", "자동차");
 
       const state = useRealAssetsStore.getState();
       expect(state.realAssets[0]!.assetType).toBe("자동차");
@@ -113,9 +117,10 @@ describe("Real Assets Store", () => {
     it("should update asset owner", () => {
       const { addRealAsset, updateRealAsset } = useRealAssetsStore.getState();
 
-      addRealAsset(); // id: 2
+      addRealAsset();
+      const id = useRealAssetsStore.getState().realAssets[0]!.id;
 
-      updateRealAsset(2, "assetOwner", "배우자");
+      updateRealAsset(id, "assetOwner", "배우자");
 
       const state = useRealAssetsStore.getState();
       expect(state.realAssets[0]!.assetOwner).toBe("배우자");
@@ -124,9 +129,10 @@ describe("Real Assets Store", () => {
     it("should update current value with string input", () => {
       const { addRealAsset, updateRealAsset } = useRealAssetsStore.getState();
 
-      addRealAsset(); // id: 2
+      addRealAsset();
+      const id = useRealAssetsStore.getState().realAssets[0]!.id;
 
-      updateRealAsset(2, "currentValue", "50000");
+      updateRealAsset(id, "currentValue", "50000");
 
       const state = useRealAssetsStore.getState();
       expect(state.realAssets[0]!.currentValue).toBe(50000);
@@ -135,9 +141,10 @@ describe("Real Assets Store", () => {
     it("should update current value with number input", () => {
       const { addRealAsset, updateRealAsset } = useRealAssetsStore.getState();
 
-      addRealAsset(); // id: 2
+      addRealAsset();
+      const id = useRealAssetsStore.getState().realAssets[0]!.id;
 
-      updateRealAsset(2, "currentValue", 50000);
+      updateRealAsset(id, "currentValue", 50000);
 
       const state = useRealAssetsStore.getState();
       expect(state.realAssets[0]!.currentValue).toBe(50000);
@@ -146,9 +153,10 @@ describe("Real Assets Store", () => {
     it("should update purchase value with string input", () => {
       const { addRealAsset, updateRealAsset } = useRealAssetsStore.getState();
 
-      addRealAsset(); // id: 2
+      addRealAsset();
+      const id = useRealAssetsStore.getState().realAssets[0]!.id;
 
-      updateRealAsset(2, "purchaseValue", "30000");
+      updateRealAsset(id, "purchaseValue", "30000");
 
       const state = useRealAssetsStore.getState();
       expect(state.realAssets[0]!.purchaseValue).toBe(30000);
@@ -157,9 +165,10 @@ describe("Real Assets Store", () => {
     it("should update purchase date", () => {
       const { addRealAsset, updateRealAsset } = useRealAssetsStore.getState();
 
-      addRealAsset(); // id: 2
+      addRealAsset();
+      const id = useRealAssetsStore.getState().realAssets[0]!.id;
 
-      updateRealAsset(2, "purchaseDate", "2024-01-15");
+      updateRealAsset(id, "purchaseDate", "2024-01-15");
 
       const state = useRealAssetsStore.getState();
       expect(state.realAssets[0]!.purchaseDate).toBe("2024-01-15");
@@ -168,9 +177,10 @@ describe("Real Assets Store", () => {
     it("should update note", () => {
       const { addRealAsset, updateRealAsset } = useRealAssetsStore.getState();
 
-      addRealAsset(); // id: 2
+      addRealAsset();
+      const id = useRealAssetsStore.getState().realAssets[0]!.id;
 
-      updateRealAsset(2, "note", "강남구 아파트");
+      updateRealAsset(id, "note", "강남구 아파트");
 
       const state = useRealAssetsStore.getState();
       expect(state.realAssets[0]!.note).toBe("강남구 아파트");
@@ -179,9 +189,10 @@ describe("Real Assets Store", () => {
     it("should handle empty string for numeric fields", () => {
       const { addRealAsset, updateRealAsset } = useRealAssetsStore.getState();
 
-      addRealAsset(); // id: 2
+      addRealAsset();
+      const id = useRealAssetsStore.getState().realAssets[0]!.id;
 
-      updateRealAsset(2, "currentValue", "");
+      updateRealAsset(id, "currentValue", "");
 
       const state = useRealAssetsStore.getState();
       expect(state.realAssets[0]!.currentValue).toBe(0);
@@ -190,31 +201,36 @@ describe("Real Assets Store", () => {
     it("should update expandedFormId when updating different asset", () => {
       const { addRealAsset, updateRealAsset } = useRealAssetsStore.getState();
 
-      addRealAsset(); // id: 2
-      addRealAsset(); // id: 3
+      addRealAsset();
+      const firstId = useRealAssetsStore.getState().realAssets[0]!.id;
+      addRealAsset();
+      const secondId = useRealAssetsStore.getState().realAssets[0]!.id;
 
       let state = useRealAssetsStore.getState();
-      expect(state.expandedFormId).toBe(3);
+      expect(state.expandedFormId).toBe(secondId);
 
-      // Update asset 2 - should change expandedFormId to 2
-      updateRealAsset(2, "assetName", "Updated");
+      // Update the other asset - should change expandedFormId to it
+      updateRealAsset(firstId, "assetName", "Updated");
 
       state = useRealAssetsStore.getState();
-      expect(state.expandedFormId).toBe(2);
+      expect(state.expandedFormId).toBe(firstId);
     });
 
     it("should not change expandedFormId when updating currently expanded asset", () => {
       const { addRealAsset, setExpandedFormId, updateRealAsset } = useRealAssetsStore.getState();
 
-      addRealAsset(); // id: 2
-      addRealAsset(); // id: 3
-      setExpandedFormId(3);
+      addRealAsset();
+      const firstId = useRealAssetsStore.getState().realAssets[0]!.id;
+      addRealAsset();
+      const secondId = useRealAssetsStore.getState().realAssets[0]!.id;
+      setExpandedFormId(secondId);
 
       // Update the currently expanded asset
-      updateRealAsset(3, "assetName", "Updated");
+      updateRealAsset(secondId, "assetName", "Updated");
 
       const state = useRealAssetsStore.getState();
-      expect(state.expandedFormId).toBe(3); // Should remain the same
+      expect(state.expandedFormId).toBe(secondId); // Should remain the same
+      expect(firstId).not.toBe(secondId);
     });
   });
 
@@ -222,10 +238,10 @@ describe("Real Assets Store", () => {
     it("should set expanded form id", () => {
       const { setExpandedFormId } = useRealAssetsStore.getState();
 
-      setExpandedFormId(5);
+      setExpandedFormId("5");
 
       const state = useRealAssetsStore.getState();
-      expect(state.expandedFormId).toBe(5);
+      expect(state.expandedFormId).toBe("5");
     });
 
     it("should update expandedFormId when adding new asset", () => {
@@ -234,7 +250,7 @@ describe("Real Assets Store", () => {
       addRealAsset();
 
       const state = useRealAssetsStore.getState();
-      expect(state.expandedFormId).toBe(2); // ID of newly added asset
+      expect(state.expandedFormId).toBe(state.realAssets[0]!.id); // ID of newly added asset
     });
   });
 
@@ -244,12 +260,12 @@ describe("Real Assets Store", () => {
 
       // Add some data
       addRealAsset();
-      setExpandedFormId(5);
+      setExpandedFormId("5");
 
       // Verify data was added
       let state = useRealAssetsStore.getState();
       expect(state.realAssets).toHaveLength(1);
-      expect(state.expandedFormId).toBe(5);
+      expect(state.expandedFormId).toBe("5");
 
       // Reset store
       resetStore();
@@ -257,8 +273,7 @@ describe("Real Assets Store", () => {
       // Verify reset
       state = useRealAssetsStore.getState();
       expect(state.realAssets).toHaveLength(0);
-      expect(state.lastRealAssetId).toBe(1);
-      expect(state.expandedFormId).toBe(1);
+      expect(state.expandedFormId).toBe("");
     });
   });
 
@@ -266,14 +281,17 @@ describe("Real Assets Store", () => {
     it("should reorder real assets array", () => {
       const { addRealAsset, updateRealAsset, reorderRealAssets } = useRealAssetsStore.getState();
 
-      addRealAsset(); // id: 2
-      addRealAsset(); // id: 3
-      addRealAsset(); // id: 4
+      addRealAsset();
+      const idA = useRealAssetsStore.getState().realAssets[0]!.id;
+      addRealAsset();
+      const idB = useRealAssetsStore.getState().realAssets[0]!.id;
+      addRealAsset();
+      const idC = useRealAssetsStore.getState().realAssets[0]!.id;
 
       // Update names to identify them
-      updateRealAsset(2, "assetName", "First");
-      updateRealAsset(3, "assetName", "Second");
-      updateRealAsset(4, "assetName", "Third");
+      updateRealAsset(idA, "assetName", "First");
+      updateRealAsset(idB, "assetName", "Second");
+      updateRealAsset(idC, "assetName", "Third");
 
       let state = useRealAssetsStore.getState();
       // Assets are prepended, so order is: [Third, Second, First]
@@ -290,13 +308,15 @@ describe("Real Assets Store", () => {
     it("should maintain asset data when reordering", () => {
       const { addRealAsset, updateRealAsset, reorderRealAssets } = useRealAssetsStore.getState();
 
-      addRealAsset(); // id: 2
-      updateRealAsset(2, "assetName", "우리집");
-      updateRealAsset(2, "currentValue", 50000);
+      addRealAsset();
+      const idA = useRealAssetsStore.getState().realAssets[0]!.id;
+      updateRealAsset(idA, "assetName", "우리집");
+      updateRealAsset(idA, "currentValue", 50000);
 
-      addRealAsset(); // id: 3
-      updateRealAsset(3, "assetName", "자동차");
-      updateRealAsset(3, "currentValue", 3000);
+      addRealAsset();
+      const idB = useRealAssetsStore.getState().realAssets[0]!.id;
+      updateRealAsset(idB, "assetName", "자동차");
+      updateRealAsset(idB, "currentValue", 3000);
 
       let state = useRealAssetsStore.getState();
       const originalFirst = state.realAssets[0]!;
@@ -307,11 +327,11 @@ describe("Real Assets Store", () => {
 
       state = useRealAssetsStore.getState();
       // Verify data integrity
-      expect(state.realAssets[0]!.id).toBe(2);
+      expect(state.realAssets[0]!.id).toBe(idA);
       expect(state.realAssets[0]!.assetName).toBe("우리집");
       expect(state.realAssets[0]!.currentValue).toBe(50000);
 
-      expect(state.realAssets[1]!.id).toBe(3);
+      expect(state.realAssets[1]!.id).toBe(idB);
       expect(state.realAssets[1]!.assetName).toBe("자동차");
       expect(state.realAssets[1]!.currentValue).toBe(3000);
     });
@@ -328,7 +348,7 @@ describe("Real Assets Store", () => {
     it("should handle single item reorder", () => {
       const { addRealAsset, reorderRealAssets } = useRealAssetsStore.getState();
 
-      addRealAsset(); // id: 2
+      addRealAsset();
 
       let state = useRealAssetsStore.getState();
       const singleItem = state.realAssets[0]!;
@@ -345,40 +365,44 @@ describe("Real Assets Store", () => {
     it("should handle multiple assets with different values", () => {
       const { addRealAsset, updateRealAsset } = useRealAssetsStore.getState();
 
-      addRealAsset(); // id: 2
-      updateRealAsset(2, "assetName", "아파트");
-      updateRealAsset(2, "currentValue", 80000);
-      updateRealAsset(2, "purchaseValue", 60000);
+      addRealAsset();
+      const idA = useRealAssetsStore.getState().realAssets[0]!.id;
+      updateRealAsset(idA, "assetName", "아파트");
+      updateRealAsset(idA, "currentValue", 80000);
+      updateRealAsset(idA, "purchaseValue", 60000);
 
-      addRealAsset(); // id: 3
-      updateRealAsset(3, "assetName", "자동차");
-      updateRealAsset(3, "currentValue", 3000);
-      updateRealAsset(3, "purchaseValue", 4000);
+      addRealAsset();
+      const idB = useRealAssetsStore.getState().realAssets[0]!.id;
+      updateRealAsset(idB, "assetName", "자동차");
+      updateRealAsset(idB, "currentValue", 3000);
+      updateRealAsset(idB, "purchaseValue", 4000);
 
       const state = useRealAssetsStore.getState();
       expect(state.realAssets).toHaveLength(2);
-      expect(state.realAssets[1]).toMatchObject({
-        assetName: "아파트",
-        currentValue: 80000,
-        purchaseValue: 60000,
-      });
+      // Second-added is at index 0 (prepended)
       expect(state.realAssets[0]).toMatchObject({
         assetName: "자동차",
         currentValue: 3000,
         purchaseValue: 4000,
+      });
+      expect(state.realAssets[1]).toMatchObject({
+        assetName: "아파트",
+        currentValue: 80000,
+        purchaseValue: 60000,
       });
     });
 
     it("should handle concurrent updates on same asset", () => {
       const { addRealAsset, updateRealAsset } = useRealAssetsStore.getState();
 
-      addRealAsset(); // id: 2
+      addRealAsset();
+      const id = useRealAssetsStore.getState().realAssets[0]!.id;
 
       // Update multiple fields
-      updateRealAsset(2, "assetName", "강남 아파트");
-      updateRealAsset(2, "currentValue", 100000);
-      updateRealAsset(2, "purchaseValue", 70000);
-      updateRealAsset(2, "assetOwner", "공동소유");
+      updateRealAsset(id, "assetName", "강남 아파트");
+      updateRealAsset(id, "currentValue", 100000);
+      updateRealAsset(id, "purchaseValue", 70000);
+      updateRealAsset(id, "assetOwner", "공동소유");
 
       const state = useRealAssetsStore.getState();
       const asset = state.realAssets[0]!;
@@ -391,19 +415,22 @@ describe("Real Assets Store", () => {
     it("should maintain separate state for different assets", () => {
       const { addRealAsset, updateRealAsset } = useRealAssetsStore.getState();
 
-      addRealAsset(); // id: 2
-      addRealAsset(); // id: 3
-      addRealAsset(); // id: 4
+      addRealAsset();
+      const idA = useRealAssetsStore.getState().realAssets[0]!.id;
+      addRealAsset();
+      const idB = useRealAssetsStore.getState().realAssets[0]!.id;
+      addRealAsset();
+      const idC = useRealAssetsStore.getState().realAssets[0]!.id;
 
       // Update different assets
-      updateRealAsset(2, "currentValue", 10000);
-      updateRealAsset(3, "currentValue", 20000);
-      updateRealAsset(4, "currentValue", 30000);
+      updateRealAsset(idA, "currentValue", 10000);
+      updateRealAsset(idB, "currentValue", 20000);
+      updateRealAsset(idC, "currentValue", 30000);
 
       const state = useRealAssetsStore.getState();
-      expect(state.realAssets.find((a) => a.id === 2)!.currentValue).toBe(10000);
-      expect(state.realAssets.find((a) => a.id === 3)!.currentValue).toBe(20000);
-      expect(state.realAssets.find((a) => a.id === 4)!.currentValue).toBe(30000);
+      expect(state.realAssets.find((a) => a.id === idA)!.currentValue).toBe(10000);
+      expect(state.realAssets.find((a) => a.id === idB)!.currentValue).toBe(20000);
+      expect(state.realAssets.find((a) => a.id === idC)!.currentValue).toBe(30000);
     });
   });
 
@@ -439,11 +466,12 @@ describe("Real Assets Store", () => {
     it("should update asset color", () => {
       const { addRealAsset, updateRealAsset } = useRealAssetsStore.getState();
 
-      addRealAsset(); // id: 2
+      addRealAsset();
+      const id = useRealAssetsStore.getState().realAssets[0]!.id;
 
       const initialColor = useRealAssetsStore.getState().realAssets[0]!.color;
 
-      updateRealAsset(2, "color", "#ff0000");
+      updateRealAsset(id, "color", "#ff0000");
 
       const state = useRealAssetsStore.getState();
       expect(state.realAssets[0]!.color).toBe("#ff0000");
@@ -489,7 +517,7 @@ describe("Real Assets Store", () => {
       useRealAssetsStore.setState({
         realAssets: [
           {
-            id: 1,
+            id: "legacy-asset-id",
             assetName: "Old Asset",
             assetType: "부동산",
             assetOwner: "본인",
@@ -500,7 +528,6 @@ describe("Real Assets Store", () => {
             color: "", // empty color simulates missing color
           },
         ],
-        lastRealAssetId: 1,
       });
 
       // Mock localStorage with persisted data lacking color
@@ -509,7 +536,7 @@ describe("Real Assets Store", () => {
           state: {
             realAssets: [
               {
-                id: 1,
+                id: "legacy-asset-id",
                 assetName: "Old Asset",
                 assetType: "부동산",
                 assetOwner: "본인",
@@ -520,7 +547,6 @@ describe("Real Assets Store", () => {
               },
             ],
             customOwners: [],
-            lastRealAssetId: 1,
           },
           version: 1,
         })

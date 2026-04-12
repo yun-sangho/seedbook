@@ -21,8 +21,6 @@ interface AddDebtModalProps {
 
 export function AddDebtModal({ isOpen, onClose, onDebtAdded }: AddDebtModalProps) {
   const addDebt = useDebtsStore((state) => state.addDebt);
-  const updateDebt = useDebtsStore((state) => state.updateDebt);
-  const lastDebtId = useDebtsStore((state) => state.lastDebtId);
 
   const [selectedLoanType, setSelectedLoanType] = useState<string>("");
   const [selectedOwner, setSelectedOwner] = useState<string>("");
@@ -32,12 +30,7 @@ export function AddDebtModal({ isOpen, onClose, onDebtAdded }: AddDebtModalProps
 
   const handleAddDebt = () => {
     if (selectedLoanType && selectedOwner) {
-      addDebt();
-      // 새로 추가된 대출의 타입과 소유자 업데이트
-      const newDebtId = lastDebtId + 1;
-      updateDebt(newDebtId, "loanType", selectedLoanType);
-      updateDebt(newDebtId, "loanOwner", selectedOwner);
-      updateDebt(newDebtId, "loanName", `${selectedOwner}의 ${selectedLoanType}`);
+      addDebt({ loanType: selectedLoanType, loanOwner: selectedOwner });
 
       setSelectedLoanType("");
       setSelectedOwner("");

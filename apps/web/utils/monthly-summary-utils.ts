@@ -28,7 +28,7 @@ export function prepareMonthlyInvestmentSummary(
       date: string;
       initialInvestment: number;
       currentValue: number;
-      accountId: number;
+      accountId: string;
     }>
   >();
 
@@ -45,7 +45,7 @@ export function prepareMonthlyInvestmentSummary(
 
   monthlyGroups.forEach((records, yearMonth) => {
     // 해당 월의 각 계좌별 마지막 기록 찾기
-    const accountLastRecords = new Map<number, (typeof records)[0]>();
+    const accountLastRecords = new Map<string, (typeof records)[0]>();
 
     records.forEach((record) => {
       const existing = accountLastRecords.get(record.accountId);

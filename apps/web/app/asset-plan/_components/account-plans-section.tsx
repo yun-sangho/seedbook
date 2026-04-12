@@ -6,13 +6,13 @@ import { AccountPlanItem } from "./account-plan-item";
 interface AccountPlansSectionProps {
   investments: InvestmentItem[];
   accountPlans: {
-    [accountId: number]: {
+    [accountId: string]: {
       contributionAmount: string;
       contributionFrequency: string;
       targetAnnualReturn: string;
     };
   };
-  updateAccountPlan: (id: number, field: string, value: string) => void;
+  updateAccountPlan: (id: string, field: string, value: string) => void;
   formatNumber: (v: string) => string;
   getMonthlyContribution: (amount: string, frequency: string) => number;
 }

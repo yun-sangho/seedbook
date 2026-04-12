@@ -11,7 +11,7 @@ describe("preparePlanComparisonChartData", () => {
     // 목 투자 계좌 데이터 설정 (원 단위)
     mockInvestments = [
       {
-        id: 1,
+        id: "1",
         accountName: "삼성증권 계좌",
         accountType: "일반투자계좌",
         accountOwner: "홍길동",
@@ -41,7 +41,7 @@ describe("preparePlanComparisonChartData", () => {
         ],
       },
       {
-        id: 2,
+        id: "2",
         accountName: "KB증권 계좌",
         accountType: "ISA 계좌",
         accountOwner: "홍길동",
@@ -80,15 +80,17 @@ describe("preparePlanComparisonChartData", () => {
       createdAt: new Date("2024-01-01"),
       updatedAt: new Date("2024-01-01"),
       accountPlans: {
-        1: {
+        "1": {
           contributionAmount: "1000000", // 100만원
           contributionFrequency: "월",
           targetAnnualReturn: "7.0",
+          accountKind: "investment",
         },
-        2: {
+        "2": {
           contributionAmount: "2000000", // 200만원
           contributionFrequency: "분기",
           targetAnnualReturn: "5.0",
+          accountKind: "investment",
         },
       },
       totalMonthlyContribution: 1666700, // 약 166.67만원 (1000000 + 2000000/3)
@@ -296,13 +298,14 @@ describe("preparePlanComparisonChartData", () => {
 
   describe("edge cases", () => {
     it("수익률이 0%인 경우를 처리할 수 있어야 한다", () => {
-      const zeroPlan = {
+      const zeroPlan: AssetPlan = {
         ...mockPlan,
         accountPlans: {
-          1: {
+          "1": {
             contributionAmount: "1000000",
             contributionFrequency: "월",
             targetAnnualReturn: "0.0",
+            accountKind: "investment",
           },
         },
         averageTargetReturn: 0,
@@ -325,13 +328,14 @@ describe("preparePlanComparisonChartData", () => {
     });
 
     it("매우 높은 수익률을 처리할 수 있어야 한다", () => {
-      const highReturnPlan = {
+      const highReturnPlan: AssetPlan = {
         ...mockPlan,
         accountPlans: {
-          1: {
+          "1": {
             contributionAmount: "1000000",
             contributionFrequency: "월",
             targetAnnualReturn: "50.0", // 연 50% 수익률
+            accountKind: "investment",
           },
         },
         averageTargetReturn: 50,
@@ -352,13 +356,14 @@ describe("preparePlanComparisonChartData", () => {
     });
 
     it("계획에 없는 투자 계좌를 처리할 수 있어야 한다", () => {
-      const incompletePlan = {
+      const incompletePlan: AssetPlan = {
         ...mockPlan,
         accountPlans: {
-          1: {
+          "1": {
             contributionAmount: "1000000",
             contributionFrequency: "월",
             targetAnnualReturn: "7.0",
+            accountKind: "investment",
           },
           // 계좌 2에 대한 계획이 없음
         },

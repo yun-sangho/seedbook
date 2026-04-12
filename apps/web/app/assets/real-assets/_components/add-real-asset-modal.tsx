@@ -21,8 +21,6 @@ interface AddRealAssetModalProps {
 
 export function AddRealAssetModal({ isOpen, onClose, onAssetAdded }: AddRealAssetModalProps) {
   const addRealAsset = useRealAssetsStore((state) => state.addRealAsset);
-  const updateRealAsset = useRealAssetsStore((state) => state.updateRealAsset);
-  const lastRealAssetId = useRealAssetsStore((state) => state.lastRealAssetId);
   const customOwners = useRealAssetsStore((state) => state.customOwners);
 
   const [selectedAssetType, setSelectedAssetType] = useState<string>("");
@@ -33,12 +31,7 @@ export function AddRealAssetModal({ isOpen, onClose, onAssetAdded }: AddRealAsse
 
   const handleAddAsset = () => {
     if (selectedAssetType && selectedOwner) {
-      addRealAsset();
-      // 새로 추가된 자산의 타입과 소유자 업데이트
-      const newAssetId = lastRealAssetId + 1;
-      updateRealAsset(newAssetId, "assetType", selectedAssetType);
-      updateRealAsset(newAssetId, "assetOwner", selectedOwner);
-      updateRealAsset(newAssetId, "assetName", `${selectedOwner}의 ${selectedAssetType}`);
+      addRealAsset({ assetType: selectedAssetType, assetOwner: selectedOwner });
 
       setSelectedAssetType("");
       setSelectedOwner("");

@@ -13,7 +13,7 @@ interface AddHistoryModalProps {
   onClose: () => void;
   item: InvestmentItem;
   onAddHistory: (
-    itemId: number,
+    itemId: string,
     date: string,
     initialInvestment: number,
     currentValue: number

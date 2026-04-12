@@ -15,10 +15,10 @@ import { AddSavingsHistoryModal } from "./add-savings-history-modal";
 
 interface SavingsItemComponentProps {
   item: SavingsItem;
-  onUpdateItem: (id: number, field: keyof SavingsItem, value: string) => void;
-  onRemoveHistoryRecord: (id: number, date: string) => void;
-  onAddHistory: (id: number, date: string, balance: number) => void;
-  onRemoveSavings: (id: number) => void;
+  onUpdateItem: (id: string, field: keyof SavingsItem, value: string) => void;
+  onRemoveHistoryRecord: (id: string, date: string) => void;
+  onAddHistory: (id: string, date: string, balance: number) => void;
+  onRemoveSavings: (id: string) => void;
 }
 
 export function SavingsItemComponent({

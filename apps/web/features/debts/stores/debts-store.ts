@@ -9,13 +9,12 @@ import { DebtsItem } from "../types/types";
 // 대출 스토어 상태 인터페이스
 interface DebtsState {
   debts: DebtsItem[];
-  expandedFormId: number;
-  lastDebtId: number;
+  expandedFormId: string; // "" 이면 펼친 폼 없음
   // 액션
-  addDebt: () => void;
-  removeDebt: (id: number) => void;
-  updateDebt: <K extends keyof DebtsItem>(id: number, key: K, value: DebtsItem[K]) => void;
-  setExpandedFormId: (id: number) => void;
+  addDebt: (initial?: { loanType?: string; loanOwner?: string }) => void;
+  removeDebt: (id: string) => void;
+  updateDebt: <K extends keyof DebtsItem>(id: string, key: K, value: DebtsItem[K]) => void;
+  setExpandedFormId: (id: string) => void;
   reorderDebts: (reorderedDebts: DebtsItem[]) => void;
 }
 
@@ -25,21 +24,27 @@ export const useDebtsStore = create<DebtsState>()(
     persist(
       (set) => ({
         debts: [],
-        expandedFormId: 1,
-        lastDebtId: 1,
+        expandedFormId: "",
 
-        // 새 대출 추가
-        addDebt: () =>
+        // 새 대출 추가. `loanType` / `loanOwner` 를 전달하면 같은 UUID 에
+        // 대해 loanName 까지 바로 세팅한다 (모달에서 사용).
+        addDebt: (initial) =>
           set((state) => {
-            const newId = state.lastDebtId + 1;
+            const newId = crypto.randomUUID();
+            const loanType = initial?.loanType ?? "";
+            const loanOwner = initial?.loanOwner ?? DefaultOwnerType.SELF;
+            const loanName =
+              loanType && initial?.loanOwner
+                ? `${loanOwner}의 ${loanType}`
+                : `대출 #${state.debts.length + 1}`;
             return {
               debts: [
                 ...state.debts,
                 {
                   id: newId,
-                  loanName: `대출 #${newId}`,
-                  loanType: "",
-                  loanOwner: DefaultOwnerType.SELF,
+                  loanName,
+                  loanType,
+                  loanOwner,
                   lender: "",
                   amount: 0,
                   interestRate: 0,
@@ -48,26 +53,25 @@ export const useDebtsStore = create<DebtsState>()(
                   note: "",
                 },
               ],
-              lastDebtId: newId,
               expandedFormId: newId,
             };
           }),
 
         // 대출 제거
-        removeDebt: (id: number) =>
+        removeDebt: (id: string) =>
           set((state) => ({
             debts: state.debts.filter((item) => item.id !== id),
-            expandedFormId: state.expandedFormId === id ? -1 : state.expandedFormId,
+            expandedFormId: state.expandedFormId === id ? "" : state.expandedFormId,
           })),
 
         // 대출 필드 업데이트
-        updateDebt: <K extends keyof DebtsItem>(id: number, key: K, value: DebtsItem[K]) =>
+        updateDebt: <K extends keyof DebtsItem>(id: string, key: K, value: DebtsItem[K]) =>
           set((state) => ({
             debts: state.debts.map((item) => (item.id === id ? { ...item, [key]: value } : item)),
           })),
 
         // 확장된 폼 ID 설정
-        setExpandedFormId: (id: number) =>
+        setExpandedFormId: (id: string) =>
           set({
             expandedFormId: id,
           }),
@@ -81,27 +85,19 @@ export const useDebtsStore = create<DebtsState>()(
       {
         name: "debts-storage", // 저장 backend key (local 모드면 localStorage, cloud 모드면 /api/storage)
         storage: createJSONStorage(() => createHybridStorage("debts-storage")),
-        version: 1,
-        // 만원 → 원 마이그레이션
+        version: 2,
+        // v0~v1 → v2 정규화: `lib/local-id-upgrade.ts` 에서 선행 처리.
         migrate: (persisted, version) => {
-          if (version === 0) {
-            const state = persisted as {
-              debts: DebtsItem[];
-              expandedFormId: number;
-              lastDebtId: number;
-            };
-            const MANWON_TO_WON = 10000;
+          const state = persisted as { debts?: DebtsItem[] } & Record<string, unknown>;
+          if (!state.debts) state.debts = [];
+          if (version < 2) {
             state.debts = state.debts.map((d) => ({
               ...d,
-              amount: d.amount * MANWON_TO_WON,
-              monthlyPayment: d.monthlyPayment * MANWON_TO_WON,
+              id: typeof d.id === "string" && d.id ? d.id : crypto.randomUUID(),
             }));
+            delete (state as { lastDebtId?: unknown }).lastDebtId;
           }
-          return persisted as {
-            debts: DebtsItem[];
-            expandedFormId: number;
-            lastDebtId: number;
-          };
+          return state;
         },
       }
     )

@@ -2,7 +2,7 @@
  * 실물자산 아이템 타입
  */
 export interface RealAssetItem {
-  id: number;
+  id: string;
   assetName: string;
   assetType: string; // 실물자산 유형 (부동산, 자동차, 귀금속 등)
   assetOwner: string; // 자산 소유자

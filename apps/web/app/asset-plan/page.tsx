@@ -25,21 +25,23 @@ export default function AssetPlanPage() {
   const [planName, setPlanName] = useState("");
   const [planPeriod, setPlanPeriod] = useState("30"); // 계획 기간 (년)
   const [accountPlans, setAccountPlans] = useState<{
-    [accountId: number]: {
+    [accountId: string]: {
       contributionAmount: string; // 원 단위
       contributionFrequency: string; // 월/분기/반기/년
       targetAnnualReturn: string;
+      accountKind: "investment" | "savings";
     };
   }>({});
 
   // 계좌별 계획 설정 업데이트
-  const updateAccountPlan = (accountId: number, field: string, value: string) => {
+  const updateAccountPlan = (accountId: string, field: string, value: string) => {
     setAccountPlans((prev) => ({
       ...prev,
       [accountId]: {
         contributionAmount: prev[accountId]?.contributionAmount || "",
         contributionFrequency: prev[accountId]?.contributionFrequency || "월",
         targetAnnualReturn: prev[accountId]?.targetAnnualReturn || "",
+        accountKind: prev[accountId]?.accountKind || "investment",
         [field]: value,
       },
     }));
@@ -152,16 +154,13 @@ export default function AssetPlanPage() {
     // Normalize accountPlans to include only valid investments and clean numeric strings
     const normalizedAccountPlans: typeof accountPlans = validInvestments.reduce(
       (acc, inv) => {
-        const raw = accountPlans[inv.id] || {
-          contributionAmount: "0",
-          contributionFrequency: "월",
-          targetAnnualReturn: "0",
-        };
+        const raw = accountPlans[inv.id];
 
         acc[inv.id] = {
-          contributionAmount: (raw.contributionAmount || "0").replace(/,/g, "").trim(),
-          contributionFrequency: raw.contributionFrequency || "월",
-          targetAnnualReturn: (raw.targetAnnualReturn || "0").trim(),
+          contributionAmount: (raw?.contributionAmount || "0").replace(/,/g, "").trim(),
+          contributionFrequency: raw?.contributionFrequency || "월",
+          targetAnnualReturn: (raw?.targetAnnualReturn || "0").trim(),
+          accountKind: "investment",
         };
 
         return acc;
