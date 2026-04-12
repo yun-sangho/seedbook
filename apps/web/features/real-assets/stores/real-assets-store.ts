@@ -1,5 +1,6 @@
 "use client";
 
+import { createHybridStorage } from "@web/lib/hybrid-storage";
 import { getNextColor as getNextColorUtil } from "@web/utils/color-selection";
 import { parseNumericString } from "@web/utils/number-format";
 import { create } from "zustand";
@@ -118,8 +119,8 @@ export const useRealAssetsStore = create<RealAssetsState>()(
       },
     }),
     {
-      name: "real-assets-storage", // localStorage에 저장될 키 이름
-      storage: createJSONStorage(() => localStorage),
+      name: "real-assets-storage", // 저장 backend key (local 모드면 localStorage, cloud 모드면 /api/storage)
+      storage: createJSONStorage(() => createHybridStorage("real-assets-storage")),
       version: 1,
       // UI 관련 상태는 지속성 저장에서 제외 (성능 최적화)
       partialize: (state) => ({

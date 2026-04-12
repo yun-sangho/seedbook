@@ -1,5 +1,6 @@
 "use client";
 
+import { createHybridStorage } from "@web/lib/hybrid-storage";
 import { getNextColor as getNextColorUtil } from "@web/utils/color-selection";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -222,7 +223,7 @@ export const useSavingsStore = create<SavingsState>()(
     }),
     {
       name: "savings-storage",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => createHybridStorage("savings-storage")),
       version: 1,
       partialize: (state) => ({
         savings: state.savings,

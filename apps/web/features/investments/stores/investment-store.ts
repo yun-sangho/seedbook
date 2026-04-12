@@ -1,5 +1,6 @@
 "use client";
 
+import { createHybridStorage } from "@web/lib/hybrid-storage";
 import { CurrencyType } from "@web/types/account.consts";
 import { getNextColor as getNextColorUtil } from "@web/utils/color-selection";
 import { parseNumericString } from "@web/utils/number-format";
@@ -479,8 +480,8 @@ export const useInvestmentStore = create<InvestmentState>()(
       },
     }),
     {
-      name: "investment-storage", // localStorage에 저장될 키 이름
-      storage: createJSONStorage(() => localStorage),
+      name: "investment-storage", // 저장 backend key (local 모드면 localStorage, cloud 모드면 /api/storage)
+      storage: createJSONStorage(() => createHybridStorage("investment-storage")),
       version: 3,
       // UI 관련 상태는 지속성 저장에서 제외 (성능 최적화)
       partialize: (state) => ({

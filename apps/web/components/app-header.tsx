@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { Separator } from "@web/components/ui/separator";
 import { SidebarTrigger } from "@web/components/ui/sidebar";
+import { SyncIndicator } from "@web/components/sync-indicator";
 import { UserMenu } from "@web/components/user-menu";
 
 const pageNames: Record<string, string> = {
@@ -29,7 +30,8 @@ export function AppHeader() {
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="mr-2 h-4" />
       <h1 className="text-lg font-semibold">{pageName}</h1>
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-3">
+        <SyncIndicator />
         <UserMenu />
       </div>
     </header>

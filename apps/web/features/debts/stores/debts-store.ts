@@ -1,7 +1,8 @@
 "use client";
 
+import { createHybridStorage } from "@web/lib/hybrid-storage";
 import { create } from "zustand";
-import { devtools, persist } from "zustand/middleware";
+import { createJSONStorage, devtools, persist } from "zustand/middleware";
 import { DefaultOwnerType } from "../types/constants";
 import { DebtsItem } from "../types/types";
 
@@ -78,7 +79,8 @@ export const useDebtsStore = create<DebtsState>()(
           }),
       }),
       {
-        name: "debts-storage", // localStorage 키 이름
+        name: "debts-storage", // 저장 backend key (local 모드면 localStorage, cloud 모드면 /api/storage)
+        storage: createJSONStorage(() => createHybridStorage("debts-storage")),
         version: 1,
         // 만원 → 원 마이그레이션
         migrate: (persisted, version) => {

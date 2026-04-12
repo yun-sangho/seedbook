@@ -1,5 +1,6 @@
+import { createHybridStorage } from "@web/lib/hybrid-storage";
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 import type { AssetProgressPoint } from "../types/progress";
 
 interface ProgressState {
@@ -70,6 +71,7 @@ export const useProgressStore = create<ProgressState>()(
     }),
     {
       name: "progress-storage",
+      storage: createJSONStorage(() => createHybridStorage("progress-storage")),
       version: 1,
       // 만원 → 원 마이그레이션
       migrate: (persisted, version) => {

@@ -1,5 +1,6 @@
+import { createHybridStorage } from "@web/lib/hybrid-storage";
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 import { AssetPlan, AssetPlanStore } from "../types/types";
 
 export const useAssetPlanStore = create<AssetPlanStore>()(
@@ -40,6 +41,7 @@ export const useAssetPlanStore = create<AssetPlanStore>()(
     }),
     {
       name: "asset-plan-storage",
+      storage: createJSONStorage(() => createHybridStorage("asset-plan-storage")),
       version: 1,
       // 날짜 객체를 JSON으로 직렬화/역직렬화하기 위한 설정
       partialize: (state) => ({

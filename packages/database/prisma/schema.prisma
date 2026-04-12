@@ -59,15 +59,16 @@ model StockPrice {
 // seedbook 스키마 아래에 위치시켜 stock 관련 public 테이블과 네임스페이스를 분리한다.
 
 model User {
-  id            String    @id
+  id            String      @id
   name          String
-  email         String    @unique
+  email         String      @unique
   emailVerified Boolean
   image         String?
   createdAt     DateTime
   updatedAt     DateTime
   sessions      Session[]
   accounts      Account[]
+  userStores    UserStore[]
 
   @@map("user")
   @@schema("seedbook")
@@ -117,5 +118,26 @@ model Verification {
   updatedAt  DateTime?
 
   @@map("verification")
+  @@schema("seedbook")
+}
+
+// --- Cloud-synced per-user Zustand store blobs ---
+// Each row is the full `{ state, version }` envelope that Zustand's
+// `persist` middleware serializes for one store. We store it as a single
+// `Json` column and never introspect its shape — store-specific migrations
+// continue to run client-side via `persist`'s `migrate` callback.
+//
+// `(userId, key)` is the composite PK: one row per user per store key.
+model UserStore {
+  userId    String
+  key       String // e.g. "investment-storage", "savings-storage"
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, key])
+  @@index([userId])
+  @@map("user_store")
   @@schema("seedbook")
 }
