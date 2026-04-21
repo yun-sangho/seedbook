@@ -1,6 +1,6 @@
 import { prisma } from "@seedbook/database";
 import { TRANSLATORS, type Envelope } from "@web/app/api/storage/_translators";
-import { auth } from "@web/lib/auth";
+import { resolveUserId } from "@web/lib/auth-server";
 import { isCloudStoreKey } from "@web/lib/storage-mode";
 
 /**
@@ -26,11 +26,6 @@ const MAX_BODY_BYTES = 2 * 1024 * 1024;
 type RouteContext = {
   params: Promise<{ key: string }>;
 };
-
-async function resolveUserId(request: Request): Promise<string | null> {
-  const session = await auth.api.getSession({ headers: request.headers });
-  return session?.user?.id ?? null;
-}
 
 function badRequest(message: string): Response {
   return Response.json({ error: message }, { status: 400 });

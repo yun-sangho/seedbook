@@ -1,4 +1,5 @@
 import { kstDateString, prisma } from "@seedbook/database";
+import { resolveUserId } from "@web/lib/auth-server";
 
 interface PriceQueryItem {
   market: string;
@@ -13,6 +14,11 @@ interface PriceResultItem {
 }
 
 export async function POST(request: Request) {
+  const userId = await resolveUserId(request);
+  if (!userId) {
+    return Response.json({ error: "unauthorized" }, { status: 401 });
+  }
+
   let body: { items?: unknown };
   try {
     body = await request.json();
