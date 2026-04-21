@@ -365,6 +365,11 @@ model Portfolio {
   description String   @default("")
   color       String
   note        String   @default("")
+  // 포트폴리오가 적용되는 InvestmentAccount.id 목록 (polymorphic 참조, FK 없음).
+  // 빈 배열 = 연결 없음, 즉 "모든 투자 계좌 합산" 을 의미.
+  accountIds  String[] @default([]) @db.Uuid
+  // 이격률 경고 임계값 (%). |gapPercent| 가 이 값을 넘으면 UI 에서 경고 배지 노출.
+  driftThresholdPercent Float @default(5)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

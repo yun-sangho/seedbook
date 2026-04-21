@@ -347,6 +347,8 @@ describe("portfolio translator round-trip", () => {
           description: "장기 보유 위주",
           color: "#f87171",
           note: "리밸런싱: 분기 1회",
+          accountIds: ["inv-uuid-a", "inv-uuid-b"],
+          driftThresholdPercent: 3.5,
           createdAt: "2026-01-01T00:00:00.000Z",
           updatedAt: "2026-04-01T00:00:00.000Z",
           allocations: [
@@ -370,7 +372,7 @@ describe("portfolio translator round-trip", () => {
         },
       ],
     },
-    version: 1,
+    version: 2,
   };
 
   it("write 후 read 하면 원본 envelope 과 동일한 데이터가 돌아온다", async () => {
@@ -378,7 +380,7 @@ describe("portfolio translator round-trip", () => {
     const result = await portfolioTranslator.read(prisma, USER_ID);
 
     expect(result).not.toBeNull();
-    expect(result!.version).toBe(1);
+    expect(result!.version).toBe(2);
 
     const portfolios = result!.state.portfolios as Array<Record<string, unknown>>;
     expect(portfolios).toHaveLength(1);
@@ -388,6 +390,8 @@ describe("portfolio translator round-trip", () => {
     expect(p.description).toBe("장기 보유 위주");
     expect(p.color).toBe("#f87171");
     expect(p.note).toBe("리밸런싱: 분기 1회");
+    expect(p.accountIds).toEqual(["inv-uuid-a", "inv-uuid-b"]);
+    expect(p.driftThresholdPercent).toBe(3.5);
 
     const allocations = p.allocations as Array<Record<string, unknown>>;
     expect(allocations).toHaveLength(2);
@@ -397,6 +401,31 @@ describe("portfolio translator round-trip", () => {
     expect(samsung.market).toBe("KOSPI");
     const kakao = allocations.find((a) => a.ticker === "035720")!;
     expect(kakao.targetPercent).toBe(30);
+  });
+
+  it("accountIds / driftThresholdPercent 가 없는 legacy payload 도 기본값으로 저장된다", async () => {
+    const legacyEnvelope: Envelope = {
+      state: {
+        portfolios: [
+          {
+            id: "port-legacy",
+            name: "Legacy",
+            description: "",
+            color: "#3b82f6",
+            note: "",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+            allocations: [],
+          },
+        ],
+      },
+      version: 2,
+    };
+    await portfolioTranslator.write(prisma, USER_ID, legacyEnvelope);
+    const result = await portfolioTranslator.read(prisma, USER_ID);
+    const p = (result!.state.portfolios as Array<Record<string, unknown>>)[0]!;
+    expect(p.accountIds).toEqual([]);
+    expect(p.driftThresholdPercent).toBe(5);
   });
 
   it("소수점 비중(targetPercent)도 손실 없이 round-trip 된다", async () => {
@@ -432,7 +461,7 @@ describe("portfolio translator round-trip", () => {
           },
         ],
       },
-      version: 1,
+      version: 2,
     };
 
     await portfolioTranslator.write(prisma, USER_ID, envelope);
@@ -445,7 +474,7 @@ describe("portfolio translator round-trip", () => {
 
   it("빈 envelope 을 write 하면 기존 portfolio 가 모두 삭제된다", async () => {
     await portfolioTranslator.write(prisma, USER_ID, sampleEnvelope);
-    await portfolioTranslator.write(prisma, USER_ID, { state: { portfolios: [] }, version: 1 });
+    await portfolioTranslator.write(prisma, USER_ID, { state: { portfolios: [] }, version: 2 });
 
     const result = await portfolioTranslator.read(prisma, USER_ID);
     const portfolios = result?.state.portfolios as unknown[] | undefined;
@@ -488,7 +517,7 @@ describe("portfolio translator round-trip", () => {
           },
         ],
       },
-      version: 1,
+      version: 2,
     };
 
     await portfolioTranslator.write(prisma, USER_ID, updated);

@@ -5,8 +5,10 @@ import { Button } from "@web/components/ui/button";
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
 import { Textarea } from "@web/components/ui/textarea";
+import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { ACCOUNT_COLORS } from "@web/features/investments/types/constants";
 import { cn } from "@web/lib/utils";
+import { parseNumericString } from "@web/utils/number-format";
 import { Plus } from "lucide-react";
 import { usePortfolioStore } from "../stores/portfolio-store";
 import type { PortfolioItem } from "../types/types";
@@ -23,6 +25,11 @@ export function PortfolioEditor({ portfolio }: PortfolioEditorProps) {
   const updateAllocation = usePortfolioStore((s) => s.updateAllocation);
   const setAllocationStockFromSearch = usePortfolioStore((s) => s.setAllocationStockFromSearch);
   const removeAllocation = usePortfolioStore((s) => s.removeAllocation);
+  const toggleAccountLink = usePortfolioStore((s) => s.toggleAccountLink);
+  const setDriftThreshold = usePortfolioStore((s) => s.setDriftThreshold);
+
+  const investments = useInvestmentStore((s) => s.investments);
+  const linkedIdSet = useMemo(() => new Set(portfolio.accountIds), [portfolio.accountIds]);
 
   const validation = useMemo(
     () => validateAllocations(portfolio.allocations),
@@ -162,6 +169,76 @@ export function PortfolioEditor({ portfolio }: PortfolioEditorProps) {
             {validation.message}
           </p>
         )}
+      </div>
+
+      {/* 적용 계좌 */}
+      <div>
+        <div className="flex items-baseline justify-between mb-2">
+          <Label>적용 계좌</Label>
+          <span className="text-xs text-muted-foreground">
+            {portfolio.accountIds.length === 0
+              ? "연결 없음 = 전체 계좌 합산"
+              : `${portfolio.accountIds.length}개 계좌 연결`}
+          </span>
+        </div>
+        {investments.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-2">
+            등록된 투자 계좌가 없습니다. 투자 계좌를 먼저 추가한 뒤 연결할 수 있습니다.
+          </p>
+        ) : (
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            {investments.map((inv) => {
+              const checked = linkedIdSet.has(inv.id);
+              return (
+                <label
+                  key={inv.id}
+                  className={cn(
+                    "flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer transition-colors",
+                    checked ? "border-primary bg-primary/5" : "hover:bg-muted/40"
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={checked}
+                    onChange={() => toggleAccountLink(portfolio.id, inv.id)}
+                  />
+                  <span
+                    className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: inv.color }}
+                  />
+                  <span className="truncate text-sm font-medium">{inv.accountName}</span>
+                  {inv.accountType && (
+                    <span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground flex-shrink-0">
+                      {inv.accountType}
+                    </span>
+                  )}
+                </label>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 이격률 경고 임계 */}
+      <div>
+        <Label htmlFor={`portfolio-drift-${portfolio.id}`}>이격률 경고 임계 (%)</Label>
+        <div className="mt-1.5 flex items-center gap-2">
+          <Input
+            id={`portfolio-drift-${portfolio.id}`}
+            type="text"
+            inputMode="decimal"
+            className="w-32 tabular-nums"
+            value={String(portfolio.driftThresholdPercent)}
+            onChange={(e) => {
+              const num = parseNumericString(e.target.value);
+              setDriftThreshold(portfolio.id, Number.isFinite(num) ? num : 0);
+            }}
+          />
+          <span className="text-xs text-muted-foreground">
+            목표 대비 |차이|%가 이 값보다 크면 경고 배지 노출
+          </span>
+        </div>
       </div>
 
       {/* 메모 */}

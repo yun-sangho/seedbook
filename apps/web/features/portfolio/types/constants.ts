@@ -23,3 +23,9 @@ export const DEFAULT_PORTFOLIO_NAMES = [
  * |gapPercent| 가 이 값보다 작으면 "유지" 로 판정한다.
  */
 export const DEFAULT_REBALANCE_THRESHOLD_PERCENT = 1;
+
+/**
+ * 이격률 경고 기본 임계값 (단위: %).
+ * 포트폴리오별로 오버라이드 가능. `|gapPercent|` 가 이 값보다 크면 경고 배지 노출.
+ */
+export const DEFAULT_DRIFT_THRESHOLD_PERCENT = 5;

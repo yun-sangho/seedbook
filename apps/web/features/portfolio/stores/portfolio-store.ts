@@ -6,7 +6,7 @@ import { getNextColor as getNextColorUtil } from "@web/utils/color-selection";
 import { parseNumericString } from "@web/utils/number-format";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { DEFAULT_PORTFOLIO_NAMES } from "../types/constants";
+import { DEFAULT_DRIFT_THRESHOLD_PERCENT, DEFAULT_PORTFOLIO_NAMES } from "../types/constants";
 import type { PortfolioAllocation, PortfolioItem, StockSelection } from "../types/types";
 
 const nowIso = () => new Date().toISOString();
@@ -55,6 +55,10 @@ interface PortfolioState {
   ) => void;
   removeAllocation: (portfolioId: string, allocationId: string) => void;
 
+  setPortfolioAccountIds: (portfolioId: string, accountIds: string[]) => void;
+  toggleAccountLink: (portfolioId: string, accountId: string) => void;
+  setDriftThreshold: (portfolioId: string, value: number) => void;
+
   reorderPortfolios: (reordered: PortfolioItem[]) => void;
   setExpandedFormId: (id: string) => void;
   resetStore: () => void;
@@ -77,6 +81,8 @@ export const usePortfolioStore = create<PortfolioState>()(
           description: "",
           color: getNextColor(portfolios),
           allocations: [],
+          accountIds: [],
+          driftThresholdPercent: DEFAULT_DRIFT_THRESHOLD_PERCENT,
           note: "",
           createdAt: nowIso(),
           updatedAt: nowIso(),
@@ -172,6 +178,37 @@ export const usePortfolioStore = create<PortfolioState>()(
         }));
       },
 
+      setPortfolioAccountIds: (portfolioId, accountIds) => {
+        const unique = Array.from(new Set(accountIds));
+        set((state) => ({
+          portfolios: state.portfolios.map((p) =>
+            p.id === portfolioId ? touch({ ...p, accountIds: unique }) : p
+          ),
+        }));
+      },
+
+      toggleAccountLink: (portfolioId, accountId) => {
+        set((state) => ({
+          portfolios: state.portfolios.map((p) => {
+            if (p.id !== portfolioId) return p;
+            const has = p.accountIds.includes(accountId);
+            const next = has
+              ? p.accountIds.filter((id) => id !== accountId)
+              : [...p.accountIds, accountId];
+            return touch({ ...p, accountIds: next });
+          }),
+        }));
+      },
+
+      setDriftThreshold: (portfolioId, value) => {
+        const clamped = Number.isFinite(value) ? Math.max(0, value) : DEFAULT_DRIFT_THRESHOLD_PERCENT;
+        set((state) => ({
+          portfolios: state.portfolios.map((p) =>
+            p.id === portfolioId ? touch({ ...p, driftThresholdPercent: clamped }) : p
+          ),
+        }));
+      },
+
       reorderPortfolios: (reordered) => {
         set({ portfolios: reordered });
       },
@@ -187,17 +224,30 @@ export const usePortfolioStore = create<PortfolioState>()(
     {
       name: "portfolio-storage",
       storage: createJSONStorage(() => createHybridStorage("portfolio-storage")),
-      version: 1,
+      version: 2,
       partialize: (state) => ({
         portfolios: state.portfolios,
         // expandedFormId 는 UI 상태라 저장 안 함
       }),
+      migrate: (persisted, version) => {
+        const state = (persisted ?? {}) as { portfolios?: PortfolioItem[] };
+        if (version < 2) {
+          state.portfolios = (state.portfolios ?? []).map((p) => ({
+            ...p,
+            accountIds: p.accountIds ?? [],
+            driftThresholdPercent: p.driftThresholdPercent ?? DEFAULT_DRIFT_THRESHOLD_PERCENT,
+          }));
+        }
+        return state;
+      },
       onRehydrateStorage: () => (state) => {
         if (!state) return;
         state.portfolios = (state.portfolios ?? []).map((p, i) => ({
           ...p,
           color: p.color || ACCOUNT_COLORS[i % ACCOUNT_COLORS.length] || "#3b82f6",
           allocations: p.allocations ?? [],
+          accountIds: p.accountIds ?? [],
+          driftThresholdPercent: p.driftThresholdPercent ?? DEFAULT_DRIFT_THRESHOLD_PERCENT,
           note: p.note ?? "",
           description: p.description ?? "",
           createdAt: p.createdAt ?? nowIso(),

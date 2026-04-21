@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_DRIFT_THRESHOLD_PERCENT } from "../types/constants";
+import type { PortfolioItem } from "../types/types";
 import { usePortfolioStore } from "./portfolio-store";
 
 const localStorageMock = {
@@ -56,6 +58,64 @@ describe("Portfolio Store", () => {
       usePortfolioStore.getState().addPortfolio("A");
       usePortfolioStore.getState().addPortfolio("B");
       expect(usePortfolioStore.getState().portfolios.map((p) => p.name)).toEqual(["B", "A"]);
+    });
+
+    it("initializes accountIds as empty and driftThresholdPercent to default", () => {
+      usePortfolioStore.getState().addPortfolio();
+      const p = usePortfolioStore.getState().portfolios[0]!;
+      expect(p.accountIds).toEqual([]);
+      expect(p.driftThresholdPercent).toBe(DEFAULT_DRIFT_THRESHOLD_PERCENT);
+    });
+  });
+
+  describe("setPortfolioAccountIds", () => {
+    it("replaces the accountIds array", () => {
+      const id = usePortfolioStore.getState().addPortfolio();
+      usePortfolioStore.getState().setPortfolioAccountIds(id, ["acc-1", "acc-2"]);
+      expect(usePortfolioStore.getState().portfolios[0]!.accountIds).toEqual(["acc-1", "acc-2"]);
+    });
+
+    it("deduplicates repeated ids", () => {
+      const id = usePortfolioStore.getState().addPortfolio();
+      usePortfolioStore.getState().setPortfolioAccountIds(id, ["a", "a", "b"]);
+      expect(usePortfolioStore.getState().portfolios[0]!.accountIds).toEqual(["a", "b"]);
+    });
+  });
+
+  describe("toggleAccountLink", () => {
+    it("adds an account id when not present", () => {
+      const id = usePortfolioStore.getState().addPortfolio();
+      usePortfolioStore.getState().toggleAccountLink(id, "acc-1");
+      expect(usePortfolioStore.getState().portfolios[0]!.accountIds).toEqual(["acc-1"]);
+    });
+
+    it("removes an account id when already present", () => {
+      const id = usePortfolioStore.getState().addPortfolio();
+      usePortfolioStore.getState().setPortfolioAccountIds(id, ["acc-1", "acc-2"]);
+      usePortfolioStore.getState().toggleAccountLink(id, "acc-1");
+      expect(usePortfolioStore.getState().portfolios[0]!.accountIds).toEqual(["acc-2"]);
+    });
+  });
+
+  describe("setDriftThreshold", () => {
+    it("stores a positive value", () => {
+      const id = usePortfolioStore.getState().addPortfolio();
+      usePortfolioStore.getState().setDriftThreshold(id, 7.5);
+      expect(usePortfolioStore.getState().portfolios[0]!.driftThresholdPercent).toBe(7.5);
+    });
+
+    it("clamps negative values to 0", () => {
+      const id = usePortfolioStore.getState().addPortfolio();
+      usePortfolioStore.getState().setDriftThreshold(id, -3);
+      expect(usePortfolioStore.getState().portfolios[0]!.driftThresholdPercent).toBe(0);
+    });
+
+    it("falls back to default on NaN", () => {
+      const id = usePortfolioStore.getState().addPortfolio();
+      usePortfolioStore.getState().setDriftThreshold(id, Number.NaN);
+      expect(usePortfolioStore.getState().portfolios[0]!.driftThresholdPercent).toBe(
+        DEFAULT_DRIFT_THRESHOLD_PERCENT
+      );
     });
   });
 
@@ -227,6 +287,62 @@ describe("Portfolio Store", () => {
       const snapshot = partialize(usePortfolioStore.getState()) as Record<string, unknown>;
       expect(snapshot.portfolios).toBeDefined();
       expect(snapshot.expandedFormId).toBeUndefined();
+    });
+
+    it("migrate (v1 -> v2) fills accountIds and driftThresholdPercent with defaults", () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const persistApi = (usePortfolioStore as any).persist;
+      const migrate = persistApi.getOptions().migrate as (
+        persisted: unknown,
+        version: number
+      ) => { portfolios: PortfolioItem[] };
+
+      const legacy = {
+        portfolios: [
+          {
+            id: "p1",
+            name: "Legacy",
+            description: "",
+            color: "#3b82f6",
+            allocations: [],
+            note: "",
+            createdAt: "2025-01-01T00:00:00.000Z",
+            updatedAt: "2025-01-01T00:00:00.000Z",
+          },
+        ],
+      };
+      const migrated = migrate(legacy, 1);
+      expect(migrated.portfolios[0]!.accountIds).toEqual([]);
+      expect(migrated.portfolios[0]!.driftThresholdPercent).toBe(DEFAULT_DRIFT_THRESHOLD_PERCENT);
+    });
+
+    it("migrate preserves existing v2 values", () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const persistApi = (usePortfolioStore as any).persist;
+      const migrate = persistApi.getOptions().migrate as (
+        persisted: unknown,
+        version: number
+      ) => { portfolios: PortfolioItem[] };
+
+      const existing = {
+        portfolios: [
+          {
+            id: "p1",
+            name: "Already v2",
+            description: "",
+            color: "#3b82f6",
+            allocations: [],
+            accountIds: ["acc-1"],
+            driftThresholdPercent: 3,
+            note: "",
+            createdAt: "2025-01-01T00:00:00.000Z",
+            updatedAt: "2025-01-01T00:00:00.000Z",
+          },
+        ],
+      };
+      const migrated = migrate(existing, 2);
+      expect(migrated.portfolios[0]!.accountIds).toEqual(["acc-1"]);
+      expect(migrated.portfolios[0]!.driftThresholdPercent).toBe(3);
     });
   });
 

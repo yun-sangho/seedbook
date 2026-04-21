@@ -25,6 +25,16 @@ export interface PortfolioItem {
   description: string;
   color: string; // ACCOUNT_COLORS 에서 자동 할당
   allocations: PortfolioAllocation[];
+  /**
+   * 이 포트폴리오가 적용되는 `InvestmentItem.id` 목록.
+   * 빈 배열이면 "연결 없음 = 모든 투자 계좌 합산" 을 의미한다 (하위호환).
+   */
+  accountIds: string[];
+  /**
+   * 이격률 경고 임계값 (%). `|gapPercent|` 가 이 값보다 크면 이격 초과로 판정.
+   * 매수/매도 action 판정용 임계값과는 별개 (그쪽은 `DEFAULT_REBALANCE_THRESHOLD_PERCENT`).
+   */
+  driftThresholdPercent: number;
   note: string;
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
