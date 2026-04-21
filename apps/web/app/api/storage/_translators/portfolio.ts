@@ -7,20 +7,23 @@ import type { DomainTranslator, Envelope } from "./types";
  * ```
  * {
  *   state: {
- *     portfolios: PortfolioItem[],   // id, name, description, color, allocations[], note, createdAt, updatedAt
+ *     portfolios: PortfolioItem[],   // id, name, description, color, allocations[],
+ *                                    //   accountIds[], driftThresholdPercent, note,
+ *                                    //   createdAt, updatedAt
  *   },
- *   version: 1,
+ *   version: 2,
  * }
  * ```
  *
  * DB rows:
- * - Portfolio            (1 row / 포트폴리오)
+ * - Portfolio            (1 row / 포트폴리오, accountIds: uuid[] / driftThresholdPercent: float)
  * - PortfolioAllocation  (1 row / 종목 비중)
  * - UserListOrder.domain = "portfolios"  (사용자 정렬 순서)
  */
 
 const DOMAIN = "portfolios";
-const VERSION = 1;
+const VERSION = 2;
+const DEFAULT_DRIFT_THRESHOLD_PERCENT = 5;
 
 type PortfolioAllocationPayload = {
   id: string;
@@ -37,6 +40,8 @@ type PortfolioItemPayload = {
   description?: string;
   color: string;
   allocations?: PortfolioAllocationPayload[];
+  accountIds?: string[];
+  driftThresholdPercent?: number;
   note?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -73,6 +78,8 @@ export const portfolioTranslator: DomainTranslator = {
       description: p.description,
       color: p.color,
       note: p.note,
+      accountIds: p.accountIds,
+      driftThresholdPercent: p.driftThresholdPercent,
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),
       allocations: p.allocations.map((a) => ({
@@ -121,6 +128,13 @@ export const portfolioTranslator: DomainTranslator = {
       for (const p of portfolios) {
         const createdAt = p.createdAt ? new Date(p.createdAt) : new Date();
         const updatedAt = p.updatedAt ? new Date(p.updatedAt) : new Date();
+        const accountIds = Array.isArray(p.accountIds)
+          ? Array.from(new Set(p.accountIds.filter((id) => typeof id === "string")))
+          : [];
+        const driftThresholdPercent =
+          typeof p.driftThresholdPercent === "number" && Number.isFinite(p.driftThresholdPercent)
+            ? Math.max(0, p.driftThresholdPercent)
+            : DEFAULT_DRIFT_THRESHOLD_PERCENT;
         await tx.portfolio.upsert({
           where: { id: p.id },
           create: {
@@ -130,6 +144,8 @@ export const portfolioTranslator: DomainTranslator = {
             description: p.description ?? "",
             color: p.color,
             note: p.note ?? "",
+            accountIds,
+            driftThresholdPercent,
             createdAt,
             updatedAt,
           },
@@ -138,6 +154,8 @@ export const portfolioTranslator: DomainTranslator = {
             description: p.description ?? "",
             color: p.color,
             note: p.note ?? "",
+            accountIds,
+            driftThresholdPercent,
             updatedAt,
           },
         });
