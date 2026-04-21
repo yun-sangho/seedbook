@@ -5,7 +5,8 @@
     "BETTER_AUTH_SECRET",
     "BETTER_AUTH_URL",
     "KAKAO_CLIENT_ID",
-    "KAKAO_CLIENT_SECRET"
+    "KAKAO_CLIENT_SECRET",
+    "NODE_ENV"
   ],
   "tasks": {
     "build": {

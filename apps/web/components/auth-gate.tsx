@@ -5,6 +5,17 @@ import { Button } from "@web/components/ui/button";
 import { authClient, useSession } from "@web/lib/auth-client";
 import { LogIn } from "lucide-react";
 
+// Next.js 가 빌드 타임에 치환하므로 클라이언트 번들에서도 사용 가능.
+const isDevEnv = process.env.NODE_ENV === "development";
+
+async function signInWithDevBypass() {
+  const response = await fetch("/api/auth/dev-login", { method: "POST" });
+  if (!response.ok) {
+    throw new Error(`dev-login failed: ${response.status}`);
+  }
+  window.location.href = "/dashboard";
+}
+
 /**
  * 세션이 없으면 앱 콘텐츠 대신 로그인 화면을 강제 노출한다.
  *
@@ -46,6 +57,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
           >
             카카오로 로그인
           </Button>
+          {isDevEnv && (
+            <Button variant="outline" onClick={signInWithDevBypass}>
+              개발용 빠른 로그인 (카카오 우회)
+            </Button>
+          )}
         </div>
       </div>
     </div>
