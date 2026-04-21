@@ -116,6 +116,8 @@ export function createMockPrisma() {
     assetPlan: new InMemoryTable(["id"]),
     assetPlanAccountItem: new InMemoryTable(["planId", "accountId"]),
     assetProgressPoint: new InMemoryTable(["userId", "date"]),
+    portfolio: new InMemoryTable(["id"]),
+    portfolioAllocation: new InMemoryTable(["id"]),
     userPreference: new InMemoryTable(["userId"]),
     userListOrder: new InMemoryTable(["userId", "domain"]),
   };
@@ -168,6 +170,10 @@ export function createMockPrisma() {
     }),
     assetPlanAccountItem: makeDelegate(tables.assetPlanAccountItem),
     assetProgressPoint: makeDelegate(tables.assetProgressPoint),
+    portfolio: makeDelegate(tables.portfolio, {
+      allocations: { table: tables.portfolioAllocation, fk: "portfolioId", parentKey: "id" },
+    }),
+    portfolioAllocation: makeDelegate(tables.portfolioAllocation),
     userPreference: makeDelegate(tables.userPreference),
     userListOrder: makeDelegate(tables.userListOrder),
     // $transaction: 콜백을 mock 에 직접 넘겨서 실행. 롤백은 구현하지 않음.

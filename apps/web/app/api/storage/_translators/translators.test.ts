@@ -3,6 +3,7 @@ import { assetPlanTranslator } from "./asset-plan";
 import { debtsTranslator } from "./debts";
 import { investmentTranslator } from "./investment";
 import { createMockPrisma } from "./mock-prisma.test-util";
+import { portfolioTranslator } from "./portfolio";
 import { progressTranslator } from "./progress";
 import { realAssetsTranslator } from "./real-assets";
 import { savingsTranslator } from "./savings";
@@ -326,6 +327,183 @@ describe("progress translator round-trip", () => {
 
   it("데이터가 없으면 null 을 반환한다", async () => {
     const result = await progressTranslator.read(prisma, USER_ID);
+    expect(result).toBeNull();
+  });
+});
+
+describe("portfolio translator round-trip", () => {
+  let prisma: ReturnType<typeof createMockPrisma>["mock"];
+
+  beforeEach(() => {
+    ({ mock: prisma } = createMockPrisma());
+  });
+
+  const sampleEnvelope: Envelope = {
+    state: {
+      portfolios: [
+        {
+          id: "port-uuid-1",
+          name: "안정형",
+          description: "장기 보유 위주",
+          color: "#f87171",
+          note: "리밸런싱: 분기 1회",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-04-01T00:00:00.000Z",
+          allocations: [
+            {
+              id: "alloc-uuid-1",
+              market: "KOSPI",
+              ticker: "005930",
+              name: "삼성전자",
+              currency: "KRW",
+              targetPercent: 60,
+            },
+            {
+              id: "alloc-uuid-2",
+              market: "KOSPI",
+              ticker: "035720",
+              name: "카카오",
+              currency: "KRW",
+              targetPercent: 30,
+            },
+          ],
+        },
+      ],
+    },
+    version: 1,
+  };
+
+  it("write 후 read 하면 원본 envelope 과 동일한 데이터가 돌아온다", async () => {
+    await portfolioTranslator.write(prisma, USER_ID, sampleEnvelope);
+    const result = await portfolioTranslator.read(prisma, USER_ID);
+
+    expect(result).not.toBeNull();
+    expect(result!.version).toBe(1);
+
+    const portfolios = result!.state.portfolios as Array<Record<string, unknown>>;
+    expect(portfolios).toHaveLength(1);
+    const p = portfolios[0]!;
+    expect(p.id).toBe("port-uuid-1");
+    expect(p.name).toBe("안정형");
+    expect(p.description).toBe("장기 보유 위주");
+    expect(p.color).toBe("#f87171");
+    expect(p.note).toBe("리밸런싱: 분기 1회");
+
+    const allocations = p.allocations as Array<Record<string, unknown>>;
+    expect(allocations).toHaveLength(2);
+    const samsung = allocations.find((a) => a.ticker === "005930")!;
+    expect(samsung.name).toBe("삼성전자");
+    expect(samsung.targetPercent).toBe(60);
+    expect(samsung.market).toBe("KOSPI");
+    const kakao = allocations.find((a) => a.ticker === "035720")!;
+    expect(kakao.targetPercent).toBe(30);
+  });
+
+  it("소수점 비중(targetPercent)도 손실 없이 round-trip 된다", async () => {
+    const envelope: Envelope = {
+      state: {
+        portfolios: [
+          {
+            id: "port-decimal",
+            name: "정밀 분배",
+            description: "",
+            color: "#3b82f6",
+            note: "",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+            allocations: [
+              {
+                id: "alloc-d-1",
+                market: "KOSPI",
+                ticker: "005930",
+                name: "삼성전자",
+                currency: "KRW",
+                targetPercent: 12.5,
+              },
+              {
+                id: "alloc-d-2",
+                market: "KOSDAQ",
+                ticker: "247540",
+                name: "에코프로비엠",
+                currency: "KRW",
+                targetPercent: 87.25,
+              },
+            ],
+          },
+        ],
+      },
+      version: 1,
+    };
+
+    await portfolioTranslator.write(prisma, USER_ID, envelope);
+    const result = await portfolioTranslator.read(prisma, USER_ID);
+    const allocations = (result!.state.portfolios as Array<Record<string, unknown>>)[0]!
+      .allocations as Array<Record<string, unknown>>;
+    expect(allocations.find((a) => a.ticker === "005930")!.targetPercent).toBe(12.5);
+    expect(allocations.find((a) => a.ticker === "247540")!.targetPercent).toBe(87.25);
+  });
+
+  it("빈 envelope 을 write 하면 기존 portfolio 가 모두 삭제된다", async () => {
+    await portfolioTranslator.write(prisma, USER_ID, sampleEnvelope);
+    await portfolioTranslator.write(prisma, USER_ID, { state: { portfolios: [] }, version: 1 });
+
+    const result = await portfolioTranslator.read(prisma, USER_ID);
+    const portfolios = result?.state.portfolios as unknown[] | undefined;
+    expect(portfolios ?? []).toHaveLength(0);
+  });
+
+  it("portfolio 를 갱신하면 stale allocation 은 제거되고 신규 allocation 은 추가된다", async () => {
+    await portfolioTranslator.write(prisma, USER_ID, sampleEnvelope);
+
+    // 카카오 제거 + 새 종목 추가
+    const updated: Envelope = {
+      state: {
+        portfolios: [
+          {
+            id: "port-uuid-1",
+            name: "안정형 (개정)",
+            description: "장기 보유 위주",
+            color: "#f87171",
+            note: "리밸런싱: 분기 1회",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-04-21T00:00:00.000Z",
+            allocations: [
+              {
+                id: "alloc-uuid-1",
+                market: "KOSPI",
+                ticker: "005930",
+                name: "삼성전자",
+                currency: "KRW",
+                targetPercent: 70,
+              },
+              {
+                id: "alloc-uuid-3",
+                market: "KOSPI",
+                ticker: "000660",
+                name: "SK하이닉스",
+                currency: "KRW",
+                targetPercent: 30,
+              },
+            ],
+          },
+        ],
+      },
+      version: 1,
+    };
+
+    await portfolioTranslator.write(prisma, USER_ID, updated);
+    const result = await portfolioTranslator.read(prisma, USER_ID);
+    const p = (result!.state.portfolios as Array<Record<string, unknown>>)[0]!;
+    expect(p.name).toBe("안정형 (개정)");
+    const allocations = p.allocations as Array<Record<string, unknown>>;
+    expect(allocations).toHaveLength(2);
+    const tickers = allocations.map((a) => a.ticker).sort();
+    expect(tickers).toEqual(["000660", "005930"]);
+    expect(allocations.find((a) => a.ticker === "005930")!.targetPercent).toBe(70);
+  });
+
+  it("데이터가 없으면 null 을 반환한다", async () => {
+    const result = await portfolioTranslator.read(prisma, USER_ID);
     expect(result).toBeNull();
   });
 });

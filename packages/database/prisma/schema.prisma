@@ -77,6 +77,7 @@ model User {
   realAssetCustomOwners RealAssetCustomOwner[]
   assetPlans            AssetPlan[]
   assetProgressPoints   AssetProgressPoint[]
+  portfolios            Portfolio[]
 
   // 유저 설정 / UI 선호도 (데이터와 별도 분리)
   preference UserPreference?
@@ -350,6 +351,46 @@ model AssetPlanAccountItem {
   @@id([planId, accountId])
   @@index([planId])
   @@map("asset_plan_account_item")
+  @@schema("seedbook")
+}
+
+// ─── Portfolios ────────────────────────────────────────────────────────────
+
+// 한국 주식 모델 포트폴리오. 한 유저가 여러 개를 만들어 비교 가능 (안정형 / 공격형 등).
+// 비중(targetPercent) 합계는 앱 레벨에서 100% 이하로 검증한다 — 미배정분은 "현금" 으로 해석.
+model Portfolio {
+  id          String   @id @db.Uuid // 클라이언트가 생성한 UUID (16 bytes native)
+  userId      String
+  name        String
+  description String   @default("")
+  color       String
+  note        String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  allocations PortfolioAllocation[]
+
+  @@index([userId])
+  @@map("portfolio")
+  @@schema("seedbook")
+}
+
+model PortfolioAllocation {
+  id            String @id @db.Uuid // 클라이언트가 생성한 UUID (16 bytes native)
+  portfolioId   String @db.Uuid
+  // Stock 마스터에서 복제된 정보. FK 를 걸지 않는 이유: 사용자가 마스터에 없는
+  // 종목도 직접 추가할 수 있어야 하고, 마스터 갱신/삭제로 인한 영향 최소화.
+  market        String
+  ticker        String
+  name          String
+  currency      String
+  targetPercent Float // 0~100, 소수 허용 (예: 12.5)
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId])
+  @@map("portfolio_allocation")
   @@schema("seedbook")
 }
 
