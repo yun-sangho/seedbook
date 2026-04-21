@@ -11,7 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@web/components/ui/dialog";
-import { authClient, useSession } from "@web/lib/auth-client";
 import {
   CLOUD_STORE_LABELS,
   downloadAllFromCloud,
@@ -35,18 +34,17 @@ type DialogState =
  * - 현재 모드를 라디오로 표시.
  * - 브라우저 → 클라우드 전환 시 확인 다이얼로그 → 순차 업로드 → 리로드.
  * - 클라우드 → 브라우저 전환 시 확인 다이얼로그 → 순차 다운로드 → 리로드.
- * - 로그인이 안 돼 있으면 클라우드 옵션은 비활성화, 카카오 로그인 버튼을 대신 노출.
+ *
+ * 이 카드는 로그인된 사용자만 볼 수 있다 (AuthGate 가 앱 루트에서 세션을
+ * 강제). 따라서 로그아웃 분기는 없다.
  */
 export function StorageModeCard() {
-  const { data: session, isPending: sessionPending } = useSession();
   const [currentMode, setCurrentMode] = useState<StorageMode>("local");
   const [dialogState, setDialogState] = useState<DialogState>({ kind: "closed" });
 
   useEffect(() => {
     setCurrentMode(getStorageMode());
   }, []);
-
-  const loggedIn = Boolean(session?.user);
 
   async function runUpload() {
     setDialogState({ kind: "progress", direction: "to-cloud", progress: null });
@@ -100,7 +98,7 @@ export function StorageModeCard() {
           <ModeOption
             icon={<HardDrive className="w-5 h-5" />}
             title="이 기기에만 저장"
-            description="이 브라우저의 localStorage 에만 저장합니다. 로그인 없이 바로 사용할 수 있지만 다른 기기와 동기화되지 않습니다."
+            description="이 브라우저의 localStorage 에만 저장합니다. 다른 기기와 동기화되지 않습니다."
             selected={currentMode === "local"}
             disabled={currentMode === "local"}
             onSelect={requestToLocal}
@@ -108,29 +106,12 @@ export function StorageModeCard() {
           <ModeOption
             icon={<Cloud className="w-5 h-5" />}
             title="클라우드에 저장"
-            description="카카오 로그인 후 서버에 저장합니다. 같은 계정으로 어디서든 데이터를 볼 수 있습니다."
+            description="서버에 저장합니다. 같은 계정으로 어디서든 데이터를 볼 수 있습니다."
             selected={currentMode === "cloud"}
-            disabled={currentMode === "cloud" || !loggedIn || sessionPending}
+            disabled={currentMode === "cloud"}
             onSelect={requestToCloud}
           />
         </div>
-
-        {!loggedIn && !sessionPending && (
-          <div className="flex items-center justify-between gap-4 rounded-md border p-3 text-sm">
-            <p className="text-muted-foreground">클라우드 저장을 사용하려면 먼저 로그인해주세요.</p>
-            <Button
-              size="sm"
-              onClick={() =>
-                authClient.signIn.social({
-                  provider: "kakao",
-                  callbackURL: "/admin",
-                })
-              }
-            >
-              카카오 로그인
-            </Button>
-          </div>
-        )}
 
         <p className="text-xs text-muted-foreground">
           현재 선택:{" "}

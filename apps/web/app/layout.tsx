@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { AppHeader } from "@web/components/app-header";
 import { AppSidebar } from "@web/components/app-sidebar";
+import { AuthGate } from "@web/components/auth-gate";
 import { AutoProgressTracker } from "@web/components/auto-progress-tracker";
-import { CloudAuthGate } from "@web/components/cloud-auth-gate";
 import { HydrationGate } from "@web/components/hydration-gate";
 import { ThemeProvider } from "@web/components/theme-provider";
 import { SidebarProvider } from "@web/components/ui/sidebar";
@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           disableTransitionOnChange
         >
           <HydrationGate>
-            <CloudAuthGate>
+            <AuthGate>
               <AutoProgressTracker />
               <SidebarProvider>
                 <AppSidebar />
@@ -38,7 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <main className="w-full h-full max-w-screen-lg mx-auto">{children}</main>
                 </div>
               </SidebarProvider>
-            </CloudAuthGate>
+            </AuthGate>
           </HydrationGate>
         </ThemeProvider>
       </body>
