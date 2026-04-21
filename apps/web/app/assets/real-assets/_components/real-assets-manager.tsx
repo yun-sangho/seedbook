@@ -6,13 +6,14 @@ import { SortableItem } from "@web/components/ui/sortable-item";
 import { SortableList } from "@web/components/ui/sortable-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@web/components/ui/tabs";
 import { useRealAssetsStore } from "@web/features/real-assets/stores/real-assets-store";
+import { useIsReadOnly } from "@web/features/sharing/hooks/use-is-read-only";
 import { Building2, Plus } from "lucide-react";
 import { AddRealAssetModal } from "./add-real-asset-modal";
 import { RealAssetTab } from "./constants";
 import { RealAssetItemComponent } from "./real-asset-item";
 import { RealAssetsSummary } from "./real-assets-summary";
 
-function EmptyState({ onAddAsset }: { onAddAsset: () => void }) {
+function EmptyState({ onAddAsset, readOnly }: { onAddAsset: () => void; readOnly: boolean }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 border-2 border-dashed rounded-lg">
       <div className="flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-4">
@@ -20,13 +21,21 @@ function EmptyState({ onAddAsset }: { onAddAsset: () => void }) {
       </div>
       <h3 className="text-lg font-semibold mb-2">실물자산이 없습니다</h3>
       <p className="text-muted-foreground text-sm text-center mb-6 max-w-md">
-        첫 실물자산을 추가하고 자산을 관리해보세요.
-        <br />
-        부동산, 자동차, 귀금속 등 다양한 자산을 추적할 수 있습니다.
+        {readOnly ? (
+          "아직 등록된 실물자산이 없습니다."
+        ) : (
+          <>
+            첫 실물자산을 추가하고 자산을 관리해보세요.
+            <br />
+            부동산, 자동차, 귀금속 등 다양한 자산을 추적할 수 있습니다.
+          </>
+        )}
       </p>
-      <Button onClick={onAddAsset} size="lg">
-        <Plus className="h-5 w-5" />첫 실물자산 추가하기
-      </Button>
+      {!readOnly && (
+        <Button onClick={onAddAsset} size="lg">
+          <Plus className="h-5 w-5" />첫 실물자산 추가하기
+        </Button>
+      )}
     </div>
   );
 }
@@ -34,6 +43,7 @@ function EmptyState({ onAddAsset }: { onAddAsset: () => void }) {
 export function RealAssetsManager() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<RealAssetTab>(RealAssetTab.ACOUNTS);
+  const isReadOnly = useIsReadOnly();
 
   const realAssets = useRealAssetsStore((state) => state.realAssets);
   const updateRealAsset = useRealAssetsStore((state) => state.updateRealAsset);
@@ -56,7 +66,7 @@ export function RealAssetsManager() {
   if (realAssets.length === 0) {
     return (
       <>
-        <EmptyState onAddAsset={openAddAssetModal} />
+        <EmptyState onAddAsset={openAddAssetModal} readOnly={isReadOnly} />
         <AddRealAssetModal
           isOpen={isModalOpen}
           onClose={closeAddAssetModal}
@@ -77,10 +87,12 @@ export function RealAssetsManager() {
           <TabsTrigger value={RealAssetTab.ACOUNTS}>자산 관리</TabsTrigger>
           <TabsTrigger value={RealAssetTab.STATISTICS}>통계</TabsTrigger>
         </TabsList>
-        <Button onClick={openAddAssetModal} className="ml-auto">
-          <Plus className="h-4 w-4" />
-          실물자산 추가
-        </Button>
+        {!isReadOnly && (
+          <Button onClick={openAddAssetModal} className="ml-auto">
+            <Plus className="h-4 w-4" />
+            실물자산 추가
+          </Button>
+        )}
       </div>
 
       <TabsContent value={RealAssetTab.STATISTICS}>

@@ -7,6 +7,7 @@ import { useDebtsStore } from "@web/features/debts/stores/debts-store";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { useRealAssetsStore } from "@web/features/real-assets/stores/real-assets-store";
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
+import { useIsReadOnly } from "@web/features/sharing/hooks/use-is-read-only";
 import { AddProgressPointDialog } from "./_components/add-progress-point-dialog";
 import { AssetProgressChart } from "./_components/asset-progress-chart";
 import { progressColumns } from "./_components/columns";
@@ -21,6 +22,7 @@ export default function AssetProgressPage() {
   const progressPoints = useProgressStore((state) => state.progressPoints);
   // const setProgressPoints = useProgressStore((state) => state.setProgressPoints);
   const addProgressPoint = useProgressStore((state) => state.addProgressPoint);
+  const isReadOnly = useIsReadOnly();
 
   // 현재 총액 계산
   const currentTotals = useMemo(() => {
@@ -56,7 +58,9 @@ export default function AssetProgressPage() {
             columns={progressColumns}
             data={[...progressPoints].reverse()}
             headerAction={
-              <AddProgressPointDialog currentTotals={currentTotals} onAdd={addProgressPoint} />
+              isReadOnly ? null : (
+                <AddProgressPointDialog currentTotals={currentTotals} onAdd={addProgressPoint} />
+              )
             }
           />
         </CardContent>

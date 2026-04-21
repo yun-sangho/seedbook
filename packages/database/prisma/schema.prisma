@@ -83,6 +83,10 @@ model User {
   preference UserPreference?
   listOrders UserListOrder[]
 
+  // 데이터 공유
+  sharesOwned    DataShare[]           @relation("SharesOwned")
+  sharesReceived DataShareAcceptance[] @relation("SharesReceived")
+
   @@map("user")
   @@schema("seedbook")
 }
@@ -455,5 +459,50 @@ model UserListOrder {
   @@id([userId, domain])
   @@index([userId])
   @@map("user_list_order")
+  @@schema("seedbook")
+}
+
+// ============================================================================
+// 데이터 공유 (Data Sharing)
+// ============================================================================
+//
+// 소유자가 공유 코드를 발급하고, 수신자가 코드를 입력해 수락하면 소유자의
+// 전체 자산 데이터를 읽기 전용으로 열람할 수 있다. 클라우드 모드 사용자만
+// 이용 가능 (데이터가 DB 에 있어야 공유할 수 있음).
+//
+//   - DataShare: 소유자가 만든 공유 "초대". 코드와 라벨을 갖는다.
+//   - DataShareAcceptance: 수신자가 코드를 수락한 결과. (share, recipient) 쌍이
+//     유일하다. 소유자가 acceptance 를 삭제하면 해당 수신자의 접근만 차단.
+//     share 전체를 삭제하면 모든 수락자의 접근이 차단된다 (cascade).
+// ============================================================================
+
+model DataShare {
+  id          String    @id @default(uuid()) @db.Uuid
+  ownerUserId String
+  code        String    @unique
+  label       String?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  owner       User                  @relation("SharesOwned", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  acceptances DataShareAcceptance[]
+
+  @@index([ownerUserId])
+  @@map("data_share")
+  @@schema("seedbook")
+}
+
+model DataShareAcceptance {
+  id              String   @id @default(uuid()) @db.Uuid
+  shareId         String   @db.Uuid
+  recipientUserId String
+  acceptedAt      DateTime @default(now())
+
+  share     DataShare @relation(fields: [shareId], references: [id], onDelete: Cascade)
+  recipient User      @relation("SharesReceived", fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  @@unique([shareId, recipientUserId])
+  @@index([recipientUserId])
+  @@map("data_share_acceptance")
   @@schema("seedbook")
 }

@@ -120,9 +120,7 @@ export function PortfolioList({ portfolios }: PortfolioListProps) {
                       ) : (
                         <CheckCircle2 className="h-3 w-3" />
                       )}
-                      {drift.hasBreach
-                        ? `이격 초과 ${drift.breachedRows.length}건`
-                        : "이격 정상"}
+                      {drift.hasBreach ? `이격 초과 ${drift.breachedRows.length}건` : "이격 정상"}
                     </span>
                   )}
                 </div>

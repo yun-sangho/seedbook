@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { STORAGE_MODE_KEY, type StorageMode } from "@web/lib/storage-mode";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthGate } from "./auth-gate";
 
 // Better Auth 의 React 클라이언트는 jsdom 환경에서 fetch 를 때리므로 통째로
@@ -60,7 +60,9 @@ describe("AuthGate", () => {
       );
 
       expect(screen.getByText("앱 콘텐츠")).toBeInTheDocument();
-      expect(screen.queryByRole("heading", { name: "로그인이 필요합니다" })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: "로그인이 필요합니다" })
+      ).not.toBeInTheDocument();
     }
   );
 
@@ -91,7 +93,9 @@ describe("AuthGate", () => {
     );
 
     // 로그인 없이 앱에 들어갈 수 있던 유일한 경로였다 — 회귀 방지.
-    expect(screen.queryByRole("button", { name: /브라우저 저장으로 전환/ })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /브라우저 저장으로 전환/ })
+    ).not.toBeInTheDocument();
   });
 
   it("calls Kakao social sign-in when the login button is clicked", () => {
