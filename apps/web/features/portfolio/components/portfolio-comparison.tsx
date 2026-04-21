@@ -30,10 +30,7 @@ import {
   type ActualAllocationResult,
 } from "../utils/compute-actual-allocation";
 import { computeDriftAlert, type DriftAlert } from "../utils/compute-drift-alert";
-import {
-  computeRebalancingGap,
-  type RebalancingSummary,
-} from "../utils/compute-rebalancing-gap";
+import { computeRebalancingGap, type RebalancingSummary } from "../utils/compute-rebalancing-gap";
 import { resolvePortfolioAccounts } from "../utils/resolve-portfolio-accounts";
 
 interface PortfolioComparisonProps {
@@ -144,10 +141,7 @@ export function PortfolioComparison({ portfolio }: PortfolioComparisonProps) {
         </div>
         {perAccountAvailable && (
           <div className="inline-flex rounded-md border bg-background p-0.5">
-            <ViewToggleButton
-              active={effectiveMode === "sum"}
-              onClick={() => setViewMode("sum")}
-            >
+            <ViewToggleButton active={effectiveMode === "sum"} onClick={() => setViewMode("sum")}>
               전체 합산
             </ViewToggleButton>
             <ViewToggleButton
@@ -444,12 +438,7 @@ interface PerAccountCardProps {
   colorMap: Map<string, string>;
 }
 
-function PerAccountCard({
-  portfolio,
-  account,
-  prices,
-  colorMap,
-}: PerAccountCardProps) {
+function PerAccountCard({ portfolio, account, prices, colorMap }: PerAccountCardProps) {
   const actual = useMemo(() => computeActualAllocation([account], prices), [account, prices]);
   const summary = useMemo(
     () =>
@@ -530,7 +519,10 @@ function DriftBadge({
       : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
   );
   return (
-    <span className={base} title={`임계 ${thresholdPercent}% | 최대 |gap| ${drift.maxAbsGapPercent.toFixed(1)}%`}>
+    <span
+      className={base}
+      title={`임계 ${thresholdPercent}% | 최대 |gap| ${drift.maxAbsGapPercent.toFixed(1)}%`}
+    >
       {drift.hasBreach ? (
         <AlertTriangle className="h-3.5 w-3.5" />
       ) : (

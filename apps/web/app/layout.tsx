@@ -8,6 +8,7 @@ import { AutoProgressTracker } from "@web/components/auto-progress-tracker";
 import { HydrationGate } from "@web/components/hydration-gate";
 import { ThemeProvider } from "@web/components/theme-provider";
 import { SidebarProvider } from "@web/components/ui/sidebar";
+import { SharedViewBanner } from "@web/features/sharing/components/shared-view-banner";
 import { cn } from "@web/lib/utils";
 
 const geist = Geist({ subsets: ["latin"] });
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <SidebarProvider>
                 <AppSidebar />
                 <div className="w-full h-full">
+                  <SharedViewBanner />
                   <AppHeader />
                   <main className="w-full h-full max-w-screen-lg mx-auto">{children}</main>
                 </div>

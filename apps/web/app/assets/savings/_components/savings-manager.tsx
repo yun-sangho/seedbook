@@ -7,6 +7,7 @@ import { SortableItem } from "@web/components/ui/sortable-item";
 import { SortableList } from "@web/components/ui/sortable-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@web/components/ui/tabs";
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
+import { useIsReadOnly } from "@web/features/sharing/hooks/use-is-read-only";
 import { Plus } from "lucide-react";
 import { AddSavingsModal } from "./add-savings-modal";
 import { SavingtTab } from "./constants";
@@ -16,6 +17,7 @@ import { SavingsSummary } from "./savings-summary";
 export function SavingsManager() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<SavingtTab>(SavingtTab.ACOUNTS);
+  const isReadOnly = useIsReadOnly();
 
   const savings = useSavingsStore((state) => state.savings);
   const updateSavings = useSavingsStore((state) => state.updateSavings);
@@ -32,9 +34,11 @@ export function SavingsManager() {
           <CardContent className="py-12">
             <div className="text-center space-y-4">
               <p className="text-muted-foreground">아직 등록된 저축 계좌가 없습니다.</p>
-              <Button onClick={() => setIsModalOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />첫 저축 계좌 추가하기
-              </Button>
+              {!isReadOnly && (
+                <Button onClick={() => setIsModalOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />첫 저축 계좌 추가하기
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -75,10 +79,12 @@ export function SavingsManager() {
             <TabsTrigger value={SavingtTab.STATISTICS}>요약</TabsTrigger>
           </TabsList>
 
-          <Button onClick={() => setIsModalOpen(true)}>
-            <Plus className="h-4 w-4" />
-            저축 계좌 추가
-          </Button>
+          {!isReadOnly && (
+            <Button onClick={() => setIsModalOpen(true)}>
+              <Plus className="h-4 w-4" />
+              저축 계좌 추가
+            </Button>
+          )}
         </div>
 
         {/* 요약 탭 */}

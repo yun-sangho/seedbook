@@ -201,7 +201,9 @@ export const usePortfolioStore = create<PortfolioState>()(
       },
 
       setDriftThreshold: (portfolioId, value) => {
-        const clamped = Number.isFinite(value) ? Math.max(0, value) : DEFAULT_DRIFT_THRESHOLD_PERCENT;
+        const clamped = Number.isFinite(value)
+          ? Math.max(0, value)
+          : DEFAULT_DRIFT_THRESHOLD_PERCENT;
         set((state) => ({
           portfolios: state.portfolios.map((p) =>
             p.id === portfolioId ? touch({ ...p, driftThresholdPercent: clamped }) : p

@@ -17,13 +17,14 @@ import {
   type HoldingsSortOption,
 } from "@web/features/investments/stores/investment-store";
 import { InvestmentItem } from "@web/features/investments/types/types";
+import { useIsReadOnly } from "@web/features/sharing/hooks/use-is-read-only";
 import { Plus, TrendingUp } from "lucide-react";
 import { AddInvestmentModal } from "./add-investment-modal";
 import { InvestmentTab } from "./constants";
 import { InvestmentItemComponent } from "./investment-item";
 import { InvestmentSummary } from "./investment-summary";
 
-function EmptyState({ onAddAccount }: { onAddAccount: () => void }) {
+function EmptyState({ onAddAccount, readOnly }: { onAddAccount: () => void; readOnly: boolean }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 border-2 border-dashed rounded-lg">
       <div className="flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-4">
@@ -31,13 +32,21 @@ function EmptyState({ onAddAccount }: { onAddAccount: () => void }) {
       </div>
       <h3 className="text-lg font-semibold mb-2">투자 계좌가 없습니다</h3>
       <p className="text-muted-foreground text-sm text-center mb-6 max-w-md">
-        첫 투자 계좌를 추가하고 자산의 성장을 추적해보세요.
-        <br />
-        다양한 투자 계좌를 한 곳에서 관리할 수 있습니다.
+        {readOnly ? (
+          "아직 등록된 투자 계좌가 없습니다."
+        ) : (
+          <>
+            첫 투자 계좌를 추가하고 자산의 성장을 추적해보세요.
+            <br />
+            다양한 투자 계좌를 한 곳에서 관리할 수 있습니다.
+          </>
+        )}
       </p>
-      <Button onClick={onAddAccount} size="lg">
-        <Plus className="h-5 w-5" />첫 투자 계좌 추가하기
-      </Button>
+      {!readOnly && (
+        <Button onClick={onAddAccount} size="lg">
+          <Plus className="h-5 w-5" />첫 투자 계좌 추가하기
+        </Button>
+      )}
     </div>
   );
 }
@@ -45,6 +54,7 @@ function EmptyState({ onAddAccount }: { onAddAccount: () => void }) {
 export function InvestmentManager() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<InvestmentTab>(InvestmentTab.ACOUNTS);
+  const isReadOnly = useIsReadOnly();
 
   const investments = useInvestmentStore((state) => state.investments);
   const updateInvestment = useInvestmentStore((state) => state.updateInvestment);
@@ -97,7 +107,7 @@ export function InvestmentManager() {
   if (investments.length === 0) {
     return (
       <>
-        <EmptyState onAddAccount={openAddAccountModal} />
+        <EmptyState onAddAccount={openAddAccountModal} readOnly={isReadOnly} />
         <AddInvestmentModal
           isOpen={isModalOpen}
           onClose={closeAddAccountModal}
@@ -118,10 +128,12 @@ export function InvestmentManager() {
           <TabsTrigger value={InvestmentTab.ACOUNTS}>계좌 관리</TabsTrigger>
           <TabsTrigger value={InvestmentTab.STATISTICS}>통계</TabsTrigger>
         </TabsList>
-        <Button onClick={openAddAccountModal} className="ml-auto">
-          <Plus className="h-4 w-4" />
-          투자 계좌 추가
-        </Button>
+        {!isReadOnly && (
+          <Button onClick={openAddAccountModal} className="ml-auto">
+            <Plus className="h-4 w-4" />
+            투자 계좌 추가
+          </Button>
+        )}
       </div>
 
       <TabsContent value={InvestmentTab.STATISTICS}>

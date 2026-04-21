@@ -4,6 +4,7 @@
 // 이 import 가 store 파일보다 앞서 실행되도록 hybrid-storage 가 소유한다.
 import "./local-id-upgrade";
 import { useSyncStatusStore } from "@web/features/settings/stores/sync-status-store";
+import { getCurrentViewContext } from "@web/features/sharing/stores/view-context-store";
 import type { StateStorage } from "zustand/middleware";
 import { getStorageMode } from "./storage-mode";
 
@@ -50,6 +51,11 @@ const pending = new Map<string, PendingFlush>();
 // 한 같은 세션 안에선 이 값이 바뀌지 않는다.
 const mode = typeof window === "undefined" ? "local" : getStorageMode();
 
+// 공유받은 사용자 데이터를 열람 중인지. 모드 전환은 reload 를 동반하므로 첫 로드
+// 때 한 번만 읽어서 고정한다. "shared" 상태에서는 localStorage 캐시를 건드리지
+// 않고 (내 캐시 보호), GET 은 공유 전용 엔드포인트로 보낸다. 쓰기는 전부 no-op.
+const sharedView = typeof window === "undefined" ? null : getCurrentViewContext();
+
 function syncStatus() {
   // 직접 getState 로 접근 — 어댑터는 React 밖에서 불릴 수 있다.
   return useSyncStatusStore.getState();
@@ -82,19 +88,22 @@ function removeCache(key: string): void {
 async function cloudGet(key: string): Promise<string | null> {
   syncStatus().markSaving(key);
   try {
-    const res = await fetch(`/api/storage/${encodeURIComponent(key)}`, {
+    const url = sharedView
+      ? `/api/sharing/view/${encodeURIComponent(sharedView.ownerId)}/storage/${encodeURIComponent(key)}`
+      : `/api/storage/${encodeURIComponent(key)}`;
+    const res = await fetch(url, {
       method: "GET",
       credentials: "include",
     });
     if (res.status === 401) {
       syncStatus().markUnauthenticated();
       // HydrationGate 가 세션 상태를 관찰해 로그인 화면으로 보낸다.
-      // 폴백: 캐시가 있으면 그걸로 첫 페인트만이라도 보여준다.
-      return readCache(key);
+      // shared 모드에서는 캐시 폴백 금지 (다른 사람 데이터를 내 캐시에 저장하지 않음).
+      return sharedView ? null : readCache(key);
     }
     if (!res.ok) {
       syncStatus().markError(key, `GET ${key} ${res.status}`);
-      return readCache(key);
+      return sharedView ? null : readCache(key);
     }
     const body = (await res.json()) as { data: unknown };
     syncStatus().markSaved(key);
@@ -103,12 +112,13 @@ async function cloudGet(key: string): Promise<string | null> {
       return null;
     }
     const serialized = JSON.stringify(body.data);
-    writeCache(key, serialized);
+    // shared 모드에서는 내 localStorage 에 남의 데이터를 기록하지 않는다.
+    if (!sharedView) writeCache(key, serialized);
     return serialized;
   } catch {
     // 네트워크 실패 — offline 상태로 표시하고 캐시로 fallback.
     syncStatus().markOffline(key);
-    return readCache(key);
+    return sharedView ? null : readCache(key);
   }
 }
 
@@ -172,7 +182,8 @@ function installBeforeUnloadFlush(): void {
   });
 }
 
-if (mode === "cloud") {
+// shared 모드에서는 쓰기가 전부 no-op 이므로 flush 할 것도 없다.
+if (mode === "cloud" && !sharedView) {
   installBeforeUnloadFlush();
 }
 
@@ -224,10 +235,15 @@ export function createHybridStorage(key: string): StateStorage {
       return cloudGet(name || key);
     },
     setItem: (name, value) => {
+      // 공유받은 데이터를 보는 동안은 쓰기를 전부 삼킨다. UI 도 편집을 숨기지만
+      // persist 미들웨어가 rehydrate 직후 1 회 setItem 을 호출할 수 있어 여기서
+      // 반드시 차단해야 한다 — 내 localStorage 와 내 서버 데이터 모두 보호.
+      if (sharedView) return;
       writeCache(name || key, value);
       enqueueCloudPut(name || key, value);
     },
     removeItem: (name) => {
+      if (sharedView) return;
       removeCache(name || key);
       enqueueCloudPut(name || key, JSON.stringify(null));
     },

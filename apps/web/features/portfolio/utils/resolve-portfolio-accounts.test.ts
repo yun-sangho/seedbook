@@ -20,11 +20,7 @@ function makeAccount(id: string, name = id): InvestmentItem {
 }
 
 describe("resolvePortfolioAccounts", () => {
-  const investments: InvestmentItem[] = [
-    makeAccount("a"),
-    makeAccount("b"),
-    makeAccount("c"),
-  ];
+  const investments: InvestmentItem[] = [makeAccount("a"), makeAccount("b"), makeAccount("c")];
 
   it("returns all investments when accountIds is empty (backward compat)", () => {
     const result = resolvePortfolioAccounts({ accountIds: [] }, investments);
