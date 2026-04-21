@@ -115,4 +115,20 @@ describe("AuthGate", () => {
       callbackURL: "/dashboard",
     });
   });
+
+  it("does not render the dev-bypass button outside of NODE_ENV=development", () => {
+    // vitest 는 NODE_ENV 를 "test" 로 돌린다. 프로덕션 빌드에 dev-bypass 가
+    // 새어 나가지 않도록 하는 회귀 테스트.
+    mockUseSession.mockReturnValue({ data: null, isPending: false });
+
+    render(
+      <AuthGate>
+        <div>앱 콘텐츠</div>
+      </AuthGate>
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /개발용 빠른 로그인/ })
+    ).not.toBeInTheDocument();
+  });
 });
