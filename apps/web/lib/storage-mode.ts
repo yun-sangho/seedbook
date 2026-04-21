@@ -13,7 +13,7 @@ export const STORAGE_MODE_KEY = "seedbook.storageMode";
 export type StorageMode = "local" | "cloud";
 
 /**
- * Zustand persist 에 배선된 6 개 store 의 key. 이 배열은 **closed set** 이며
+ * Zustand persist 에 배선된 store 들의 key. 이 배열은 **closed set** 이며
  * API 라우트가 임의의 key 요청을 거부하는 화이트리스트이기도 하다.
  */
 export const CLOUD_STORE_KEYS = [
@@ -23,6 +23,7 @@ export const CLOUD_STORE_KEYS = [
   "real-assets-storage",
   "debts-storage",
   "progress-storage",
+  "portfolio-storage",
 ] as const;
 
 export type CloudStoreKey = (typeof CLOUD_STORE_KEYS)[number];

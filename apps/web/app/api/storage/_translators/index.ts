@@ -2,6 +2,7 @@ import type { CloudStoreKey } from "@web/lib/storage-mode";
 import { assetPlanTranslator } from "./asset-plan";
 import { debtsTranslator } from "./debts";
 import { investmentTranslator } from "./investment";
+import { portfolioTranslator } from "./portfolio";
 import { progressTranslator } from "./progress";
 import { realAssetsTranslator } from "./real-assets";
 import { savingsTranslator } from "./savings";
@@ -18,6 +19,7 @@ export const TRANSLATORS: Record<CloudStoreKey, DomainTranslator> = {
   "real-assets-storage": realAssetsTranslator,
   "asset-plan-storage": assetPlanTranslator,
   "progress-storage": progressTranslator,
+  "portfolio-storage": portfolioTranslator,
 };
 
 export type { DomainTranslator, Envelope } from "./types";

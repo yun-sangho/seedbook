@@ -124,4 +124,5 @@ export const CLOUD_STORE_LABELS: Record<CloudStoreKey, string> = {
   "real-assets-storage": "실물 자산",
   "debts-storage": "대출",
   "progress-storage": "자산 기록",
+  "portfolio-storage": "포트폴리오",
 };

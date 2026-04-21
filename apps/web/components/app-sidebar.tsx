@@ -26,6 +26,7 @@ import {
   Home,
   LineChart,
   ListChecks,
+  PieChart,
   PiggyBank,
   Settings,
   Target,
@@ -56,6 +57,11 @@ const assetItems = [
     title: "투자",
     url: "/assets/investments",
     icon: TrendingUp,
+  },
+  {
+    title: "포트폴리오",
+    url: "/assets/portfolio",
+    icon: PieChart,
   },
   {
     title: "저축",
