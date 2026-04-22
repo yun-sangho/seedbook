@@ -5,6 +5,7 @@
 **/.next
 **/.turbo
 **/dist
+**/*.tsbuildinfo
 
 # Test artifacts
 **/coverage
