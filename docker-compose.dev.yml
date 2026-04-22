@@ -35,6 +35,7 @@ services:
       - ./apps/stock-crawler/src:/app/apps/stock-crawler/src
       - ./packages/database/src:/app/packages/database/src
       - ./packages/database/prisma:/app/packages/database/prisma
+      - ./packages/database/scripts:/app/packages/database/scripts
 
   web:
     build:
@@ -67,6 +68,7 @@ services:
       - ./apps/web/public:/app/apps/web/public
       - ./packages/database/src:/app/packages/database/src
       - ./packages/database/prisma:/app/packages/database/prisma
+      - ./packages/database/scripts:/app/packages/database/scripts
 
 volumes:
   postgres_data_dev:

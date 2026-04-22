@@ -8,8 +8,13 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "dotenv -e .env.local prisma migrate dev",
     "build": "tsc -p tsconfig.json",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:seed:capture": "tsx scripts/capture-seed.ts",
     "etl:etf:prices": "tsx ./scripts/fetch-etf-prices.ts",
     "etl:etf:holdings": "tsx ./scripts/fetch-etf-holdings.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.19.0",

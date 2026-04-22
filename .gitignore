@@ -36,9 +36,13 @@ yarn-error.log*
 # ui
 dist/
 
+# typescript incremental build cache
+*.tsbuildinfo
+
 .omc/
 
 # claude code runtime logs
 .claude/hooks-logs/
 .claude/worktrees/
 .claude/scheduled_tasks.lock
+.worktree-setup.log

@@ -28,13 +28,24 @@ Requires Node >= 22, pnpm 8.
 - 수동 오버라이드: `WEB_PORT=3005 pnpm docker:dev`
 - Postgres는 호스트에 포트를 노출하지 않는다. DB 접근: `docker compose exec postgres psql -U seedbook`
 
+### DB seed (capture/replay)
+
+`public.Stock` / `public.StockPrice` 초기 데이터는 크롤러가 한 번 돈 뒤 스냅샷 파일로 캡처해 레포에 커밋한다. 하드코딩된 큐레이션 리스트는 쓰지 않는다 — 실 크롤러 산출물이 소스 오브 트루스.
+
+- Fixture 경로: `packages/database/prisma/seed-data/{stocks,stock-prices,meta}.json`
+- **캡처**: 크롤러가 데이터 채운 뒤 `docker compose exec stock-crawler pnpm --filter @seedbook/database db:seed:capture` 실행. `SEED_PRICE_DAYS` (기본 5) 로 최근 거래일 개수 조정.
+- **재생**: `pnpm docker:dev` 기동 시 entrypoint 가 `migrate deploy` 뒤에 자동 실행 (NODE_ENV=development 일 때만). 수동: `pnpm db:seed`.
+- 재생은 upsert 라 멱등. 크롤러가 이후 덮어쓰므로 fixture 는 "최소한 이만큼은 있어야 함" 의미. 프로덕션 (`pnpm docker:prod`) 에서는 실행되지 않음.
+
 ## Architecture
 
 **Monorepo** (Turborepo + pnpm workspaces):
+
 - `apps/web` — Next.js 15 (App Router), React 19, main application
 - `packages/` — shared configs (eslint, tailwind, tsconfig), database (Prisma)
 
 **Feature organization** (`apps/web/features/<domain>/`):
+
 - `types/` — interfaces and constants
 - `stores/` — Zustand store (one per domain: investments, asset-plan, savings, debts, real-assets, progress)
 - `utils/` — calculation logic and helpers (kept out of components for testability)
@@ -57,6 +68,7 @@ Requires Node >= 22, pnpm 8.
 ## Chart Interaction Policy (DO NOT regress)
 
 File: `components/investment-plan-comparison-chart.tsx`
+
 - Zoom: buttons only (전체/30년/10년/5년). **No wheel/pinch zoom.**
 - Wheel (zoom > 1) = horizontal pan. Touch single-finger drag = horizontal pan.
 - All events stopped via `passive:false` + `preventDefault` + `stopPropagation`.
@@ -91,7 +103,7 @@ Local dev: `pnpm docker:dev`로 postgres + stock-crawler + web을 모두 Docker�
 
 ## Shell Command Rules
 
-**Do not wrap docker/pnpm/git commands in `for` loops** (or any shell construct that starts with a non-excluded keyword like `for`, `while`, `if`). The sandbox decides "inside vs outside" by matching the first token of the command string against `excludedCommands`; a `for` loop starts with `for`, so the whole invocation runs *inside* the sandbox, and the docker/pnpm/git call inside the loop then hits `operation not permitted` when it tries to reach docker.sock or similar resources. Run each command as a separate Bash call, or chain with `&&` / `;` starting with the excluded keyword (e.g., `docker compose logs ... && docker compose ps`).
+**Do not wrap docker/pnpm/git commands in `for` loops** (or any shell construct that starts with a non-excluded keyword like `for`, `while`, `if`). The sandbox decides "inside vs outside" by matching the first token of the command string against `excludedCommands`; a `for` loop starts with `for`, so the whole invocation runs _inside_ the sandbox, and the docker/pnpm/git call inside the loop then hits `operation not permitted` when it tries to reach docker.sock or similar resources. Run each command as a separate Bash call, or chain with `&&` / `;` starting with the excluded keyword (e.g., `docker compose logs ... && docker compose ps`).
 
 ## Key Files
 
