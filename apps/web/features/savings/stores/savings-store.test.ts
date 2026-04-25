@@ -34,7 +34,7 @@ describe("Savings Store", () => {
   });
 
   describe("Savings Management", () => {
-    it("should add savings with type and owner", () => {
+    it("should add savings with type", () => {
       const { addSavingsWithType } = useSavingsStore.getState();
 
       addSavingsWithType("정기예금");

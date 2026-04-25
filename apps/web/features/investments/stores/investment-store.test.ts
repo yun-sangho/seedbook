@@ -77,7 +77,7 @@ describe("Investment Store", () => {
   });
 
   describe("Investment Management", () => {
-    it("should add investment with type and owner", () => {
+    it("should add investment with type", () => {
       const { addInvestmentWithType } = useInvestmentStore.getState();
 
       addInvestmentWithType("증권계좌");
@@ -1010,7 +1010,7 @@ describe("Investment Store", () => {
       expect(state.investments[0]!.color).not.toBe(initialColor);
     });
 
-    it("should assign colors when adding investments with type and owner", () => {
+    it("should assign colors when adding investments with type", () => {
       const { addInvestmentWithType } = useInvestmentStore.getState();
 
       addInvestmentWithType("증권계좌");
