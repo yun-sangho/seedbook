@@ -361,8 +361,23 @@ async function seedUserData(userId: string): Promise<void> {
     }
   }
 
+  // 도메인별 표시 순서. 비어있는 도메인은 row 를 만들지 않는다 — translator 의
+  // read 가 listOrder 부재를 자연스럽게 처리한다.
+  const orderRows: { domain: string; order: string[] }[] = [
+    { domain: "investment-accounts", order: investments.map((i) => i.id) },
+    { domain: "savings-accounts", order: savings.map((s) => s.id) },
+    { domain: "debts", order: debts.map((d) => d.id) },
+    { domain: "real-assets", order: realAssets.map((a) => a.id) },
+  ].filter((r) => r.order.length > 0);
+  if (orderRows.length > 0) {
+    await prisma.userListOrder.createMany({
+      data: orderRows.map((r) => ({ userId, domain: r.domain, order: r.order })),
+      skipDuplicates: true,
+    });
+  }
+
   console.log(
-    `[seed] user-data: investments=${investments.length}, savings=${savings.length}, debts=${debts.length}, realAssets=${realAssets.length}, progressPoints=${progressPoints.length} in ${Date.now() - started}ms`
+    `[seed] user-data: investments=${investments.length}, savings=${savings.length}, debts=${debts.length}, realAssets=${realAssets.length}, progressPoints=${progressPoints.length}, listOrders=${orderRows.length} in ${Date.now() - started}ms`
   );
 }
 
