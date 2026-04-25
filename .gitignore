@@ -49,3 +49,6 @@ dist/
 .claude/worktrees/
 .claude/scheduled_tasks.lock
 .worktree-setup.log
+
+# playwright MCP session artifacts
+.playwright-mcp/
