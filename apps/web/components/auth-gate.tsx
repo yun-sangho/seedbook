@@ -13,7 +13,7 @@ async function signInWithDevBypass() {
   if (!response.ok) {
     throw new Error(`dev-login failed: ${response.status}`);
   }
-  window.location.href = "/dashboard";
+  window.location.href = "/assets";
 }
 
 /**
@@ -51,7 +51,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
             onClick={() =>
               authClient.signIn.social({
                 provider: "kakao",
-                callbackURL: "/dashboard",
+                callbackURL: "/assets",
               })
             }
           >

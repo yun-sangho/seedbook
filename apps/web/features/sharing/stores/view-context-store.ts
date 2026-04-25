@@ -66,14 +66,14 @@ export const useViewContextStore = create<ViewContextStore>((set) => ({
     writeSessionContext(ctx);
     set({ shared: ctx });
     if (typeof window !== "undefined") {
-      window.location.href = "/dashboard";
+      window.location.href = "/assets";
     }
   },
   exitShared: () => {
     writeSessionContext(null);
     set({ shared: null });
     if (typeof window !== "undefined") {
-      window.location.href = "/dashboard";
+      window.location.href = "/assets";
     }
   },
 }));

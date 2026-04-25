@@ -13,7 +13,6 @@ type SavingsItemPayload = {
   id: string;
   accountName: string;
   accountType: string;
-  accountOwner: string;
   currency: string;
   balance: number;
   interestRate?: number;
@@ -50,7 +49,6 @@ export const savingsTranslator: DomainTranslator = {
       id: acc.id,
       accountName: acc.accountName,
       accountType: acc.accountType,
-      accountOwner: acc.accountOwner,
       currency: acc.currency,
       balance: bigIntToNumber(acc.balance),
       interestRate: acc.interestRate ?? undefined,
@@ -97,7 +95,6 @@ export const savingsTranslator: DomainTranslator = {
             userId,
             accountName: s.accountName,
             accountType: s.accountType,
-            accountOwner: s.accountOwner,
             currency: s.currency,
             balance: toBigInt(s.balance),
             interestRate: s.interestRate ?? null,
@@ -107,7 +104,6 @@ export const savingsTranslator: DomainTranslator = {
           update: {
             accountName: s.accountName,
             accountType: s.accountType,
-            accountOwner: s.accountOwner,
             currency: s.currency,
             balance: toBigInt(s.balance),
             interestRate: s.interestRate ?? null,

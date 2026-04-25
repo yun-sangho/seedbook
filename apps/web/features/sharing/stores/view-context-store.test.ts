@@ -6,7 +6,7 @@ import { getCurrentViewContext, VIEW_CONTEXT_SESSION_KEY } from "./view-context-
  * 모듈 레벨에서 직접 읽는 `getCurrentViewContext` 를 기준으로 검증한다.
  *
  * 스토어의 `enterShared` / `exitShared` 는 내부적으로
- * `window.location.href = "/dashboard"` 를 호출하므로 jsdom 에서 별도의
+ * `window.location.href = "/assets"` 를 호출하므로 jsdom 에서 별도의
  * `location` 모킹 없이 호출하기는 어렵다. sessionStorage 쓰기 그 자체는
  * 모듈 레벨의 `writeSessionContext` 로 검증된다.
  */
@@ -92,7 +92,7 @@ describe("useViewContextStore actions", () => {
       ownerName: "공유자",
       label: "부모님",
     });
-    expect(hrefSetter).toHaveBeenCalledWith("/dashboard");
+    expect(hrefSetter).toHaveBeenCalledWith("/assets");
   });
 
   it("exitShared 가 sessionStorage 를 비운다", async () => {
@@ -113,6 +113,6 @@ describe("useViewContextStore actions", () => {
     useViewContextStore.getState().exitShared();
 
     expect(window.sessionStorage.getItem(VIEW_CONTEXT_SESSION_KEY)).toBeNull();
-    expect(hrefSetter).toHaveBeenCalledWith("/dashboard");
+    expect(hrefSetter).toHaveBeenCalledWith("/assets");
   });
 });

@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@web/components/ui/select";
 import { Textarea } from "@web/components/ui/textarea";
-import { DEFAULT_OWNERS, LOAN_TYPES } from "@web/features/debts/types/constants";
+import { LOAN_TYPES } from "@web/features/debts/types/constants";
 import { DebtsItem } from "@web/features/debts/types/types";
 import { CurrencyType } from "@web/types/account.consts";
 import { numberToKorean } from "@web/utils/number-format";
@@ -50,7 +50,7 @@ export function DebtItemComponent({ item, onUpdateDebt, onRemoveDebt }: DebtItem
       <CardHeader>
         <div className="flex gap-2 flex-wrap sm:items-center max-sm:flex-col">
           <div className="flex items-center gap-2">
-            <Badge variant={"secondary"}>{`${item.loanType} / ${item.loanOwner}`}</Badge>
+            <Badge variant={"secondary"}>{item.loanType}</Badge>
           </div>
           <div className="flex justify-between items-center flex-grow-1 flex-wrap">
             <AssetNameInput
@@ -123,25 +123,6 @@ export function DebtItemComponent({ item, onUpdateDebt, onRemoveDebt }: DebtItem
                     {LOAN_TYPES.map((type) => (
                       <SelectItem key={type} value={type}>
                         {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor={`loanOwner-${item.id}`}>차주</Label>
-                <Select
-                  value={item.loanOwner}
-                  onValueChange={(value) => onUpdateDebt(item.id, "loanOwner", value)}
-                >
-                  <SelectTrigger id={`loanOwner-${item.id}`}>
-                    <SelectValue placeholder="차주 선택" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEFAULT_OWNERS.map((owner) => (
-                      <SelectItem key={owner} value={owner}>
-                        {owner}
                       </SelectItem>
                     ))}
                   </SelectContent>

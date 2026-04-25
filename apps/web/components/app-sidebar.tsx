@@ -23,7 +23,6 @@ import {
 import {
   Building2,
   CreditCard,
-  Home,
   LineChart,
   ListChecks,
   PieChart,
@@ -33,14 +32,6 @@ import {
   TrendingUp,
   Wallet,
 } from "lucide-react";
-
-const menuItems = [
-  {
-    title: "대시보드",
-    url: "/dashboard",
-    icon: Home,
-  },
-];
 
 const assetItems = [
   {
@@ -115,33 +106,6 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>메뉴</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <TooltipProvider delayDuration={0}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <SidebarMenuButton asChild isActive={pathname === item.url}>
-                          <Link href={item.url}>
-                            <item.icon />
-                            <span>{item.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        <p>{item.title}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
         <SidebarGroup>
           <SidebarGroupLabel>자산 관리</SidebarGroupLabel>
           <SidebarGroupContent>

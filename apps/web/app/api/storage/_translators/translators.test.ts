@@ -33,9 +33,8 @@ describe("investment translator round-trip", () => {
       investments: [
         {
           id: "inv-uuid-1",
-          accountName: "홍길동의 증권계좌",
+          accountName: "증권계좌 1",
           accountType: "증권계좌",
-          accountOwner: "홍길동",
           currency: "KRW",
           initialInvestment: 10000000,
           currentValue: 12000000,
@@ -73,7 +72,7 @@ describe("investment translator round-trip", () => {
 
     const inv = (result!.state.investments as unknown[])[0] as Record<string, unknown>;
     expect(inv.id).toBe("inv-uuid-1");
-    expect(inv.accountName).toBe("홍길동의 증권계좌");
+    expect(inv.accountName).toBe("증권계좌 1");
     expect(inv.initialInvestment).toBe(10000000);
     expect(inv.currentValue).toBe(12000000);
 
@@ -119,7 +118,6 @@ describe("savings translator round-trip", () => {
           id: "sav-uuid-1",
           accountName: "김철수의 저축 계좌",
           accountType: "예금",
-          accountOwner: "김철수",
           currency: "원",
           balance: 5000000,
           interestRate: 3.5,
@@ -164,7 +162,6 @@ describe("debts translator round-trip", () => {
           id: "debt-uuid-1",
           loanName: "주택담보대출",
           loanType: "주택담보",
-          loanOwner: "본인",
           lender: "KB국민은행",
           amount: 300000000,
           interestRate: 3.9,
@@ -204,7 +201,6 @@ describe("real-assets translator round-trip", () => {
           id: "ra-uuid-1",
           assetName: "서울 아파트",
           assetType: "부동산",
-          assetOwner: "본인",
           currentValue: 800000000,
           purchaseValue: 600000000,
           purchaseDate: "2020-05-10",
@@ -212,12 +208,11 @@ describe("real-assets translator round-trip", () => {
           color: "#f59e0b",
         },
       ],
-      customOwners: ["본인", "배우자"],
     },
     version: 2,
   };
 
-  it("write 후 read round-trip 이 정확하다 (customOwners 포함)", async () => {
+  it("write 후 read round-trip 이 정확하다", async () => {
     await realAssetsTranslator.write(prisma, USER_ID, sampleEnvelope);
     const result = await realAssetsTranslator.read(prisma, USER_ID);
 
@@ -226,9 +221,6 @@ describe("real-assets translator round-trip", () => {
     expect(asset.assetName).toBe("서울 아파트");
     expect(asset.currentValue).toBe(800000000);
     expect(asset.purchaseDate).toBe("2020-05-10");
-
-    const owners = result!.state.customOwners as string[];
-    expect(owners).toEqual(expect.arrayContaining(["본인", "배우자"]));
   });
 });
 
@@ -554,7 +546,6 @@ describe("BigInt 경계값 처리", () => {
             id: "debt-big",
             loanName: "대형 대출",
             loanType: "기업",
-            loanOwner: "본인",
             lender: "은행",
             amount: bigAmount,
             interestRate: 2.5,
@@ -581,7 +572,6 @@ describe("BigInt 경계값 처리", () => {
             id: "inv-zero",
             accountName: "빈 계좌",
             accountType: "증권",
-            accountOwner: "본인",
             currency: "KRW",
             initialInvestment: 0,
             currentValue: 0,

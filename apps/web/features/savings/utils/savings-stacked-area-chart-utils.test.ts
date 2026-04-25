@@ -9,7 +9,6 @@ describe("prepareSavingsStackedAreaChartData", () => {
       id: "1",
       accountName: "입출금 계좌",
       accountType: "입출금",
-      accountOwner: "본인",
       currency: "원",
       balance: 1000,
       records: [
@@ -24,7 +23,6 @@ describe("prepareSavingsStackedAreaChartData", () => {
       id: "2",
       accountName: "정기예금",
       accountType: "정기예금",
-      accountOwner: "본인",
       currency: "원",
       balance: 5000,
       interestRate: 3.5,
@@ -84,7 +82,6 @@ describe("prepareSavingsStackedAreaChartData", () => {
         id: "3",
         accountName: "신규 계좌",
         accountType: "입출금",
-        accountOwner: "본인",
         currency: "원",
         balance: 0,
         records: [], // 히스토리 없음
@@ -105,7 +102,6 @@ describe("prepareSavingsStackedAreaChartData", () => {
         id: "1",
         accountName: "계좌 1",
         accountType: "입출금",
-        accountOwner: "본인",
         currency: "원",
         balance: 0,
         records: [],
@@ -130,7 +126,6 @@ describe("prepareSavingsStackedAreaChartData", () => {
         id: "1",
         accountName: "테스트 계좌",
         accountType: "입출금",
-        accountOwner: "본인",
         currency: "원",
         balance: 1000,
         records: [
@@ -174,7 +169,6 @@ describe("prepareSavingsStackedAreaChartData", () => {
         id: "1",
         accountName: "테스트 계좌",
         accountType: "입출금",
-        accountOwner: "본인",
         currency: "원",
         balance: 2000,
         records: [
@@ -202,7 +196,6 @@ describe("prepareSavingsStackedAreaChartData", () => {
         id: "1",
         accountName: "테스트 계좌",
         accountType: "입출금",
-        accountOwner: "본인",
         currency: "원",
         balance: 1000,
         records: [

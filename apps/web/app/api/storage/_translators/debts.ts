@@ -14,7 +14,6 @@ type DebtPayload = {
   id: string;
   loanName: string;
   loanType: string;
-  loanOwner: string;
   lender: string;
   amount: number;
   interestRate: number;
@@ -46,7 +45,6 @@ export const debtsTranslator: DomainTranslator = {
       id: d.id,
       loanName: d.loanName,
       loanType: d.loanType,
-      loanOwner: d.loanOwner,
       lender: d.lender,
       amount: bigIntToNumber(d.amount),
       interestRate: d.interestRate,
@@ -92,7 +90,6 @@ export const debtsTranslator: DomainTranslator = {
             userId,
             loanName: d.loanName,
             loanType: d.loanType,
-            loanOwner: d.loanOwner,
             lender: d.lender,
             amount: toBigInt(d.amount),
             interestRate: d.interestRate,
@@ -103,7 +100,6 @@ export const debtsTranslator: DomainTranslator = {
           update: {
             loanName: d.loanName,
             loanType: d.loanType,
-            loanOwner: d.loanOwner,
             lender: d.lender,
             amount: toBigInt(d.amount),
             interestRate: d.interestRate,

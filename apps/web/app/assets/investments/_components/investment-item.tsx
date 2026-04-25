@@ -261,7 +261,7 @@ export function InvestmentItemComponent({
                 </div>
               </PopoverContent>
             </Popover>
-            <Badge variant={"secondary"}>{`${item.accountType} / ${item.accountOwner}`}</Badge>
+            <Badge variant={"secondary"}>{item.accountType}</Badge>
           </div>
           <div
             className="flex justify-between items-center flex-grow-1 flex-wrap"

@@ -104,7 +104,7 @@ export default function AssetsOverviewPage() {
         items: investments.map((investment) => ({
           id: investment.id,
           primaryText: investment.accountName,
-          secondaryText: `${investment.accountType} · ${investment.accountOwner}`,
+          secondaryText: investment.accountType,
           value: investment.currentValue ?? 0,
         })),
         emptyMessage: "투자 계좌가 없습니다.",
@@ -117,7 +117,7 @@ export default function AssetsOverviewPage() {
         items: savings.map((saving) => ({
           id: saving.id,
           primaryText: saving.accountName,
-          secondaryText: `${saving.accountType} · ${saving.accountOwner}`,
+          secondaryText: saving.accountType,
           value: saving.balance ?? 0,
         })),
         emptyMessage: "저축 계좌가 없습니다.",

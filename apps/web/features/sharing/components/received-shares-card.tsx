@@ -12,7 +12,7 @@ import { Eye, LogOut } from "lucide-react";
  * 내가 다른 사람에게서 공유받은 데이터 목록 + 코드 수락 입력.
  *
  * [이 계정으로 보기] 버튼은 view-context-store 를 통해 공유 모드로 진입하면서
- * /dashboard 로 리로드한다. [나가기] 는 내 수락을 스스로 해제.
+ * /assets 로 리로드한다. [나가기] 는 내 수락을 스스로 해제.
  */
 export function ReceivedSharesCard() {
   const [received, setReceived] = useState<ReceivedShare[] | null>(null);

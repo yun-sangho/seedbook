@@ -6,24 +6,6 @@ export enum RealAssetType {
 }
 
 /**
- * 실물자산 소유자 타입
- */
-export enum DefaultOwnerType {
-  SELF = "본인",
-  SPOUSE = "배우자",
-  JOINT = "공동소유",
-}
-
-/**
- * 기본 소유자 목록
- */
-export const DEFAULT_OWNERS = [
-  DefaultOwnerType.SELF,
-  DefaultOwnerType.SPOUSE,
-  DefaultOwnerType.JOINT,
-] as const;
-
-/**
  * 실물자산별 차트 색상 팔레트 (30가지)
  * 6가지 기본 색상 × 5단계 명도로 구성하여 시각적 구분 최대화
  *

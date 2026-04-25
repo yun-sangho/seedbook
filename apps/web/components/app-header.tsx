@@ -8,7 +8,6 @@ import { UserMenu } from "@web/components/user-menu";
 
 const pageNames: Record<string, string> = {
   "/": "홈",
-  "/dashboard": "대시보드",
   "/assets": "전체 자산",
   "/assets/investments": "투자",
   "/assets/savings": "저축",

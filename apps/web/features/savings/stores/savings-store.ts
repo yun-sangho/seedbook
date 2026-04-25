@@ -18,7 +18,7 @@ interface SavingsState {
   expandedFormId: string;
 
   // 계좌 관리 액션
-  addSavingsWithTypeAndOwner: (type: string, owner: string) => void;
+  addSavingsWithType: (type: string) => void;
   removeSavings: (id: string) => void;
   updateSavings: <K extends keyof SavingsItem>(id: string, field: K, value: SavingsItem[K]) => void;
   reorderSavings: (reorderedSavings: SavingsItem[]) => void;
@@ -59,8 +59,8 @@ export const useSavingsStore = create<SavingsState>()(
     (set) => ({
       ...initialState,
 
-      // 유형+소유자 지정 계좌 추가
-      addSavingsWithTypeAndOwner: (type: string, owner: string) =>
+      // 유형 지정 계좌 추가
+      addSavingsWithType: (type: string) =>
         set((state) => {
           const newId = crypto.randomUUID();
           const newColor = getNextColor(state.savings);
@@ -70,9 +70,8 @@ export const useSavingsStore = create<SavingsState>()(
               ...state.savings,
               {
                 id: newId,
-                accountName: `${owner}의 ${type} 계좌`,
+                accountName: `${type} 계좌 ${state.savings.length + 1}`,
                 accountType: type,
-                accountOwner: owner,
                 currency: "원",
                 balance: 0,
                 records: [],
@@ -220,7 +219,7 @@ export const useSavingsStore = create<SavingsState>()(
     {
       name: "savings-storage",
       storage: createJSONStorage(() => createHybridStorage("savings-storage")),
-      version: 2,
+      version: 3,
       partialize: (state) => ({
         savings: state.savings,
         // expandedFormId 는 UI 상태이므로 제외
@@ -237,6 +236,13 @@ export const useSavingsStore = create<SavingsState>()(
             id: typeof s.id === "string" && s.id ? s.id : crypto.randomUUID(),
           }));
           delete (state as { lastSavingsId?: unknown }).lastSavingsId;
+        }
+        if (version < 3) {
+          state.savings = state.savings.map((s) => {
+            const next = { ...s } as SavingsItem & { accountOwner?: unknown };
+            delete next.accountOwner;
+            return next;
+          });
         }
         return state;
       },

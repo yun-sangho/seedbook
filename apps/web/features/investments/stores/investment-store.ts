@@ -34,7 +34,7 @@ interface InvestmentState {
   holdingsSortOption: HoldingsSortOption;
   setHoldingsSortOption: (option: HoldingsSortOption) => void;
 
-  addInvestmentWithTypeAndOwner: (accountType: string, accountOwner: string) => void;
+  addInvestmentWithType: (accountType: string) => void;
   removeInvestment: (id: string) => void;
   updateInvestment: (id: string, field: keyof InvestmentItem, value: string | number) => void;
   addInvestmentRecord: (id: string, record?: Partial<InvestmentRecord>) => void;
@@ -97,7 +97,7 @@ export const useInvestmentStore = create<InvestmentState>()(
 
       setHoldingsSortOption: (option) => set({ holdingsSortOption: option }),
 
-      addInvestmentWithTypeAndOwner: (accountType: string, accountOwner: string) => {
+      addInvestmentWithType: (accountType: string) => {
         const { investments } = get();
         const newId = crypto.randomUUID();
         const newColor = getNextColor(investments);
@@ -106,9 +106,8 @@ export const useInvestmentStore = create<InvestmentState>()(
           investments: [
             {
               id: newId,
-              accountName: `${accountOwner}의 ${accountType}`,
+              accountName: `${accountType} ${investments.length + 1}`,
               accountType: accountType,
-              accountOwner: accountOwner,
               currency: CurrencyType.KRW,
               initialInvestment: 0,
               currentValue: 0,
@@ -470,7 +469,7 @@ export const useInvestmentStore = create<InvestmentState>()(
     {
       name: "investment-storage", // 저장 backend key (local 모드면 localStorage, cloud 모드면 /api/storage)
       storage: createJSONStorage(() => createHybridStorage("investment-storage")),
-      version: 4,
+      version: 5,
       partialize: (state) => ({
         investments: state.investments,
         holdingsSortOption: state.holdingsSortOption,
@@ -499,6 +498,13 @@ export const useInvestmentStore = create<InvestmentState>()(
           }));
           // 레거시 필드 제거
           delete (state as { lastInvestmentId?: unknown }).lastInvestmentId;
+        }
+        if (version < 5) {
+          state.investments = state.investments.map((inv) => {
+            const next = { ...inv } as InvestmentItem & { accountOwner?: unknown };
+            delete next.accountOwner;
+            return next;
+          });
         }
         return state;
       },

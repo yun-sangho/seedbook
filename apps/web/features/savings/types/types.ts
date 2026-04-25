@@ -25,7 +25,6 @@ export interface CheckingAccount {
   accountName: string; // 계좌명 (예: "KB국민은행 입출금")
   category: SavingsCategory.CHECKING; // 카테고리
   accountType: CheckingAccountType.CHECKING; // 계좌 타입
-  accountOwner: string; // 계좌 소유자 (본인, 배우자 등)
   currency: string; // 통화 (KRW, USD 등)
   interestRate?: number; // 이율 (선택적, %)
   records: CheckingAccountRecord[]; // 잔액 변경 히스토리
@@ -51,7 +50,6 @@ export interface SavingsDepositAccount {
   accountName: string; // 계좌명
   category: SavingsCategory.DEPOSIT; // 카테고리
   accountType: DepositAccountType.SAVINGS_DEPOSIT; // 계좌 타입: 저축
-  accountOwner: string; // 계좌 소유자
   currency: string; // 통화
   interestRate: number; // 이율 (%, 필수)
   maturityDate?: string; // 만기일 (YYYY-MM-DD)
@@ -69,7 +67,6 @@ export interface InstallmentSavingsAccount {
   accountName: string; // 계좌명
   category: SavingsCategory.DEPOSIT; // 카테고리
   accountType: DepositAccountType.INSTALLMENT_SAVINGS; // 계좌 타입: 적금
-  accountOwner: string; // 계좌 소유자
   currency: string; // 통화
   interestRate: number; // 이율 (%, 필수)
   monthlyDeposit?: number; // 월 납입액 (만원)
@@ -96,7 +93,6 @@ export interface HousingSubscriptionAccount {
   accountName: string; // 계좌명
   category: SavingsCategory.HOUSING; // 카테고리
   accountType: HousingAccountType.HOUSING_SUBSCRIPTION; // 계좌 타입: 주택청약
-  accountOwner: string; // 계좌 소유자
   currency: string; // 통화
   interestRate: number; // 이율 (%, 필수)
   monthlyDeposit?: number; // 월 납입액 (만원)
@@ -185,7 +181,6 @@ export interface SavingsItem {
   id: string;
   accountName: string; // 계좌명
   accountType: string; // 계좌 타입 (입출금, 저축, 적금, 주택청약 등)
-  accountOwner: string; // 계좌 소유자 (본인, 배우자 등)
   currency: string; // 통화 (KRW, USD 등)
   balance: number; // 현재 잔액 (원 단위)
   interestRate?: number; // 이율 (선택적, %)

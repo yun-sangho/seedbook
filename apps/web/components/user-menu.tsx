@@ -27,7 +27,7 @@ export function UserMenu() {
         onClick={() =>
           authClient.signIn.social({
             provider: "kakao",
-            callbackURL: "/dashboard",
+            callbackURL: "/assets",
           })
         }
       >

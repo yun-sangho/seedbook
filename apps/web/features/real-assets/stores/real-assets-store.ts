@@ -5,7 +5,7 @@ import { getNextColor as getNextColorUtil } from "@web/utils/color-selection";
 import { parseNumericString } from "@web/utils/number-format";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { ASSET_COLORS, COLOR_FAMILIES, DefaultOwnerType, RealAssetType } from "../types/constants";
+import { ASSET_COLORS, COLOR_FAMILIES, RealAssetType } from "../types/constants";
 import { RealAssetItem } from "../types/types";
 
 // 사용 가능한 색상을 반환하는 헬퍼 함수
@@ -18,13 +18,12 @@ const getNextColor = (existingAssets: RealAssetItem[]): string => {
 interface RealAssetsState {
   // 데이터
   realAssets: RealAssetItem[];
-  customOwners: string[];
 
   // UI 상태 (LocalStorage에 저장하지 않음). "" 이면 펼친 폼 없음.
   expandedFormId: string;
 
   // 액션
-  addRealAsset: (initial?: { assetType?: string; assetOwner?: string }) => void;
+  addRealAsset: (initial?: { assetType?: string }) => void;
   removeRealAsset: (id: string) => void;
   updateRealAsset: (id: string, field: keyof RealAssetItem, value: string | number) => void;
   setExpandedFormId: (id: string) => void;
@@ -37,7 +36,6 @@ export const useRealAssetsStore = create<RealAssetsState>()(
   persist(
     (set, get) => ({
       realAssets: [],
-      customOwners: [],
       expandedFormId: "",
 
       addRealAsset: (initial) => {
@@ -45,11 +43,9 @@ export const useRealAssetsStore = create<RealAssetsState>()(
         const newId = crypto.randomUUID();
         const newColor = getNextColor(realAssets);
         const assetType = initial?.assetType ?? RealAssetType.REAL_ESTATE;
-        const assetOwner = initial?.assetOwner ?? DefaultOwnerType.SELF;
-        const assetName =
-          initial?.assetType && initial?.assetOwner
-            ? `${assetOwner}의 ${assetType}`
-            : `실물자산 #${realAssets.length + 1}`;
+        const assetName = initial?.assetType
+          ? `${assetType} ${realAssets.length + 1}`
+          : `실물자산 #${realAssets.length + 1}`;
 
         set({
           realAssets: [
@@ -57,7 +53,6 @@ export const useRealAssetsStore = create<RealAssetsState>()(
               id: newId,
               assetName,
               assetType,
-              assetOwner,
               currentValue: 0,
               purchaseValue: 0,
               purchaseDate: "",
@@ -116,7 +111,6 @@ export const useRealAssetsStore = create<RealAssetsState>()(
       resetStore: () => {
         set({
           realAssets: [],
-          customOwners: [],
           expandedFormId: "",
         });
       },
@@ -124,27 +118,32 @@ export const useRealAssetsStore = create<RealAssetsState>()(
     {
       name: "real-assets-storage", // 저장 backend key (local 모드면 localStorage, cloud 모드면 /api/storage)
       storage: createJSONStorage(() => createHybridStorage("real-assets-storage")),
-      version: 2,
+      version: 3,
       // UI 관련 상태는 지속성 저장에서 제외 (성능 최적화)
       partialize: (state) => ({
         realAssets: state.realAssets,
-        customOwners: state.customOwners,
         // expandedFormId는 제외
       }),
       // v0~v1 → v2 정규화: `lib/local-id-upgrade.ts` 가 선행 처리.
       migrate: (persisted, version) => {
         const state = persisted as {
           realAssets?: RealAssetItem[];
-          customOwners?: string[];
         } & Record<string, unknown>;
         if (!state.realAssets) state.realAssets = [];
-        if (!state.customOwners) state.customOwners = [];
         if (version < 2) {
           state.realAssets = state.realAssets.map((a) => ({
             ...a,
             id: typeof a.id === "string" && a.id ? a.id : crypto.randomUUID(),
           }));
           delete (state as { lastRealAssetId?: unknown }).lastRealAssetId;
+        }
+        if (version < 3) {
+          state.realAssets = state.realAssets.map((a) => {
+            const next = { ...a } as RealAssetItem & { assetOwner?: unknown };
+            delete next.assetOwner;
+            return next;
+          });
+          delete (state as { customOwners?: unknown }).customOwners;
         }
         return state;
       },

@@ -5,7 +5,6 @@ export interface DebtsItem {
   id: string;
   loanName: string;
   loanType: string; // 대출 유형 (주택담보, 신용대출 등)
-  loanOwner: string; // 대출 소유자
   lender: string; // 대출 기관
   amount: number; // 원금 (원)
   interestRate: number; // 이자율 (%)
