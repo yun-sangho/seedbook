@@ -19,6 +19,12 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/**/*": ["../../node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client/**"],
   },
+  // Docker for Mac 처럼 bind mount 의 fs change 이벤트가 컨테이너로 전달되지
+  // 않는 환경에서 turbopack HMR 이 동작하도록 폴링 fallback 을 켠다. 호스트에서
+  // 직접 실행할 때는 이 env 가 비어 있어 native 워처(즉시 반응)를 그대로 쓴다.
+  watchOptions: process.env.NEXT_DEV_POLL_INTERVAL_MS
+    ? { pollIntervalMs: Number(process.env.NEXT_DEV_POLL_INTERVAL_MS) }
+    : undefined,
   typescript: {
     ignoreBuildErrors: true,
   },
