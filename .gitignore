@@ -4,6 +4,9 @@
 node_modules
 .pnp
 .pnp.js
+# pnpm 이 cross-device 하드링크 폴백으로 만들 수 있는 프로젝트 로컬 store.
+# 글로벌 store (~/Library/pnpm/store) 와 별개로 떨어지는 캐시라 추적할 필요 없음.
+.pnpm-store/
 
 # testing
 coverage
