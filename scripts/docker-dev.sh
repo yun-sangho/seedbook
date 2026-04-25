@@ -76,4 +76,9 @@ if [[ "${args[0]}" == "up" ]] && command -v lsof &>/dev/null; then
   fi
 fi
 
-exec docker compose -f docker-compose.dev.yml "${args[@]}"
+compose_args=(-f docker-compose.dev.yml)
+if [[ -f .env.local ]]; then
+  compose_args+=(--env-file .env.local)
+fi
+
+exec docker compose "${compose_args[@]}" "${args[@]}"
