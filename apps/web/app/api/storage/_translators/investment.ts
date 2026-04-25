@@ -220,9 +220,12 @@ export const investmentTranslator: DomainTranslator = {
         }
 
         // Holdings: stale 삭제 + upsert
-        const incomingHoldingIds = new Set((inv.holdings ?? []).map((h) => h.id));
+        const incomingHoldingIds = Array.from(new Set((inv.holdings ?? []).map((h) => h.id)));
         await tx.stockHolding.deleteMany({
-          where: { accountId: inv.id, id: { notIn: Array.from(incomingHoldingIds).concat("") } },
+          where: {
+            accountId: inv.id,
+            ...(incomingHoldingIds.length > 0 ? { id: { notIn: incomingHoldingIds } } : {}),
+          },
         });
         for (const h of inv.holdings ?? []) {
           await tx.stockHolding.upsert({
@@ -249,9 +252,12 @@ export const investmentTranslator: DomainTranslator = {
         }
 
         // CashItems: stale 삭제 + upsert
-        const incomingCashIds = new Set((inv.cashItems ?? []).map((c) => c.id));
+        const incomingCashIds = Array.from(new Set((inv.cashItems ?? []).map((c) => c.id)));
         await tx.cashItem.deleteMany({
-          where: { accountId: inv.id, id: { notIn: Array.from(incomingCashIds).concat("") } },
+          where: {
+            accountId: inv.id,
+            ...(incomingCashIds.length > 0 ? { id: { notIn: incomingCashIds } } : {}),
+          },
         });
         for (const c of inv.cashItems ?? []) {
           await tx.cashItem.upsert({
