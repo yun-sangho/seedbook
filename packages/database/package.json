@@ -10,6 +10,7 @@
     "build": "tsc -p tsconfig.json",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:capture": "tsx scripts/capture-seed.ts",
+    "db:sanitize:user-export": "tsx scripts/sanitize-user-export.ts",
     "etl:etf:prices": "tsx ./scripts/fetch-etf-prices.ts",
     "etl:etf:holdings": "tsx ./scripts/fetch-etf-holdings.ts"
   },

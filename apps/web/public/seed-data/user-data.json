@@ -1,0 +1,1024 @@
+{
+  "investments": [
+    {
+      "id": "04824c76-8685-4985-8a8c-aa93bbeb9280",
+      "accountName": "ISA 계좌 1",
+      "accountType": "ISA 계좌",
+      "currency": "원",
+      "initialInvestment": 60000000,
+      "currentValue": 73218429,
+      "records": [
+        {
+          "date": "2026-04-11",
+          "initialInvestment": 60000000,
+          "currentValue": 73218429
+        },
+        {
+          "date": "2026-04-10",
+          "initialInvestment": 60000000,
+          "currentValue": 73218429
+        },
+        {
+          "date": "2026-04-04",
+          "initialInvestment": 60000000,
+          "currentValue": 71967399
+        },
+        {
+          "date": "2026-03-02",
+          "initialInvestment": 40000000,
+          "currentValue": 53380000
+        },
+        {
+          "date": "2025-12-26",
+          "initialInvestment": 40000000,
+          "currentValue": 48470000
+        },
+        {
+          "date": "2025-12-05",
+          "initialInvestment": 40000000,
+          "currentValue": 47960000
+        },
+        {
+          "date": "2025-11-10",
+          "initialInvestment": 40000000,
+          "currentValue": 47240000
+        },
+        {
+          "date": "2025-10-12",
+          "initialInvestment": 40000000,
+          "currentValue": 46520000
+        }
+      ],
+      "note": "",
+      "color": "#60a5fa",
+      "holdings": [
+        {
+          "id": "e30cdd1e-864d-4619-a5db-a22f6a12caae",
+          "market": "KOSPI",
+          "ticker": "379800",
+          "name": "KODEX 미국S&P500",
+          "currency": "KRW",
+          "quantity": 636,
+          "memo": ""
+        },
+        {
+          "id": "35427ba4-8a5f-429b-b173-b9c854b3596c",
+          "name": "TIGER CD금리투자KIS(합성)",
+          "quantity": 247,
+          "memo": "",
+          "market": "KOSPI",
+          "ticker": "357870",
+          "currency": "KRW"
+        },
+        {
+          "id": "0da0e0a5-a5db-4390-a08f-b22bb8afa491",
+          "market": "KOSPI",
+          "ticker": "411060",
+          "name": "ACE KRX금현물",
+          "currency": "KRW",
+          "quantity": 380,
+          "memo": ""
+        },
+        {
+          "id": "21ec888e-d3a8-45d6-86e0-c0227f5d39a4",
+          "market": "KOSPI",
+          "ticker": "365780",
+          "name": "ACE 국고채10년",
+          "currency": "KRW",
+          "quantity": 101,
+          "memo": ""
+        },
+        {
+          "id": "6663da68-26e6-4d88-b837-7aa6fde0bf19",
+          "market": "KOSPI",
+          "ticker": "294400",
+          "name": "KIWOOM 200TR",
+          "currency": "KRW",
+          "quantity": 69,
+          "memo": ""
+        },
+        {
+          "id": "a2b7e000-84ff-4147-bdbe-aac39af24d85",
+          "market": "KOSPI",
+          "ticker": "283580",
+          "name": "KODEX 차이나CSI300",
+          "currency": "KRW",
+          "quantity": 452,
+          "memo": ""
+        },
+        {
+          "id": "d38a7d7f-b9d6-4eab-b075-46022c81918f",
+          "market": "KOSPI",
+          "ticker": "305080",
+          "name": "TIGER 미국채10년선물",
+          "currency": "KRW",
+          "quantity": 627,
+          "memo": ""
+        }
+      ],
+      "cashItems": [
+        {
+          "id": "0cdbb2a3-f643-47cb-9c79-47017246602a",
+          "label": "예수금",
+          "amount": 63159
+        }
+      ]
+    },
+    {
+      "id": "04620902-1f12-481b-98a5-257a350a67d0",
+      "accountName": "IRP 계좌 1",
+      "accountType": "IRP 계좌",
+      "currency": "원",
+      "initialInvestment": 33357499,
+      "currentValue": 40287652,
+      "records": [
+        {
+          "date": "2026-04-11",
+          "initialInvestment": 33357499,
+          "currentValue": 40287652
+        },
+        {
+          "date": "2026-04-04",
+          "initialInvestment": 33357499,
+          "currentValue": 39932840
+        },
+        {
+          "date": "2026-03-02",
+          "initialInvestment": 30350000,
+          "currentValue": 37850000
+        },
+        {
+          "date": "2025-12-26",
+          "initialInvestment": 30350000,
+          "currentValue": 35050000
+        },
+        {
+          "date": "2025-12-05",
+          "initialInvestment": 30350000,
+          "currentValue": 34690000
+        },
+        {
+          "date": "2025-11-10",
+          "initialInvestment": 30350000,
+          "currentValue": 34180000
+        },
+        {
+          "date": "2025-10-12",
+          "initialInvestment": 30350000,
+          "currentValue": 33730000
+        }
+      ],
+      "note": "",
+      "color": "#c084fc",
+      "holdings": [
+        {
+          "id": "26caff38-7f4a-4755-81d4-0b6d5c0a5f15",
+          "market": "KOSPI",
+          "ticker": "357870",
+          "name": "TIGER CD금리투자KIS(합성)",
+          "currency": "KRW",
+          "quantity": 142,
+          "memo": ""
+        },
+        {
+          "id": "fddf15f5-f0df-45af-b3da-8a12d05878f7",
+          "market": "KOSPI",
+          "ticker": "284430",
+          "name": "KODEX 200미국채혼합",
+          "currency": "KRW",
+          "quantity": 401,
+          "memo": ""
+        },
+        {
+          "id": "d2b52ccd-7b7f-4d75-8377-fdeca95125df",
+          "market": "KOSPI",
+          "ticker": "379800",
+          "name": "KODEX 미국S&P500",
+          "currency": "KRW",
+          "quantity": 353,
+          "memo": ""
+        },
+        {
+          "id": "dc47e4da-3e07-4ff4-a17f-3d84f61d75f0",
+          "market": "KOSPI",
+          "ticker": "411060",
+          "name": "ACE KRX금현물",
+          "currency": "KRW",
+          "quantity": 204,
+          "memo": ""
+        },
+        {
+          "id": "0e5b1dd2-88a1-4243-9f06-e029235403ef",
+          "market": "KOSPI",
+          "ticker": "283580",
+          "name": "KODEX 차이나CSI300",
+          "currency": "KRW",
+          "quantity": 251,
+          "memo": ""
+        },
+        {
+          "id": "12c267aa-667c-4b80-b2b8-0d5cb634f511",
+          "market": "KOSPI",
+          "ticker": "069660",
+          "name": "KIWOOM 200",
+          "currency": "KRW",
+          "quantity": 6,
+          "memo": ""
+        },
+        {
+          "id": "6bd1cca4-12ad-400f-96be-1e22c216e803",
+          "market": "KOSPI",
+          "ticker": "365780",
+          "name": "ACE 국고채10년",
+          "currency": "KRW",
+          "quantity": 56,
+          "memo": ""
+        }
+      ],
+      "cashItems": [
+        {
+          "id": "eb3d16fd-61bc-4d00-bcc8-82b8c7e6e21b",
+          "label": "예수금",
+          "amount": 117762
+        }
+      ]
+    },
+    {
+      "id": "a2cc8363-6fbc-4136-a995-551472006455",
+      "accountName": "연금저축 계좌 1",
+      "accountType": "연금저축 계좌",
+      "currency": "원",
+      "initialInvestment": 24000000,
+      "currentValue": 27308061,
+      "records": [
+        {
+          "date": "2026-04-11",
+          "initialInvestment": 24000000,
+          "currentValue": 27308061
+        },
+        {
+          "date": "2026-04-04",
+          "initialInvestment": 24000000,
+          "currentValue": 26850036
+        },
+        {
+          "date": "2026-03-02",
+          "initialInvestment": 9000000,
+          "currentValue": 12000000
+        },
+        {
+          "date": "2025-12-26",
+          "initialInvestment": 9000000,
+          "currentValue": 10880000
+        },
+        {
+          "date": "2025-12-05",
+          "initialInvestment": 9000000,
+          "currentValue": 10760000
+        },
+        {
+          "date": "2025-11-10",
+          "initialInvestment": 9000000,
+          "currentValue": 10600000
+        },
+        {
+          "date": "2025-10-12",
+          "initialInvestment": 9000000,
+          "currentValue": 10430000
+        }
+      ],
+      "note": "",
+      "color": "#ef4444",
+      "holdings": [
+        {
+          "id": "a6546c01-a594-4eef-a20e-79f78912f4f4",
+          "market": "KOSPI",
+          "ticker": "379800",
+          "name": "KODEX 미국S&P500",
+          "currency": "KRW",
+          "quantity": 237,
+          "memo": ""
+        },
+        {
+          "id": "d16bb7c0-cc60-4355-8e1e-843ab6ed2dc8",
+          "market": "KOSPI",
+          "ticker": "357870",
+          "name": "TIGER CD금리투자KIS(합성)",
+          "currency": "KRW",
+          "quantity": 92,
+          "memo": ""
+        },
+        {
+          "id": "cce23e29-20bf-49f5-b00a-e52a8723eb8a",
+          "market": "KOSPI",
+          "ticker": "411060",
+          "name": "ACE KRX금현물",
+          "currency": "KRW",
+          "quantity": 141,
+          "memo": ""
+        },
+        {
+          "id": "0a2d301c-1f4f-41e0-88a7-82e1b71e9823",
+          "market": "KOSPI",
+          "ticker": "365780",
+          "name": "ACE 국고채10년",
+          "currency": "KRW",
+          "quantity": 37,
+          "memo": ""
+        },
+        {
+          "id": "7725fa0c-63e9-4377-8201-f85d78ffd776",
+          "market": "KOSPI",
+          "ticker": "305080",
+          "name": "TIGER 미국채10년선물",
+          "currency": "KRW",
+          "quantity": 234,
+          "memo": ""
+        },
+        {
+          "id": "e9a70b25-4a6c-4527-b5d9-2e5e4a215153",
+          "market": "KOSPI",
+          "ticker": "294400",
+          "name": "KIWOOM 200TR",
+          "currency": "KRW",
+          "quantity": 25,
+          "memo": ""
+        },
+        {
+          "id": "fc02603b-9f45-4fce-8469-6900c5f35e6c",
+          "market": "KOSPI",
+          "ticker": "283580",
+          "name": "KODEX 차이나CSI300",
+          "currency": "KRW",
+          "quantity": 168,
+          "memo": ""
+        }
+      ],
+      "cashItems": [
+        {
+          "id": "c5ae628e-0a88-40a6-9651-4d98c737455a",
+          "label": "예수금",
+          "amount": 207931
+        }
+      ]
+    },
+    {
+      "id": "15cb1b2e-893f-4d54-8e2f-f5785d90cccc",
+      "accountName": "일반 투자 계좌 1",
+      "accountType": "일반 투자 계좌",
+      "currency": "원",
+      "initialInvestment": 115000000,
+      "currentValue": 143042562,
+      "records": [
+        {
+          "date": "2026-04-11",
+          "initialInvestment": 115000000,
+          "currentValue": 143042562
+        },
+        {
+          "date": "2026-04-04",
+          "initialInvestment": 115000000,
+          "currentValue": 141395447
+        },
+        {
+          "date": "2026-03-02",
+          "initialInvestment": 165000000,
+          "currentValue": 193520000
+        },
+        {
+          "date": "2025-12-26",
+          "initialInvestment": 165000000,
+          "currentValue": 181970000
+        },
+        {
+          "date": "2025-12-05",
+          "initialInvestment": 165000000,
+          "currentValue": 180580000
+        },
+        {
+          "date": "2025-11-10",
+          "initialInvestment": 165000000,
+          "currentValue": 178380000
+        },
+        {
+          "date": "2025-10-12",
+          "initialInvestment": 165000000,
+          "currentValue": 176380000
+        }
+      ],
+      "note": "",
+      "color": "#f87171",
+      "holdings": [
+        {
+          "id": "545c45f5-702d-47df-b1ce-d3f8d764d0d0",
+          "market": "KOSPI",
+          "ticker": "357870",
+          "name": "TIGER CD금리투자KIS(합성)",
+          "currency": "KRW",
+          "quantity": 1004,
+          "memo": ""
+        },
+        {
+          "id": "31178d17-275e-4d2c-adfe-fa3e15d79144",
+          "market": "KOSPI",
+          "ticker": "379800",
+          "name": "KODEX 미국S&P500",
+          "currency": "KRW",
+          "quantity": 960,
+          "memo": ""
+        },
+        {
+          "id": "3a040fab-24bc-4a96-a980-408fe4681dfe",
+          "market": "KOSPI",
+          "ticker": "0072R0",
+          "name": "TIGER KRX금현물",
+          "currency": "KRW",
+          "quantity": 1077,
+          "memo": ""
+        },
+        {
+          "id": "6379b99b-a4e7-4ba3-a3b1-22b2fd19af39",
+          "market": "KOSPI",
+          "ticker": "365780",
+          "name": "ACE 국고채10년",
+          "currency": "KRW",
+          "quantity": 150,
+          "memo": ""
+        },
+        {
+          "id": "e93846ee-b841-4835-976b-26720a8c343c",
+          "market": "KOSPI",
+          "ticker": "283580",
+          "name": "KODEX 차이나CSI300",
+          "currency": "KRW",
+          "quantity": 678,
+          "memo": ""
+        },
+        {
+          "id": "56441d8a-91ff-42b5-b5ef-b9ec1e1677ef",
+          "market": "KOSPI",
+          "ticker": "294400",
+          "name": "KIWOOM 200TR",
+          "currency": "KRW",
+          "quantity": 86,
+          "memo": ""
+        },
+        {
+          "id": "e7916916-7a62-4e01-8fa6-f028f6bb8269",
+          "market": "KOSPI",
+          "ticker": "305080",
+          "name": "TIGER 미국채10년선물",
+          "currency": "KRW",
+          "quantity": 977,
+          "memo": ""
+        }
+      ],
+      "cashItems": [
+        {
+          "id": "79cea61b-20c4-485c-aad7-aea3d2f5353a",
+          "label": "예수금",
+          "amount": 264812
+        }
+      ]
+    },
+    {
+      "id": "7dfe3af2-07b5-476c-ab45-00df84af6985",
+      "accountName": "ISA 계좌 2",
+      "accountType": "ISA 계좌",
+      "currency": "원",
+      "initialInvestment": 20000000,
+      "currentValue": 20767149,
+      "records": [
+        {
+          "date": "2026-04-11",
+          "initialInvestment": 20000000,
+          "currentValue": 20767149
+        },
+        {
+          "date": "2026-04-04",
+          "initialInvestment": 20000000,
+          "currentValue": 20428829
+        },
+        {
+          "date": "2026-03-02",
+          "initialInvestment": 60000000,
+          "currentValue": 81120000
+        },
+        {
+          "date": "2025-12-26",
+          "initialInvestment": 60000000,
+          "currentValue": 73230000
+        },
+        {
+          "date": "2025-12-05",
+          "initialInvestment": 60000000,
+          "currentValue": 72500000
+        },
+        {
+          "date": "2025-11-10",
+          "initialInvestment": 60000000,
+          "currentValue": 71360000
+        },
+        {
+          "date": "2025-10-12",
+          "initialInvestment": 60000000,
+          "currentValue": 70380000
+        }
+      ],
+      "note": "",
+      "color": "#facc15",
+      "holdings": [
+        {
+          "id": "0db37d4e-8866-452a-b147-2bbf2a25bc29",
+          "market": "KOSPI",
+          "ticker": "379800",
+          "name": "KODEX 미국S&P500",
+          "currency": "KRW",
+          "quantity": 184,
+          "memo": ""
+        },
+        {
+          "id": "bb31d9c1-d4de-4a37-aa59-005fd6c9d54a",
+          "market": "KOSPI",
+          "ticker": "357870",
+          "name": "TIGER CD금리투자KIS(합성)",
+          "currency": "KRW",
+          "quantity": 71,
+          "memo": ""
+        },
+        {
+          "id": "1ec8916f-4a6f-44fb-a118-c291ef7208c1",
+          "market": "KOSPI",
+          "ticker": "0072R0",
+          "name": "TIGER KRX금현물",
+          "currency": "KRW",
+          "quantity": 221,
+          "memo": ""
+        },
+        {
+          "id": "3f0f66f8-205a-4b8d-999c-19f358c600f3",
+          "market": "KOSPI",
+          "ticker": "365780",
+          "name": "ACE 국고채10년",
+          "currency": "KRW",
+          "quantity": 28,
+          "memo": ""
+        },
+        {
+          "id": "0f8190b9-a7d9-444f-b5c5-3bf817abfc07",
+          "market": "KOSPI",
+          "ticker": "305080",
+          "name": "TIGER 미국채10년선물",
+          "currency": "KRW",
+          "quantity": 176,
+          "memo": ""
+        },
+        {
+          "id": "87f85d10-c462-4442-99ba-094b27b2d476",
+          "market": "KOSPI",
+          "ticker": "294400",
+          "name": "KIWOOM 200TR",
+          "currency": "KRW",
+          "quantity": 19,
+          "memo": ""
+        },
+        {
+          "id": "bc293ccf-e137-4262-977e-bc9e3ac968b6",
+          "market": "KOSPI",
+          "ticker": "283580",
+          "name": "KODEX 차이나CSI300",
+          "currency": "KRW",
+          "quantity": 128,
+          "memo": ""
+        }
+      ],
+      "cashItems": [
+        {
+          "id": "60766591-15a2-4d21-abaf-76843edce80b",
+          "label": "예수금",
+          "amount": 99199
+        }
+      ]
+    },
+    {
+      "id": "a71e221d-f660-4aa4-92ca-5f543c9692c1",
+      "accountName": "연금저축 계좌 2",
+      "accountType": "연금저축 계좌",
+      "currency": "원",
+      "initialInvestment": 120000000,
+      "currentValue": 136416386,
+      "records": [
+        {
+          "date": "2026-04-11",
+          "initialInvestment": 120000000,
+          "currentValue": 136416386
+        },
+        {
+          "date": "2026-04-04",
+          "initialInvestment": 120000000,
+          "currentValue": 134148641
+        },
+        {
+          "date": "2026-03-02",
+          "initialInvestment": 15000000,
+          "currentValue": 19490000
+        },
+        {
+          "date": "2025-12-26",
+          "initialInvestment": 15000000,
+          "currentValue": 17840000
+        },
+        {
+          "date": "2025-12-05",
+          "initialInvestment": 15000000,
+          "currentValue": 17670000
+        },
+        {
+          "date": "2025-11-10",
+          "initialInvestment": 15000000,
+          "currentValue": 17380000
+        },
+        {
+          "date": "2025-10-12",
+          "initialInvestment": 15000000,
+          "currentValue": 17140000
+        }
+      ],
+      "note": "",
+      "color": "#22d3ee",
+      "holdings": [
+        {
+          "id": "9df00b9e-df2e-4c76-b476-40a9c49cf929",
+          "market": "KOSPI",
+          "ticker": "379800",
+          "name": "KODEX 미국S&P500",
+          "currency": "KRW",
+          "quantity": 1211,
+          "memo": ""
+        },
+        {
+          "id": "ff05b7fd-16f3-44ba-bc93-e0ff3cff8fbf",
+          "market": "KOSPI",
+          "ticker": "357870",
+          "name": "TIGER CD금리투자KIS(합성)",
+          "currency": "KRW",
+          "quantity": 457,
+          "memo": ""
+        },
+        {
+          "id": "4e538cb4-8f49-4456-aaa0-c6edfdcab55d",
+          "market": "KOSPI",
+          "ticker": "0072R0",
+          "name": "TIGER KRX금현물",
+          "currency": "KRW",
+          "quantity": 1456,
+          "memo": ""
+        },
+        {
+          "id": "092f7b38-abb9-4d39-8c01-6171aa51ed20",
+          "market": "KOSPI",
+          "ticker": "365780",
+          "name": "ACE 국고채10년",
+          "currency": "KRW",
+          "quantity": 189,
+          "memo": ""
+        },
+        {
+          "id": "a851943b-2490-4c37-a40e-39f8a024dfd3",
+          "market": "KOSPI",
+          "ticker": "305080",
+          "name": "TIGER 미국채10년선물",
+          "currency": "KRW",
+          "quantity": 1161,
+          "memo": ""
+        },
+        {
+          "id": "c3a74b93-3183-462a-9a0e-91551aad03df",
+          "market": "KOSPI",
+          "ticker": "294400",
+          "name": "KIWOOM 200TR",
+          "currency": "KRW",
+          "quantity": 129,
+          "memo": ""
+        },
+        {
+          "id": "200cf8e2-af4e-44ca-be25-92ce062fd6be",
+          "market": "KOSPI",
+          "ticker": "283580",
+          "name": "KODEX 차이나CSI300",
+          "currency": "KRW",
+          "quantity": 839,
+          "memo": ""
+        }
+      ],
+      "cashItems": [
+        {
+          "id": "078e39d9-2b19-4779-b7cb-bfee57cd001b",
+          "label": "예수금",
+          "amount": 118156
+        }
+      ]
+    },
+    {
+      "id": "2b629d79-79a3-4395-bba5-0c696d5a40e1",
+      "accountName": "IRP 계좌 2",
+      "accountType": "IRP 계좌",
+      "currency": "원",
+      "initialInvestment": 15000000,
+      "currentValue": 19527072,
+      "records": [
+        {
+          "date": "2026-04-11",
+          "initialInvestment": 15000000,
+          "currentValue": 19527072
+        },
+        {
+          "date": "2026-04-04",
+          "initialInvestment": 15000000,
+          "currentValue": 19216397
+        },
+        {
+          "date": "2026-03-02",
+          "initialInvestment": 12000000,
+          "currentValue": 16650000
+        },
+        {
+          "date": "2025-12-26",
+          "initialInvestment": 12000000,
+          "currentValue": 15310000
+        },
+        {
+          "date": "2025-12-05",
+          "initialInvestment": 12000000,
+          "currentValue": 15180000
+        },
+        {
+          "date": "2025-11-10",
+          "initialInvestment": 12000000,
+          "currentValue": 14940000
+        },
+        {
+          "date": "2025-10-12",
+          "initialInvestment": 12000000,
+          "currentValue": 14740000
+        }
+      ],
+      "note": "",
+      "color": "#4ade80",
+      "holdings": [
+        {
+          "id": "97809a27-2072-4797-a92f-fc263f8b32a7",
+          "market": "KOSPI",
+          "ticker": "357870",
+          "name": "TIGER CD금리투자KIS(합성)",
+          "currency": "KRW",
+          "quantity": 70,
+          "memo": ""
+        },
+        {
+          "id": "8987b47c-882b-4f2a-976e-d75c4b684224",
+          "market": "KOSPI",
+          "ticker": "284430",
+          "name": "KODEX 200미국채혼합",
+          "currency": "KRW",
+          "quantity": 198,
+          "memo": ""
+        },
+        {
+          "id": "284d9d07-6909-4443-8ca2-989d2e23144b",
+          "market": "KOSPI",
+          "ticker": "379800",
+          "name": "KODEX 미국S&P500",
+          "currency": "KRW",
+          "quantity": 171,
+          "memo": ""
+        },
+        {
+          "id": "ab66e8b1-40a3-4c41-803b-f383f2756035",
+          "market": "KOSPI",
+          "ticker": "0072R0",
+          "name": "TIGER KRX금현물",
+          "currency": "KRW",
+          "quantity": 194,
+          "memo": ""
+        },
+        {
+          "id": "6350cae0-a9c3-4ef3-b649-fb7b6c3a5dda",
+          "market": "KOSPI",
+          "ticker": "365780",
+          "name": "ACE 국고채10년",
+          "currency": "KRW",
+          "quantity": 27,
+          "memo": ""
+        },
+        {
+          "id": "20439463-2754-4a25-b9d1-5d4e7429fb39",
+          "market": "KOSPI",
+          "ticker": "283580",
+          "name": "KODEX 차이나CSI300",
+          "currency": "KRW",
+          "quantity": 122,
+          "memo": ""
+        },
+        {
+          "id": "527beb60-aa9f-4eb3-bc2f-83e21668ad82",
+          "market": "KOSPI",
+          "ticker": "294400",
+          "name": "KIWOOM 200TR",
+          "currency": "KRW",
+          "quantity": 3,
+          "memo": ""
+        }
+      ],
+      "cashItems": [
+        {
+          "id": "271f9779-e310-4ba1-b3df-406aaaf2e201",
+          "label": "예수금",
+          "amount": 31627
+        }
+      ]
+    }
+  ],
+  "savings": [
+    {
+      "id": "8c18d39b-7332-4b9c-a13b-272f23f79e1d",
+      "accountName": "입출금 계좌 1",
+      "accountType": "입출금",
+      "currency": "원",
+      "balance": 48254216,
+      "records": [
+        {
+          "date": "2026-04-11",
+          "balance": 48254216
+        },
+        {
+          "date": "2026-03-02",
+          "balance": 80690000
+        },
+        {
+          "date": "2025-12-26",
+          "balance": 80110000
+        },
+        {
+          "date": "2025-12-05",
+          "balance": 64080000
+        },
+        {
+          "date": "2025-11-10",
+          "balance": 69340000
+        },
+        {
+          "date": "2025-10-12",
+          "balance": 62120000
+        }
+      ],
+      "note": "",
+      "color": "#f87171"
+    },
+    {
+      "id": "1621ce05-e072-4e1f-89f7-75452ede016a",
+      "accountName": "주택청약 계좌 1",
+      "accountType": "주택청약",
+      "currency": "원",
+      "balance": 30390000,
+      "records": [
+        {
+          "date": "2026-04-11",
+          "balance": 30390000
+        },
+        {
+          "date": "2026-03-02",
+          "balance": 30140000
+        },
+        {
+          "date": "2025-11-10",
+          "balance": 25440000
+        }
+      ],
+      "note": "",
+      "color": "#facc15",
+      "interestRate": 3.1
+    },
+    {
+      "id": "5b90dad1-d11d-4789-bb64-33f48c8be35b",
+      "accountName": "주택청약 계좌 2",
+      "accountType": "주택청약",
+      "currency": "원",
+      "balance": 9320000,
+      "records": [
+        {
+          "date": "2026-03-02",
+          "balance": 9320000
+        }
+      ],
+      "note": "",
+      "color": "#4ade80"
+    },
+    {
+      "id": "f946bc56-5f64-4e26-916f-b6f4b09da0c5",
+      "accountName": "입출금 계좌 2",
+      "accountType": "입출금",
+      "currency": "원",
+      "balance": 125000000,
+      "records": [
+        {
+          "date": "2026-03-02",
+          "balance": 125000000
+        },
+        {
+          "date": "2025-06-10",
+          "balance": 125000000
+        }
+      ],
+      "note": "",
+      "color": "#22d3ee"
+    }
+  ],
+  "realAssets": [],
+  "debts": [],
+  "progressPoints": [
+    {
+      "date": "2025-10-12",
+      "totalAssets": 431440000,
+      "netAssets": 431440000,
+      "investments": 369320000,
+      "savings": 62120000,
+      "realAssets": 0,
+      "loans": 0
+    },
+    {
+      "date": "2025-10-13",
+      "totalAssets": 431440000,
+      "netAssets": 383940000,
+      "investments": 369320000,
+      "savings": 62120000,
+      "realAssets": 0,
+      "loans": 47500000
+    },
+    {
+      "date": "2025-11-10",
+      "totalAssets": 468860000,
+      "netAssets": 468860000,
+      "investments": 374080000,
+      "savings": 94780000,
+      "realAssets": 0,
+      "loans": 0
+    },
+    {
+      "date": "2025-12-05",
+      "totalAssets": 468860000,
+      "netAssets": 468860000,
+      "investments": 379340000,
+      "savings": 89520000,
+      "realAssets": 0,
+      "loans": 0
+    },
+    {
+      "date": "2025-12-26",
+      "totalAssets": 488300000,
+      "netAssets": 488300000,
+      "investments": 382750000,
+      "savings": 105550000,
+      "realAssets": 0,
+      "loans": 0
+    },
+    {
+      "date": "2026-03-02",
+      "totalAssets": 659160000,
+      "netAssets": 659160000,
+      "investments": 414010000,
+      "savings": 245150000,
+      "realAssets": 0,
+      "loans": 0
+    },
+    {
+      "date": "2026-04-04",
+      "totalAssets": 699089589,
+      "netAssets": 699089589,
+      "investments": 453939589,
+      "savings": 245150000,
+      "realAssets": 0,
+      "loans": 0
+    },
+    {
+      "date": "2026-04-08",
+      "investments": 453939589,
+      "savings": 245150000,
+      "realAssets": 0,
+      "loans": 0,
+      "totalAssets": 699089589,
+      "netAssets": 699089589
+    },
+    {
+      "date": "2026-04-11",
+      "totalAssets": 673531527,
+      "netAssets": 673531527,
+      "investments": 460567311,
+      "savings": 212964216,
+      "realAssets": 0,
+      "loans": 0
+    }
+  ],
+  "exportedAt": "2026-04-14T12:42:19.622Z",
+  "version": "1.0"
+}

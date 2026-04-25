@@ -10,7 +10,7 @@ import { useRealAssetsStore } from "@web/features/real-assets/stores/real-assets
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
 import { SharingSection } from "@web/features/sharing/components/sharing-section";
 import { useAllStoresHydrated } from "@web/lib/zustand-hydration";
-import { Download, Upload } from "lucide-react";
+import { Database, Download, Upload } from "lucide-react";
 import { StorageModeCard } from "./_components/storage-mode-card";
 
 export default function AdminPage() {
@@ -48,6 +48,40 @@ export default function AdminPage() {
     URL.revokeObjectURL(url);
   };
 
+  const applyImportedData = (data: unknown): boolean => {
+    if (!data || typeof data !== "object") {
+      alert("올바른 Seedbook 데이터 파일이 아닙니다.");
+      return false;
+    }
+    const envelope = data as Record<string, unknown>;
+    if (!envelope.version || !envelope.exportedAt) {
+      alert("올바른 Seedbook 데이터 파일이 아닙니다.");
+      return false;
+    }
+    if (!confirm("기존 데이터를 모두 덮어씁니다. 계속하시겠습니까?")) {
+      return false;
+    }
+    // 데이터 복원 - store 상태 직접 설정. ID 는 전부 문자열이라 별도의
+    // auto-increment 카운터가 없어 그대로 주입하면 된다.
+    if (Array.isArray(envelope.investments)) {
+      useInvestmentStore.setState({ investments: envelope.investments });
+    }
+    if (Array.isArray(envelope.savings)) {
+      useSavingsStore.setState({ savings: envelope.savings });
+    }
+    if (Array.isArray(envelope.realAssets)) {
+      useRealAssetsStore.setState({ realAssets: envelope.realAssets });
+    }
+    if (Array.isArray(envelope.debts)) {
+      useDebtsStore.setState({ debts: envelope.debts });
+    }
+    if (Array.isArray(envelope.progressPoints)) {
+      useProgressStore.getState().setProgressPoints(envelope.progressPoints);
+    }
+    alert("데이터가 성공적으로 복원되었습니다. 페이지를 새로고침해주세요.");
+    return true;
+  };
+
   const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -55,38 +89,7 @@ export default function AdminPage() {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const data = JSON.parse(e.target?.result as string);
-
-        // 데이터 검증
-        if (!data.version || !data.exportedAt) {
-          alert("올바른 Seedbook 데이터 파일이 아닙니다.");
-          return;
-        }
-
-        // 확인 대화상자
-        if (!confirm("기존 데이터를 모두 덮어씁니다. 계속하시겠습니까?")) {
-          return;
-        }
-
-        // 데이터 복원 - store 상태 직접 설정. ID 는 전부 문자열이라 별도의
-        // auto-increment 카운터가 없어 그대로 주입하면 된다.
-        if (data.investments && Array.isArray(data.investments)) {
-          useInvestmentStore.setState({ investments: data.investments });
-        }
-        if (data.savings && Array.isArray(data.savings)) {
-          useSavingsStore.setState({ savings: data.savings });
-        }
-        if (data.realAssets && Array.isArray(data.realAssets)) {
-          useRealAssetsStore.setState({ realAssets: data.realAssets });
-        }
-        if (data.debts && Array.isArray(data.debts)) {
-          useDebtsStore.setState({ debts: data.debts });
-        }
-        if (data.progressPoints && Array.isArray(data.progressPoints)) {
-          useProgressStore.getState().setProgressPoints(data.progressPoints);
-        }
-
-        alert("데이터가 성공적으로 복원되었습니다. 페이지를 새로고침해주세요.");
+        applyImportedData(JSON.parse(e.target?.result as string));
       } catch (error) {
         alert("데이터 파일을 읽는 중 오류가 발생했습니다.");
         console.error(error);
@@ -97,6 +100,17 @@ export default function AdminPage() {
     // 파일 입력 초기화
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
+    }
+  };
+
+  const loadDemoData = async () => {
+    try {
+      const res = await fetch("/seed-data/user-data.json", { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      applyImportedData(await res.json());
+    } catch (error) {
+      alert("데모 데이터를 불러오는 중 오류가 발생했습니다.");
+      console.error(error);
     }
   };
 
@@ -190,12 +204,23 @@ export default function AdminPage() {
                 데이터 가져오기 (JSON)
               </Button>
             </div>
+
+            <Button
+              variant="secondary"
+              onClick={loadDemoData}
+              disabled={!storesHydrated}
+              className="flex items-center gap-2"
+            >
+              <Database className="w-4 h-4" />
+              데모 데이터 불러오기
+            </Button>
           </div>
 
           <div className="text-sm text-gray-600 space-y-1">
             <p>• 데이터를 JSON 파일로 내보내거나 가져올 수 있습니다.</p>
             <p>• 가져온 데이터는 기존 데이터를 완전히 덮어씁니다.</p>
             <p>• 백업을 위해 정기적으로 데이터를 내보내는 것을 권장합니다.</p>
+            <p>• "데모 데이터 불러오기" 는 번들된 샘플 자산 데이터로 모든 도메인을 채웁니다.</p>
           </div>
         </CardContent>
       </Card>

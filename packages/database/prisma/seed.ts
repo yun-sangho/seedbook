@@ -113,6 +113,259 @@ async function seedStockPrices(prices: StockPriceFixture[]): Promise<void> {
   );
 }
 
+// ─── User-data fixture (자산 데이터) ────────────────────────────────────────
+//
+// `/admin` export envelope 와 동일한 shape 의 fixture 를 dev 유저에 복제한다.
+// 빈 DB 에 한 번 채우는 용도라 stale-deletion / upsert 로직은 두지 않고
+// `createMany + skipDuplicates` 로 유지 — 멱등성은 PK / unique 인덱스가 보장.
+
+type InvestmentFixture = {
+  id: string;
+  accountName: string;
+  accountType: string;
+  currency: string;
+  initialInvestment: number;
+  currentValue: number;
+  note?: string;
+  color: string;
+  records?: { date: string; initialInvestment: number; currentValue: number }[];
+  holdings?: {
+    id: string;
+    market: string;
+    ticker: string;
+    name: string;
+    currency: string;
+    quantity: number;
+    memo?: string;
+  }[];
+  cashItems?: { id: string; label: string; amount: number }[];
+};
+
+type SavingsFixture = {
+  id: string;
+  accountName: string;
+  accountType: string;
+  currency: string;
+  balance: number;
+  interestRate?: number;
+  note?: string;
+  color: string;
+  records?: { date: string; balance: number }[];
+};
+
+type DebtFixture = {
+  id: string;
+  loanName: string;
+  loanType: string;
+  lender: string;
+  amount: number;
+  interestRate: number;
+  maturityDate?: string;
+  monthlyPayment: number;
+  note?: string;
+};
+
+type RealAssetFixture = {
+  id: string;
+  assetName: string;
+  assetType: string;
+  currentValue: number;
+  purchaseValue: number;
+  purchaseDate?: string;
+  note?: string;
+  color: string;
+};
+
+type ProgressPointFixture = {
+  date: string;
+  totalAssets: number;
+  netAssets: number;
+  investments: number;
+  savings: number;
+  realAssets: number;
+  loans: number;
+};
+
+type UserDataFixture = {
+  investments?: InvestmentFixture[];
+  savings?: SavingsFixture[];
+  debts?: DebtFixture[];
+  realAssets?: RealAssetFixture[];
+  progressPoints?: ProgressPointFixture[];
+};
+
+function parseDate(s: string | undefined): Date | null {
+  if (!s) return null;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+async function seedUserData(userId: string): Promise<void> {
+  const fixturePath = resolve(SEED_DATA_DIR, "user-data.json");
+  if (!existsSync(fixturePath)) {
+    console.log(`[seed] no user-data fixture at ${fixturePath}, skipping`);
+    return;
+  }
+  const fixture: UserDataFixture = JSON.parse(readFileSync(fixturePath, "utf8"));
+  const started = Date.now();
+
+  const investments = fixture.investments ?? [];
+  if (investments.length > 0) {
+    await prisma.investmentAccount.createMany({
+      data: investments.map((inv) => ({
+        id: inv.id,
+        userId,
+        accountName: inv.accountName,
+        accountType: inv.accountType,
+        currency: inv.currency,
+        initialInvestment: BigInt(inv.initialInvestment),
+        currentValue: BigInt(inv.currentValue),
+        note: inv.note ?? "",
+        color: inv.color,
+      })),
+      skipDuplicates: true,
+    });
+    const recordRows = investments.flatMap((inv) =>
+      (inv.records ?? [])
+        .map((r) => {
+          const date = parseDate(r.date);
+          return date
+            ? {
+                accountId: inv.id,
+                date,
+                initialInvestment: BigInt(r.initialInvestment),
+                currentValue: BigInt(r.currentValue),
+              }
+            : null;
+        })
+        .filter((r): r is NonNullable<typeof r> => r !== null)
+    );
+    if (recordRows.length > 0) {
+      await prisma.investmentRecord.createMany({ data: recordRows, skipDuplicates: true });
+    }
+    const holdingRows = investments.flatMap((inv) =>
+      (inv.holdings ?? []).map((h) => ({
+        id: h.id,
+        accountId: inv.id,
+        market: h.market,
+        ticker: h.ticker,
+        name: h.name,
+        currency: h.currency,
+        quantity: h.quantity,
+        memo: h.memo ?? "",
+      }))
+    );
+    if (holdingRows.length > 0) {
+      await prisma.stockHolding.createMany({ data: holdingRows, skipDuplicates: true });
+    }
+    const cashRows = investments.flatMap((inv) =>
+      (inv.cashItems ?? []).map((c) => ({
+        id: c.id,
+        accountId: inv.id,
+        label: c.label,
+        amount: BigInt(c.amount),
+      }))
+    );
+    if (cashRows.length > 0) {
+      await prisma.cashItem.createMany({ data: cashRows, skipDuplicates: true });
+    }
+  }
+
+  const savings = fixture.savings ?? [];
+  if (savings.length > 0) {
+    await prisma.savingsAccount.createMany({
+      data: savings.map((s) => ({
+        id: s.id,
+        userId,
+        accountName: s.accountName,
+        accountType: s.accountType,
+        currency: s.currency,
+        balance: BigInt(s.balance),
+        interestRate: s.interestRate ?? null,
+        note: s.note ?? "",
+        color: s.color,
+      })),
+      skipDuplicates: true,
+    });
+    const savingsRecordRows = savings.flatMap((s) =>
+      (s.records ?? [])
+        .map((r) => {
+          const date = parseDate(r.date);
+          return date ? { accountId: s.id, date, balance: BigInt(r.balance) } : null;
+        })
+        .filter((r): r is NonNullable<typeof r> => r !== null)
+    );
+    if (savingsRecordRows.length > 0) {
+      await prisma.savingsRecord.createMany({ data: savingsRecordRows, skipDuplicates: true });
+    }
+  }
+
+  const debts = fixture.debts ?? [];
+  if (debts.length > 0) {
+    await prisma.debt.createMany({
+      data: debts.map((d) => ({
+        id: d.id,
+        userId,
+        loanName: d.loanName,
+        loanType: d.loanType,
+        lender: d.lender,
+        amount: BigInt(d.amount),
+        interestRate: d.interestRate,
+        maturityDate: parseDate(d.maturityDate),
+        monthlyPayment: BigInt(d.monthlyPayment),
+        note: d.note ?? "",
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  const realAssets = fixture.realAssets ?? [];
+  if (realAssets.length > 0) {
+    await prisma.realAsset.createMany({
+      data: realAssets.map((a) => ({
+        id: a.id,
+        userId,
+        assetName: a.assetName,
+        assetType: a.assetType,
+        currentValue: BigInt(a.currentValue),
+        purchaseValue: BigInt(a.purchaseValue),
+        purchaseDate: parseDate(a.purchaseDate),
+        note: a.note ?? "",
+        color: a.color,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  const progressPoints = fixture.progressPoints ?? [];
+  if (progressPoints.length > 0) {
+    const rows = progressPoints
+      .map((p) => {
+        const date = parseDate(p.date);
+        return date
+          ? {
+              userId,
+              date,
+              totalAssets: BigInt(p.totalAssets),
+              netAssets: BigInt(p.netAssets),
+              investments: BigInt(p.investments),
+              savings: BigInt(p.savings),
+              realAssets: BigInt(p.realAssets),
+              loans: BigInt(p.loans),
+            }
+          : null;
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== null);
+    if (rows.length > 0) {
+      await prisma.assetProgressPoint.createMany({ data: rows, skipDuplicates: true });
+    }
+  }
+
+  console.log(
+    `[seed] user-data: investments=${investments.length}, savings=${savings.length}, debts=${debts.length}, realAssets=${realAssets.length}, progressPoints=${progressPoints.length} in ${Date.now() - started}ms`
+  );
+}
+
 async function seedDevAuth(): Promise<void> {
   // 개발 환경에서만 고정된 dev 유저 + 세션을 보장한다. `dev-login` 라우트는
   // Better Auth API 를 타지 않고 이 seed 가 만들어 둔 세션 토큰을 쿠키로만
@@ -158,6 +411,7 @@ async function main(): Promise<void> {
 
   if (process.env.NODE_ENV === "development") {
     await seedDevAuth();
+    await seedUserData(DEV_USER_ID);
   }
 
   const stocksPath = resolve(SEED_DATA_DIR, "stocks.json");
