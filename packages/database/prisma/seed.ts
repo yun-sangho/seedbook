@@ -20,6 +20,13 @@
 import { existsSync, readFileSync } from "fs";
 import { resolve } from "path";
 import { prisma } from "../src/client";
+import {
+  DEV_SESSION_ID,
+  DEV_SESSION_TOKEN,
+  DEV_USER_EMAIL,
+  DEV_USER_ID,
+  DEV_USER_NAME,
+} from "../src/dev-auth";
 
 const SEED_DATA_DIR = resolve(__dirname, "seed-data");
 // Postgres 단일 트랜잭션 파라미터 한도 (65535) 를 안전하게 피하는 청크 크기.
@@ -106,8 +113,52 @@ async function seedStockPrices(prices: StockPriceFixture[]): Promise<void> {
   );
 }
 
+async function seedDevAuth(): Promise<void> {
+  // 개발 환경에서만 고정된 dev 유저 + 세션을 보장한다. `dev-login` 라우트는
+  // Better Auth API 를 타지 않고 이 seed 가 만들어 둔 세션 토큰을 쿠키로만
+  // 내려주는 방식이라, 두 쪽의 ID/토큰이 맞물려야 동작한다. 상수는
+  // `packages/database/src/dev-auth.ts` 에서 공유한다.
+  //
+  // 세션 만료는 먼 미래로 둔다 — 로컬 dev 에서 세션 갱신 플로우까지 재현할
+  // 필요가 없고, 만료 후 재로그인을 강제하는 게 오히려 방해가 된다.
+  const now = new Date();
+  const farFuture = new Date("2100-01-01T00:00:00Z");
+
+  await prisma.user.upsert({
+    where: { id: DEV_USER_ID },
+    create: {
+      id: DEV_USER_ID,
+      email: DEV_USER_EMAIL,
+      name: DEV_USER_NAME,
+      emailVerified: true,
+      createdAt: now,
+      updatedAt: now,
+    },
+    update: {},
+  });
+
+  await prisma.session.upsert({
+    where: { id: DEV_SESSION_ID },
+    create: {
+      id: DEV_SESSION_ID,
+      userId: DEV_USER_ID,
+      token: DEV_SESSION_TOKEN,
+      expiresAt: farFuture,
+      createdAt: now,
+      updatedAt: now,
+    },
+    update: { expiresAt: farFuture },
+  });
+
+  console.log(`[seed] dev auth ensured: user=${DEV_USER_EMAIL}, session=${DEV_SESSION_ID}`);
+}
+
 async function main(): Promise<void> {
   if (shouldSkip()) return;
+
+  if (process.env.NODE_ENV === "development") {
+    await seedDevAuth();
+  }
 
   const stocksPath = resolve(SEED_DATA_DIR, "stocks.json");
   const pricesPath = resolve(SEED_DATA_DIR, "stock-prices.json");
