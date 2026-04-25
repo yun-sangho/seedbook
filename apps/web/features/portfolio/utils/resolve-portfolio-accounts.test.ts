@@ -7,7 +7,6 @@ function makeAccount(id: string, name = id): InvestmentItem {
     id,
     accountName: name,
     accountType: "일반",
-    accountOwner: "",
     currency: "KRW",
     initialInvestment: 0,
     currentValue: 0,

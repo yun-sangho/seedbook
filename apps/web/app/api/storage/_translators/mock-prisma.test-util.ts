@@ -112,7 +112,6 @@ export function createMockPrisma() {
     savingsRecord: new InMemoryTable(["accountId", "date"]),
     debt: new InMemoryTable(["id"]),
     realAsset: new InMemoryTable(["id"]),
-    realAssetCustomOwner: new InMemoryTable(["userId", "name"]),
     assetPlan: new InMemoryTable(["id"]),
     assetPlanAccountItem: new InMemoryTable(["planId", "accountId"]),
     assetProgressPoint: new InMemoryTable(["userId", "date"]),
@@ -164,7 +163,6 @@ export function createMockPrisma() {
     savingsRecord: makeDelegate(tables.savingsRecord),
     debt: makeDelegate(tables.debt),
     realAsset: makeDelegate(tables.realAsset),
-    realAssetCustomOwner: makeDelegate(tables.realAssetCustomOwner),
     assetPlan: makeDelegate(tables.assetPlan, {
       accountItems: { table: tables.assetPlanAccountItem, fk: "planId", parentKey: "id" },
     }),

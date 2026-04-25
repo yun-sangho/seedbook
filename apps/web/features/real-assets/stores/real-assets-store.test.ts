@@ -38,7 +38,6 @@ describe("Real Assets Store", () => {
       expect(state.realAssets[0]).toMatchObject({
         assetName: "실물자산 #1",
         assetType: "부동산",
-        assetOwner: "본인",
       });
       const id = state.realAssets[0]!.id;
       expect(typeof id).toBe("string");
@@ -112,18 +111,6 @@ describe("Real Assets Store", () => {
 
       const state = useRealAssetsStore.getState();
       expect(state.realAssets[0]!.assetType).toBe("자동차");
-    });
-
-    it("should update asset owner", () => {
-      const { addRealAsset, updateRealAsset } = useRealAssetsStore.getState();
-
-      addRealAsset();
-      const id = useRealAssetsStore.getState().realAssets[0]!.id;
-
-      updateRealAsset(id, "assetOwner", "배우자");
-
-      const state = useRealAssetsStore.getState();
-      expect(state.realAssets[0]!.assetOwner).toBe("배우자");
     });
 
     it("should update current value with string input", () => {
@@ -402,14 +389,12 @@ describe("Real Assets Store", () => {
       updateRealAsset(id, "assetName", "강남 아파트");
       updateRealAsset(id, "currentValue", 100000);
       updateRealAsset(id, "purchaseValue", 70000);
-      updateRealAsset(id, "assetOwner", "공동소유");
 
       const state = useRealAssetsStore.getState();
       const asset = state.realAssets[0]!;
       expect(asset.assetName).toBe("강남 아파트");
       expect(asset.currentValue).toBe(100000);
       expect(asset.purchaseValue).toBe(70000);
-      expect(asset.assetOwner).toBe("공동소유");
     });
 
     it("should maintain separate state for different assets", () => {
@@ -520,7 +505,6 @@ describe("Real Assets Store", () => {
             id: "legacy-asset-id",
             assetName: "Old Asset",
             assetType: "부동산",
-            assetOwner: "본인",
             currentValue: 50000,
             purchaseValue: 40000,
             purchaseDate: "2024-01-01",
@@ -539,16 +523,14 @@ describe("Real Assets Store", () => {
                 id: "legacy-asset-id",
                 assetName: "Old Asset",
                 assetType: "부동산",
-                assetOwner: "본인",
                 currentValue: 50000,
                 purchaseValue: 40000,
                 purchaseDate: "2024-01-01",
                 note: "Test",
               },
             ],
-            customOwners: [],
           },
-          version: 1,
+          version: 2,
         })
       );
 

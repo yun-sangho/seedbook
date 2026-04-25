@@ -20,7 +20,6 @@ function makeInvestment(holdings: StockHolding[]): InvestmentItem {
     id: crypto.randomUUID(),
     accountName: "테스트 계좌",
     accountType: "증권계좌",
-    accountOwner: "홍길동",
     currency: "KRW",
     initialInvestment: 0,
     currentValue: 0,

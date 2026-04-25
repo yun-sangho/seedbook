@@ -40,7 +40,6 @@ export interface InvestmentItem {
   id: string; // `crypto.randomUUID()` 로 생성된 UUID
   accountName: string;
   accountType: string;
-  accountOwner: string;
   currency: string;
   initialInvestment: number; // 현재 투자원금
   currentValue: number; // 현재 평가금액

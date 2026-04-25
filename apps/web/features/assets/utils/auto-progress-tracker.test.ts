@@ -36,7 +36,7 @@ describe("auto-progress-tracker", () => {
     cleanup = startAutoProgressTracking();
 
     // 투자 추가
-    useInvestmentStore.getState().addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+    useInvestmentStore.getState().addInvestmentWithType("증권계좌");
     const investments = useInvestmentStore.getState().investments;
     const investmentId = investments[0]?.id || "";
 
@@ -57,7 +57,7 @@ describe("auto-progress-tracker", () => {
     cleanup = startAutoProgressTracking();
 
     // 저축 추가
-    useSavingsStore.getState().addSavingsWithTypeAndOwner("예금", "홍길동");
+    useSavingsStore.getState().addSavingsWithType("예금");
     const savings = useSavingsStore.getState().savings;
     const savingsId = savings[0]?.id || "";
 
@@ -120,14 +120,14 @@ describe("auto-progress-tracker", () => {
     cleanup = startAutoProgressTracking();
 
     // 투자 추가
-    useInvestmentStore.getState().addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+    useInvestmentStore.getState().addInvestmentWithType("증권계좌");
     const investments = useInvestmentStore.getState().investments;
     const investmentId = investments[0]?.id || "";
     useInvestmentStore.getState().updateInvestment(investmentId, "currentValue", 100000);
 
     // 100ms 후 저축 추가
     vi.advanceTimersByTime(100);
-    useSavingsStore.getState().addSavingsWithTypeAndOwner("예금", "홍길동");
+    useSavingsStore.getState().addSavingsWithType("예금");
     const savings = useSavingsStore.getState().savings;
     const savingsId = savings[0]?.id || "";
     useSavingsStore.getState().updateSavings(savingsId, "balance", 50000);
@@ -156,7 +156,7 @@ describe("auto-progress-tracker", () => {
     cleanup = startAutoProgressTracking();
 
     // 첫 번째 변경
-    useInvestmentStore.getState().addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+    useInvestmentStore.getState().addInvestmentWithType("증권계좌");
     const investments = useInvestmentStore.getState().investments;
     const investmentId = investments[0]?.id || "";
     useInvestmentStore.getState().updateInvestment(investmentId, "currentValue", 100000);
@@ -182,7 +182,7 @@ describe("auto-progress-tracker", () => {
     cleanup = undefined;
 
     // 변경사항 발생
-    useInvestmentStore.getState().addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+    useInvestmentStore.getState().addInvestmentWithType("증권계좌");
     const investments = useInvestmentStore.getState().investments;
     const investmentId = investments[0]?.id || "";
     useInvestmentStore.getState().updateInvestment(investmentId, "currentValue", 100000);
@@ -198,7 +198,7 @@ describe("auto-progress-tracker", () => {
     cleanup = startAutoProgressTracking();
 
     // 투자 추가 (currentValue는 0)
-    useInvestmentStore.getState().addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+    useInvestmentStore.getState().addInvestmentWithType("증권계좌");
     const investments = useInvestmentStore.getState().investments;
     const investmentId = investments[0]?.id || "";
 
@@ -219,7 +219,7 @@ describe("auto-progress-tracker", () => {
     vi.setSystemTime(new Date("2024-01-01"));
 
     // 첫 번째 날짜에 투자 추가
-    useInvestmentStore.getState().addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+    useInvestmentStore.getState().addInvestmentWithType("증권계좌");
     const investments = useInvestmentStore.getState().investments;
     const investmentId = investments[0]?.id || "";
     useInvestmentStore.getState().updateInvestment(investmentId, "currentValue", 100000);
@@ -230,7 +230,7 @@ describe("auto-progress-tracker", () => {
     vi.setSystemTime(new Date("2024-01-02"));
 
     // 두 번째 날짜에 저축 추가
-    useSavingsStore.getState().addSavingsWithTypeAndOwner("예금", "홍길동");
+    useSavingsStore.getState().addSavingsWithType("예금");
     const savings = useSavingsStore.getState().savings;
     const savingsId = savings[0]?.id || "";
     useSavingsStore.getState().updateSavings(savingsId, "balance", 50000);
@@ -282,7 +282,7 @@ describe("auto-progress-tracker", () => {
     cleanup = startAutoProgressTracking();
 
     // 저축 추가 및 금액 설정
-    useSavingsStore.getState().addSavingsWithTypeAndOwner("예금", "홍길동");
+    useSavingsStore.getState().addSavingsWithType("예금");
     const savings = useSavingsStore.getState().savings;
     const savingsId = savings[0]?.id || "";
     useSavingsStore.getState().updateSavings(savingsId, "balance", 50000);

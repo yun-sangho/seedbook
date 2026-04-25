@@ -14,7 +14,6 @@ describe("prepareMonthlySavingsSummary", () => {
         id: "1",
         accountName: "테스트 계좌",
         accountType: "입출금",
-        accountOwner: "본인",
         currency: "원",
         balance: 1000,
         records: [],
@@ -33,7 +32,6 @@ describe("prepareMonthlySavingsSummary", () => {
         id: "1",
         accountName: "테스트 계좌",
         accountType: "입출금",
-        accountOwner: "본인",
         currency: "원",
         balance: 1000,
         records: [
@@ -78,7 +76,6 @@ describe("prepareMonthlySavingsSummary", () => {
         id: "1",
         accountName: "계좌 1",
         accountType: "입출금",
-        accountOwner: "본인",
         currency: "원",
         balance: 500,
         records: [
@@ -92,7 +89,6 @@ describe("prepareMonthlySavingsSummary", () => {
         id: "2",
         accountName: "계좌 2",
         accountType: "정기예금",
-        accountOwner: "본인",
         currency: "원",
         balance: 1000,
         records: [
@@ -129,7 +125,6 @@ describe("prepareMonthlySavingsSummary", () => {
         id: "1",
         accountName: "계좌 1",
         accountType: "입출금",
-        accountOwner: "본인",
         currency: "원",
         balance: 500,
         records: [{ date: "2024-01-15", balance: 500 }],
@@ -140,7 +135,6 @@ describe("prepareMonthlySavingsSummary", () => {
         id: "2",
         accountName: "계좌 2",
         accountType: "정기예금",
-        accountOwner: "본인",
         currency: "원",
         balance: 300,
         records: [{ date: "2024-01-15", balance: 300 }],
@@ -167,7 +161,6 @@ describe("prepareMonthlySavingsSummary", () => {
         id: "1",
         accountName: "테스트 계좌",
         accountType: "입출금",
-        accountOwner: "본인",
         currency: "원",
         balance: 1000,
         records: [
@@ -192,7 +185,6 @@ describe("prepareMonthlySavingsSummary", () => {
         id: "1",
         accountName: "테스트 계좌",
         accountType: "입출금",
-        accountOwner: "본인",
         currency: "원",
         balance: 2000,
         records: [
@@ -243,7 +235,6 @@ describe("prepareMonthlySavingsSummary", () => {
         id: "1",
         accountName: "테스트 계좌",
         accountType: "입출금",
-        accountOwner: "본인",
         currency: "원",
         balance: 500,
         records: [
@@ -272,7 +263,6 @@ describe("prepareMonthlySavingsSummary", () => {
         id: "1",
         accountName: "테스트 계좌",
         accountType: "입출금",
-        accountOwner: "본인",
         currency: "원",
         balance: 1000,
         records: [

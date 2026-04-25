@@ -78,24 +78,23 @@ describe("Investment Store", () => {
 
   describe("Investment Management", () => {
     it("should add investment with type and owner", () => {
-      const { addInvestmentWithTypeAndOwner } = useInvestmentStore.getState();
+      const { addInvestmentWithType } = useInvestmentStore.getState();
 
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      addInvestmentWithType("증권계좌");
 
       const state = useInvestmentStore.getState();
       expect(state.investments[0]!).toMatchObject({
-        accountName: "홍길동의 증권계좌",
+        accountName: "증권계좌 1",
         accountType: "증권계좌",
-        accountOwner: "홍길동",
       });
     });
 
     it("should remove an investment", () => {
-      const { addInvestmentWithTypeAndOwner, removeInvestment } = useInvestmentStore.getState();
+      const { addInvestmentWithType, removeInvestment } = useInvestmentStore.getState();
 
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      addInvestmentWithType("증권계좌");
       const firstId = useInvestmentStore.getState().investments[0]!.id;
-      addInvestmentWithTypeAndOwner("예금계좌", "김철수");
+      addInvestmentWithType("예금계좌");
       const secondId = useInvestmentStore.getState().investments[0]!.id;
 
       let state = useInvestmentStore.getState();
@@ -114,8 +113,8 @@ describe("Investment Store", () => {
     let investmentId: string;
 
     beforeEach(() => {
-      const { addInvestmentWithTypeAndOwner } = useInvestmentStore.getState();
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      const { addInvestmentWithType } = useInvestmentStore.getState();
+      addInvestmentWithType("증권계좌");
       investmentId = useInvestmentStore.getState().investments[0]!.id;
     });
 
@@ -180,8 +179,8 @@ describe("Investment Store", () => {
     let investmentId: string;
 
     beforeEach(() => {
-      const { addInvestmentWithTypeAndOwner } = useInvestmentStore.getState();
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      const { addInvestmentWithType } = useInvestmentStore.getState();
+      addInvestmentWithType("증권계좌");
       investmentId = useInvestmentStore.getState().investments[0]!.id;
     });
 
@@ -358,11 +357,11 @@ describe("Investment Store", () => {
     });
 
     it("should update expandedFormId when updating different investment", () => {
-      const { addInvestmentWithTypeAndOwner, updateInvestment } = useInvestmentStore.getState();
+      const { addInvestmentWithType, updateInvestment } = useInvestmentStore.getState();
 
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      addInvestmentWithType("증권계좌");
       const firstId = useInvestmentStore.getState().investments[0]!.id;
-      addInvestmentWithTypeAndOwner("예금계좌", "김철수");
+      addInvestmentWithType("예금계좌");
       const secondId = useInvestmentStore.getState().investments[0]!.id;
 
       // Initially expanded form is the last added one
@@ -377,10 +376,10 @@ describe("Investment Store", () => {
     });
 
     it("should not change expandedFormId when updating currently expanded investment", () => {
-      const { addInvestmentWithTypeAndOwner, setExpandedFormId, updateInvestment } =
+      const { addInvestmentWithType, setExpandedFormId, updateInvestment } =
         useInvestmentStore.getState();
 
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      addInvestmentWithType("증권계좌");
       const id = useInvestmentStore.getState().investments[0]!.id;
       setExpandedFormId(id);
 
@@ -394,11 +393,11 @@ describe("Investment Store", () => {
 
   describe("Store Reset", () => {
     it("should reset store to initial state", () => {
-      const { addInvestmentWithTypeAndOwner, setExpandedFormId, resetStore } =
+      const { addInvestmentWithType, setExpandedFormId, resetStore } =
         useInvestmentStore.getState();
 
       // Add some data
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      addInvestmentWithType("증권계좌");
       setExpandedFormId("5");
 
       // Verify data was added
@@ -418,15 +417,15 @@ describe("Investment Store", () => {
 
   describe("Reorder Investments", () => {
     it("should reorder investments array", () => {
-      const { addInvestmentWithTypeAndOwner, updateInvestment, reorderInvestments } =
+      const { addInvestmentWithType, updateInvestment, reorderInvestments } =
         useInvestmentStore.getState();
 
       // Add three investments
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      addInvestmentWithType("증권계좌");
       const idA = useInvestmentStore.getState().investments[0]!.id;
-      addInvestmentWithTypeAndOwner("예금계좌", "김철수");
+      addInvestmentWithType("예금계좌");
       const idB = useInvestmentStore.getState().investments[0]!.id;
-      addInvestmentWithTypeAndOwner("연금계좌", "박영희");
+      addInvestmentWithType("연금계좌");
       const idC = useInvestmentStore.getState().investments[0]!.id;
 
       // Update names to identify them
@@ -447,15 +446,15 @@ describe("Investment Store", () => {
     });
 
     it("should maintain investment data when reordering", () => {
-      const { addInvestmentWithTypeAndOwner, addHistoryRecord, reorderInvestments } =
+      const { addInvestmentWithType, addHistoryRecord, reorderInvestments } =
         useInvestmentStore.getState();
 
       // Add investments with history
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      addInvestmentWithType("증권계좌");
       const idA = useInvestmentStore.getState().investments[0]!.id;
       addHistoryRecord(idA, "2024-01-10", 500000, 600000);
 
-      addInvestmentWithTypeAndOwner("예금계좌", "김철수");
+      addInvestmentWithType("예금계좌");
       const idB = useInvestmentStore.getState().investments[0]!.id;
       addHistoryRecord(idB, "2024-01-12", 1000000, 1100000);
 
@@ -487,9 +486,9 @@ describe("Investment Store", () => {
     });
 
     it("should handle single item reorder", () => {
-      const { addInvestmentWithTypeAndOwner, reorderInvestments } = useInvestmentStore.getState();
+      const { addInvestmentWithType, reorderInvestments } = useInvestmentStore.getState();
 
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      addInvestmentWithType("증권계좌");
 
       let state = useInvestmentStore.getState();
       const singleItem = state.investments[0]!;
@@ -504,12 +503,12 @@ describe("Investment Store", () => {
 
   describe("Complex Scenarios", () => {
     it("should handle multiple investments with different histories", () => {
-      const { addInvestmentWithTypeAndOwner, addHistoryRecord } = useInvestmentStore.getState();
+      const { addInvestmentWithType, addHistoryRecord } = useInvestmentStore.getState();
 
       // Add two investments
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      addInvestmentWithType("증권계좌");
       const idA = useInvestmentStore.getState().investments[0]!.id;
-      addInvestmentWithTypeAndOwner("예금계좌", "김철수");
+      addInvestmentWithType("예금계좌");
       const idB = useInvestmentStore.getState().investments[0]!.id;
 
       // Add history to first investment
@@ -526,9 +525,9 @@ describe("Investment Store", () => {
     });
 
     it("should handle concurrent updates on same investment", () => {
-      const { addInvestmentWithTypeAndOwner, updateInvestment } = useInvestmentStore.getState();
+      const { addInvestmentWithType, updateInvestment } = useInvestmentStore.getState();
 
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      addInvestmentWithType("증권계좌");
       const id = useInvestmentStore.getState().investments[0]!.id;
 
       // Update both initial investment and current value
@@ -552,8 +551,8 @@ describe("Investment Store", () => {
     let investmentId: string;
 
     beforeEach(() => {
-      const { addInvestmentWithTypeAndOwner } = useInvestmentStore.getState();
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      const { addInvestmentWithType } = useInvestmentStore.getState();
+      addInvestmentWithType("증권계좌");
       investmentId = useInvestmentStore.getState().investments[0]!.id;
     });
 
@@ -736,7 +735,6 @@ describe("Investment Store", () => {
             id: 2,
             accountName: "테스트",
             accountType: "증권계좌",
-            accountOwner: "홍길동",
             currency: "KRW",
             initialInvestment: 0,
             currentValue: 0,
@@ -787,7 +785,6 @@ describe("Investment Store", () => {
             id: "11111111-2222-3333-4444-555555555555",
             accountName: "테스트",
             accountType: "증권계좌",
-            accountOwner: "홍길동",
             currency: "KRW",
             initialInvestment: 0,
             currentValue: 0,
@@ -828,7 +825,6 @@ describe("Investment Store", () => {
             id: 2,
             accountName: "테스트",
             accountType: "증권계좌",
-            accountOwner: "홍길동",
             currency: "KRW",
             initialInvestment: 0,
             currentValue: 0,
@@ -860,8 +856,8 @@ describe("Investment Store", () => {
     let investmentId: string;
 
     beforeEach(() => {
-      const { addInvestmentWithTypeAndOwner } = useInvestmentStore.getState();
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      const { addInvestmentWithType } = useInvestmentStore.getState();
+      addInvestmentWithType("증권계좌");
       investmentId = useInvestmentStore.getState().investments[0]!.id;
     });
 
@@ -974,9 +970,9 @@ describe("Investment Store", () => {
 
   describe("Color Management", () => {
     it("should assign a color when adding a new investment", () => {
-      const { addInvestmentWithTypeAndOwner } = useInvestmentStore.getState();
+      const { addInvestmentWithType } = useInvestmentStore.getState();
 
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      addInvestmentWithType("증권계좌");
 
       const state = useInvestmentStore.getState();
       expect(state.investments[0]!.color).toBeDefined();
@@ -985,11 +981,11 @@ describe("Investment Store", () => {
     });
 
     it("should assign different colors to multiple investments", () => {
-      const { addInvestmentWithTypeAndOwner } = useInvestmentStore.getState();
+      const { addInvestmentWithType } = useInvestmentStore.getState();
 
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
-      addInvestmentWithTypeAndOwner("예금계좌", "김철수");
-      addInvestmentWithTypeAndOwner("연금계좌", "박영희");
+      addInvestmentWithType("증권계좌");
+      addInvestmentWithType("예금계좌");
+      addInvestmentWithType("연금계좌");
 
       const state = useInvestmentStore.getState();
       const colors = state.investments.map((inv) => inv.color);
@@ -1001,9 +997,9 @@ describe("Investment Store", () => {
     });
 
     it("should update investment color", () => {
-      const { addInvestmentWithTypeAndOwner, updateInvestment } = useInvestmentStore.getState();
+      const { addInvestmentWithType, updateInvestment } = useInvestmentStore.getState();
 
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      addInvestmentWithType("증권계좌");
       const id = useInvestmentStore.getState().investments[0]!.id;
       const initialColor = useInvestmentStore.getState().investments[0]!.color;
 
@@ -1015,9 +1011,9 @@ describe("Investment Store", () => {
     });
 
     it("should assign colors when adding investments with type and owner", () => {
-      const { addInvestmentWithTypeAndOwner } = useInvestmentStore.getState();
+      const { addInvestmentWithType } = useInvestmentStore.getState();
 
-      addInvestmentWithTypeAndOwner("증권계좌", "홍길동");
+      addInvestmentWithType("증권계좌");
 
       const state = useInvestmentStore.getState();
       expect(state.investments[0]!.color).toBeDefined();

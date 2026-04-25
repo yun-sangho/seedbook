@@ -35,24 +35,23 @@ describe("Savings Store", () => {
 
   describe("Savings Management", () => {
     it("should add savings with type and owner", () => {
-      const { addSavingsWithTypeAndOwner } = useSavingsStore.getState();
+      const { addSavingsWithType } = useSavingsStore.getState();
 
-      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      addSavingsWithType("정기예금");
 
       const state = useSavingsStore.getState();
       expect(state.savings[0]!).toMatchObject({
-        accountName: "홍길동의 정기예금 계좌",
+        accountName: "정기예금 계좌 1",
         accountType: "정기예금",
-        accountOwner: "홍길동",
       });
     });
 
     it("should remove a savings account", () => {
-      const { addSavingsWithTypeAndOwner, removeSavings } = useSavingsStore.getState();
+      const { addSavingsWithType, removeSavings } = useSavingsStore.getState();
 
-      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      addSavingsWithType("정기예금");
       const firstId = useSavingsStore.getState().savings[0]!.id;
-      addSavingsWithTypeAndOwner("적금", "김철수");
+      addSavingsWithType("적금");
       // savings are appended, so the second added is at index 1
       const secondId = useSavingsStore.getState().savings[1]!.id;
 
@@ -67,9 +66,9 @@ describe("Savings Store", () => {
     });
 
     it("should reset expandedFormId when removing the expanded account", () => {
-      const { addSavingsWithTypeAndOwner, removeSavings } = useSavingsStore.getState();
+      const { addSavingsWithType, removeSavings } = useSavingsStore.getState();
 
-      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      addSavingsWithType("정기예금");
       const id = useSavingsStore.getState().savings[0]!.id;
 
       let state = useSavingsStore.getState();
@@ -86,8 +85,8 @@ describe("Savings Store", () => {
     let savingsId: string;
 
     beforeEach(() => {
-      const { addSavingsWithTypeAndOwner } = useSavingsStore.getState();
-      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      const { addSavingsWithType } = useSavingsStore.getState();
+      addSavingsWithType("정기예금");
       savingsId = useSavingsStore.getState().savings[0]!.id;
     });
 
@@ -144,8 +143,8 @@ describe("Savings Store", () => {
     let savingsId: string;
 
     beforeEach(() => {
-      const { addSavingsWithTypeAndOwner } = useSavingsStore.getState();
-      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      const { addSavingsWithType } = useSavingsStore.getState();
+      addSavingsWithType("정기예금");
       savingsId = useSavingsStore.getState().savings[0]!.id;
     });
 
@@ -235,9 +234,9 @@ describe("Savings Store", () => {
     });
 
     it("should set expandedFormId when adding new savings", () => {
-      const { addSavingsWithTypeAndOwner } = useSavingsStore.getState();
+      const { addSavingsWithType } = useSavingsStore.getState();
 
-      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      addSavingsWithType("정기예금");
 
       const state = useSavingsStore.getState();
       expect(state.expandedFormId).toBe(state.savings[0]!.id); // New account ID
@@ -246,11 +245,11 @@ describe("Savings Store", () => {
 
   describe("Store Reset", () => {
     it("should reset store to initial state", () => {
-      const { addSavingsWithTypeAndOwner, setExpandedFormId, resetStore } =
+      const { addSavingsWithType, setExpandedFormId, resetStore } =
         useSavingsStore.getState();
 
       // Add some data
-      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      addSavingsWithType("정기예금");
       setExpandedFormId("5");
 
       // Verify data was added
@@ -270,15 +269,15 @@ describe("Savings Store", () => {
 
   describe("Reorder Savings", () => {
     it("should reorder savings array", () => {
-      const { addSavingsWithTypeAndOwner, updateSavings, reorderSavings } =
+      const { addSavingsWithType, updateSavings, reorderSavings } =
         useSavingsStore.getState();
 
       // Add three savings accounts
-      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      addSavingsWithType("정기예금");
       const idA = useSavingsStore.getState().savings[0]!.id;
-      addSavingsWithTypeAndOwner("적금", "김철수");
+      addSavingsWithType("적금");
       const idB = useSavingsStore.getState().savings[1]!.id;
-      addSavingsWithTypeAndOwner("정기적금", "박영희");
+      addSavingsWithType("정기적금");
       const idC = useSavingsStore.getState().savings[2]!.id;
 
       // Update names to identify them
@@ -299,15 +298,15 @@ describe("Savings Store", () => {
     });
 
     it("should maintain savings data when reordering", () => {
-      const { addSavingsWithTypeAndOwner, addHistoryRecord, reorderSavings } =
+      const { addSavingsWithType, addHistoryRecord, reorderSavings } =
         useSavingsStore.getState();
 
       // Add savings with history
-      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      addSavingsWithType("정기예금");
       const idA = useSavingsStore.getState().savings[0]!.id;
       addHistoryRecord(idA, "2024-01-10", 500000);
 
-      addSavingsWithTypeAndOwner("적금", "김철수");
+      addSavingsWithType("적금");
       const idB = useSavingsStore.getState().savings[1]!.id;
       addHistoryRecord(idB, "2024-01-12", 1000000);
 
@@ -339,9 +338,9 @@ describe("Savings Store", () => {
     });
 
     it("should handle single item reorder", () => {
-      const { addSavingsWithTypeAndOwner, reorderSavings } = useSavingsStore.getState();
+      const { addSavingsWithType, reorderSavings } = useSavingsStore.getState();
 
-      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      addSavingsWithType("정기예금");
 
       let state = useSavingsStore.getState();
       const singleItem = state.savings[0]!;
@@ -356,12 +355,12 @@ describe("Savings Store", () => {
 
   describe("Complex Scenarios", () => {
     it("should handle multiple savings with different histories", () => {
-      const { addSavingsWithTypeAndOwner, addHistoryRecord } = useSavingsStore.getState();
+      const { addSavingsWithType, addHistoryRecord } = useSavingsStore.getState();
 
       // Add two savings accounts
-      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      addSavingsWithType("정기예금");
       const idA = useSavingsStore.getState().savings[0]!.id;
-      addSavingsWithTypeAndOwner("적금", "김철수");
+      addSavingsWithType("적금");
       const idB = useSavingsStore.getState().savings[1]!.id;
 
       // Add history to first account
@@ -378,9 +377,9 @@ describe("Savings Store", () => {
     });
 
     it("should handle concurrent updates on same savings account", () => {
-      const { addSavingsWithTypeAndOwner, updateSavings } = useSavingsStore.getState();
+      const { addSavingsWithType, updateSavings } = useSavingsStore.getState();
 
-      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      addSavingsWithType("정기예금");
       const id = useSavingsStore.getState().savings[0]!.id;
 
       // Update balance and interest rate
@@ -399,10 +398,10 @@ describe("Savings Store", () => {
     });
 
     it("should handle balance updates creating multiple records on different dates", () => {
-      const { addSavingsWithTypeAndOwner, updateSavings, addHistoryRecord } =
+      const { addSavingsWithType, updateSavings, addHistoryRecord } =
         useSavingsStore.getState();
 
-      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      addSavingsWithType("정기예금");
       const id = useSavingsStore.getState().savings[0]!.id;
 
       // Add a past record
@@ -421,9 +420,9 @@ describe("Savings Store", () => {
 
   describe("Color Management", () => {
     it("should assign a color when adding a new savings account", () => {
-      const { addSavingsWithTypeAndOwner } = useSavingsStore.getState();
+      const { addSavingsWithType } = useSavingsStore.getState();
 
-      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      addSavingsWithType("정기예금");
 
       const state = useSavingsStore.getState();
       expect(state.savings[0]!.color).toBeDefined();
@@ -432,11 +431,11 @@ describe("Savings Store", () => {
     });
 
     it("should assign different colors to multiple savings accounts", () => {
-      const { addSavingsWithTypeAndOwner } = useSavingsStore.getState();
+      const { addSavingsWithType } = useSavingsStore.getState();
 
-      addSavingsWithTypeAndOwner("정기예금", "홍길동");
-      addSavingsWithTypeAndOwner("적금", "김철수");
-      addSavingsWithTypeAndOwner("정기적금", "박영희");
+      addSavingsWithType("정기예금");
+      addSavingsWithType("적금");
+      addSavingsWithType("정기적금");
 
       const state = useSavingsStore.getState();
       const colors = state.savings.map((s) => s.color);
@@ -448,9 +447,9 @@ describe("Savings Store", () => {
     });
 
     it("should update savings color", () => {
-      const { addSavingsWithTypeAndOwner, updateSavings } = useSavingsStore.getState();
+      const { addSavingsWithType, updateSavings } = useSavingsStore.getState();
 
-      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      addSavingsWithType("정기예금");
       const id = useSavingsStore.getState().savings[0]!.id;
       const initialColor = useSavingsStore.getState().savings[0]!.color;
 
@@ -464,21 +463,21 @@ describe("Savings Store", () => {
 
   describe("Edge Cases", () => {
     it("should handle non-existent savings ID in update", () => {
-      const { addSavingsWithTypeAndOwner, updateSavings } = useSavingsStore.getState();
+      const { addSavingsWithType, updateSavings } = useSavingsStore.getState();
 
-      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      addSavingsWithType("정기예금");
 
       // Try to update non-existent ID
       updateSavings("nonexistent-id", "accountName", "Should not work");
 
       const state = useSavingsStore.getState();
-      expect(state.savings[0]!.accountName).toBe("홍길동의 정기예금 계좌");
+      expect(state.savings[0]!.accountName).toBe("정기예금 계좌 1");
     });
 
     it("should handle non-existent savings ID in history record", () => {
-      const { addSavingsWithTypeAndOwner, addHistoryRecord } = useSavingsStore.getState();
+      const { addSavingsWithType, addHistoryRecord } = useSavingsStore.getState();
 
-      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      addSavingsWithType("정기예금");
 
       // Try to add history to non-existent ID
       addHistoryRecord("nonexistent-id", "2024-01-10", 500000);
@@ -488,19 +487,19 @@ describe("Savings Store", () => {
     });
 
     it("should handle empty records array", () => {
-      const { addSavingsWithTypeAndOwner } = useSavingsStore.getState();
+      const { addSavingsWithType } = useSavingsStore.getState();
 
-      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      addSavingsWithType("정기예금");
 
       const state = useSavingsStore.getState();
       expect(state.savings[0]!.records).toEqual([]);
     });
 
     it("should maintain records integrity after multiple operations", () => {
-      const { addSavingsWithTypeAndOwner, updateSavings, addHistoryRecord } =
+      const { addSavingsWithType, updateSavings, addHistoryRecord } =
         useSavingsStore.getState();
 
-      addSavingsWithTypeAndOwner("정기예금", "홍길동");
+      addSavingsWithType("정기예금");
       const id = useSavingsStore.getState().savings[0]!.id;
 
       // Add past records

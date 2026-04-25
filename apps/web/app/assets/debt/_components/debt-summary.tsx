@@ -50,30 +50,6 @@ export function DebtSummary({ loans }: DebtSummaryProps) {
       >
     );
 
-    // 차주별 집계
-    const byOwner = loans.reduce(
-      (acc, loan) => {
-        const owner = loan.loanOwner;
-        if (!acc[owner]) {
-          acc[owner] = {
-            count: 0,
-            amount: 0,
-            monthlyPayment: 0,
-            monthlyInterest: 0,
-          };
-        }
-        acc[owner].count += 1;
-        acc[owner].amount += loan.amount || 0;
-        acc[owner].monthlyPayment += loan.monthlyPayment || 0;
-        acc[owner].monthlyInterest += (loan.amount * loan.interestRate) / 100 / 12;
-        return acc;
-      },
-      {} as Record<
-        string,
-        { count: number; amount: number; monthlyPayment: number; monthlyInterest: number }
-      >
-    );
-
     // 대출기관별 집계
     const byLender = loans.reduce(
       (acc, loan) => {
@@ -99,7 +75,6 @@ export function DebtSummary({ loans }: DebtSummaryProps) {
       totalMonthlyInterest,
       averageInterestRate,
       byType,
-      byOwner,
       byLender,
     };
   }, [loans]);
@@ -148,36 +123,6 @@ export function DebtSummary({ loans }: DebtSummaryProps) {
               <div key={type} className="flex justify-between items-center p-3 bg-muted rounded-lg">
                 <div>
                   <div className="font-medium">{type}</div>
-                  <div className="text-sm text-muted-foreground">{data.count}개</div>
-                </div>
-                <div className="text-right">
-                  <div className="font-semibold text-red-600 dark:text-red-400">
-                    {numberToKorean(data.amount)}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    월 {numberToKorean(data.monthlyPayment)} (이자:{" "}
-                    {numberToKorean(data.monthlyInterest.toFixed(0))})
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>차주별 요약</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {Object.entries(totals.byOwner).map(([owner, data]) => (
-              <div
-                key={owner}
-                className="flex justify-between items-center p-3 bg-muted rounded-lg"
-              >
-                <div>
-                  <div className="font-medium">{owner}</div>
                   <div className="text-sm text-muted-foreground">{data.count}개</div>
                 </div>
                 <div className="text-right">

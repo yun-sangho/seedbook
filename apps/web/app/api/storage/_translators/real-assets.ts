@@ -14,7 +14,6 @@ type RealAssetPayload = {
   id: string;
   assetName: string;
   assetType: string;
-  assetOwner: string;
   currentValue: number;
   purchaseValue: number;
   purchaseDate?: string;
@@ -24,15 +23,14 @@ type RealAssetPayload = {
 
 export const realAssetsTranslator: DomainTranslator = {
   async read(prisma, userId) {
-    const [assets, customOwners, listOrder] = await Promise.all([
+    const [assets, listOrder] = await Promise.all([
       prisma.realAsset.findMany({ where: { userId } }),
-      prisma.realAssetCustomOwner.findMany({ where: { userId } }),
       prisma.userListOrder.findUnique({
         where: { userId_domain: { userId, domain: DOMAIN } },
       }),
     ]);
 
-    if (assets.length === 0 && customOwners.length === 0 && !listOrder) return null;
+    if (assets.length === 0 && !listOrder) return null;
 
     const orderIndex = new Map<string, number>();
     (listOrder?.order ?? []).forEach((id, idx) => orderIndex.set(id, idx));
@@ -46,7 +44,6 @@ export const realAssetsTranslator: DomainTranslator = {
       id: a.id,
       assetName: a.assetName,
       assetType: a.assetType,
-      assetOwner: a.assetOwner,
       currentValue: bigIntToNumber(a.currentValue),
       purchaseValue: bigIntToNumber(a.purchaseValue),
       purchaseDate: a.purchaseDate ? formatDate(a.purchaseDate) : "",
@@ -55,10 +52,7 @@ export const realAssetsTranslator: DomainTranslator = {
     }));
 
     const envelope: Envelope = {
-      state: {
-        realAssets,
-        customOwners: customOwners.map((o) => o.name),
-      },
+      state: { realAssets },
       version: VERSION,
     };
     return envelope;
@@ -69,7 +63,6 @@ export const realAssetsTranslator: DomainTranslator = {
     const realAssets = Array.isArray(state.realAssets)
       ? (state.realAssets as RealAssetPayload[])
       : [];
-    const customOwners = Array.isArray(state.customOwners) ? (state.customOwners as string[]) : [];
 
     await prisma.$transaction(async (tx) => {
       const order = realAssets.map((a) => a.id);
@@ -79,7 +72,6 @@ export const realAssetsTranslator: DomainTranslator = {
         update: { order },
       });
 
-      // realAssets
       const incomingIds = new Set(realAssets.map((a) => a.id));
       const existingIds = (
         await tx.realAsset.findMany({ where: { userId }, select: { id: true } })
@@ -98,7 +90,6 @@ export const realAssetsTranslator: DomainTranslator = {
             userId,
             assetName: a.assetName,
             assetType: a.assetType,
-            assetOwner: a.assetOwner,
             currentValue: toBigInt(a.currentValue),
             purchaseValue: toBigInt(a.purchaseValue),
             purchaseDate,
@@ -108,22 +99,12 @@ export const realAssetsTranslator: DomainTranslator = {
           update: {
             assetName: a.assetName,
             assetType: a.assetType,
-            assetOwner: a.assetOwner,
             currentValue: toBigInt(a.currentValue),
             purchaseValue: toBigInt(a.purchaseValue),
             purchaseDate,
             note: a.note ?? "",
             color: a.color,
           },
-        });
-      }
-
-      // customOwners — 통째로 교체 (소량이라 delete-all + insert 가 가장 단순)
-      await tx.realAssetCustomOwner.deleteMany({ where: { userId } });
-      if (customOwners.length > 0) {
-        await tx.realAssetCustomOwner.createMany({
-          data: customOwners.map((name) => ({ userId, name })),
-          skipDuplicates: true,
         });
       }
     });

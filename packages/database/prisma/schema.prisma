@@ -70,14 +70,13 @@ model User {
   accounts      Account[]
 
   // 자산 데이터 (정규화된 도메인 테이블들)
-  investmentAccounts    InvestmentAccount[]
-  savingsAccounts       SavingsAccount[]
-  debts                 Debt[]
-  realAssets            RealAsset[]
-  realAssetCustomOwners RealAssetCustomOwner[]
-  assetPlans            AssetPlan[]
-  assetProgressPoints   AssetProgressPoint[]
-  portfolios            Portfolio[]
+  investmentAccounts  InvestmentAccount[]
+  savingsAccounts     SavingsAccount[]
+  debts               Debt[]
+  realAssets          RealAsset[]
+  assetPlans          AssetPlan[]
+  assetProgressPoints AssetProgressPoint[]
+  portfolios          Portfolio[]
 
   // 유저 설정 / UI 선호도 (데이터와 별도 분리)
   preference UserPreference?
@@ -160,7 +159,6 @@ model InvestmentAccount {
   userId            String
   accountName       String
   accountType       String
-  accountOwner      String
   currency          String
   initialInvestment BigInt // 현재 투자 원금 (원)
   currentValue      BigInt // 현재 평가 금액 (원)
@@ -232,7 +230,6 @@ model SavingsAccount {
   userId       String
   accountName  String
   accountType  String
-  accountOwner String
   currency     String
   balance      BigInt
   interestRate Float?
@@ -269,7 +266,6 @@ model Debt {
   userId         String
   loanName       String
   loanType       String
-  loanOwner      String
   lender         String
   amount         BigInt
   interestRate   Float
@@ -293,7 +289,6 @@ model RealAsset {
   userId        String
   assetName     String
   assetType     String
-  assetOwner    String
   currentValue  BigInt
   purchaseValue BigInt
   purchaseDate  DateTime? @db.Date
@@ -306,16 +301,6 @@ model RealAsset {
 
   @@index([userId])
   @@map("real_asset")
-  @@schema("seedbook")
-}
-
-model RealAssetCustomOwner {
-  userId String
-  name   String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([userId, name])
-  @@map("real_asset_custom_owner")
   @@schema("seedbook")
 }
 

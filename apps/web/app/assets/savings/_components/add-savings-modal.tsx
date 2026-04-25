@@ -15,7 +15,6 @@ import {
   ACCOUNT_TYPES_BY_CATEGORY,
   SAVINGS_CATEGORIES,
 } from "@web/features/savings/types/constants";
-import { DEFAULT_OWNERS } from "@web/types/account.consts";
 
 interface AddSavingsModalProps {
   isOpen: boolean;
@@ -24,14 +23,10 @@ interface AddSavingsModalProps {
 }
 
 export function AddSavingsModal({ isOpen, onClose, onSavingsAdded }: AddSavingsModalProps) {
-  const addSavingsWithTypeAndOwner = useSavingsStore((state) => state.addSavingsWithTypeAndOwner);
+  const addSavingsWithType = useSavingsStore((state) => state.addSavingsWithType);
 
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedAccountType, setSelectedAccountType] = useState<string>("");
-  const [selectedOwner, setSelectedOwner] = useState<string>("");
-
-  // 계좌 소유자 옵션
-  const accountOwners = [...DEFAULT_OWNERS];
 
   // 선택된 카테고리의 계좌 타입 목록
   const availableAccountTypes = selectedCategory
@@ -44,11 +39,10 @@ export function AddSavingsModal({ isOpen, onClose, onSavingsAdded }: AddSavingsM
   };
 
   const handleAddAccount = () => {
-    if (selectedAccountType && selectedOwner) {
-      addSavingsWithTypeAndOwner(selectedAccountType, selectedOwner);
+    if (selectedAccountType) {
+      addSavingsWithType(selectedAccountType);
       setSelectedCategory("");
       setSelectedAccountType("");
-      setSelectedOwner("");
       onClose();
       onSavingsAdded?.();
     }
@@ -57,7 +51,6 @@ export function AddSavingsModal({ isOpen, onClose, onSavingsAdded }: AddSavingsM
   const handleClose = () => {
     setSelectedCategory("");
     setSelectedAccountType("");
-    setSelectedOwner("");
     onClose();
   };
 
@@ -66,9 +59,7 @@ export function AddSavingsModal({ isOpen, onClose, onSavingsAdded }: AddSavingsM
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>새 저축 계좌 추가</DialogTitle>
-          <DialogDescription>
-            추가할 저축 계좌의 카테고리, 유형, 소유자를 선택해주세요.
-          </DialogDescription>
+          <DialogDescription>추가할 저축 계좌의 카테고리와 유형을 선택해주세요.</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-6 py-4">
@@ -110,31 +101,11 @@ export function AddSavingsModal({ isOpen, onClose, onSavingsAdded }: AddSavingsM
             </div>
           )}
 
-          {/* 계좌 소유자 선택 (계좌 유형 선택 후에만 표시) */}
-          {selectedAccountType && (
-            <div>
-              <Label className="block mb-3 text-sm font-medium">계좌 소유자</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {accountOwners.map((owner) => (
-                  <Button
-                    key={owner}
-                    type="button"
-                    size={"lg"}
-                    onClick={() => setSelectedOwner(owner)}
-                    variant={selectedOwner === owner ? "default" : "outline"}
-                  >
-                    {owner}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          )}
-
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={handleClose}>
               취소
             </Button>
-            <Button onClick={handleAddAccount} disabled={!selectedAccountType || !selectedOwner}>
+            <Button onClick={handleAddAccount} disabled={!selectedAccountType}>
               계좌 추가
             </Button>
           </div>

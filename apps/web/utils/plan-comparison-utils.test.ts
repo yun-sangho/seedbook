@@ -14,7 +14,6 @@ describe("preparePlanComparisonChartData", () => {
         id: "1",
         accountName: "삼성증권 계좌",
         accountType: "일반투자계좌",
-        accountOwner: "홍길동",
         currency: "KRW",
         initialInvestment: 10000000, // 1,000만원
         currentValue: 12000000, // 1,200만원
@@ -44,7 +43,6 @@ describe("preparePlanComparisonChartData", () => {
         id: "2",
         accountName: "KB증권 계좌",
         accountType: "ISA 계좌",
-        accountOwner: "홍길동",
         currency: "KRW",
         initialInvestment: 5000000, // 500만원
         currentValue: 5500000, // 550만원

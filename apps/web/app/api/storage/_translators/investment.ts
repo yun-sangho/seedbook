@@ -37,7 +37,6 @@ type InvestmentItemPayload = {
   id: string;
   accountName: string;
   accountType: string;
-  accountOwner: string;
   currency: string;
   initialInvestment: number;
   currentValue: number;
@@ -99,7 +98,6 @@ export const investmentTranslator: DomainTranslator = {
       id: acc.id,
       accountName: acc.accountName,
       accountType: acc.accountType,
-      accountOwner: acc.accountOwner,
       currency: acc.currency,
       initialInvestment: bigIntToNumber(acc.initialInvestment),
       currentValue: bigIntToNumber(acc.currentValue),
@@ -181,7 +179,6 @@ export const investmentTranslator: DomainTranslator = {
             userId,
             accountName: inv.accountName,
             accountType: inv.accountType,
-            accountOwner: inv.accountOwner,
             currency: inv.currency,
             initialInvestment: toBigInt(inv.initialInvestment),
             currentValue: toBigInt(inv.currentValue),
@@ -191,7 +188,6 @@ export const investmentTranslator: DomainTranslator = {
           update: {
             accountName: inv.accountName,
             accountType: inv.accountType,
-            accountOwner: inv.accountOwner,
             currency: inv.currency,
             initialInvestment: toBigInt(inv.initialInvestment),
             currentValue: toBigInt(inv.currentValue),

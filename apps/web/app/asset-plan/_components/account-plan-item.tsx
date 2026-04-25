@@ -37,9 +37,7 @@ export function AccountPlanItem({
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="font-semibold">{investment.accountName}</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            {investment.accountType} · {investment.accountOwner}
-          </p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">{investment.accountType}</p>
           <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
             현재 잔액: {numberToKorean(investment.currentValue.toString())}
           </p>

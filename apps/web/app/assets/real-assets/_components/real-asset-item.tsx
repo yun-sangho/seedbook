@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@web/components/ui/select";
 import { Textarea } from "@web/components/ui/textarea";
-import { DEFAULT_OWNERS, RealAssetType } from "@web/features/real-assets/types/constants";
+import { RealAssetType } from "@web/features/real-assets/types/constants";
 import { RealAssetItem } from "@web/features/real-assets/types/types";
 import { CurrencyType } from "@web/types/account.consts";
 import { numberToKorean } from "@web/utils/number-format";
@@ -43,7 +43,7 @@ export function RealAssetItemComponent({
       <CardHeader>
         <div className="flex gap-2 flex-wrap sm:items-center max-sm:flex-col">
           <div className="flex items-center gap-2">
-            <Badge variant={"secondary"}>{`${item.assetType} / ${item.assetOwner}`}</Badge>
+            <Badge variant={"secondary"}>{item.assetType}</Badge>
           </div>
           <div className="flex justify-between items-center flex-grow-1 flex-wrap">
             <AssetNameInput
@@ -116,25 +116,6 @@ export function RealAssetItemComponent({
                     {Object.values(RealAssetType).map((type) => (
                       <SelectItem key={type} value={type}>
                         {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor={`assetOwner-${item.id}`}>소유자</Label>
-                <Select
-                  value={item.assetOwner}
-                  onValueChange={(value) => onUpdateAsset(item.id, "assetOwner", value)}
-                >
-                  <SelectTrigger id={`assetOwner-${item.id}`}>
-                    <SelectValue placeholder="소유자 선택" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEFAULT_OWNERS.map((owner) => (
-                      <SelectItem key={owner} value={owner}>
-                        {owner}
                       </SelectItem>
                     ))}
                   </SelectContent>
