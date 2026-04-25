@@ -46,6 +46,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # Docker for Mac (VirtioFS) 는 bind mount 에서 발생한 fs change 이벤트를
+    # 컨테이너로 거의 전파하지 못한다. Next.js 의 turbopack 워처는 Rust 의
+    # native notify 만 쓰고 폴링 fallback 이 없어 HMR 이 깨진다.
+    # 컨테이너 안에서만 webpack 모드 + WATCHPACK_POLLING 으로 떨어뜨려 우회한다.
+    # 호스트 `pnpm dev` 는 그대로 turbopack 을 쓴다.
+    command: pnpm --filter @seedbook/web exec next dev --port 3001
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-seedbook}:${POSTGRES_PASSWORD:-seedbook}@postgres:5432/${POSTGRES_DB:-seedbook}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-placeholder-override-in-production-8f2k1m9xq7h4}
@@ -55,6 +61,7 @@ services:
       NODE_ENV: development
       PORT: "3001"
       HOSTNAME: "0.0.0.0"
+      WATCHPACK_POLLING: "true"
     ports:
       - "${WEB_PORT:-3001}:3001"
     volumes:
