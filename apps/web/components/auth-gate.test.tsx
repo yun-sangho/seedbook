@@ -112,7 +112,7 @@ describe("AuthGate", () => {
     expect(mockSignInSocial).toHaveBeenCalledTimes(1);
     expect(mockSignInSocial).toHaveBeenCalledWith({
       provider: "kakao",
-      callbackURL: "/dashboard",
+      callbackURL: "/assets",
     });
   });
 
