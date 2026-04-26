@@ -1,0 +1,9 @@
+[copy]
+    include = .env.example
+    include = .env.local
+    excludeDirs = node_modules
+    excludeDirs = .turbo
+    excludeDirs = .next
+
+[hooks]
+    postCreate = pnpm install
