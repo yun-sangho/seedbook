@@ -62,7 +62,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/srv/seedbook' }}
+      # deployer 홈 디렉토리 아래에 둔다 — sudo 없이 mkdir 가능. 서버에 SSH 만
+      # 되면 별도 디렉토리 사전 준비 없이 바로 배포된다.
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '~/seedbook' }}
       DEPLOY_PORT: ${{ vars.DEPLOY_PORT || 22 }}
     steps:
       # 서버에는 git/소스 트리가 없다. runner 가 docker-compose.yml 만 sparse
@@ -104,9 +106,13 @@ jobs:
           envs: IMAGE_TAG,DATABASE_URL,BETTER_AUTH_SECRET,BETTER_AUTH_URL,KAKAO_CLIENT_ID,KAKAO_CLIENT_SECRET,WEB_PORT,CRON_MORNING,CRON_AFTERNOON
           command_timeout: 8m
           script_stop: true
+          # ${{ env.DEPLOY_PATH }} 가 ~ 로 시작할 수 있으므로 따옴표를 두르지
+          # 않는다 (bash 의 ~ 확장은 unquoted context 에서만 동작). mkdir -p 로
+          # 디렉토리가 없으면 만들어 둔다 — 첫 배포에서 생성됨.
           script: |
             set -euo pipefail
-            cd "${{ env.DEPLOY_PATH }}"
+            mkdir -p ${{ env.DEPLOY_PATH }}
+            cd ${{ env.DEPLOY_PATH }}
 
             docker compose pull
             docker compose up -d --remove-orphans
