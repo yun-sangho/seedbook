@@ -1,4 +1,4 @@
-CREATE SCHEMA "seedbook";
+CREATE SCHEMA IF NOT EXISTS "seedbook";
 --> statement-breakpoint
 CREATE TABLE "seedbook"."account" (
 	"id" text PRIMARY KEY NOT NULL,
