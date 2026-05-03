@@ -30,7 +30,7 @@ Requires Node >= 22, pnpm 8.
 
 ### DB seed (capture/replay)
 
-`public.Stock` / `public.StockPrice` 초기 데이터는 크롤러가 한 번 돈 뒤 스냅샷 파일로 캡처해 레포에 커밋한다. 하드코딩된 큐레이션 리스트는 쓰지 않는다 — 실 크롤러 산출물이 소스 오브 트루스.
+`seedbook.Stock` / `seedbook.StockPrice` 초기 데이터는 크롤러가 한 번 돈 뒤 스냅샷 파일로 캡처해 레포에 커밋한다. 하드코딩된 큐레이션 리스트는 쓰지 않는다 — 실 크롤러 산출물이 소스 오브 트루스. (모든 테이블은 `seedbook` 스키마. `public` 은 사용하지 않는다.)
 
 - Fixture 경로: `packages/database/prisma/seed-data/{stocks,stock-prices,meta}.json`
 - **캡처**: 크롤러가 데이터 채운 뒤 `docker compose exec stock-crawler pnpm --filter @seedbook/database db:seed:capture` 실행. `SEED_PRICE_DAYS` (기본 5) 로 최근 거래일 개수 조정.
@@ -88,16 +88,26 @@ Vitest with jsdom and globals. Tests live alongside source as `*.test.ts`. Focus
 
 ## Deployment
 
-Self-hosted via Docker Compose (no Vercel dependency):
+Self-hosted Docker Compose + Caddy 리버스 프록시 + Supabase managed Postgres.
+
+- 프로덕션 `docker-compose.yml` 에는 **postgres 가 포함되지 않는다.** DB는 Supabase managed Postgres. connection string은 GitHub Secret `DATABASE_URL` 로 보관 (자세한 가이드는 `.env.example` 참고).
+- **런타임 env 는 GitHub Secrets/Variables 에 보관**한다. 서버에는 `.env.local`/git checkout 둘 다 두지 않으며, `deploy` job 이 SSH 세션에 export 해 docker compose 가 shell env 로 치환하도록 한다.
+  - **Secrets (7)**: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DATABASE_URL`, `BETTER_AUTH_SECRET`, `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`.
+  - **Variables**: `BETTER_AUTH_URL` (필수, 예: `https://seedbook.boogie.ing`), `DEPLOY_PATH` (기본 `/srv/seedbook`), `DEPLOY_PORT` (기본 22), `WEB_PORT` (기본 `127.0.0.1:3001`), `CRON_MORNING`/`CRON_AFTERNOON` (선택).
+- 이미지는 GitHub Actions (`.github/workflows/deploy.yml`) 가 main push 마다 GHCR (`ghcr.io/<owner>/<repo>/{web,stock-crawler}`) 에 `latest` + `<sha>` 두 태그로 푸시한다. 서버는 빌드하지 않고 pull 만 한다.
+- 배포 흐름: 워크플로 `build` matrix 가 web/crawler 병렬 빌드 → push. `deploy` 가 SSH → `git fetch && reset --hard origin/main` → `IMAGE_TAG=<sha>` 와 다른 env 들을 export → `docker compose pull && up -d`. 롤백은 워크플로 재실행 (이전 커밋 sha 로 `Run workflow`) 또는 서버에서 임시로 `IMAGE_TAG=<이전 sha> docker compose pull && up -d`.
+- 수동 재배포: `gh workflow run "Build & Deploy"` 또는 Actions 탭 `Run workflow`.
 
 ```bash
-pnpm docker:prod                      # build & start postgres + stock-crawler + web
-docker compose logs web --tail 100    # inspect web service
+pnpm docker:prod                      # 서버: pull 최신 이미지 + restart
+docker compose logs web --tail 100    # 서비스 로그
 ```
 
 The web app builds with `output: 'standalone'` (see `apps/web/next.config.ts`) and runs as a non-root Node process on port `3001` inside the `web` service in `docker-compose.yml`. `apps/web/Dockerfile` follows the same multi-stage pattern as `apps/stock-crawler/Dockerfile` (base → deps → build → production).
 
 **Only use Next.js features that are supported by `output: 'standalone'`.** Do not add functionality that depends on Vercel-only infrastructure.
+
+DB 마이그레이션은 stock-crawler 이미지 entrypoint (`apps/stock-crawler/entrypoint.sh`) 의 `prisma migrate deploy` 가 컨테이너 시작 시 자동으로 돌린다. 새 마이그레이션 추가하면 다음 배포 때 적용됨. Supabase 의 transaction pooler (port 6543) 는 prepared statement 충돌이 있으므로 `DATABASE_URL` 은 direct connection (5432) 또는 session pooler 를 쓴다.
 
 Local dev: `pnpm docker:dev`로 postgres + stock-crawler + web을 모두 Docker에서 실행. 워크트리별 자동 포트 격리 지원 (위 "Worktree-aware Docker Dev" 참조). 호스트에서 직접 실행하려면 `pnpm dev`.
 

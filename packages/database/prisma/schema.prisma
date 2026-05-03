@@ -6,7 +6,9 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["public", "seedbook"]
+  // 모든 테이블은 `seedbook` 스키마에 둔다. Supabase 의 기본 `public` 스키마는
+  // 사용하지 않음 — 외부 도구가 자동으로 노출하지 못하게 격리하려는 의도.
+  schemas  = ["seedbook"]
 }
 
 // 주식 종목 마스터.
@@ -27,7 +29,7 @@ model Stock {
   @@index([market])
   @@index([isActive])
   @@index([name])
-  @@schema("public")
+  @@schema("seedbook")
 }
 
 model StockPrice {
@@ -51,7 +53,7 @@ model StockPrice {
   @@unique([stockMarket, stockTicker, date])
   @@index([date])
   @@index([stockMarket, stockTicker])
-  @@schema("public")
+  @@schema("seedbook")
 }
 
 // --- Better Auth (Kakao login) ---

@@ -3,6 +3,6 @@
 -- 을 canonical instant 로 저장한다. 즉 `'2026-04-10'::date` 를 그대로
 -- `timestamptz` 로 캐스팅하면 세션 TZ (= UTC) 기준 00:00 으로 해석되어 9h 어긋난다.
 -- `AT TIME ZONE 'Asia/Seoul'` 로 명시해서 KST 자정으로 변환한다.
-ALTER TABLE "StockPrice"
+ALTER TABLE "seedbook"."StockPrice"
   ALTER COLUMN "date" SET DATA TYPE TIMESTAMPTZ(3)
   USING "date"::timestamp AT TIME ZONE 'Asia/Seoul';

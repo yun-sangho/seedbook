@@ -1,59 +1,38 @@
 name: ${COMPOSE_PROJECT_NAME:-seedbook}
 
-services:
-  postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-seedbook}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-seedbook}
-      POSTGRES_DB: ${POSTGRES_DB:-seedbook}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-seedbook}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+# Production stack.
+# - Postgres는 Supabase(managed)를 쓰므로 컴포즈에 포함하지 않는다.
+# - 이미지는 GitHub Actions 가 GHCR 에 푸시하고, 서버는 pull 만 한다.
+# - 런타임 env(DATABASE_URL, BETTER_AUTH_*, KAKAO_*, IMAGE_TAG, WEB_PORT 등)는
+#   GitHub Secrets/Vars 에 보관해 워크플로 deploy job 이 SSH 세션에 export 한다.
+#   docker compose 는 shell env 를 우선 사용하므로 .env.local 없이 동작한다.
+# - 서버에서 수동 디버깅이 필요하면 `set -a; source <(echo "$ENV_DUMP"); set +a`
+#   같은 식으로 임시 export 하거나, .env.local 을 직접 만들어 `docker compose
+#   --env-file .env.local ...` 으로 실행하면 된다 (워크플로에는 영향 없음).
 
+services:
   stock-crawler:
-    build:
-      context: .
-      dockerfile: apps/stock-crawler/Dockerfile
-      target: production
+    image: ${CRAWLER_IMAGE:-ghcr.io/yun-sangho/seedbook/stock-crawler}:${IMAGE_TAG:-latest}
+    pull_policy: always
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-seedbook}:${POSTGRES_PASSWORD:-seedbook}@postgres:5432/${POSTGRES_DB:-seedbook}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set in .env.local (Supabase connection string)}
       CRON_MORNING: ${CRON_MORNING:-0 6 * * 1-5}
       CRON_AFTERNOON: ${CRON_AFTERNOON:-30 16 * * 1-5}
       NODE_ENV: production
 
   web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-      target: production
+    image: ${WEB_IMAGE:-ghcr.io/yun-sangho/seedbook/web}:${IMAGE_TAG:-latest}
+    pull_policy: always
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-seedbook}:${POSTGRES_PASSWORD:-seedbook}@postgres:5432/${POSTGRES_DB:-seedbook}
-      # better-auth refuses to boot with the built-in default secret. The
-      # fallback below is a clearly-marked placeholder so the image starts
-      # in local/dev; production deployments MUST override via .env.
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-placeholder-override-in-production-8f2k1m9xq7h4}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3001}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set in .env.local (Supabase connection string)}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET must be set in .env.local}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?BETTER_AUTH_URL must be set in .env.local (e.g. https://seedbook.boogie.ing)}
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
       NODE_ENV: production
       PORT: "3001"
       HOSTNAME: "0.0.0.0"
     ports:
-      - "${WEB_PORT:-3001}:3001"
-
-volumes:
-  postgres_data:
+      - "${WEB_PORT:-127.0.0.1:3001}:3001"

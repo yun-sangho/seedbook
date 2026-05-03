@@ -22,7 +22,7 @@
     "docker:dev": "bash scripts/docker-dev.sh up --build",
     "docker:dev:down": "bash scripts/docker-dev.sh down",
     "docker:dev:logs": "bash scripts/docker-dev.sh logs -f",
-    "docker:prod": "docker compose --env-file .env.local up --build -d"
+    "docker:prod": "docker compose pull && docker compose up -d --remove-orphans"
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "0.84.1",
