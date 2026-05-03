@@ -1,4 +1,4 @@
-import { prisma } from "@seedbook/database";
+import { closeDb } from "@seedbook/database";
 import { logger } from "../logger.js";
 import { syncStockList } from "./sync-stock-list.js";
 import { syncStockPrices } from "./sync-stock-prices.js";
@@ -17,4 +17,4 @@ runAll()
     logger.error("크롤링 실패", { error: String(e) });
     process.exit(1);
   })
-  .finally(() => prisma.$disconnect());
+  .finally(() => closeDb());

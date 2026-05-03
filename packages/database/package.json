@@ -5,27 +5,27 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "dotenv -e .env.local prisma migrate dev",
     "build": "tsc -p tsconfig.json",
-    "db:seed": "tsx prisma/seed.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "tsx scripts/seed.ts",
     "db:seed:capture": "tsx scripts/capture-seed.ts",
     "db:sanitize:user-export": "tsx scripts/sanitize-user-export.ts",
     "etl:etf:prices": "tsx ./scripts/fetch-etf-prices.ts",
     "etl:etf:holdings": "tsx ./scripts/fetch-etf-holdings.ts"
   },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
   "dependencies": {
-    "@prisma/client": "^5.19.0",
+    "drizzle-orm": "^0.44.5",
+    "postgres": "^3.4.5",
     "dotenv": "^16.4.5"
   },
   "devDependencies": {
     "@types/dotenv": "^8.2.0",
     "@types/node": "^22.7.5",
     "dotenv-cli": "^10.0.0",
-    "prisma": "^5.19.0",
+    "drizzle-kit": "^0.31.5",
     "tsx": "^4.19.0",
     "typescript": "^5.4.0"
   }

@@ -11,14 +11,8 @@ const nextConfig: NextConfig = {
   // so we can run the app in any Docker host without Vercel.
   output: "standalone",
   // Monorepo: trace files from the repo root so pnpm workspace symlinks
-  // (e.g. @seedbook/database, @prisma/client) are included in the bundle.
+  // (e.g. @seedbook/database) are included in the bundle.
   outputFileTracingRoot: path.join(__dirname, "../../"),
-  // Prisma's query engine (libquery_engine-*.so.node) is loaded via dlopen
-  // at runtime, so Next.js's static file tracer misses it and the standalone
-  // bundle ships without the .prisma/client directory. Force-include it.
-  outputFileTracingIncludes: {
-    "/**/*": ["../../node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client/**"],
-  },
   // Docker for Mac 처럼 bind mount 의 fs change 이벤트가 컨테이너로 전달되지
   // 않는 환경에서 turbopack HMR 이 동작하도록 폴링 fallback 을 켠다. 호스트에서
   // 직접 실행할 때는 이 env 가 비어 있어 native 워처(즉시 반응)를 그대로 쓴다.

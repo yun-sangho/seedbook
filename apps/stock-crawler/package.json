@@ -15,7 +15,9 @@
   },
   "dependencies": {
     "@seedbook/database": "workspace:*",
-    "node-cron": "^3.0.3"
+    "drizzle-orm": "^0.44.5",
+    "node-cron": "^3.0.3",
+    "postgres": "^3.4.5"
   },
   "devDependencies": {
     "@types/node": "^22.7.5",

@@ -26,7 +26,9 @@ COPY packages/eslint-config/ ./packages/eslint-config/
 COPY packages/database/ ./packages/database/
 COPY apps/web/ ./apps/web/
 
-RUN pnpm --filter @seedbook/database prisma:generate
+# @seedbook/database 의 dist/ 는 Drizzle 만 export 하므로 Prisma generate 가
+# 더 이상 필요 없다. tsc 컴파일 한 번이면 web 이 import 할 수 있다.
+RUN pnpm --filter @seedbook/database build
 # Bypass turbo (which would require ^build + format:check) by invoking
 # the web package's build script directly via pnpm filter.
 RUN pnpm --filter @seedbook/web build
@@ -68,7 +70,7 @@ COPY packages/tailwind-config/ ./packages/tailwind-config/
 COPY packages/eslint-config/ ./packages/eslint-config/
 COPY packages/database/ ./packages/database/
 
-RUN pnpm --filter @seedbook/database prisma:generate
+RUN pnpm --filter @seedbook/database build
 
 # Web config files only — source directories come in via volume mounts
 COPY apps/web/package.json ./apps/web/

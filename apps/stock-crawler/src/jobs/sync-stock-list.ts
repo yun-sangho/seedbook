@@ -1,12 +1,12 @@
-import { prisma } from "@seedbook/database";
+import { closeDb, db, schema } from "@seedbook/database";
+import { and, eq, notInArray, sql } from "drizzle-orm";
 import { logger } from "../logger.js";
 import { fetchAllStocks } from "../sources/naver.js";
 
 const UPSERT_BATCH_SIZE = 100;
 
 // 업스트림이 빈 배열/부분 실패를 돌려줬을 때 "존재하지 않는 종목" 으로 오판하여
-// 해당 시장 전체를 비활성화하는 사고를 방지한다. 실제 KOSPI/KOSDAQ 은 수천 개
-// 규모이므로 이 임계치보다 작으면 업스트림 이상으로 간주하고 비활성화를 스킵한다.
+// 해당 시장 전체를 비활성화하는 사고를 방지한다.
 const MIN_STOCKS_PER_MARKET_FOR_DEACTIVATION = 100;
 
 export async function syncStockList(): Promise<void> {
@@ -19,37 +19,33 @@ export async function syncStockList(): Promise<void> {
     return;
   }
 
-  // 순차 upsert 는 수천 회 왕복이라 느리고, 중간 프로세스 종료 시 반영이 불균일해진다.
-  // sync-stock-prices 와 동일한 패턴으로 병렬 배치 업서트.
+  const now = new Date();
   let upserted = 0;
   for (let i = 0; i < stocks.length; i += UPSERT_BATCH_SIZE) {
-    const batch = stocks.slice(i, i + UPSERT_BATCH_SIZE);
-    await Promise.all(
-      batch.map((stock) =>
-        prisma.stock.upsert({
-          where: {
-            market_ticker: { market: stock.market, ticker: stock.ticker },
-          },
-          create: {
-            market: stock.market,
-            ticker: stock.ticker,
-            name: stock.name,
-            currency: stock.currency,
-            isActive: true,
-          },
-          update: {
-            name: stock.name,
-            currency: stock.currency,
-            isActive: true,
-          },
-        })
-      )
-    );
+    const batch = stocks.slice(i, i + UPSERT_BATCH_SIZE).map((stock) => ({
+      market: stock.market,
+      ticker: stock.ticker,
+      name: stock.name,
+      currency: stock.currency,
+      isActive: true,
+      updatedAt: now,
+    }));
+    await db
+      .insert(schema.stock)
+      .values(batch)
+      .onConflictDoUpdate({
+        target: [schema.stock.market, schema.stock.ticker],
+        set: {
+          name: sql.raw(`EXCLUDED."name"`),
+          currency: sql.raw(`EXCLUDED."currency"`),
+          isActive: sql.raw(`EXCLUDED."isActive"`),
+          updatedAt: now,
+        },
+      });
     upserted += batch.length;
   }
 
-  // 크롤링된 종목에 없는 기존 활성 종목은 비활성화.
-  // 시장 단위로 격리: KOSPI 크롤링 결과가 KOSDAQ 종목을 건드리지 않음.
+  // 크롤링된 종목에 없는 기존 활성 종목은 비활성화. 시장 단위로 격리.
   const crawledByMarket = new Map<string, string[]>();
   for (const stock of stocks) {
     const list = crawledByMarket.get(stock.market) ?? [];
@@ -61,20 +57,23 @@ export async function syncStockList(): Promise<void> {
   for (const [market, tickers] of crawledByMarket) {
     if (tickers.length < MIN_STOCKS_PER_MARKET_FOR_DEACTIVATION) {
       logger.warn(
-        `${market} 크롤 결과가 ${tickers.length}개로 비정상 (임계치 ${MIN_STOCKS_PER_MARKET_FOR_DEACTIVATION}), 비활성화 스킵`
+        `${market} 크롤 결과가 ${tickers.length}개로 비정상 (임계치 ${MIN_STOCKS_PER_MARKET_FOR_DEACTIVATION}), 비활성화 스킵`,
       );
       continue;
     }
 
-    const result = await prisma.stock.updateMany({
-      where: {
-        market,
-        ticker: { notIn: tickers },
-        isActive: true,
-      },
-      data: { isActive: false },
-    });
-    deactivated += result.count;
+    const result = await db
+      .update(schema.stock)
+      .set({ isActive: false, updatedAt: now })
+      .where(
+        and(
+          eq(schema.stock.market, market),
+          notInArray(schema.stock.ticker, tickers),
+          eq(schema.stock.isActive, true),
+        ),
+      )
+      .returning({ ticker: schema.stock.ticker });
+    deactivated += result.length;
   }
 
   logger.info(`종목 목록 동기화 완료: ${upserted}개 upsert, ${deactivated}개 비활성화`);
@@ -87,5 +86,5 @@ if (process.argv[1]?.includes("sync-stock-list")) {
       logger.error("종목 목록 동기화 실패", { error: String(e) });
       process.exit(1);
     })
-    .finally(() => prisma.$disconnect());
+    .finally(() => closeDb());
 }

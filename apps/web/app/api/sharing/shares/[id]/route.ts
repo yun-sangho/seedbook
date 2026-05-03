@@ -1,4 +1,5 @@
-import { prisma } from "@seedbook/database";
+import { db, schema } from "@seedbook/database";
+import { eq } from "drizzle-orm";
 import { resolveUserId } from "@web/lib/auth-server";
 
 /**
@@ -14,12 +15,14 @@ export async function DELETE(request: Request, context: RouteContext): Promise<R
   const userId = await resolveUserId(request);
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  const share = await prisma.dataShare.findUnique({ where: { id } });
+  const share = await db.query.dataShare.findFirst({
+    where: (t, { eq }) => eq(t.id, id),
+  });
   if (!share || share.ownerUserId !== userId) {
     // 없는 id 와 타인 소유를 구분하지 않고 404 로 묶음.
     return Response.json({ error: "not found" }, { status: 404 });
   }
 
-  await prisma.dataShare.delete({ where: { id } });
+  await db.delete(schema.dataShare).where(eq(schema.dataShare.id, id));
   return Response.json({ ok: true });
 }

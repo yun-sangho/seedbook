@@ -1,6 +1,6 @@
-import { prisma } from "@seedbook/database";
+import { db, schema } from "@seedbook/database";
 import { betterAuth } from "better-auth";
-import { prismaAdapter } from "better-auth/adapters/prisma";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
 // 개발 환경에선 카카오 앱 설정 없이도 로그인할 수 있도록 이메일/비밀번호
 // 프로바이더를 함께 활성화한다. 프로덕션 빌드(`NODE_ENV !== "development"`)
@@ -8,7 +8,15 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 const isDevEnv = process.env.NODE_ENV === "development";
 
 export const auth = betterAuth({
-  database: prismaAdapter(prisma, { provider: "postgresql" }),
+  database: drizzleAdapter(db, {
+    provider: "pg",
+    schema: {
+      user: schema.user,
+      session: schema.session,
+      account: schema.account,
+      verification: schema.verification,
+    },
+  }),
   ...(isDevEnv ? { emailAndPassword: { enabled: true } } : {}),
   socialProviders: {
     kakao: {

@@ -1,16 +1,14 @@
-import { kstDateString, kstDayOfWeek, prisma } from "@seedbook/database";
+import { closeDb, db, kstDateString, kstDayOfWeek, schema } from "@seedbook/database";
+import { eq, sql } from "drizzle-orm";
 import { logger } from "../logger.js";
 import { fetchAllStockPrices } from "../sources/naver.js";
 
 export async function syncStockPrices(date?: Date): Promise<void> {
   const targetDate = date ?? new Date();
-  const kstDay = kstDateString(targetDate); // "YYYY-MM-DD" (KST 기준)
+  const kstDay = kstDateString(targetDate);
 
-  // 주말은 시세 데이터가 없으므로 명시 인자가 없을 때 스킵한다 (불필요한 트래픽 방지).
-  // 명시 인자가 있을 경우(예: 스크립트로 과거 특정일 재수집)는 호출자 의도를 신뢰.
-  // 요일 판정은 반드시 KST 기준이어야 한다 (컨테이너 TZ 는 UTC 기본값).
   if (date === undefined) {
-    const day = kstDayOfWeek(targetDate); // 0=일, 6=토 (KST 기준)
+    const day = kstDayOfWeek(targetDate);
     if (day === 0 || day === 6) {
       logger.info(`주말(${kstDay} KST), 시세 수집 스킵`);
       return;
@@ -20,10 +18,10 @@ export async function syncStockPrices(date?: Date): Promise<void> {
   logger.info(`일봉 시세 수집 시작: ${kstDay} KST`);
 
   // 활성 종목만 가져오기
-  const activeStocks = await prisma.stock.findMany({
-    where: { isActive: true },
-    select: { market: true, ticker: true },
-  });
+  const activeStocks = await db
+    .select({ market: schema.stock.market, ticker: schema.stock.ticker })
+    .from(schema.stock)
+    .where(eq(schema.stock.isActive, true));
 
   logger.info(`활성 종목 ${activeStocks.length}개 시세 수집 시작`);
 
@@ -37,29 +35,25 @@ export async function syncStockPrices(date?: Date): Promise<void> {
   for (let i = 0; i < prices.length; i += BATCH_SIZE) {
     const batch = prices.slice(i, i + BATCH_SIZE);
 
-    await Promise.all(
-      batch.map((price) =>
-        prisma.stockPrice.upsert({
-          where: {
-            stockMarket_stockTicker_date: {
-              stockMarket: price.stockMarket,
-              stockTicker: price.stockTicker,
-              date: price.date,
-            },
-          },
-          create: price,
-          update: {
-            open: price.open,
-            high: price.high,
-            low: price.low,
-            close: price.close,
-            volume: price.volume,
-            marketCap: price.marketCap,
-            change: price.change,
-          },
-        })
-      )
-    );
+    await db
+      .insert(schema.stockPrice)
+      .values(batch)
+      .onConflictDoUpdate({
+        target: [
+          schema.stockPrice.stockMarket,
+          schema.stockPrice.stockTicker,
+          schema.stockPrice.date,
+        ],
+        set: {
+          open: sql.raw(`EXCLUDED."open"`),
+          high: sql.raw(`EXCLUDED."high"`),
+          low: sql.raw(`EXCLUDED."low"`),
+          close: sql.raw(`EXCLUDED."close"`),
+          volume: sql.raw(`EXCLUDED."volume"`),
+          marketCap: sql.raw(`EXCLUDED."marketCap"`),
+          change: sql.raw(`EXCLUDED."change"`),
+        },
+      });
 
     upserted += batch.length;
   }
@@ -77,5 +71,5 @@ if (process.argv[1]?.includes("sync-stock-prices")) {
       logger.error("일봉 시세 수집 실패", { error: String(e) });
       process.exit(1);
     })
-    .finally(() => prisma.$disconnect());
+    .finally(() => closeDb());
 }

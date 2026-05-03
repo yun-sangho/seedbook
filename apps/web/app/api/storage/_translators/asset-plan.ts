@@ -1,3 +1,5 @@
+import { schema } from "@seedbook/database";
+import { and, eq, notInArray } from "drizzle-orm";
 import { bigIntToNumber, toBigInt, type DomainTranslator, type Envelope } from "./types";
 
 const DOMAIN = "asset-plans";
@@ -14,7 +16,7 @@ type AssetPlanPayload = {
   id: string;
   planName: string;
   planPeriod: number;
-  createdAt: string; // ISO string
+  createdAt: string;
   updatedAt: string;
   accountPlans: Record<string, AccountItemPayload>;
   totalMonthlyContribution: number;
@@ -22,14 +24,14 @@ type AssetPlanPayload = {
 };
 
 export const assetPlanTranslator: DomainTranslator = {
-  async read(prisma, userId) {
+  async read(db, userId) {
     const [plans, listOrder] = await Promise.all([
-      prisma.assetPlan.findMany({
-        where: { userId },
-        include: { accountItems: true },
+      db.query.assetPlan.findMany({
+        where: (t, { eq }) => eq(t.userId, userId),
+        with: { accountItems: true },
       }),
-      prisma.userListOrder.findUnique({
-        where: { userId_domain: { userId, domain: DOMAIN } },
+      db.query.userListOrder.findFirst({
+        where: (t, { and, eq }) => and(eq(t.userId, userId), eq(t.domain, DOMAIN)),
       }),
     ]);
 
@@ -72,33 +74,37 @@ export const assetPlanTranslator: DomainTranslator = {
     return envelope;
   },
 
-  async write(prisma, userId, envelope) {
+  async write(db, userId, envelope) {
     const state = envelope.state ?? {};
     const plans = Array.isArray(state.plans) ? (state.plans as AssetPlanPayload[]) : [];
 
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       const order = plans.map((p) => p.id);
-      await tx.userListOrder.upsert({
-        where: { userId_domain: { userId, domain: DOMAIN } },
-        create: { userId, domain: DOMAIN, order },
-        update: { order },
-      });
+      await tx
+        .insert(schema.userListOrder)
+        .values({ userId, domain: DOMAIN, order })
+        .onConflictDoUpdate({
+          target: [schema.userListOrder.userId, schema.userListOrder.domain],
+          set: { order },
+        });
 
-      const incomingIds = new Set(plans.map((p) => p.id));
-      const existingIds = (
-        await tx.assetPlan.findMany({ where: { userId }, select: { id: true } })
-      ).map((r) => r.id);
-      const toDelete = existingIds.filter((id) => !incomingIds.has(id));
-      if (toDelete.length > 0) {
-        await tx.assetPlan.deleteMany({ where: { id: { in: toDelete } } });
+      const incomingIds = plans.map((p) => p.id);
+      if (incomingIds.length > 0) {
+        await tx
+          .delete(schema.assetPlan)
+          .where(
+            and(eq(schema.assetPlan.userId, userId), notInArray(schema.assetPlan.id, incomingIds)),
+          );
+      } else {
+        await tx.delete(schema.assetPlan).where(eq(schema.assetPlan.userId, userId));
       }
 
       for (const p of plans) {
         const createdAt = new Date(p.createdAt);
         const updatedAt = new Date(p.updatedAt);
-        await tx.assetPlan.upsert({
-          where: { id: p.id },
-          create: {
+        await tx
+          .insert(schema.assetPlan)
+          .values({
             id: p.id,
             userId,
             planName: p.planName,
@@ -107,30 +113,34 @@ export const assetPlanTranslator: DomainTranslator = {
             averageTargetReturn: p.averageTargetReturn,
             createdAt,
             updatedAt,
-          },
-          update: {
-            planName: p.planName,
-            planPeriod: p.planPeriod,
-            totalMonthlyContribution: toBigInt(p.totalMonthlyContribution),
-            averageTargetReturn: p.averageTargetReturn,
-            updatedAt,
-          },
-        });
+          })
+          .onConflictDoUpdate({
+            target: schema.assetPlan.id,
+            set: {
+              planName: p.planName,
+              planPeriod: p.planPeriod,
+              totalMonthlyContribution: toBigInt(p.totalMonthlyContribution),
+              averageTargetReturn: p.averageTargetReturn,
+              updatedAt,
+            },
+          });
 
         // AccountItems: 전체 교체 (한 plan 의 항목 수는 수십 건 이하로 가정)
-        await tx.assetPlanAccountItem.deleteMany({ where: { planId: p.id } });
+        await tx
+          .delete(schema.assetPlanAccountItem)
+          .where(eq(schema.assetPlanAccountItem.planId, p.id));
         const itemRows = Object.entries(p.accountPlans ?? {}).map(([accountId, item]) => ({
           planId: p.id,
           accountId,
           accountKind: item.accountKind ?? "investment",
           contributionAmount: toBigInt(
-            parseFloat((item.contributionAmount ?? "0").replace(/,/g, ""))
+            parseFloat((item.contributionAmount ?? "0").replace(/,/g, "")),
           ),
           contributionFrequency: item.contributionFrequency,
           targetAnnualReturn: parseFloat(item.targetAnnualReturn ?? "0"),
         }));
         if (itemRows.length > 0) {
-          await tx.assetPlanAccountItem.createMany({ data: itemRows, skipDuplicates: true });
+          await tx.insert(schema.assetPlanAccountItem).values(itemRows).onConflictDoNothing();
         }
       }
     });

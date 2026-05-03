@@ -18,7 +18,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { homedir } from "os";
 import { resolve } from "path";
 
-const SEED_DATA_DIR = resolve(__dirname, "../prisma/seed-data");
+const SEED_DATA_DIR = resolve(__dirname, "../seed-data");
 const OUTPUT_PATH = resolve(SEED_DATA_DIR, "user-data.json");
 // 데모 데이터 버튼이 fetch 로 읽을 정적 파일. fixture 단일 출처를 유지하기 위해
 // sanitize 가 두 곳을 동시에 갱신한다.

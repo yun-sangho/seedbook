@@ -1,4 +1,4 @@
-import { prisma } from "@seedbook/database";
+import { db } from "@seedbook/database";
 import { TRANSLATORS } from "@web/app/api/storage/_translators";
 import { resolveUserId } from "@web/lib/auth-server";
 import { canViewData } from "@web/lib/sharing/authz";
@@ -32,7 +32,7 @@ export async function GET(request: Request, context: RouteContext): Promise<Resp
   if (!allowed) return Response.json({ error: "forbidden" }, { status: 403 });
 
   const translator = TRANSLATORS[key];
-  const envelope = await translator.read(prisma, ownerId);
+  const envelope = await translator.read(db, ownerId);
 
   return Response.json({
     data: envelope,

@@ -1,4 +1,5 @@
-import { prisma } from "@seedbook/database";
+import { db, schema } from "@seedbook/database";
+import { and, eq, isNull } from "drizzle-orm";
 
 /**
  * 데이터 공유 권한 검사.
@@ -16,17 +17,21 @@ import { prisma } from "@seedbook/database";
  */
 export async function canViewData(viewerUserId: string, ownerUserId: string): Promise<boolean> {
   if (viewerUserId === ownerUserId) return true;
-  const acceptance = await prisma.dataShareAcceptance.findFirst({
-    where: {
-      recipientUserId: viewerUserId,
-      share: {
-        ownerUserId,
-        revokedAt: null,
-      },
-    },
-    select: { id: true },
-  });
-  return acceptance !== null;
+
+  const rows = await db
+    .select({ id: schema.dataShareAcceptance.id })
+    .from(schema.dataShareAcceptance)
+    .innerJoin(schema.dataShare, eq(schema.dataShareAcceptance.shareId, schema.dataShare.id))
+    .where(
+      and(
+        eq(schema.dataShareAcceptance.recipientUserId, viewerUserId),
+        eq(schema.dataShare.ownerUserId, ownerUserId),
+        isNull(schema.dataShare.revokedAt),
+      ),
+    )
+    .limit(1);
+
+  return rows.length > 0;
 }
 
 export { generateShareCode } from "./generate-code";

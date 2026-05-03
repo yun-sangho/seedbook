@@ -1,4 +1,4 @@
-import { prisma } from "@seedbook/database";
+import { db, schema } from "@seedbook/database";
 import { resolveUserId } from "@web/lib/auth-server";
 
 /**
@@ -33,9 +33,9 @@ export async function POST(request: Request): Promise<Response> {
   }
   const code = rawCode.trim();
 
-  const share = await prisma.dataShare.findUnique({
-    where: { code },
-    include: { owner: { select: { id: true, name: true, image: true } } },
+  const share = await db.query.dataShare.findFirst({
+    where: (t, { eq }) => eq(t.code, code),
+    with: { owner: { columns: { id: true, name: true, image: true } } },
   });
   if (!share || share.revokedAt !== null) {
     return Response.json({ error: "invalid code" }, { status: 404 });
@@ -45,11 +45,21 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   // upsert: 이미 수락한 건은 그대로 두고 응답만 내려준다 (idempotent).
-  const acceptance = await prisma.dataShareAcceptance.upsert({
-    where: { shareId_recipientUserId: { shareId: share.id, recipientUserId: userId } },
-    create: { shareId: share.id, recipientUserId: userId },
-    update: {},
-  });
+  // (shareId, recipientUserId) 가 unique 라 INSERT ... ON CONFLICT 로 처리.
+  const [acceptance] = await db
+    .insert(schema.dataShareAcceptance)
+    .values({ shareId: share.id, recipientUserId: userId })
+    .onConflictDoUpdate({
+      target: [schema.dataShareAcceptance.shareId, schema.dataShareAcceptance.recipientUserId],
+      // no-op update — onConflictDoNothing 은 returning 이 비어 있어 결과 추출이 어려움.
+      // updatedAt 류 칼럼이 없어 그냥 shareId 자기 자신을 set 한다.
+      set: { shareId: share.id },
+    })
+    .returning();
+
+  if (!acceptance) {
+    return Response.json({ error: "failed to accept" }, { status: 500 });
+  }
 
   return Response.json({
     acceptance: {

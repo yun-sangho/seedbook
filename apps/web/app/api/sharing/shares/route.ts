@@ -1,4 +1,4 @@
-import { prisma } from "@seedbook/database";
+import { db, schema } from "@seedbook/database";
 import { resolveUserId } from "@web/lib/auth-server";
 import { generateShareCode } from "@web/lib/sharing/authz";
 
@@ -17,17 +17,17 @@ export async function GET(request: Request): Promise<Response> {
   const userId = await resolveUserId(request);
   if (!userId) return unauthorized();
 
-  const shares = await prisma.dataShare.findMany({
-    where: { ownerUserId: userId },
-    include: {
+  const shares = await db.query.dataShare.findMany({
+    where: (t, { eq }) => eq(t.ownerUserId, userId),
+    with: {
       acceptances: {
-        include: {
-          recipient: { select: { id: true, name: true, image: true } },
+        with: {
+          recipient: { columns: { id: true, name: true, image: true } },
         },
-        orderBy: { acceptedAt: "asc" },
+        orderBy: (t, { asc }) => [asc(t.acceptedAt)],
       },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: (t, { desc }) => [desc(t.createdAt)],
   });
 
   return Response.json({
@@ -73,9 +73,13 @@ export async function POST(request: Request): Promise<Response> {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const code = generateShareCode();
     try {
-      const share = await prisma.dataShare.create({
-        data: { ownerUserId: userId, code, label },
-      });
+      const [share] = await db
+        .insert(schema.dataShare)
+        .values({ ownerUserId: userId, code, label })
+        .returning();
+      if (!share) {
+        return Response.json({ error: "failed to create share" }, { status: 500 });
+      }
       return Response.json({
         share: {
           id: share.id,
@@ -87,7 +91,6 @@ export async function POST(request: Request): Promise<Response> {
         },
       });
     } catch (err) {
-      // unique violation 이면 재시도, 그 외는 500
       if (isUniqueViolation(err) && attempt < 2) continue;
       console.error("[api/sharing/shares] POST failed", err);
       return Response.json({ error: "failed to create share" }, { status: 500 });
@@ -96,11 +99,12 @@ export async function POST(request: Request): Promise<Response> {
   return Response.json({ error: "failed to create share" }, { status: 500 });
 }
 
+// postgres-js 가 던지는 unique violation: SQLSTATE 23505.
 function isUniqueViolation(err: unknown): boolean {
   return (
     typeof err === "object" &&
     err !== null &&
     "code" in err &&
-    (err as { code: unknown }).code === "P2002"
+    (err as { code: unknown }).code === "23505"
   );
 }

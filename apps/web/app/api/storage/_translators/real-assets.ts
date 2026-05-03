@@ -1,3 +1,5 @@
+import { schema } from "@seedbook/database";
+import { and, eq, notInArray } from "drizzle-orm";
 import {
   bigIntToNumber,
   formatDate,
@@ -22,11 +24,11 @@ type RealAssetPayload = {
 };
 
 export const realAssetsTranslator: DomainTranslator = {
-  async read(prisma, userId) {
+  async read(db, userId) {
     const [assets, listOrder] = await Promise.all([
-      prisma.realAsset.findMany({ where: { userId } }),
-      prisma.userListOrder.findUnique({
-        where: { userId_domain: { userId, domain: DOMAIN } },
+      db.query.realAsset.findMany({ where: (t, { eq }) => eq(t.userId, userId) }),
+      db.query.userListOrder.findFirst({
+        where: (t, { and, eq }) => and(eq(t.userId, userId), eq(t.domain, DOMAIN)),
       }),
     ]);
 
@@ -58,34 +60,39 @@ export const realAssetsTranslator: DomainTranslator = {
     return envelope;
   },
 
-  async write(prisma, userId, envelope) {
+  async write(db, userId, envelope) {
     const state = envelope.state ?? {};
     const realAssets = Array.isArray(state.realAssets)
       ? (state.realAssets as RealAssetPayload[])
       : [];
 
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       const order = realAssets.map((a) => a.id);
-      await tx.userListOrder.upsert({
-        where: { userId_domain: { userId, domain: DOMAIN } },
-        create: { userId, domain: DOMAIN, order },
-        update: { order },
-      });
+      await tx
+        .insert(schema.userListOrder)
+        .values({ userId, domain: DOMAIN, order })
+        .onConflictDoUpdate({
+          target: [schema.userListOrder.userId, schema.userListOrder.domain],
+          set: { order },
+        });
 
-      const incomingIds = new Set(realAssets.map((a) => a.id));
-      const existingIds = (
-        await tx.realAsset.findMany({ where: { userId }, select: { id: true } })
-      ).map((r) => r.id);
-      const toDelete = existingIds.filter((id) => !incomingIds.has(id));
-      if (toDelete.length > 0) {
-        await tx.realAsset.deleteMany({ where: { id: { in: toDelete } } });
+      const incomingIds = realAssets.map((a) => a.id);
+      if (incomingIds.length > 0) {
+        await tx
+          .delete(schema.realAsset)
+          .where(
+            and(eq(schema.realAsset.userId, userId), notInArray(schema.realAsset.id, incomingIds)),
+          );
+      } else {
+        await tx.delete(schema.realAsset).where(eq(schema.realAsset.userId, userId));
       }
 
+      const now = new Date();
       for (const a of realAssets) {
         const purchaseDate = a.purchaseDate ? parseDate(a.purchaseDate) : null;
-        await tx.realAsset.upsert({
-          where: { id: a.id },
-          create: {
+        await tx
+          .insert(schema.realAsset)
+          .values({
             id: a.id,
             userId,
             assetName: a.assetName,
@@ -95,17 +102,21 @@ export const realAssetsTranslator: DomainTranslator = {
             purchaseDate,
             note: a.note ?? "",
             color: a.color,
-          },
-          update: {
-            assetName: a.assetName,
-            assetType: a.assetType,
-            currentValue: toBigInt(a.currentValue),
-            purchaseValue: toBigInt(a.purchaseValue),
-            purchaseDate,
-            note: a.note ?? "",
-            color: a.color,
-          },
-        });
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: schema.realAsset.id,
+            set: {
+              assetName: a.assetName,
+              assetType: a.assetType,
+              currentValue: toBigInt(a.currentValue),
+              purchaseValue: toBigInt(a.purchaseValue),
+              purchaseDate,
+              note: a.note ?? "",
+              color: a.color,
+              updatedAt: now,
+            },
+          });
       }
     });
   },

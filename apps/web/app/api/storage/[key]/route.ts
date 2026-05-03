@@ -1,4 +1,4 @@
-import { prisma } from "@seedbook/database";
+import { db } from "@seedbook/database";
 import { TRANSLATORS, type Envelope } from "@web/app/api/storage/_translators";
 import { resolveUserId } from "@web/lib/auth-server";
 import { isCloudStoreKey } from "@web/lib/storage-mode";
@@ -43,7 +43,7 @@ export async function GET(request: Request, context: RouteContext): Promise<Resp
   if (!userId) return unauthorized();
 
   const translator = TRANSLATORS[key];
-  const envelope = await translator.read(prisma, userId);
+  const envelope = await translator.read(db, userId);
 
   return Response.json({
     data: envelope,
@@ -80,7 +80,7 @@ export async function PUT(request: Request, context: RouteContext): Promise<Resp
   // `data: null` 은 "이 store 를 클라우드에서 지우라" 는 시맨틱. 빈 envelope 를
   // 넘겨 stale 삭제 루프가 모든 row 를 지우도록 한다.
   if (data === null) {
-    await translator.write(prisma, userId, { state: {}, version: 0 });
+    await translator.write(db, userId, { state: {}, version: 0 });
     return Response.json({ ok: true });
   }
 
@@ -97,7 +97,7 @@ export async function PUT(request: Request, context: RouteContext): Promise<Resp
 
   const envelope = data as Envelope;
   try {
-    await translator.write(prisma, userId, envelope);
+    await translator.write(db, userId, envelope);
   } catch (err) {
     // DB 실패는 500 으로 돌려주고 디버그용 로그.
     console.error(`[api/storage/${key}] write failed`, err);

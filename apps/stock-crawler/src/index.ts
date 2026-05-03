@@ -1,4 +1,4 @@
-import { prisma } from "@seedbook/database";
+import { closeDb } from "@seedbook/database";
 import { syncStockList } from "./jobs/sync-stock-list.js";
 import { syncStockPrices } from "./jobs/sync-stock-prices.js";
 import { logger } from "./logger.js";
@@ -7,8 +7,6 @@ import { isJobRunning, runJob, startScheduler } from "./scheduler.js";
 logger.info("stock-crawler 시작");
 
 // RUN_NOW=true 이면 즉시 1회 실행 후 스케줄러 시작.
-// runJob 래퍼를 통과시켜야 isJobRunning() 이 true 로 켜지고, graceful shutdown
-// 이 이 초기 sync 를 기다릴 수 있다.
 if (process.env.RUN_NOW === "true") {
   logger.info("즉시 실행 모드 (RUN_NOW=true)");
   void runJob("즉시 실행 (RUN_NOW)", async () => {
@@ -32,15 +30,10 @@ process.on("uncaughtException", (err) => {
     error: String(err),
     stack: err instanceof Error ? err.stack : undefined,
   });
-  // 상태가 불확실하므로 안전하게 재시작(shutdown → Docker restart policy).
   void shutdown("uncaughtException");
 });
 
-// Graceful shutdown
-// - in-flight job 이 있으면 최대 SHUTDOWN_WAIT_MS 까지 완료를 기다린다.
-//   (진행 중인 쿼리 도중 $disconnect 하면 Prisma ERROR 57P01 등으로 로그가
-//   지저분해진다.)
-// - Prisma 연결을 닫아서 서버 측 abort 를 피한다.
+// Graceful shutdown — in-flight job 이 있으면 SHUTDOWN_WAIT_MS 까지 완료를 기다린다.
 const SHUTDOWN_WAIT_MS = 30_000;
 const SHUTDOWN_POLL_MS = 500;
 
@@ -67,9 +60,9 @@ async function shutdown(signal: string): Promise<void> {
   }
 
   try {
-    await prisma.$disconnect();
+    await closeDb();
   } catch (e) {
-    logger.warn("Prisma 연결 종료 중 오류", { error: String(e) });
+    logger.warn("DB 연결 종료 중 오류", { error: String(e) });
   }
 
   process.exit(0);

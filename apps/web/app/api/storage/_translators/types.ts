@@ -5,11 +5,12 @@
  * 내용을 DB row 로 해체하고, 다시 응답 시 row 들을 envelope 로 조립한다.
  */
 
-import { prisma } from "@seedbook/database";
+import type { Database } from "@seedbook/database";
 
-// `@seedbook/database` 가 export 하는 실제 싱글턴의 타입을 그대로 쓴다. Prisma
-// 자동 생성 제네릭이 붙은 정확한 타입이라 메서드 추론이 깔끔하다.
-export type Prisma = typeof prisma;
+// 각 translator 는 Drizzle db 핸들을 받아 자체적으로 트랜잭션을 시작한다.
+// 호출 측이 이미 transaction 안에서 호출하더라도 Drizzle 의 nested transaction
+// (savepoint) 으로 처리되어 동일한 시그니처로 재사용 가능.
+export type Db = Database;
 
 /**
  * Translator 가 반환하는 envelope 모양.
@@ -29,8 +30,8 @@ export type Envelope = {
  * - `write`: 클라이언트가 보낸 envelope 를 받아 DB row 를 upsert + stale row 삭제.
  */
 export interface DomainTranslator {
-  read(prisma: Prisma, userId: string): Promise<Envelope | null>;
-  write(prisma: Prisma, userId: string, envelope: Envelope): Promise<void>;
+  read(db: Db, userId: string): Promise<Envelope | null>;
+  write(db: Db, userId: string, envelope: Envelope): Promise<void>;
 }
 
 /**

@@ -1,4 +1,5 @@
-import { prisma } from "@seedbook/database";
+import { db, schema } from "@seedbook/database";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { resolveUserId } from "@web/lib/auth-server";
 
 /**
@@ -10,31 +11,37 @@ export async function GET(request: Request): Promise<Response> {
   const userId = await resolveUserId(request);
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  const acceptances = await prisma.dataShareAcceptance.findMany({
-    where: {
-      recipientUserId: userId,
-      share: { revokedAt: null },
-    },
-    include: {
-      share: {
-        include: {
-          owner: { select: { id: true, name: true, image: true } },
-        },
-      },
-    },
-    orderBy: { acceptedAt: "desc" },
-  });
+  const rows = await db
+    .select({
+      acceptanceId: schema.dataShareAcceptance.id,
+      shareId: schema.dataShareAcceptance.shareId,
+      acceptedAt: schema.dataShareAcceptance.acceptedAt,
+      label: schema.dataShare.label,
+      ownerId: schema.user.id,
+      ownerName: schema.user.name,
+      ownerImage: schema.user.image,
+    })
+    .from(schema.dataShareAcceptance)
+    .innerJoin(schema.dataShare, eq(schema.dataShareAcceptance.shareId, schema.dataShare.id))
+    .innerJoin(schema.user, eq(schema.dataShare.ownerUserId, schema.user.id))
+    .where(
+      and(
+        eq(schema.dataShareAcceptance.recipientUserId, userId),
+        isNull(schema.dataShare.revokedAt),
+      ),
+    )
+    .orderBy(desc(schema.dataShareAcceptance.acceptedAt));
 
   return Response.json({
-    received: acceptances.map((a) => ({
-      id: a.id,
-      shareId: a.shareId,
-      acceptedAt: a.acceptedAt.toISOString(),
-      label: a.share.label,
+    received: rows.map((r) => ({
+      id: r.acceptanceId,
+      shareId: r.shareId,
+      acceptedAt: r.acceptedAt.toISOString(),
+      label: r.label,
       owner: {
-        id: a.share.owner.id,
-        name: a.share.owner.name,
-        image: a.share.owner.image,
+        id: r.ownerId,
+        name: r.ownerName,
+        image: r.ownerImage,
       },
     })),
   });

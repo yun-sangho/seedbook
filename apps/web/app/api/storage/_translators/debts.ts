@@ -1,3 +1,5 @@
+import { schema } from "@seedbook/database";
+import { and, eq, notInArray } from "drizzle-orm";
 import {
   bigIntToNumber,
   formatDate,
@@ -23,11 +25,11 @@ type DebtPayload = {
 };
 
 export const debtsTranslator: DomainTranslator = {
-  async read(prisma, userId) {
+  async read(db, userId) {
     const [debts, listOrder] = await Promise.all([
-      prisma.debt.findMany({ where: { userId } }),
-      prisma.userListOrder.findUnique({
-        where: { userId_domain: { userId, domain: DOMAIN } },
+      db.query.debt.findMany({ where: (t, { eq }) => eq(t.userId, userId) }),
+      db.query.userListOrder.findFirst({
+        where: (t, { and, eq }) => and(eq(t.userId, userId), eq(t.domain, DOMAIN)),
       }),
     ]);
 
@@ -60,32 +62,35 @@ export const debtsTranslator: DomainTranslator = {
     return envelope;
   },
 
-  async write(prisma, userId, envelope) {
+  async write(db, userId, envelope) {
     const state = envelope.state ?? {};
     const debts = Array.isArray(state.debts) ? (state.debts as DebtPayload[]) : [];
 
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       const order = debts.map((d) => d.id);
-      await tx.userListOrder.upsert({
-        where: { userId_domain: { userId, domain: DOMAIN } },
-        create: { userId, domain: DOMAIN, order },
-        update: { order },
-      });
+      await tx
+        .insert(schema.userListOrder)
+        .values({ userId, domain: DOMAIN, order })
+        .onConflictDoUpdate({
+          target: [schema.userListOrder.userId, schema.userListOrder.domain],
+          set: { order },
+        });
 
-      const incomingIds = new Set(debts.map((d) => d.id));
-      const existingIds = (await tx.debt.findMany({ where: { userId }, select: { id: true } })).map(
-        (r) => r.id
-      );
-      const toDelete = existingIds.filter((id) => !incomingIds.has(id));
-      if (toDelete.length > 0) {
-        await tx.debt.deleteMany({ where: { id: { in: toDelete } } });
+      const incomingIds = debts.map((d) => d.id);
+      if (incomingIds.length > 0) {
+        await tx
+          .delete(schema.debt)
+          .where(and(eq(schema.debt.userId, userId), notInArray(schema.debt.id, incomingIds)));
+      } else {
+        await tx.delete(schema.debt).where(eq(schema.debt.userId, userId));
       }
 
+      const now = new Date();
       for (const d of debts) {
         const maturityDate = d.maturityDate ? parseDate(d.maturityDate) : null;
-        await tx.debt.upsert({
-          where: { id: d.id },
-          create: {
+        await tx
+          .insert(schema.debt)
+          .values({
             id: d.id,
             userId,
             loanName: d.loanName,
@@ -96,18 +101,22 @@ export const debtsTranslator: DomainTranslator = {
             maturityDate,
             monthlyPayment: toBigInt(d.monthlyPayment),
             note: d.note ?? "",
-          },
-          update: {
-            loanName: d.loanName,
-            loanType: d.loanType,
-            lender: d.lender,
-            amount: toBigInt(d.amount),
-            interestRate: d.interestRate,
-            maturityDate,
-            monthlyPayment: toBigInt(d.monthlyPayment),
-            note: d.note ?? "",
-          },
-        });
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: schema.debt.id,
+            set: {
+              loanName: d.loanName,
+              loanType: d.loanType,
+              lender: d.lender,
+              amount: toBigInt(d.amount),
+              interestRate: d.interestRate,
+              maturityDate,
+              monthlyPayment: toBigInt(d.monthlyPayment),
+              note: d.note ?? "",
+              updatedAt: now,
+            },
+          });
       }
     });
   },

@@ -1,4 +1,5 @@
-import { kstDateString, prisma } from "@seedbook/database";
+import { db, kstDateString, schema } from "@seedbook/database";
+import { and, desc, eq } from "drizzle-orm";
 import { resolveUserId } from "@web/lib/auth-server";
 
 interface PriceQueryItem {
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
           typeof (it as PriceQueryItem).market === "string" &&
           typeof (it as PriceQueryItem).ticker === "string" &&
           (it as PriceQueryItem).market.length > 0 &&
-          (it as PriceQueryItem).ticker.length > 0
+          (it as PriceQueryItem).ticker.length > 0,
       )
     : [];
 
@@ -46,23 +47,28 @@ export async function POST(request: Request) {
 
   await Promise.all(
     items.map(async ({ market, ticker }) => {
-      const row = await prisma.stockPrice.findFirst({
-        where: { stockMarket: market, stockTicker: ticker },
-        orderBy: { date: "desc" },
-        select: { date: true, close: true },
-      });
+      const rows = await db
+        .select({ date: schema.stockPrice.date, close: schema.stockPrice.close })
+        .from(schema.stockPrice)
+        .where(
+          and(
+            eq(schema.stockPrice.stockMarket, market),
+            eq(schema.stockPrice.stockTicker, ticker),
+          ),
+        )
+        .orderBy(desc(schema.stockPrice.date))
+        .limit(1);
 
+      const row = rows[0];
       if (!row) return;
 
       prices.push({
         market,
         ticker,
-        // DB 는 canonical KST 자정 instant (UTC) 를 저장한다. 클라이언트에는
-        // KST 기준 달력일 "YYYY-MM-DD" 로 변환해서 노출한다.
         date: kstDateString(row.date),
         close: Number(row.close),
       });
-    })
+    }),
   );
 
   return Response.json({ prices });

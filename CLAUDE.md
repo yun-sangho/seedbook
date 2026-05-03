@@ -32,7 +32,7 @@ Requires Node >= 22, pnpm 8.
 
 `seedbook.Stock` / `seedbook.StockPrice` 초기 데이터는 크롤러가 한 번 돈 뒤 스냅샷 파일로 캡처해 레포에 커밋한다. 하드코딩된 큐레이션 리스트는 쓰지 않는다 — 실 크롤러 산출물이 소스 오브 트루스. (모든 테이블은 `seedbook` 스키마. `public` 은 사용하지 않는다.)
 
-- Fixture 경로: `packages/database/prisma/seed-data/{stocks,stock-prices,meta}.json`
+- Fixture 경로: `packages/database/seed-data/{stocks,stock-prices,meta}.json`
 - **캡처**: 크롤러가 데이터 채운 뒤 `docker compose exec stock-crawler pnpm --filter @seedbook/database db:seed:capture` 실행. `SEED_PRICE_DAYS` (기본 5) 로 최근 거래일 개수 조정.
 - **재생**: `pnpm docker:dev` 기동 시 entrypoint 가 `migrate deploy` 뒤에 자동 실행 (NODE_ENV=development 일 때만). 수동: `pnpm db:seed`.
 - 재생은 upsert 라 멱등. 크롤러가 이후 덮어쓰므로 fixture 는 "최소한 이만큼은 있어야 함" 의미. 프로덕션 (`pnpm docker:prod`) 에서는 실행되지 않음.
@@ -42,7 +42,7 @@ Requires Node >= 22, pnpm 8.
 **Monorepo** (Turborepo + pnpm workspaces):
 
 - `apps/web` — Next.js 15 (App Router), React 19, main application
-- `packages/` — shared configs (eslint, tailwind, tsconfig), database (Prisma)
+- `packages/` — shared configs (eslint, tailwind, tsconfig), database (Drizzle ORM)
 
 **Feature organization** (`apps/web/features/<domain>/`):
 
@@ -55,7 +55,7 @@ Requires Node >= 22, pnpm 8.
 
 **State management**: Zustand with localStorage persistence. No immer — use object spreads/shallow copies. Keep derived heavy logic in utils or memoized selectors, not in components.
 
-**All data is client-side** (localStorage). No auth. Prisma/Supabase package exists but is not used in main flows.
+**All data is client-side** (localStorage). No auth. Drizzle/Supabase package exists but is not used in main flows.
 
 ## Domain Rules
 
@@ -107,7 +107,7 @@ The web app builds with `output: 'standalone'` (see `apps/web/next.config.ts`) a
 
 **Only use Next.js features that are supported by `output: 'standalone'`.** Do not add functionality that depends on Vercel-only infrastructure.
 
-DB 마이그레이션은 stock-crawler 이미지 entrypoint (`apps/stock-crawler/entrypoint.sh`) 의 `prisma migrate deploy` 가 컨테이너 시작 시 자동으로 돌린다. 새 마이그레이션 추가하면 다음 배포 때 적용됨. Supabase 의 transaction pooler (port 6543) 는 prepared statement 충돌이 있으므로 `DATABASE_URL` 은 direct connection (5432) 또는 session pooler 를 쓴다.
+DB 마이그레이션은 stock-crawler 이미지 entrypoint (`apps/stock-crawler/entrypoint.sh`) 의 `drizzle migrate` (`packages/database/scripts/migrate.ts`) 가 컨테이너 시작 시 자동으로 돌린다. 새 마이그레이션은 `pnpm --filter @seedbook/database db:generate` 로 schema 변경 후 자동 생성. Drizzle 은 단순 SQL apply 라 Supabase 풀러로도 동작하지만, 보수적으로 `DATABASE_URL` 은 direct connection (`db.<ref>.supabase.co:5432`) 을 권장한다.
 
 Local dev: `pnpm docker:dev`로 postgres + stock-crawler + web을 모두 Docker에서 실행. 워크트리별 자동 포트 격리 지원 (위 "Worktree-aware Docker Dev" 참조). 호스트에서 직접 실행하려면 `pnpm dev`.
 

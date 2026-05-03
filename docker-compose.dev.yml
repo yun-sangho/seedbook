@@ -34,7 +34,8 @@ services:
     volumes:
       - ./apps/stock-crawler/src:/app/apps/stock-crawler/src
       - ./packages/database/src:/app/packages/database/src
-      - ./packages/database/prisma:/app/packages/database/prisma
+      - ./packages/database/migrations:/app/packages/database/migrations
+      - ./packages/database/seed-data:/app/packages/database/seed-data
       - ./packages/database/scripts:/app/packages/database/scripts
 
   web:
@@ -72,7 +73,8 @@ services:
       - ./apps/web/utils:/app/apps/web/utils
       - ./apps/web/public:/app/apps/web/public
       - ./packages/database/src:/app/packages/database/src
-      - ./packages/database/prisma:/app/packages/database/prisma
+      - ./packages/database/migrations:/app/packages/database/migrations
+      - ./packages/database/seed-data:/app/packages/database/seed-data
       - ./packages/database/scripts:/app/packages/database/scripts
 
 volumes:

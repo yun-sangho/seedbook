@@ -1,4 +1,5 @@
-import { prisma } from "@seedbook/database";
+import { db, schema } from "@seedbook/database";
+import { eq } from "drizzle-orm";
 import { resolveUserId } from "@web/lib/auth-server";
 
 /**
@@ -14,11 +15,13 @@ export async function DELETE(request: Request, context: RouteContext): Promise<R
   const userId = await resolveUserId(request);
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  const acceptance = await prisma.dataShareAcceptance.findUnique({ where: { id } });
+  const acceptance = await db.query.dataShareAcceptance.findFirst({
+    where: (t, { eq }) => eq(t.id, id),
+  });
   if (!acceptance || acceptance.recipientUserId !== userId) {
     return Response.json({ error: "not found" }, { status: 404 });
   }
 
-  await prisma.dataShareAcceptance.delete({ where: { id } });
+  await db.delete(schema.dataShareAcceptance).where(eq(schema.dataShareAcceptance.id, id));
   return Response.json({ ok: true });
 }

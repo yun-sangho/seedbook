@@ -1,25 +1,6 @@
+import { schema } from "@seedbook/database";
+import { and, eq, notInArray } from "drizzle-orm";
 import type { DomainTranslator, Envelope } from "./types";
-
-/**
- * `portfolio-storage` 번역기.
- *
- * Envelope 구조:
- * ```
- * {
- *   state: {
- *     portfolios: PortfolioItem[],   // id, name, description, color, allocations[],
- *                                    //   accountIds[], driftThresholdPercent, note,
- *                                    //   createdAt, updatedAt
- *   },
- *   version: 2,
- * }
- * ```
- *
- * DB rows:
- * - Portfolio            (1 row / 포트폴리오, accountIds: uuid[] / driftThresholdPercent: float)
- * - PortfolioAllocation  (1 row / 종목 비중)
- * - UserListOrder.domain = "portfolios"  (사용자 정렬 순서)
- */
 
 const DOMAIN = "portfolios";
 const VERSION = 2;
@@ -48,14 +29,14 @@ type PortfolioItemPayload = {
 };
 
 export const portfolioTranslator: DomainTranslator = {
-  async read(prisma, userId) {
+  async read(db, userId) {
     const [portfolios, listOrder] = await Promise.all([
-      prisma.portfolio.findMany({
-        where: { userId },
-        include: { allocations: true },
+      db.query.portfolio.findMany({
+        where: (t, { eq }) => eq(t.userId, userId),
+        with: { allocations: true },
       }),
-      prisma.userListOrder.findUnique({
-        where: { userId_domain: { userId, domain: DOMAIN } },
+      db.query.userListOrder.findFirst({
+        where: (t, { and, eq }) => and(eq(t.userId, userId), eq(t.domain, DOMAIN)),
       }),
     ]);
 
@@ -63,7 +44,6 @@ export const portfolioTranslator: DomainTranslator = {
       return null;
     }
 
-    // 사용자가 저장한 순서대로 정렬. 새로 추가되어 order 에 없는 항목은 끝에 붙인다.
     const orderIndex = new Map<string, number>();
     (listOrder?.order ?? []).forEach((id, idx) => orderIndex.set(id, idx));
     const sorted = portfolios.slice().sort((a, b) => {
@@ -99,32 +79,33 @@ export const portfolioTranslator: DomainTranslator = {
     return envelope;
   },
 
-  async write(prisma, userId, envelope) {
+  async write(db, userId, envelope) {
     const state = envelope.state ?? {};
     const portfolios = Array.isArray(state.portfolios)
       ? (state.portfolios as PortfolioItemPayload[])
       : [];
 
-    await prisma.$transaction(async (tx) => {
-      // 1) 정렬 순서 저장
+    await db.transaction(async (tx) => {
       const order = portfolios.map((p) => p.id);
-      await tx.userListOrder.upsert({
-        where: { userId_domain: { userId, domain: DOMAIN } },
-        create: { userId, domain: DOMAIN, order },
-        update: { order },
-      });
+      await tx
+        .insert(schema.userListOrder)
+        .values({ userId, domain: DOMAIN, order })
+        .onConflictDoUpdate({
+          target: [schema.userListOrder.userId, schema.userListOrder.domain],
+          set: { order },
+        });
 
-      // 2) Stale 포트폴리오 삭제 (cascade 로 allocations 도 함께 제거됨)
-      const incomingIds = new Set(portfolios.map((p) => p.id));
-      const existingIds = (
-        await tx.portfolio.findMany({ where: { userId }, select: { id: true } })
-      ).map((r) => r.id);
-      const toDelete = existingIds.filter((id) => !incomingIds.has(id));
-      if (toDelete.length > 0) {
-        await tx.portfolio.deleteMany({ where: { id: { in: toDelete } } });
+      const incomingIds = portfolios.map((p) => p.id);
+      if (incomingIds.length > 0) {
+        await tx
+          .delete(schema.portfolio)
+          .where(
+            and(eq(schema.portfolio.userId, userId), notInArray(schema.portfolio.id, incomingIds)),
+          );
+      } else {
+        await tx.delete(schema.portfolio).where(eq(schema.portfolio.userId, userId));
       }
 
-      // 3) 각 포트폴리오 upsert + allocations 전체 교체
       for (const p of portfolios) {
         const createdAt = p.createdAt ? new Date(p.createdAt) : new Date();
         const updatedAt = p.updatedAt ? new Date(p.updatedAt) : new Date();
@@ -135,9 +116,9 @@ export const portfolioTranslator: DomainTranslator = {
           typeof p.driftThresholdPercent === "number" && Number.isFinite(p.driftThresholdPercent)
             ? Math.max(0, p.driftThresholdPercent)
             : DEFAULT_DRIFT_THRESHOLD_PERCENT;
-        await tx.portfolio.upsert({
-          where: { id: p.id },
-          create: {
+        await tx
+          .insert(schema.portfolio)
+          .values({
             id: p.id,
             userId,
             name: p.name,
@@ -148,20 +129,23 @@ export const portfolioTranslator: DomainTranslator = {
             driftThresholdPercent,
             createdAt,
             updatedAt,
-          },
-          update: {
-            name: p.name,
-            description: p.description ?? "",
-            color: p.color,
-            note: p.note ?? "",
-            accountIds,
-            driftThresholdPercent,
-            updatedAt,
-          },
-        });
+          })
+          .onConflictDoUpdate({
+            target: schema.portfolio.id,
+            set: {
+              name: p.name,
+              description: p.description ?? "",
+              color: p.color,
+              note: p.note ?? "",
+              accountIds,
+              driftThresholdPercent,
+              updatedAt,
+            },
+          });
 
-        // Allocations 는 한 포트폴리오당 수십 건 이하로 가정 — 전체 교체.
-        await tx.portfolioAllocation.deleteMany({ where: { portfolioId: p.id } });
+        await tx
+          .delete(schema.portfolioAllocation)
+          .where(eq(schema.portfolioAllocation.portfolioId, p.id));
         const rows = (p.allocations ?? []).map((a) => ({
           id: a.id,
           portfolioId: p.id,
@@ -172,7 +156,7 @@ export const portfolioTranslator: DomainTranslator = {
           targetPercent: a.targetPercent,
         }));
         if (rows.length > 0) {
-          await tx.portfolioAllocation.createMany({ data: rows, skipDuplicates: true });
+          await tx.insert(schema.portfolioAllocation).values(rows).onConflictDoNothing();
         }
       }
     });

@@ -1,4 +1,5 @@
-import { prisma } from "@seedbook/database";
+import { db, schema } from "@seedbook/database";
+import { and, asc, eq, ilike, or } from "drizzle-orm";
 import { resolveUserId } from "@web/lib/auth-server";
 
 const MAX_LIMIT = 50;
@@ -24,24 +25,24 @@ export async function GET(request: Request) {
     return Response.json({ results: [] });
   }
 
-  const results = await prisma.stock.findMany({
-    where: {
-      isActive: true,
-      ...(market ? { market } : {}),
-      OR: [
-        { name: { contains: q, mode: "insensitive" } },
-        { ticker: { contains: q, mode: "insensitive" } },
-      ],
-    },
-    select: {
-      market: true,
-      ticker: true,
-      name: true,
-      currency: true,
-    },
-    take: limit,
-    orderBy: [{ name: "asc" }],
-  });
+  const pattern = `%${q}%`;
+  const conditions = [
+    eq(schema.stock.isActive, true),
+    or(ilike(schema.stock.name, pattern), ilike(schema.stock.ticker, pattern)),
+  ];
+  if (market) conditions.push(eq(schema.stock.market, market));
+
+  const results = await db
+    .select({
+      market: schema.stock.market,
+      ticker: schema.stock.ticker,
+      name: schema.stock.name,
+      currency: schema.stock.currency,
+    })
+    .from(schema.stock)
+    .where(and(...conditions))
+    .orderBy(asc(schema.stock.name))
+    .limit(limit);
 
   return Response.json({ results });
 }

@@ -1,3 +1,5 @@
+import { schema } from "@seedbook/database";
+import { asc, eq } from "drizzle-orm";
 import {
   bigIntToNumber,
   formatDate,
@@ -20,11 +22,12 @@ type ProgressPointPayload = {
 };
 
 export const progressTranslator: DomainTranslator = {
-  async read(prisma, userId) {
-    const points = await prisma.assetProgressPoint.findMany({
-      where: { userId },
-      orderBy: { date: "asc" },
-    });
+  async read(db, userId) {
+    const points = await db
+      .select()
+      .from(schema.assetProgressPoint)
+      .where(eq(schema.assetProgressPoint.userId, userId))
+      .orderBy(asc(schema.assetProgressPoint.date));
 
     if (points.length === 0) return null;
 
@@ -45,15 +48,17 @@ export const progressTranslator: DomainTranslator = {
     return envelope;
   },
 
-  async write(prisma, userId, envelope) {
+  async write(db, userId, envelope) {
     const state = envelope.state ?? {};
     const progressPoints = Array.isArray(state.progressPoints)
       ? (state.progressPoints as ProgressPointPayload[])
       : [];
 
-    await prisma.$transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // Progress 는 (userId, date) 복합 PK. 전체 교체가 가장 단순.
-      await tx.assetProgressPoint.deleteMany({ where: { userId } });
+      await tx
+        .delete(schema.assetProgressPoint)
+        .where(eq(schema.assetProgressPoint.userId, userId));
       const rows = progressPoints
         .map((p) => {
           const date = parseDate(p.date);
@@ -71,7 +76,7 @@ export const progressTranslator: DomainTranslator = {
         })
         .filter((r): r is NonNullable<typeof r> => r !== null);
       if (rows.length > 0) {
-        await tx.assetProgressPoint.createMany({ data: rows, skipDuplicates: true });
+        await tx.insert(schema.assetProgressPoint).values(rows).onConflictDoNothing();
       }
     });
   },
