@@ -91,8 +91,11 @@ jobs:
 
       - name: Pull & restart
         uses: appleboy/ssh-action@v1.2.0
-        # 런타임 env 는 모두 GitHub Secrets/Variables. SSH 세션에 export 하면
-        # docker compose 가 shell env 로 ${VAR} 치환을 처리한다.
+        # 런타임 env 는 모두 GitHub Secrets/Variables. SSH 세션에 export 한 뒤
+        # 서버 디렉토리에 .env 파일로 써둔다. docker compose 는 같은 디렉토리의
+        # .env 를 자동으로 로드하므로, 이후 임의의 `docker compose ...` 명령
+        # (logs/ps/exec) 도 env 검증 없이 그대로 동작한다. .env 는 매 배포마다
+        # 덮어쓰므로 GitHub Secrets 가 여전히 단일 소스.
         env:
           IMAGE_TAG: ${{ github.sha }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -112,12 +115,27 @@ jobs:
           command_timeout: 8m
           script_stop: true
           # ${{ env.DEPLOY_PATH }} 가 ~ 로 시작할 수 있으므로 따옴표를 두르지
-          # 않는다 (bash 의 ~ 확장은 unquoted context 에서만 동작). mkdir -p 로
-          # 디렉토리가 없으면 만들어 둔다 — 첫 배포에서 생성됨.
+          # 않는다 (bash 의 ~ 확장은 unquoted context 에서만 동작).
           script: |
             set -euo pipefail
             mkdir -p ${{ env.DEPLOY_PATH }}
             cd ${{ env.DEPLOY_PATH }}
+
+            # KEY=VALUE 라인을 0600 권한으로 .env 에 저장. printf 라 $ 확장
+            # 없음 — secret 값에 $ 들어가도 그대로 보존. 다음 임의의 docker
+            # compose 명령은 같은 디렉토리의 .env 를 자동 로드한다.
+            umask 077
+            {
+              printf 'IMAGE_TAG=%s\n' "$IMAGE_TAG"
+              printf 'DATABASE_URL=%s\n' "$DATABASE_URL"
+              printf 'BETTER_AUTH_SECRET=%s\n' "$BETTER_AUTH_SECRET"
+              printf 'BETTER_AUTH_URL=%s\n' "$BETTER_AUTH_URL"
+              printf 'KAKAO_CLIENT_ID=%s\n' "$KAKAO_CLIENT_ID"
+              printf 'KAKAO_CLIENT_SECRET=%s\n' "$KAKAO_CLIENT_SECRET"
+              printf 'WEB_PORT=%s\n' "$WEB_PORT"
+              printf 'CRON_MORNING=%s\n' "$CRON_MORNING"
+              printf 'CRON_AFTERNOON=%s\n' "$CRON_AFTERNOON"
+            } > .env
 
             docker compose pull
             docker compose up -d --remove-orphans
