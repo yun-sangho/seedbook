@@ -121,28 +121,40 @@ jobs:
             mkdir -p ${{ env.DEPLOY_PATH }}
             cd ${{ env.DEPLOY_PATH }}
 
-            # KEY=VALUE 라인을 0600 권한으로 .env 에 저장. printf 라 $ 확장
-            # 없음 — secret 값에 $ 들어가도 그대로 보존. 다음 임의의 docker
-            # compose 명령은 같은 디렉토리의 .env 를 자동 로드한다.
-            #
             # GitHub Secret 입력칸에 줄바꿈/공백이 끝에 따라가는 사고를 막기 위해
-            # 각 값에서 trailing CR/LF 와 공백을 stripping 한다. (KAKAO_CLIENT_ID
-            # 에 trailing \n 이 들어가 KOE101 이 났던 실사례 방지.)
+            # 각 값에서 trailing CR/LF 와 공백을 stripping 한다. shell env 자체를
+            # 정제해야 docker compose 의 ${VAR} interpolation 이 깨끗한 값을 본다
+            # (compose 는 shell env 를 .env 파일보다 우선시함).
+            # KAKAO_CLIENT_ID 에 trailing \n 이 들어가 KOE101 이 났던 실사례 방지.
             strip() {
-              # 인자로 받은 값을 stdin 으로 흘려 양 끝의 \r, \n, 공백, 탭 제거.
               printf '%s' "$1" | sed -e 's/[[:space:]]*$//' -e 's/^[[:space:]]*//'
             }
+            IMAGE_TAG=$(strip "$IMAGE_TAG")
+            DATABASE_URL=$(strip "$DATABASE_URL")
+            BETTER_AUTH_SECRET=$(strip "$BETTER_AUTH_SECRET")
+            BETTER_AUTH_URL=$(strip "$BETTER_AUTH_URL")
+            KAKAO_CLIENT_ID=$(strip "$KAKAO_CLIENT_ID")
+            KAKAO_CLIENT_SECRET=$(strip "$KAKAO_CLIENT_SECRET")
+            WEB_PORT=$(strip "$WEB_PORT")
+            CRON_MORNING=$(strip "$CRON_MORNING")
+            CRON_AFTERNOON=$(strip "$CRON_AFTERNOON")
+            export IMAGE_TAG DATABASE_URL BETTER_AUTH_SECRET BETTER_AUTH_URL \
+              KAKAO_CLIENT_ID KAKAO_CLIENT_SECRET WEB_PORT CRON_MORNING CRON_AFTERNOON
+
+            # 추가로 .env 파일에도 동일 값을 0600 권한으로 저장 — 이후 사용자가
+            # SSH 로 직접 docker compose ... 명령을 실행할 때 env 가 비어있어
+            # compose interpolation 이 실패하는 일을 방지.
             umask 077
             {
-              printf 'IMAGE_TAG=%s\n' "$(strip "$IMAGE_TAG")"
-              printf 'DATABASE_URL=%s\n' "$(strip "$DATABASE_URL")"
-              printf 'BETTER_AUTH_SECRET=%s\n' "$(strip "$BETTER_AUTH_SECRET")"
-              printf 'BETTER_AUTH_URL=%s\n' "$(strip "$BETTER_AUTH_URL")"
-              printf 'KAKAO_CLIENT_ID=%s\n' "$(strip "$KAKAO_CLIENT_ID")"
-              printf 'KAKAO_CLIENT_SECRET=%s\n' "$(strip "$KAKAO_CLIENT_SECRET")"
-              printf 'WEB_PORT=%s\n' "$(strip "$WEB_PORT")"
-              printf 'CRON_MORNING=%s\n' "$(strip "$CRON_MORNING")"
-              printf 'CRON_AFTERNOON=%s\n' "$(strip "$CRON_AFTERNOON")"
+              printf 'IMAGE_TAG=%s\n' "$IMAGE_TAG"
+              printf 'DATABASE_URL=%s\n' "$DATABASE_URL"
+              printf 'BETTER_AUTH_SECRET=%s\n' "$BETTER_AUTH_SECRET"
+              printf 'BETTER_AUTH_URL=%s\n' "$BETTER_AUTH_URL"
+              printf 'KAKAO_CLIENT_ID=%s\n' "$KAKAO_CLIENT_ID"
+              printf 'KAKAO_CLIENT_SECRET=%s\n' "$KAKAO_CLIENT_SECRET"
+              printf 'WEB_PORT=%s\n' "$WEB_PORT"
+              printf 'CRON_MORNING=%s\n' "$CRON_MORNING"
+              printf 'CRON_AFTERNOON=%s\n' "$CRON_AFTERNOON"
             } > .env
 
             docker compose pull
