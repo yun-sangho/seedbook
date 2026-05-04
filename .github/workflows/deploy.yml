@@ -12,6 +12,10 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_BASE: ghcr.io/${{ github.repository }}
+  # Node 20 deprecation 대응 — 사용 중인 액션들 (checkout, docker/*) 이
+  # 자체 runtime 을 Node 24 로 올릴 때까지의 임시 opt-in. 2026-06-02 부터
+  # Node 24 가 기본이 되면 이 변수는 제거 가능.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   build:
