@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/car
 import type { OwnedShare } from "@web/features/sharing/types";
 import { Copy, Plus, Trash2, UserX } from "lucide-react";
 import { CreateShareDialog } from "./create-share-dialog";
+import { ShareInvitesSection } from "./share-invites-section";
 
 /**
  * 내가 만든 공유 코드 목록 + 수락자 관리 카드.
@@ -144,6 +145,7 @@ export function MySharesCard() {
                     ))}
                   </ul>
                 )}
+                <ShareInvitesSection shareId={share.id} />
               </li>
             ))}
           </ul>

@@ -21,6 +21,15 @@ export type OwnedShare = {
   acceptances: SharedAcceptance[];
 };
 
+export type ShareInvite = {
+  id: string;
+  token: string;
+  label: string | null;
+  expiresAt: string;
+  consumedAt: string | null;
+  createdAt: string;
+};
+
 export type ReceivedShare = {
   id: string;
   shareId: string;

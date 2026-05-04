@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { Button } from "@web/components/ui/button";
 import { authClient, useSession } from "@web/lib/auth-client";
 import { LogIn } from "lucide-react";
@@ -8,12 +9,21 @@ import { LogIn } from "lucide-react";
 // Next.js 가 빌드 타임에 치환하므로 클라이언트 번들에서도 사용 가능.
 const isDevEnv = process.env.NODE_ENV === "development";
 
-async function signInWithDevBypass() {
+/**
+ * 로그인 후 돌아갈 경로. 초대 링크(/invite/...)는 그 자리에서 다시 수락 흐름을
+ * 이어가야 하므로 현재 경로를 그대로 callbackURL 로 쓴다. 그 외는 기본 /assets.
+ */
+function resolveCallbackURL(pathname: string | null): string {
+  if (pathname && pathname.startsWith("/invite/")) return pathname;
+  return "/assets";
+}
+
+async function signInWithDevBypass(callbackURL: string) {
   const response = await fetch("/api/auth/dev-login", { method: "POST" });
   if (!response.ok) {
     throw new Error(`dev-login failed: ${response.status}`);
   }
-  window.location.href = "/assets";
+  window.location.href = callbackURL;
 }
 
 /**
@@ -25,6 +35,8 @@ async function signInWithDevBypass() {
  */
 export function AuthGate({ children }: { children: ReactNode }) {
   const { data: session, isPending } = useSession();
+  const pathname = usePathname();
+  const callbackURL = resolveCallbackURL(pathname);
 
   if (isPending) {
     // better-auth 세션 조회 중에는 공백만 띄운다 (HydrationGate 가 이미 로딩 UI
@@ -51,14 +63,14 @@ export function AuthGate({ children }: { children: ReactNode }) {
             onClick={() =>
               authClient.signIn.social({
                 provider: "kakao",
-                callbackURL: "/assets",
+                callbackURL,
               })
             }
           >
             카카오로 로그인
           </Button>
           {isDevEnv && (
-            <Button variant="outline" onClick={signInWithDevBypass}>
+            <Button variant="outline" onClick={() => signInWithDevBypass(callbackURL)}>
               개발용 빠른 로그인 (카카오 우회)
             </Button>
           )}

@@ -451,6 +451,28 @@ export const dataShareAcceptance = seedbook.table(
   ],
 );
 
+export const dataShareInvite = seedbook.table(
+  "data_share_invite",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    shareId: uuid("shareId")
+      .notNull()
+      .references(() => dataShare.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    token: text("token").notNull().unique(),
+    label: text("label"),
+    expiresAt: timestamp("expiresAt", { precision: 3, mode: "date" }).notNull(),
+    consumedAt: timestamp("consumedAt", { precision: 3, mode: "date" }),
+    consumedByUserId: text("consumedByUserId").references(() => user.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [index("data_share_invite_shareId_idx").on(t.shareId)],
+);
+
 // ─── Relations (for Drizzle relational query API) ───────────────────────────
 
 export const userRelations = relations(user, ({ many, one }) => ({
@@ -572,12 +594,21 @@ export const userListOrderRelations = relations(userListOrder, ({ one }) => ({
 export const dataShareRelations = relations(dataShare, ({ one, many }) => ({
   owner: one(user, { fields: [dataShare.ownerUserId], references: [user.id] }),
   acceptances: many(dataShareAcceptance),
+  invites: many(dataShareInvite),
 }));
 
 export const dataShareAcceptanceRelations = relations(dataShareAcceptance, ({ one }) => ({
   share: one(dataShare, { fields: [dataShareAcceptance.shareId], references: [dataShare.id] }),
   recipient: one(user, {
     fields: [dataShareAcceptance.recipientUserId],
+    references: [user.id],
+  }),
+}));
+
+export const dataShareInviteRelations = relations(dataShareInvite, ({ one }) => ({
+  share: one(dataShare, { fields: [dataShareInvite.shareId], references: [dataShare.id] }),
+  consumedBy: one(user, {
+    fields: [dataShareInvite.consumedByUserId],
     references: [user.id],
   }),
 }));
