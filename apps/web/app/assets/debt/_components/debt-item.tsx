@@ -26,9 +26,17 @@ interface DebtItemComponentProps {
   item: DebtsItem;
   onUpdateDebt: <K extends keyof DebtsItem>(id: string, key: K, value: DebtsItem[K]) => void;
   onRemoveDebt: (id: string) => void;
+  readOnly?: boolean;
+  ownerLabel?: string | null;
 }
 
-export function DebtItemComponent({ item, onUpdateDebt, onRemoveDebt }: DebtItemComponentProps) {
+export function DebtItemComponent({
+  item,
+  onUpdateDebt,
+  onRemoveDebt,
+  readOnly = false,
+  ownerLabel = null,
+}: DebtItemComponentProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // 월 이자 계산
@@ -46,18 +54,35 @@ export function DebtItemComponent({ item, onUpdateDebt, onRemoveDebt }: DebtItem
     : 0;
 
   return (
-    <Card key={item.id} className="gap-4">
+    <Card
+      key={item.id}
+      className={`gap-4 ${readOnly ? "border-amber-300 dark:border-amber-700" : ""}`}
+    >
       <CardHeader>
+        {readOnly && ownerLabel && (
+          <Badge
+            variant="secondary"
+            className="self-start mb-1 bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-100 border border-amber-300 dark:border-amber-700"
+          >
+            공유대상 데이터 · {ownerLabel}
+          </Badge>
+        )}
         <div className="flex gap-2 flex-wrap sm:items-center max-sm:flex-col">
           <div className="flex items-center gap-2">
             <Badge variant={"secondary"}>{item.loanType}</Badge>
           </div>
           <div className="flex justify-between items-center flex-grow-1 flex-wrap">
-            <AssetNameInput
-              id={item.id}
-              value={item.loanName}
-              onChange={(value) => onUpdateDebt(item.id, "loanName", value)}
-            />
+            {readOnly ? (
+              <span className="text-md font-bold text-gray-900 dark:text-white">
+                {item.loanName}
+              </span>
+            ) : (
+              <AssetNameInput
+                id={item.id}
+                value={item.loanName}
+                onChange={(value) => onUpdateDebt(item.id, "loanName", value)}
+              />
+            )}
             <Button size={"sm"} variant={"ghost"} onClick={() => setIsExpanded(!isExpanded)}>
               {isExpanded ? "접기" : "상세 보기"}
             </Button>
@@ -75,6 +100,7 @@ export function DebtItemComponent({ item, onUpdateDebt, onRemoveDebt }: DebtItem
               value={item.amount}
               currency={CurrencyType.KRW}
               onChange={(value) => onUpdateDebt(item.id, "amount", parseInt(value) || 0)}
+              readOnly={readOnly}
             />
           </div>
 
@@ -88,10 +114,15 @@ export function DebtItemComponent({ item, onUpdateDebt, onRemoveDebt }: DebtItem
                 type="number"
                 step="0.01"
                 value={item.interestRate || ""}
-                onChange={(e) =>
-                  onUpdateDebt(item.id, "interestRate", parseFloat(e.target.value) || 0)
+                onChange={
+                  readOnly
+                    ? undefined
+                    : (e) =>
+                        onUpdateDebt(item.id, "interestRate", parseFloat(e.target.value) || 0)
                 }
-                className="pr-8"
+                readOnly={readOnly}
+                tabIndex={readOnly ? -1 : 0}
+                className={`pr-8 ${readOnly ? "bg-muted/30 cursor-default" : ""}`}
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                 %
@@ -114,7 +145,10 @@ export function DebtItemComponent({ item, onUpdateDebt, onRemoveDebt }: DebtItem
                 <Label htmlFor={`loanType-${item.id}`}>대출 유형</Label>
                 <Select
                   value={item.loanType}
-                  onValueChange={(value) => onUpdateDebt(item.id, "loanType", value)}
+                  onValueChange={
+                    readOnly ? undefined : (value) => onUpdateDebt(item.id, "loanType", value)
+                  }
+                  disabled={readOnly}
                 >
                   <SelectTrigger id={`loanType-${item.id}`}>
                     <SelectValue placeholder="대출 유형 선택" />
@@ -135,7 +169,12 @@ export function DebtItemComponent({ item, onUpdateDebt, onRemoveDebt }: DebtItem
                   id={`lender-${item.id}`}
                   placeholder="대출기관"
                   value={item.lender}
-                  onChange={(e) => onUpdateDebt(item.id, "lender", e.target.value)}
+                  onChange={
+                    readOnly ? undefined : (e) => onUpdateDebt(item.id, "lender", e.target.value)
+                  }
+                  readOnly={readOnly}
+                  tabIndex={readOnly ? -1 : 0}
+                  className={readOnly ? "bg-muted/30 cursor-default" : ""}
                 />
               </div>
 
@@ -145,7 +184,14 @@ export function DebtItemComponent({ item, onUpdateDebt, onRemoveDebt }: DebtItem
                   id={`maturityDate-${item.id}`}
                   type="date"
                   value={item.maturityDate}
-                  onChange={(e) => onUpdateDebt(item.id, "maturityDate", e.target.value)}
+                  onChange={
+                    readOnly
+                      ? undefined
+                      : (e) => onUpdateDebt(item.id, "maturityDate", e.target.value)
+                  }
+                  readOnly={readOnly}
+                  tabIndex={readOnly ? -1 : 0}
+                  className={readOnly ? "bg-muted/30 cursor-default" : ""}
                 />
                 {remainingMonths > 0 && (
                   <p className="text-xs text-muted-foreground mt-1">
@@ -163,6 +209,7 @@ export function DebtItemComponent({ item, onUpdateDebt, onRemoveDebt }: DebtItem
                   onChange={(value) =>
                     onUpdateDebt(item.id, "monthlyPayment", parseInt(value) || 0)
                   }
+                  readOnly={readOnly}
                 />
               </div>
 
@@ -172,22 +219,29 @@ export function DebtItemComponent({ item, onUpdateDebt, onRemoveDebt }: DebtItem
                   id={`note-${item.id}`}
                   placeholder="메모 추가"
                   value={item.note}
-                  onChange={(e) => onUpdateDebt(item.id, "note", e.target.value)}
+                  onChange={
+                    readOnly ? undefined : (e) => onUpdateDebt(item.id, "note", e.target.value)
+                  }
+                  readOnly={readOnly}
+                  tabIndex={readOnly ? -1 : 0}
+                  className={readOnly ? "bg-muted/30 cursor-default" : ""}
                 />
               </div>
             </div>
 
-            <div className="flex justify-end">
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => onRemoveDebt(item.id)}
-                className="gap-2"
-              >
-                <Trash2 className="h-4 w-4" />
-                삭제
-              </Button>
-            </div>
+            {!readOnly && (
+              <div className="flex justify-end">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => onRemoveDebt(item.id)}
+                  className="gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  삭제
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

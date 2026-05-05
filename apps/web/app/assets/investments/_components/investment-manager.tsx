@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@web/components/ui/button";
 import {
   Select,
@@ -17,7 +17,17 @@ import {
   type HoldingsSortOption,
 } from "@web/features/investments/stores/investment-store";
 import { InvestmentItem } from "@web/features/investments/types/types";
+import { AggregateFilterBar } from "@web/features/sharing/components/aggregate-filter-bar";
 import { useIsReadOnly } from "@web/features/sharing/hooks/use-is-read-only";
+import { useSharedEnvelopes } from "@web/features/sharing/hooks/use-shared-envelopes";
+import {
+  SELF_FILTER_ID,
+  useViewContextStore,
+} from "@web/features/sharing/stores/view-context-store";
+import {
+  buildSharedGroups,
+  makeFilterPredicate,
+} from "@web/features/sharing/utils/aggregate-helpers";
 import { Plus, TrendingUp } from "lucide-react";
 import { AddInvestmentModal } from "./add-investment-modal";
 import { InvestmentTab } from "./constants";
@@ -51,6 +61,21 @@ function EmptyState({ onAddAccount, readOnly }: { onAddAccount: () => void; read
   );
 }
 
+/** aggregate 모드의 공유 카드는 store 변경 함수가 의미가 없으므로 모두 no-op 으로 통일. */
+const READ_ONLY_HANDLERS = {
+  onUpdateItem: () => {},
+  onRemoveHistoryRecord: () => {},
+  onAddHistory: () => {},
+  onRemoveInvestment: () => {},
+  onAddStockHolding: () => {},
+  onUpdateStockHolding: () => {},
+  onSetStockHoldingFromSearch: () => {},
+  onRemoveStockHolding: () => {},
+  onAddCashItem: () => {},
+  onUpdateCashItem: () => {},
+  onRemoveCashItem: () => {},
+} as const;
+
 export function InvestmentManager() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<InvestmentTab>(InvestmentTab.ACOUNTS);
@@ -73,6 +98,19 @@ export function InvestmentManager() {
   const removeCashItem = useInvestmentStore((state) => state.removeCashItem);
   const holdingsSortOption = useInvestmentStore((state) => state.holdingsSortOption);
   const setHoldingsSortOption = useInvestmentStore((state) => state.setHoldingsSortOption);
+
+  const viewMode = useViewContextStore((s) => s.mode);
+  const aggregateFilter = useViewContextStore((s) => s.aggregateFilter);
+  const aggregateGrouping = useViewContextStore((s) => s.aggregateGrouping);
+  const aggregateOwners = useViewContextStore((s) => s.aggregateOwners);
+  const { envelopes: sharedEnvelopes } = useSharedEnvelopes("investment-storage");
+
+  const sharedGroups = useMemo(
+    () => buildSharedGroups<InvestmentItem>(aggregateOwners, sharedEnvelopes, "investments"),
+    [aggregateOwners, sharedEnvelopes],
+  );
+
+  const isVisible = useMemo(() => makeFilterPredicate(aggregateFilter), [aggregateFilter]);
 
   const handleChange = (id: string, field: string, value: string) => {
     updateInvestment(id, field as keyof InvestmentItem, value);
@@ -103,8 +141,25 @@ export function InvestmentManager() {
     setActiveTab(InvestmentTab.ACOUNTS);
   };
 
-  // Show empty state when no investments
-  if (investments.length === 0) {
+  const aggregateActive = viewMode === "aggregate" && aggregateOwners.length > 0;
+
+  const showSelf = !aggregateActive || isVisible(SELF_FILTER_ID);
+
+  // 통계 탭에 줄 데이터: aggregate 모드에서 필터/공유 분을 모두 반영해 합쳐 전달.
+  const statisticsInvestments = useMemo(() => {
+    if (!aggregateActive) return investments;
+    const merged: InvestmentItem[] = [];
+    if (showSelf) merged.push(...investments);
+    for (const g of sharedGroups) {
+      if (isVisible(g.ownerId)) merged.push(...g.items);
+    }
+    return merged;
+  }, [aggregateActive, investments, sharedGroups, showSelf, isVisible]);
+
+  // Show empty state when no investments AND no shared groups
+  const totalCount =
+    investments.length + sharedGroups.reduce((acc, g) => acc + g.items.length, 0);
+  if (totalCount === 0) {
     return (
       <>
         <EmptyState onAddAccount={openAddAccountModal} readOnly={isReadOnly} />
@@ -137,10 +192,12 @@ export function InvestmentManager() {
       </div>
 
       <TabsContent value={InvestmentTab.STATISTICS}>
-        <InvestmentSummary investments={investments} />
+        <AggregateFilterBar />
+        <InvestmentSummary investments={statisticsInvestments} />
       </TabsContent>
 
       <TabsContent value={InvestmentTab.ACOUNTS}>
+        <AggregateFilterBar />
         <div className="flex justify-end mb-3">
           <Select
             value={holdingsSortOption}
@@ -158,38 +215,75 @@ export function InvestmentManager() {
             </SelectContent>
           </Select>
         </div>
-        <SortableList
-          items={investments}
-          onReorder={reorderInvestments}
-          getItemId={(item) => item.id}
-          renderDragOverlay={(activeId) => {
-            const item = investments.find((inv) => inv.id === activeId);
-            return item ? (
-              <div className="bg-secondary rounded-xl p-6 shadow-lg opacity-90">
-                <h3 className="text-lg font-semibold">{item.accountName}</h3>
+
+        {/* 내 데이터 — drag 정렬 가능. 공유 모드 (aggregate) 가 아니어도 동일 path. */}
+        {showSelf && investments.length > 0 && (
+          <div className="space-y-2">
+            {aggregateActive && aggregateGrouping && (
+              <h3 className="text-sm font-semibold text-muted-foreground">내 데이터</h3>
+            )}
+            <SortableList
+              items={investments}
+              onReorder={reorderInvestments}
+              getItemId={(item) => item.id}
+              renderDragOverlay={(activeId) => {
+                const item = investments.find((inv) => inv.id === activeId);
+                return item ? (
+                  <div className="bg-secondary rounded-xl p-6 shadow-lg opacity-90">
+                    <h3 className="text-lg font-semibold">{item.accountName}</h3>
+                  </div>
+                ) : null;
+              }}
+            >
+              {investments.map((item) => (
+                <SortableItem key={item.id} id={item.id}>
+                  <InvestmentItemComponent
+                    item={item}
+                    onUpdateItem={handleChange}
+                    onRemoveHistoryRecord={handleRemoveHistoryRecord}
+                    onAddHistory={handleAddHistory}
+                    onRemoveInvestment={removeInvestment}
+                    onAddStockHolding={addStockHolding}
+                    onUpdateStockHolding={updateStockHolding}
+                    onSetStockHoldingFromSearch={setStockHoldingFromSearch}
+                    onRemoveStockHolding={removeStockHolding}
+                    onAddCashItem={addCashItem}
+                    onUpdateCashItem={updateCashItem}
+                    onRemoveCashItem={removeCashItem}
+                  />
+                </SortableItem>
+              ))}
+            </SortableList>
+          </div>
+        )}
+
+        {/* 공유분 — 묶음 ON 이면 owner 별 섹션, OFF 면 헤더 없이 이어 붙임. */}
+        {aggregateActive &&
+          sharedGroups
+            .filter((g) => isVisible(g.ownerId) && g.items.length > 0)
+            .map((g) => (
+              <div key={g.ownerId} className="space-y-2 mt-4">
+                {aggregateGrouping && (
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    {g.ownerName}
+                    {g.ownerLabel && (
+                      <span className="ml-1 text-xs font-normal">· {g.ownerLabel}</span>
+                    )}
+                  </h3>
+                )}
+                <div className="space-y-2">
+                  {g.items.map((item) => (
+                    <InvestmentItemComponent
+                      key={`${g.ownerId}:${item.id}`}
+                      item={item}
+                      readOnly
+                      ownerLabel={g.ownerLabel ? `${g.ownerName} · ${g.ownerLabel}` : g.ownerName}
+                      {...READ_ONLY_HANDLERS}
+                    />
+                  ))}
+                </div>
               </div>
-            ) : null;
-          }}
-        >
-          {investments.map((item) => (
-            <SortableItem key={item.id} id={item.id}>
-              <InvestmentItemComponent
-                item={item}
-                onUpdateItem={handleChange}
-                onRemoveHistoryRecord={handleRemoveHistoryRecord}
-                onAddHistory={handleAddHistory}
-                onRemoveInvestment={removeInvestment}
-                onAddStockHolding={addStockHolding}
-                onUpdateStockHolding={updateStockHolding}
-                onSetStockHoldingFromSearch={setStockHoldingFromSearch}
-                onRemoveStockHolding={removeStockHolding}
-                onAddCashItem={addCashItem}
-                onUpdateCashItem={updateCashItem}
-                onRemoveCashItem={removeCashItem}
-              />
-            </SortableItem>
-          ))}
-        </SortableList>
+            ))}
       </TabsContent>
 
       <AddInvestmentModal

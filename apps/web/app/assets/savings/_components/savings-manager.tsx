@@ -1,18 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@web/components/ui/button";
 import { Card, CardContent } from "@web/components/ui/card";
 import { SortableItem } from "@web/components/ui/sortable-item";
 import { SortableList } from "@web/components/ui/sortable-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@web/components/ui/tabs";
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
+import type { SavingsItem } from "@web/features/savings/types/types";
+import { AggregateFilterBar } from "@web/features/sharing/components/aggregate-filter-bar";
 import { useIsReadOnly } from "@web/features/sharing/hooks/use-is-read-only";
+import { useSharedEnvelopes } from "@web/features/sharing/hooks/use-shared-envelopes";
+import {
+  SELF_FILTER_ID,
+  useViewContextStore,
+} from "@web/features/sharing/stores/view-context-store";
+import {
+  buildSharedGroups,
+  makeFilterPredicate,
+} from "@web/features/sharing/utils/aggregate-helpers";
 import { Plus } from "lucide-react";
 import { AddSavingsModal } from "./add-savings-modal";
 import { SavingtTab } from "./constants";
 import { SavingsItemComponent } from "./savings-item";
 import { SavingsSummary } from "./savings-summary";
+
+const READ_ONLY_HANDLERS = {
+  onUpdateItem: () => {},
+  onRemoveHistoryRecord: () => {},
+  onAddHistory: () => {},
+  onRemoveSavings: () => {},
+} as const;
 
 export function SavingsManager() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -26,8 +44,24 @@ export function SavingsManager() {
   const addHistoryRecord = useSavingsStore((state) => state.addHistoryRecord);
   const removeSavingsHistoryRecord = useSavingsStore((state) => state.removeSavingsHistoryRecord);
 
+  const viewMode = useViewContextStore((s) => s.mode);
+  const aggregateOwners = useViewContextStore((s) => s.aggregateOwners);
+  const aggregateFilter = useViewContextStore((s) => s.aggregateFilter);
+  const aggregateGrouping = useViewContextStore((s) => s.aggregateGrouping);
+  const { envelopes: sharedEnvelopes } = useSharedEnvelopes("savings-storage");
+
+  const sharedGroups = useMemo(
+    () => buildSharedGroups<SavingsItem>(aggregateOwners, sharedEnvelopes, "savings"),
+    [aggregateOwners, sharedEnvelopes],
+  );
+  const isVisible = useMemo(() => makeFilterPredicate(aggregateFilter), [aggregateFilter]);
+
+  const aggregateActive = viewMode === "aggregate" && aggregateOwners.length > 0;
+  const showSelf = !aggregateActive || isVisible(SELF_FILTER_ID);
+
   // 빈 상태 처리
-  if (savings.length === 0) {
+  const totalCount = savings.length + sharedGroups.reduce((acc, g) => acc + g.items.length, 0);
+  if (totalCount === 0) {
     return (
       <>
         <Card>
@@ -53,11 +87,7 @@ export function SavingsManager() {
   }
 
   // 계좌 정보 업데이트 핸들러
-  const handleUpdateItem = (
-    id: string,
-    field: keyof import("@web/features/savings/types/types").SavingsItem,
-    value: string
-  ) => {
+  const handleUpdateItem = (id: string, field: keyof SavingsItem, value: string) => {
     updateSavings(id, field, value as never);
   };
 
@@ -89,36 +119,73 @@ export function SavingsManager() {
 
         {/* 요약 탭 */}
         <TabsContent value={SavingtTab.STATISTICS}>
+          <AggregateFilterBar />
           <SavingsSummary />
         </TabsContent>
 
         {/* 계좌 상세 탭 */}
         <TabsContent value={SavingtTab.ACOUNTS} className="space-y-4">
-          <SortableList
-            items={savings}
-            onReorder={reorderSavings}
-            getItemId={(item) => item.id}
-            renderDragOverlay={(activeId) => {
-              const item = savings.find((s) => s.id === activeId);
-              return item ? (
-                <div className="bg-secondary rounded-xl p-6 shadow-lg opacity-90">
-                  <h3 className="text-lg font-semibold">{item.accountName}</h3>
+          <AggregateFilterBar />
+
+          {showSelf && savings.length > 0 && (
+            <div className="space-y-2">
+              {aggregateActive && aggregateGrouping && (
+                <h3 className="text-sm font-semibold text-muted-foreground">내 데이터</h3>
+              )}
+              <SortableList
+                items={savings}
+                onReorder={reorderSavings}
+                getItemId={(item) => item.id}
+                renderDragOverlay={(activeId) => {
+                  const item = savings.find((s) => s.id === activeId);
+                  return item ? (
+                    <div className="bg-secondary rounded-xl p-6 shadow-lg opacity-90">
+                      <h3 className="text-lg font-semibold">{item.accountName}</h3>
+                    </div>
+                  ) : null;
+                }}
+              >
+                {savings.map((item) => (
+                  <SortableItem key={item.id} id={item.id}>
+                    <SavingsItemComponent
+                      item={item}
+                      onUpdateItem={handleUpdateItem}
+                      onRemoveHistoryRecord={removeSavingsHistoryRecord}
+                      onAddHistory={addHistoryRecord}
+                      onRemoveSavings={removeSavings}
+                    />
+                  </SortableItem>
+                ))}
+              </SortableList>
+            </div>
+          )}
+
+          {aggregateActive &&
+            sharedGroups
+              .filter((g) => isVisible(g.ownerId) && g.items.length > 0)
+              .map((g) => (
+                <div key={g.ownerId} className="space-y-2">
+                  {aggregateGrouping && (
+                    <h3 className="text-sm font-semibold text-muted-foreground">
+                      {g.ownerName}
+                      {g.ownerLabel && (
+                        <span className="ml-1 text-xs font-normal">· {g.ownerLabel}</span>
+                      )}
+                    </h3>
+                  )}
+                  <div className="space-y-2">
+                    {g.items.map((item) => (
+                      <SavingsItemComponent
+                        key={`${g.ownerId}:${item.id}`}
+                        item={item}
+                        readOnly
+                        ownerLabel={g.ownerLabel ? `${g.ownerName} · ${g.ownerLabel}` : g.ownerName}
+                        {...READ_ONLY_HANDLERS}
+                      />
+                    ))}
+                  </div>
                 </div>
-              ) : null;
-            }}
-          >
-            {savings.map((item) => (
-              <SortableItem key={item.id} id={item.id}>
-                <SavingsItemComponent
-                  item={item}
-                  onUpdateItem={handleUpdateItem}
-                  onRemoveHistoryRecord={removeSavingsHistoryRecord}
-                  onAddHistory={addHistoryRecord}
-                  onRemoveSavings={removeSavings}
-                />
-              </SortableItem>
-            ))}
-          </SortableList>
+              ))}
         </TabsContent>
       </Tabs>
 

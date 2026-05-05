@@ -5,18 +5,19 @@ import { useViewContextStore } from "@web/features/sharing/stores/view-context-s
 import { Eye, X } from "lucide-react";
 
 /**
- * 공유받은 사용자의 데이터를 열람 중일 때 화면 상단에 고정 표시되는 배너.
- *
- * - 소유자 이름과 라벨(있으면)을 표시
- * - "내 데이터로 돌아가기" 버튼을 눌러 공유 모드 종료 (스토어가 reload 트리거)
+ * full-switch 모드 전용 배너. aggregate 모드에서는 owner badge 가 카드 단위로
+ * 표시되므로 이 배너는 띄우지 않는다.
  */
 export function SharedViewBanner() {
-  const shared = useViewContextStore((s) => s.shared);
-  const exitShared = useViewContextStore((s) => s.exitShared);
+  const mode = useViewContextStore((s) => s.mode);
+  const fullSwitch = useViewContextStore((s) => s.fullSwitch);
+  const exitFullSwitch = useViewContextStore((s) => s.exitFullSwitch);
 
-  if (!shared) return null;
+  if (mode !== "full-switch" || !fullSwitch) return null;
 
-  const display = shared.label ? `${shared.ownerName} · ${shared.label}` : shared.ownerName;
+  const display = fullSwitch.label
+    ? `${fullSwitch.ownerName} · ${fullSwitch.label}`
+    : fullSwitch.ownerName;
 
   return (
     <div className="flex items-center justify-between gap-3 bg-amber-100 border-b border-amber-300 px-4 py-2 text-sm text-amber-900 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-100">
@@ -30,7 +31,7 @@ export function SharedViewBanner() {
       <Button
         variant="outline"
         size="sm"
-        onClick={exitShared}
+        onClick={exitFullSwitch}
         className="shrink-0 bg-white/70 dark:bg-transparent"
       >
         <X className="w-3.5 h-3.5 mr-1" />내 데이터로 돌아가기
