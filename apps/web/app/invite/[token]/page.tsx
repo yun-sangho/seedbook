@@ -47,7 +47,7 @@ type Phase =
 export default function InvitePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
-  const enterShared = useViewContextStore((s) => s.enterShared);
+  const addAggregateOwner = useViewContextStore((s) => s.addAggregateOwner);
   const acceptedOnce = useRef(false);
 
   useEffect(() => {
@@ -124,17 +124,18 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
           return;
         }
         const body = (await res.json()) as AcceptOk;
-        // sessionStorage 에 view-context 를 심고 /assets 로 강제 리로드.
-        enterShared({
+        // 수락한 owner 를 aggregate 모드의 활성 목록에 자동 추가하고 /assets 로 이동.
+        addAggregateOwner({
           ownerId: body.acceptance.owner.id,
           ownerName: body.acceptance.owner.name,
           label: body.acceptance.label,
         });
+        if (typeof window !== "undefined") window.location.href = "/assets";
       } catch {
         setPhase({ kind: "error", title: "네트워크 오류가 발생했어요." });
       }
     },
-    [token, enterShared],
+    [token, addAggregateOwner],
   );
 
   useEffect(() => {

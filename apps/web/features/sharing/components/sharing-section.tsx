@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
 import { getStorageMode, type StorageMode } from "@web/lib/storage-mode";
 import { Cloud } from "lucide-react";
+import { AggregateSettingsCard } from "./aggregate-settings-card";
 import { MySharesCard } from "./my-shares-card";
 import { ReceivedSharesCard } from "./received-shares-card";
 
@@ -43,6 +44,7 @@ export function SharingSection() {
     <div className="space-y-6">
       <MySharesCard />
       <ReceivedSharesCard />
+      <AggregateSettingsCard />
     </div>
   );
 }

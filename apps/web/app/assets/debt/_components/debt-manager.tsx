@@ -1,17 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@web/components/ui/button";
 import { SortableItem } from "@web/components/ui/sortable-item";
 import { SortableList } from "@web/components/ui/sortable-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@web/components/ui/tabs";
 import { useDebtsStore } from "@web/features/debts/stores/debts-store";
+import type { DebtsItem } from "@web/features/debts/types/types";
+import { AggregateFilterBar } from "@web/features/sharing/components/aggregate-filter-bar";
 import { useIsReadOnly } from "@web/features/sharing/hooks/use-is-read-only";
+import { useSharedEnvelopes } from "@web/features/sharing/hooks/use-shared-envelopes";
+import {
+  SELF_FILTER_ID,
+  useViewContextStore,
+} from "@web/features/sharing/stores/view-context-store";
+import {
+  buildSharedGroups,
+  makeFilterPredicate,
+} from "@web/features/sharing/utils/aggregate-helpers";
 import { CreditCard, Plus } from "lucide-react";
 import { AddDebtModal } from "./add-debt-modal";
 import { DebtTab } from "./constants";
 import { DebtItemComponent } from "./debt-item";
 import { DebtSummary } from "./debt-summary";
+
+const READ_ONLY_HANDLERS = {
+  onUpdateDebt: () => {},
+  onRemoveDebt: () => {},
+} as const;
 
 function EmptyState({ onAddDebt, readOnly }: { onAddDebt: () => void; readOnly: boolean }) {
   return (
@@ -50,6 +66,21 @@ export function DebtManager() {
   const removeDebt = useDebtsStore((state) => state.removeDebt);
   const reorderDebts = useDebtsStore((state) => state.reorderDebts);
 
+  const viewMode = useViewContextStore((s) => s.mode);
+  const aggregateOwners = useViewContextStore((s) => s.aggregateOwners);
+  const aggregateFilter = useViewContextStore((s) => s.aggregateFilter);
+  const aggregateGrouping = useViewContextStore((s) => s.aggregateGrouping);
+  const { envelopes: sharedEnvelopes } = useSharedEnvelopes("debts-storage");
+
+  const sharedGroups = useMemo(
+    () => buildSharedGroups<DebtsItem>(aggregateOwners, sharedEnvelopes, "debts"),
+    [aggregateOwners, sharedEnvelopes],
+  );
+  const isVisible = useMemo(() => makeFilterPredicate(aggregateFilter), [aggregateFilter]);
+
+  const aggregateActive = viewMode === "aggregate" && aggregateOwners.length > 0;
+  const showSelf = !aggregateActive || isVisible(SELF_FILTER_ID);
+
   const openAddDebtModal = () => {
     setIsModalOpen(true);
   };
@@ -62,8 +93,21 @@ export function DebtManager() {
     setActiveTab(DebtTab.ACOUNTS);
   };
 
-  // Show empty state when no debts
-  if (loans.length === 0) {
+  // 통계 탭에 줄 데이터: aggregate 모드면 필터/공유분 합산.
+  const statisticsLoans = useMemo(() => {
+    if (!aggregateActive) return loans;
+    const merged: DebtsItem[] = [];
+    if (showSelf) merged.push(...loans);
+    for (const g of sharedGroups) {
+      if (isVisible(g.ownerId)) merged.push(...g.items);
+    }
+    return merged;
+  }, [aggregateActive, loans, sharedGroups, showSelf, isVisible]);
+
+  const totalCount = loans.length + sharedGroups.reduce((acc, g) => acc + g.items.length, 0);
+
+  // Show empty state when no debts AND no shared groups
+  if (totalCount === 0) {
     return (
       <>
         <EmptyState onAddDebt={openAddDebtModal} readOnly={isReadOnly} />
@@ -96,29 +140,70 @@ export function DebtManager() {
       </div>
 
       <TabsContent value={DebtTab.STATISTICS}>
-        <DebtSummary loans={loans} />
+        <AggregateFilterBar />
+        <DebtSummary loans={statisticsLoans} />
       </TabsContent>
 
       <TabsContent value={DebtTab.ACOUNTS}>
-        <SortableList
-          items={loans}
-          onReorder={reorderDebts}
-          getItemId={(item) => item.id}
-          renderDragOverlay={(activeId) => {
-            const item = loans.find((loan) => loan.id === activeId);
-            return item ? (
-              <div className="bg-secondary rounded-xl p-6 shadow-lg opacity-90">
-                <h3 className="text-lg font-semibold">{item.loanName}</h3>
+        <AggregateFilterBar />
+
+        {showSelf && loans.length > 0 && (
+          <div className="space-y-2">
+            {aggregateActive && aggregateGrouping && (
+              <h3 className="text-sm font-semibold text-muted-foreground">내 데이터</h3>
+            )}
+            <SortableList
+              items={loans}
+              onReorder={reorderDebts}
+              getItemId={(item) => item.id}
+              renderDragOverlay={(activeId) => {
+                const item = loans.find((loan) => loan.id === activeId);
+                return item ? (
+                  <div className="bg-secondary rounded-xl p-6 shadow-lg opacity-90">
+                    <h3 className="text-lg font-semibold">{item.loanName}</h3>
+                  </div>
+                ) : null;
+              }}
+            >
+              {loans.map((item) => (
+                <SortableItem key={item.id} id={item.id}>
+                  <DebtItemComponent
+                    item={item}
+                    onUpdateDebt={updateDebt}
+                    onRemoveDebt={removeDebt}
+                  />
+                </SortableItem>
+              ))}
+            </SortableList>
+          </div>
+        )}
+
+        {aggregateActive &&
+          sharedGroups
+            .filter((g) => isVisible(g.ownerId) && g.items.length > 0)
+            .map((g) => (
+              <div key={g.ownerId} className="space-y-2 mt-4">
+                {aggregateGrouping && (
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    {g.ownerName}
+                    {g.ownerLabel && (
+                      <span className="ml-1 text-xs font-normal">· {g.ownerLabel}</span>
+                    )}
+                  </h3>
+                )}
+                <div className="space-y-2">
+                  {g.items.map((item) => (
+                    <DebtItemComponent
+                      key={`${g.ownerId}:${item.id}`}
+                      item={item}
+                      readOnly
+                      ownerLabel={g.ownerLabel ? `${g.ownerName} · ${g.ownerLabel}` : g.ownerName}
+                      {...READ_ONLY_HANDLERS}
+                    />
+                  ))}
+                </div>
               </div>
-            ) : null;
-          }}
-        >
-          {loans.map((item) => (
-            <SortableItem key={item.id} id={item.id}>
-              <DebtItemComponent item={item} onUpdateDebt={updateDebt} onRemoveDebt={removeDebt} />
-            </SortableItem>
-          ))}
-        </SortableList>
+            ))}
       </TabsContent>
 
       <AddDebtModal

@@ -11,8 +11,12 @@ import { Eye, LogOut } from "lucide-react";
 /**
  * 내가 다른 사람에게서 공유받은 데이터 목록 + 코드 수락 입력.
  *
- * [이 계정으로 보기] 버튼은 view-context-store 를 통해 공유 모드로 진입하면서
- * /assets 로 리로드한다. [나가기] 는 내 수락을 스스로 해제.
+ * 두 가지 모드를 지원한다:
+ *   - aggregate (기본): 각 row 의 스위치로 같이 볼지 토글. 활성화하면 내 데이터 옆에
+ *     출처 라벨과 함께 같이 표시된다.
+ *   - full-switch: [이 계정으로 보기] 버튼으로 통째 전환 (hard reload).
+ *
+ * [나가기] 는 서버의 acceptance 자체를 해제 (DELETE).
  */
 export function ReceivedSharesCard() {
   const [received, setReceived] = useState<ReceivedShare[] | null>(null);
@@ -20,7 +24,13 @@ export function ReceivedSharesCard() {
   const [codeInput, setCodeInput] = useState("");
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const [accepting, setAccepting] = useState(false);
-  const enterShared = useViewContextStore((s) => s.enterShared);
+
+  const aggregateOwners = useViewContextStore((s) => s.aggregateOwners);
+  const addAggregateOwner = useViewContextStore((s) => s.addAggregateOwner);
+  const removeAggregateOwner = useViewContextStore((s) => s.removeAggregateOwner);
+  const enterFullSwitch = useViewContextStore((s) => s.enterFullSwitch);
+
+  const activeOwnerIds = new Set(aggregateOwners.map((o) => o.ownerId));
 
   useEffect(() => {
     void load();
@@ -73,21 +83,28 @@ export function ReceivedSharesCard() {
     }
   }
 
-  async function leave(id: string) {
+  async function leave(id: string, ownerId: string) {
     if (!confirm("이 공유에서 나가시겠습니까?")) return;
     const res = await fetch(`/api/sharing/received/${id}`, {
       method: "DELETE",
       credentials: "include",
     });
     if (res.ok) {
+      removeAggregateOwner(ownerId);
       setReceived((prev) => (prev ? prev.filter((r) => r.id !== id) : prev));
     } else {
       alert(`나가기 실패 (${res.status})`);
     }
   }
 
-  function view(r: ReceivedShare) {
-    enterShared({
+  function toggleAggregate(r: ReceivedShare, on: boolean) {
+    const owner = { ownerId: r.owner.id, ownerName: r.owner.name, label: r.label };
+    if (on) addAggregateOwner(owner);
+    else removeAggregateOwner(r.owner.id);
+  }
+
+  function viewFullSwitch(r: ReceivedShare) {
+    enterFullSwitch({
       ownerId: r.owner.id,
       ownerName: r.owner.name,
       label: r.label,
@@ -126,30 +143,46 @@ export function ReceivedSharesCard() {
           </p>
         ) : (
           <ul className="space-y-2">
-            {received.map((r) => (
-              <li
-                key={r.id}
-                className="flex items-center justify-between gap-2 border rounded-lg p-3"
-              >
-                <div className="min-w-0">
-                  <p className="font-medium truncate">{r.owner.name}</p>
-                  {r.label && <p className="text-xs text-muted-foreground truncate">{r.label}</p>}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button size="sm" onClick={() => view(r)}>
-                    <Eye className="w-4 h-4 mr-1" />이 계정으로 보기
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => leave(r.id)}
-                    aria-label="나가기"
-                  >
-                    <LogOut className="w-4 h-4" />
-                  </Button>
-                </div>
-              </li>
-            ))}
+            {received.map((r) => {
+              const isActive = activeOwnerIds.has(r.owner.id);
+              return (
+                <li
+                  key={r.id}
+                  className="flex items-center justify-between gap-2 border rounded-lg p-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium truncate">{r.owner.name}</p>
+                    {r.label && <p className="text-xs text-muted-foreground truncate">{r.label}</p>}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      variant={isActive ? "default" : "outline"}
+                      onClick={() => toggleAggregate(r, !isActive)}
+                      title="내 데이터와 함께 보기"
+                    >
+                      {isActive ? "같이 보는 중" : "같이 보기"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => viewFullSwitch(r)}
+                      title="이 계정만 단독으로 보기"
+                    >
+                      <Eye className="w-4 h-4 mr-1" />단독 보기
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => leave(r.id, r.owner.id)}
+                      aria-label="나가기"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </CardContent>

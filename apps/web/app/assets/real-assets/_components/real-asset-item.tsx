@@ -26,12 +26,16 @@ interface RealAssetItemComponentProps {
   item: RealAssetItem;
   onUpdateAsset: (id: string, field: keyof RealAssetItem, value: string | number) => void;
   onRemoveAsset: (id: string) => void;
+  readOnly?: boolean;
+  ownerLabel?: string | null;
 }
 
 export function RealAssetItemComponent({
   item,
   onUpdateAsset,
   onRemoveAsset,
+  readOnly = false,
+  ownerLabel = null,
 }: RealAssetItemComponentProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -39,18 +43,35 @@ export function RealAssetItemComponent({
   const profitLossRate = item.purchaseValue > 0 ? (profitLoss / item.purchaseValue) * 100 : 0;
 
   return (
-    <Card key={item.id} className="gap-4">
+    <Card
+      key={item.id}
+      className={`gap-4 ${readOnly ? "border-amber-300 dark:border-amber-700" : ""}`}
+    >
       <CardHeader>
+        {readOnly && ownerLabel && (
+          <Badge
+            variant="secondary"
+            className="self-start mb-1 bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-100 border border-amber-300 dark:border-amber-700"
+          >
+            공유대상 데이터 · {ownerLabel}
+          </Badge>
+        )}
         <div className="flex gap-2 flex-wrap sm:items-center max-sm:flex-col">
           <div className="flex items-center gap-2">
             <Badge variant={"secondary"}>{item.assetType}</Badge>
           </div>
           <div className="flex justify-between items-center flex-grow-1 flex-wrap">
-            <AssetNameInput
-              id={item.id}
-              value={item.assetName}
-              onChange={(value) => onUpdateAsset(item.id, "assetName", value)}
-            />
+            {readOnly ? (
+              <span className="text-md font-bold text-gray-900 dark:text-white">
+                {item.assetName}
+              </span>
+            ) : (
+              <AssetNameInput
+                id={item.id}
+                value={item.assetName}
+                onChange={(value) => onUpdateAsset(item.id, "assetName", value)}
+              />
+            )}
             <Button size={"sm"} variant={"ghost"} onClick={() => setIsExpanded(!isExpanded)}>
               {isExpanded ? "접기" : "상세 보기"}
             </Button>
@@ -68,6 +89,7 @@ export function RealAssetItemComponent({
               value={item.purchaseValue}
               currency={CurrencyType.KRW}
               onChange={(value) => onUpdateAsset(item.id, "purchaseValue", value)}
+              readOnly={readOnly}
             />
           </div>
 
@@ -80,6 +102,7 @@ export function RealAssetItemComponent({
               value={item.currentValue}
               currency={CurrencyType.KRW}
               onChange={(value) => onUpdateAsset(item.id, "currentValue", value)}
+              readOnly={readOnly}
             />
           </div>
 
@@ -107,7 +130,10 @@ export function RealAssetItemComponent({
                 <Label htmlFor={`assetType-${item.id}`}>자산 유형</Label>
                 <Select
                   value={item.assetType}
-                  onValueChange={(value) => onUpdateAsset(item.id, "assetType", value)}
+                  onValueChange={
+                    readOnly ? undefined : (value) => onUpdateAsset(item.id, "assetType", value)
+                  }
+                  disabled={readOnly}
                 >
                   <SelectTrigger id={`assetType-${item.id}`}>
                     <SelectValue placeholder="자산 유형 선택" />
@@ -128,7 +154,14 @@ export function RealAssetItemComponent({
                   id={`purchaseDate-${item.id}`}
                   type="date"
                   value={item.purchaseDate}
-                  onChange={(e) => onUpdateAsset(item.id, "purchaseDate", e.target.value)}
+                  onChange={
+                    readOnly
+                      ? undefined
+                      : (e) => onUpdateAsset(item.id, "purchaseDate", e.target.value)
+                  }
+                  readOnly={readOnly}
+                  tabIndex={readOnly ? -1 : 0}
+                  className={readOnly ? "bg-muted/30 cursor-default" : ""}
                 />
               </div>
 
@@ -138,22 +171,29 @@ export function RealAssetItemComponent({
                   id={`note-${item.id}`}
                   placeholder="메모 추가"
                   value={item.note}
-                  onChange={(e) => onUpdateAsset(item.id, "note", e.target.value)}
+                  onChange={
+                    readOnly ? undefined : (e) => onUpdateAsset(item.id, "note", e.target.value)
+                  }
+                  readOnly={readOnly}
+                  tabIndex={readOnly ? -1 : 0}
+                  className={readOnly ? "bg-muted/30 cursor-default" : ""}
                 />
               </div>
             </div>
 
-            <div className="flex justify-end">
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => onRemoveAsset(item.id)}
-                className="gap-2"
-              >
-                <Trash2 className="h-4 w-4" />
-                삭제
-              </Button>
-            </div>
+            {!readOnly && (
+              <div className="flex justify-end">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => onRemoveAsset(item.id)}
+                  className="gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  삭제
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
