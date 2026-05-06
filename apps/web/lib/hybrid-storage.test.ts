@@ -1,5 +1,5 @@
 import { useSyncStatusStore } from "@web/features/settings/stores/sync-status-store";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { __resetHybridStorageForTests, createHybridStorage } from "./hybrid-storage";
 import { setStorageMode, STORAGE_MODE_KEY } from "./storage-mode";
 
@@ -63,6 +63,36 @@ describe("setStorageMode / getStorageMode", () => {
     setStorageMode("cloud");
     setStorageMode("local");
     expect(window.localStorage.getItem(STORAGE_MODE_KEY)).toBe("local");
+  });
+});
+
+describe("pushStorageModeToServer", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("PUT /api/me/storage-mode 로 mode 를 보낸다", async () => {
+    const { pushStorageModeToServer } = await import("./storage-mode");
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 200 }));
+
+    await pushStorageModeToServer("cloud");
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchSpy.mock.calls[0]!;
+    expect(url).toBe("/api/me/storage-mode");
+    expect((init as RequestInit | undefined)?.method).toBe("PUT");
+    expect((init as RequestInit | undefined)?.body).toBe(JSON.stringify({ storageMode: "cloud" }));
+  });
+
+  it("네트워크 실패는 throw 하지 않고 silent (다음 sync 가 따라잡음)", async () => {
+    const { pushStorageModeToServer } = await import("./storage-mode");
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network down"));
+
+    await expect(pushStorageModeToServer("cloud")).resolves.toBeUndefined();
   });
 });
 

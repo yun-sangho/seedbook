@@ -2,6 +2,7 @@
 
 import { type ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import { StorageModeSync } from "@web/components/storage-mode-sync";
 import { Button } from "@web/components/ui/button";
 import { authClient, useSession } from "@web/lib/auth-client";
 import { LogIn } from "lucide-react";
@@ -45,7 +46,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }
 
   if (session?.user) {
-    return <>{children}</>;
+    return (
+      <>
+        <StorageModeSync />
+        {children}
+      </>
+    );
   }
 
   return (
