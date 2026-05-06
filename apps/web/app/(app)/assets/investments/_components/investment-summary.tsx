@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { InvestmentStackedAreaChart } from "@web/app/assets/investments/_components/investment-stacked-area-chart";
+import { InvestmentStackedAreaChart } from "@web/app/(app)/assets/investments/_components/investment-stacked-area-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
 import { InvestmentItem } from "@web/features/investments/types/types";
 import { prepareMonthlyInvestmentSummary } from "@web/utils/monthly-summary-utils";

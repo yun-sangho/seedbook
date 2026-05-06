@@ -1,6 +1,6 @@
 import { InvestmentItem } from "@web/features/investments/types/types";
 import { calculateReturnRate } from "@web/utils/number-format";
-import { MonthlySummaryRow } from "../app/assets/investments/_components/monthly-summary-columns";
+import { MonthlySummaryRow } from "../app/(app)/assets/investments/_components/monthly-summary-columns";
 
 /**
  * 투자 데이터를 월별 요약 데이터로 변환합니다.
