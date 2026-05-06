@@ -1,0 +1,1 @@
+ALTER TABLE "seedbook"."user_preference" ADD COLUMN "storageMode" text DEFAULT 'local' NOT NULL;

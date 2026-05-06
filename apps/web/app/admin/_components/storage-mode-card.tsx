@@ -18,7 +18,12 @@ import {
   uploadAllToCloud,
   type MigrationProgress,
 } from "@web/lib/storage-migration";
-import { getStorageMode, setStorageMode, type StorageMode } from "@web/lib/storage-mode";
+import {
+  getStorageMode,
+  pushStorageModeToServer,
+  setStorageMode,
+  type StorageMode,
+} from "@web/lib/storage-mode";
 import { Cloud, HardDrive, Loader2 } from "lucide-react";
 
 type DialogState =
@@ -53,6 +58,7 @@ export function StorageModeCard() {
         setDialogState({ kind: "progress", direction: "to-cloud", progress: p })
       );
       setStorageMode("cloud");
+      await pushStorageModeToServer("cloud");
       window.location.reload();
     } catch (err) {
       const message = err instanceof Error ? err.message : "알 수 없는 오류";
@@ -67,6 +73,7 @@ export function StorageModeCard() {
         setDialogState({ kind: "progress", direction: "to-local", progress: p })
       );
       setStorageMode("local");
+      await pushStorageModeToServer("local");
       window.location.reload();
     } catch (err) {
       const message = err instanceof Error ? err.message : "알 수 없는 오류";
@@ -74,10 +81,11 @@ export function StorageModeCard() {
     }
   }
 
-  function requestToCloud() {
+  async function requestToCloud() {
     // 로컬 데이터가 아예 없으면 업로드 단계를 완전히 스킵.
     if (!hasAnyLocalData()) {
       setStorageMode("cloud");
+      await pushStorageModeToServer("cloud");
       window.location.reload();
       return;
     }

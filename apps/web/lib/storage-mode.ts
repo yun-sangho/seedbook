@@ -61,3 +61,24 @@ export function setStorageMode(mode: StorageMode): void {
     // 조용히 무시하고 모드 전환만 포기한다.
   }
 }
+
+/**
+ * 서버의 user_preference.storageMode 에 사용자가 선택한 모드를 동기화한다.
+ *
+ * 인증되지 않았거나 네트워크 실패면 silent — 다음 로드 시 `StorageModeSync` 가
+ * 다시 조회해 격차를 해소한다. 호출자는 await 해서 catch 하거나 fire-and-forget
+ * 으로 호출.
+ */
+export async function pushStorageModeToServer(mode: StorageMode): Promise<void> {
+  if (typeof window === "undefined") return;
+  try {
+    await fetch("/api/me/storage-mode", {
+      method: "PUT",
+      credentials: "include",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ storageMode: mode }),
+    });
+  } catch {
+    // 네트워크 실패 — 다음 sync 가 따라잡는다.
+  }
+}
