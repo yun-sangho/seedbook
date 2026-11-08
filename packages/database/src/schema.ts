@@ -446,70 +446,6 @@ export const userListOrder = seedbook.table(
   ]
 );
 
-// ─── Data sharing ───────────────────────────────────────────────────────────
-
-export const dataShare = seedbook.table(
-  "data_share",
-  {
-    id: uuid("id")
-      .primaryKey()
-      .default(sql`gen_random_uuid()`),
-    ownerUserId: text("ownerUserId")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
-    code: text("code").notNull().unique(),
-    label: text("label"),
-    revokedAt: timestamp("revokedAt", { precision: 3, mode: "date" }),
-    createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
-  },
-  (t) => [index("data_share_ownerUserId_idx").on(t.ownerUserId)]
-);
-
-export const dataShareAcceptance = seedbook.table(
-  "data_share_acceptance",
-  {
-    id: uuid("id")
-      .primaryKey()
-      .default(sql`gen_random_uuid()`),
-    shareId: uuid("shareId")
-      .notNull()
-      .references(() => dataShare.id, { onDelete: "cascade", onUpdate: "cascade" }),
-    recipientUserId: text("recipientUserId")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
-    acceptedAt: timestamp("acceptedAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
-  },
-  (t) => [
-    uniqueIndex("data_share_acceptance_shareId_recipientUserId_key").on(
-      t.shareId,
-      t.recipientUserId
-    ),
-    index("data_share_acceptance_recipientUserId_idx").on(t.recipientUserId),
-  ]
-);
-
-export const dataShareInvite = seedbook.table(
-  "data_share_invite",
-  {
-    id: uuid("id")
-      .primaryKey()
-      .default(sql`gen_random_uuid()`),
-    shareId: uuid("shareId")
-      .notNull()
-      .references(() => dataShare.id, { onDelete: "cascade", onUpdate: "cascade" }),
-    token: text("token").notNull().unique(),
-    label: text("label"),
-    expiresAt: timestamp("expiresAt", { precision: 3, mode: "date" }).notNull(),
-    consumedAt: timestamp("consumedAt", { precision: 3, mode: "date" }),
-    consumedByUserId: text("consumedByUserId").references(() => user.id, {
-      onDelete: "set null",
-      onUpdate: "cascade",
-    }),
-    createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
-  },
-  (t) => [index("data_share_invite_shareId_idx").on(t.shareId)]
-);
-
 // ─── Relations (for Drizzle relational query API) ───────────────────────────
 
 export const userRelations = relations(user, ({ many, one }) => ({
@@ -524,8 +460,6 @@ export const userRelations = relations(user, ({ many, one }) => ({
   portfolios: many(portfolio),
   preference: one(userPreference, { fields: [user.id], references: [userPreference.userId] }),
   listOrders: many(userListOrder),
-  sharesOwned: many(dataShare),
-  sharesReceived: many(dataShareAcceptance),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -631,26 +565,4 @@ export const userPreferenceRelations = relations(userPreference, ({ one }) => ({
 
 export const userListOrderRelations = relations(userListOrder, ({ one }) => ({
   user: one(user, { fields: [userListOrder.userId], references: [user.id] }),
-}));
-
-export const dataShareRelations = relations(dataShare, ({ one, many }) => ({
-  owner: one(user, { fields: [dataShare.ownerUserId], references: [user.id] }),
-  acceptances: many(dataShareAcceptance),
-  invites: many(dataShareInvite),
-}));
-
-export const dataShareAcceptanceRelations = relations(dataShareAcceptance, ({ one }) => ({
-  share: one(dataShare, { fields: [dataShareAcceptance.shareId], references: [dataShare.id] }),
-  recipient: one(user, {
-    fields: [dataShareAcceptance.recipientUserId],
-    references: [user.id],
-  }),
-}));
-
-export const dataShareInviteRelations = relations(dataShareInvite, ({ one }) => ({
-  share: one(dataShare, { fields: [dataShareInvite.shareId], references: [dataShare.id] }),
-  consumedBy: one(user, {
-    fields: [dataShareInvite.consumedByUserId],
-    references: [user.id],
-  }),
 }));
