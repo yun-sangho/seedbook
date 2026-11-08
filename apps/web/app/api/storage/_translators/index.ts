@@ -5,6 +5,7 @@ import { investmentTranslator } from "./investment";
 import { portfolioTranslator } from "./portfolio";
 import { progressTranslator } from "./progress";
 import { realAssetsTranslator } from "./real-assets";
+import { rebalancingTranslator } from "./rebalancing";
 import { savingsTranslator } from "./savings";
 import type { DomainTranslator } from "./types";
 
@@ -20,6 +21,7 @@ export const TRANSLATORS: Record<CloudStoreKey, DomainTranslator> = {
   "asset-plan-storage": assetPlanTranslator,
   "progress-storage": progressTranslator,
   "portfolio-storage": portfolioTranslator,
+  "rebalancing-storage": rebalancingTranslator,
 };
 
 export type { DomainTranslator, Envelope } from "./types";

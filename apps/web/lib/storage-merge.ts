@@ -22,6 +22,7 @@ const LIST_FIELDS: Record<CloudStoreKey, { field: string; key: string }> = {
   "asset-plan-storage": { field: "plans", key: "id" },
   "progress-storage": { field: "progressPoints", key: "date" },
   "portfolio-storage": { field: "portfolios", key: "id" },
+  "rebalancing-storage": { field: "sessions", key: "id" },
 };
 
 type Row = Record<string, unknown>;

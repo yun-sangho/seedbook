@@ -13,6 +13,7 @@ export const LIST_ORDER_DOMAINS = [
   "real-assets",
   "asset-plans",
   "portfolios",
+  "rebalancings",
 ] as const;
 
 export function isListOrderDomain(value: unknown): value is (typeof LIST_ORDER_DOMAINS)[number] {

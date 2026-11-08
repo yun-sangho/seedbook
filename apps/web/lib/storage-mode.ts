@@ -24,6 +24,7 @@ export const CLOUD_STORE_KEYS = [
   "debts-storage",
   "progress-storage",
   "portfolio-storage",
+  "rebalancing-storage",
 ] as const;
 
 export type CloudStoreKey = (typeof CLOUD_STORE_KEYS)[number];

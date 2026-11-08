@@ -10,6 +10,8 @@ import {
   PortfolioDetailActivity,
   PortfolioTabActivity,
   RebalancingDetailActivity,
+  RebalancingNewActivity,
+  RebalancingSessionActivity,
   RebalancingTabActivity,
 } from "./activities";
 import { createNextAwareHistory } from "./next-aware-history";
@@ -30,7 +32,9 @@ declare module "@stackflow/config" {
     RebalancingTab: Record<string, never>;
     PortfolioTab: Record<string, never>;
     AccountDetail: { id: string };
+    RebalancingNew: Record<string, never>;
     RebalancingDetail: { id: string };
+    RebalancingSession: { id: string };
     PortfolioDetail: { id: string };
   }
 }
@@ -53,8 +57,20 @@ const config = defineConfig({
       route: { path: "/assets/investments/:id", defaultHistory: underTab("AccountsTab") },
     },
     {
+      name: "RebalancingNew",
+      route: { path: "/assets/rebalancing/new", defaultHistory: underTab("RebalancingTab") },
+    },
+    {
+      // 계좌 리밸런싱 계산. 정적 경로(`new`)가 `:id` 보다 먼저 매칭된다 (history-sync 정렬).
       name: "RebalancingDetail",
       route: { path: "/assets/rebalancing/:id", defaultHistory: underTab("RebalancingTab") },
+    },
+    {
+      name: "RebalancingSession",
+      route: {
+        path: "/assets/rebalancing/sessions/:id",
+        defaultHistory: underTab("RebalancingTab"),
+      },
     },
     {
       name: "PortfolioDetail",
@@ -72,7 +88,9 @@ export const { Stack } = stackflow({
     RebalancingTab: RebalancingTabActivity,
     PortfolioTab: PortfolioTabActivity,
     AccountDetail: AccountDetailActivity,
+    RebalancingNew: RebalancingNewActivity,
     RebalancingDetail: RebalancingDetailActivity,
+    RebalancingSession: RebalancingSessionActivity,
     PortfolioDetail: PortfolioDetailActivity,
   },
   plugins: [

@@ -1,5 +1,6 @@
 import type { Database } from "@seedbook/database";
 import { debtChanges } from "@web/server/debts/debt-sync";
+import { rebalancingChanges } from "@web/server/rebalancing/rebalancing-sync";
 import { listOrderChanges } from "./list-order";
 import type { PullResult } from "./types";
 
@@ -20,18 +21,19 @@ export async function pullChanges(
 ): Promise<PullResult> {
   const sinceDate = since ? new Date(new Date(since).getTime() - PULL_OVERLAP_MS) : null;
 
-  const [debts, listOrders] = await Promise.all([
+  const [debts, rebalancings, listOrders] = await Promise.all([
     debtChanges(db, userId, sinceDate),
+    rebalancingChanges(db, userId, sinceDate),
     listOrderChanges(db, userId, sinceDate),
   ]);
 
-  const latest = [debts.latest, listOrders.latest].reduce<Date | null>(
+  const latest = [debts.latest, rebalancings.latest, listOrders.latest].reduce<Date | null>(
     (max, d) => (d && (max === null || d > max) ? d : max),
     null
   );
 
   return {
     cursor: latest ? latest.toISOString() : since,
-    changes: { debt: debts.rows, listOrder: listOrders.rows },
+    changes: { debt: debts.rows, rebalancing: rebalancings.rows, listOrder: listOrders.rows },
   };
 }

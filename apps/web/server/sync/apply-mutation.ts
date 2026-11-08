@@ -1,6 +1,8 @@
 import type { Database } from "@seedbook/database";
 import { parseDebtFields } from "@web/server/debts/debt-record";
 import { deleteDebt, upsertDebt } from "@web/server/debts/debt-sync";
+import { parseRebalancingFields } from "@web/server/rebalancing/rebalancing-record";
+import { deleteRebalancing, upsertRebalancing } from "@web/server/rebalancing/rebalancing-sync";
 import { isListOrderDomain, setListOrder } from "./list-order";
 import type { MutationResult } from "./types";
 
@@ -14,6 +16,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  * mutation 모양:
  *   { entity: "debt", op: "upsert", id, data }
  *   { entity: "debt", op: "delete", id }
+ *   { entity: "rebalancing", op: "upsert" | "delete", id, data? }
  *   { entity: "listOrder", op: "set", domain, order: string[] }
  *
  * 마지막 저장이 이긴다 (같은 사용자의 기기 사이). 예전 클라이언트가 보내는 `baseVersion`
@@ -36,6 +39,19 @@ export async function applyMutation(
     }
     if (m.op === "delete") {
       return deleteDebt(db, userId, m.id);
+    }
+    return INVALID;
+  }
+
+  if (m.entity === "rebalancing") {
+    if (typeof m.id !== "string" || !UUID_RE.test(m.id)) return INVALID;
+    if (m.op === "upsert") {
+      const fields = parseRebalancingFields(m.data);
+      if (!fields) return INVALID;
+      return upsertRebalancing(db, userId, m.id, fields);
+    }
+    if (m.op === "delete") {
+      return deleteRebalancing(db, userId, m.id);
     }
     return INVALID;
   }

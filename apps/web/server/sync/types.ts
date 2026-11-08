@@ -1,4 +1,5 @@
 import type { DebtPayload } from "@web/server/debts/debt-record";
+import type { RebalancingPayload } from "@web/server/rebalancing/rebalancing-record";
 
 /**
  * 엔티티 단위 동기화 프로토콜 (`POST /api/sync/mutations`, `GET /api/sync/pull`).
@@ -20,6 +21,7 @@ export type SyncedEntity<T> = {
 };
 
 export type SyncedDebt = SyncedEntity<Omit<DebtPayload, "id">>;
+export type SyncedRebalancing = SyncedEntity<Omit<RebalancingPayload, "id">>;
 
 export type ListOrderChange = { domain: string; order: string[] };
 
@@ -32,6 +34,7 @@ export type PullResult = {
   cursor: string | null;
   changes: {
     debt: SyncedDebt[];
+    rebalancing: SyncedRebalancing[];
     listOrder: ListOrderChange[];
   };
 };

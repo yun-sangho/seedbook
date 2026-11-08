@@ -1,0 +1,59 @@
+"use client";
+
+import { createHybridStorage } from "@web/lib/hybrid-storage";
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
+import type { RebalancingSession } from "../types/types";
+import { toggleRebalancingTask } from "../utils/rebalancing-session";
+
+export type StartRebalancingInput = Omit<RebalancingSession, "id" | "startedAt" | "completedAt">;
+
+interface RebalancingState {
+  /** 최근에 시작한 것이 앞. 진행 중 / 완료 기록이 함께 들어 있다. */
+  sessions: RebalancingSession[];
+
+  /** 새 리밸런싱을 시작하고 id 를 돌려준다. */
+  startRebalancing: (input: StartRebalancingInput) => string;
+  toggleTask: (sessionId: string, taskId: string) => void;
+  removeRebalancing: (sessionId: string) => void;
+}
+
+export const useRebalancingStore = create<RebalancingState>()(
+  persist(
+    (set) => ({
+      sessions: [],
+
+      startRebalancing: (input) => {
+        const id = crypto.randomUUID();
+        const session: RebalancingSession = {
+          ...input,
+          id,
+          startedAt: new Date().toISOString(),
+          completedAt: null,
+        };
+        set((state) => ({ sessions: [session, ...state.sessions] }));
+        return id;
+      },
+
+      toggleTask: (sessionId, taskId) => {
+        const now = new Date().toISOString();
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? toggleRebalancingTask(s, taskId, now) : s
+          ),
+        }));
+      },
+
+      removeRebalancing: (sessionId) => {
+        set((state) => ({ sessions: state.sessions.filter((s) => s.id !== sessionId) }));
+      },
+    }),
+    {
+      // local 모드면 localStorage, cloud 모드면 엔티티 동기화 (`rebalancing-sync-config.ts`).
+      name: "rebalancing-storage",
+      storage: createJSONStorage(() => createHybridStorage("rebalancing-storage")),
+      version: 1,
+      partialize: (state) => ({ sessions: state.sessions }),
+    }
+  )
+);

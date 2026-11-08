@@ -27,17 +27,24 @@ const DESKTOP_ACCOUNT_HOME = "/assets/investments";
  * 리밸런싱을 보여주므로 포트폴리오 목록으로 보낸다.
  */
 const REBALANCING_LIST = /^\/assets\/rebalancing$/;
+// 계좌 리밸런싱 계산(`/:accountId`) 과 새 리밸런싱(`/new`).
 const REBALANCING_DETAIL = /^\/assets\/rebalancing\/[^/]+$/;
+const REBALANCING_SESSION = /^\/assets\/rebalancing\/sessions\/[^/]+$/;
 const DESKTOP_REBALANCING_HOME = "/assets/portfolio";
 
 function isRebalancingPath(pathname: string): boolean {
-  return REBALANCING_LIST.test(pathname) || REBALANCING_DETAIL.test(pathname);
+  return (
+    REBALANCING_LIST.test(pathname) ||
+    REBALANCING_DETAIL.test(pathname) ||
+    REBALANCING_SESSION.test(pathname)
+  );
 }
 
 const MOBILE_SUPPORTED_PATTERNS = [
   ...MOBILE_ONLY_PATTERNS,
   REBALANCING_LIST,
   REBALANCING_DETAIL,
+  REBALANCING_SESSION,
   /^\/assets$/,
   /^\/assets\/investments$/,
   /^\/assets\/portfolio$/,

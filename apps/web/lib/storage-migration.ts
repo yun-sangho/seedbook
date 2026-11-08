@@ -10,7 +10,7 @@ import { clearEntitySyncState } from "./sync/managed-stores";
  * 원칙:
  *   - **전환으로 데이터를 잃지 않는다.** 덮어쓰지 않고 로컬과 클라우드를 합친다
  *     (`mergeEnvelopes`: 합집합, 같은 항목은 로컬 우선).
- *   - 7 개 key 를 **순차적**으로 처리 (병렬 실패 복구가 복잡해지므로).
+ *   - 모든 key 를 **순차적**으로 처리 (병렬 실패 복구가 복잡해지므로).
  *   - 각 단계 진행 상황을 `onProgress` 콜백으로 노출.
  *   - 실패 시 에러를 throw — 호출자는 모드를 바꾸지 않고 재시도하게 한다
  *     (합치기는 몇 번을 다시 해도 결과가 같다).
@@ -145,4 +145,5 @@ export const CLOUD_STORE_LABELS: Record<CloudStoreKey, string> = {
   "debts-storage": "대출",
   "progress-storage": "자산 기록",
   "portfolio-storage": "포트폴리오",
+  "rebalancing-storage": "리밸런싱",
 };

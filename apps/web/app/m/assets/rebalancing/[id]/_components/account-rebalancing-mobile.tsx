@@ -2,10 +2,15 @@
 
 import { useMemo, useState } from "react";
 import { Divider } from "@seed-design/react";
+import { useFlow } from "@stackflow/react";
 import { MoneyField } from "@web/components/mobile/money-field";
 import { PriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
-import type { InvestmentItem } from "@web/features/investments/types/types";
-import { stockPriceKey, useStockPrices } from "@web/features/investments/utils/use-stock-prices";
+import type { InvestmentItem, StockHolding } from "@web/features/investments/types/types";
+import {
+  stockPriceKey,
+  useStockPrices,
+  type StockPricePoint,
+} from "@web/features/investments/utils/use-stock-prices";
 import type { PortfolioItem } from "@web/features/portfolio/types/types";
 import { buildAllocationColors } from "@web/features/portfolio/utils/allocation-colors";
 import {
@@ -23,6 +28,9 @@ import {
   type RebalancingSummary,
 } from "@web/features/portfolio/utils/compute-rebalancing-gap";
 import { sumCash } from "@web/features/portfolio/utils/linked-portfolio-status";
+import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
+import { buildRebalancingTasks } from "@web/features/rebalancing/utils/build-rebalancing-tasks";
+import { findInProgressForAccount } from "@web/features/rebalancing/utils/rebalancing-session";
 import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { Badge } from "@web/seed-design/ui/badge";
@@ -55,6 +63,12 @@ export function AccountRebalancingMobile({
 }) {
   const holdings = useMemo(() => account.holdings ?? [], [account.holdings]);
   const { prices } = useStockPrices(holdings);
+  // 아직 보유하지 않은 목표 종목도 할 일의 예상 수량을 적으려면 시세가 필요하다.
+  const allocationHoldings = useMemo(
+    () => portfolio.allocations.map(allocationAsHolding),
+    [portfolio.allocations]
+  );
+  const { prices: allocationPrices } = useStockPrices(allocationHoldings);
 
   const [direction, setDirection] = useState<CashDirection>("in");
   const [cashDraft, setCashDraft] = useState("");
@@ -167,7 +181,97 @@ export function AccountRebalancingMobile({
           />
         </section>
       )}
+
+      <Divider />
+
+      <StartRebalancingSection
+        account={account}
+        portfolio={portfolio}
+        summary={summary}
+        prices={allocationPrices}
+      />
     </div>
+  );
+}
+
+function allocationAsHolding(a: PortfolioItem["allocations"][number]): StockHolding {
+  return {
+    id: a.id,
+    market: a.market,
+    ticker: a.ticker,
+    name: a.name,
+    currency: a.currency,
+    quantity: 0,
+    memo: "",
+  };
+}
+
+/**
+ * 지금 계산된 권장 매매를 할 일 목록으로 만들어 리밸런싱을 시작한다. 계좌에 진행 중인
+ * 리밸런싱이 있으면 새로 만들지 않고 그쪽으로 보낸다 (한 계좌에 하나씩).
+ */
+function StartRebalancingSection({
+  account,
+  portfolio,
+  summary,
+  prices,
+}: {
+  account: InvestmentItem;
+  portfolio: PortfolioItem;
+  summary: RebalancingSummary;
+  prices: Map<string, StockPricePoint>;
+}) {
+  const inProgress = useRebalancingStore((s) => findInProgressForAccount(s.sessions, account.id));
+  const startRebalancing = useRebalancingStore((s) => s.startRebalancing);
+  const { replace } = useFlow();
+
+  const tasks = useMemo(() => buildRebalancingTasks(summary, prices), [summary, prices]);
+
+  if (inProgress) {
+    return (
+      <section className="flex flex-col gap-x2 px-x4 py-x4">
+        <p className="t3-regular text-fg-neutral-subtle">
+          이 계좌에 진행 중인 리밸런싱이 있어요. 먼저 마치거나 삭제한 뒤 새로 시작할 수 있어요.
+        </p>
+        <ActionButton
+          size="large"
+          variant="neutralWeak"
+          className="w-full"
+          onClick={() => replace("RebalancingSession", { id: inProgress.id })}
+        >
+          진행 중인 리밸런싱 보기
+        </ActionButton>
+      </section>
+    );
+  }
+
+  return (
+    <section className="flex flex-col gap-x2 px-x4 py-x4">
+      <p className="t3-regular text-fg-neutral-subtle">
+        {tasks.length > 0
+          ? `매도 ${tasks.filter((t) => t.action === "매도").length}건 · 매수 ${tasks.filter((t) => t.action === "매수").length}건을 할 일로 만들어요. 모두 체크하면 기록으로 남아요.`
+          : "지금은 사고팔 종목이 없어요."}
+      </p>
+      <ActionButton
+        size="large"
+        className="w-full"
+        disabled={tasks.length === 0}
+        onClick={() => {
+          const id = startRebalancing({
+            accountId: account.id,
+            accountName: account.accountName,
+            portfolioId: portfolio.id,
+            portfolioName: portfolio.name,
+            cashDelta: summary.cashDelta,
+            tasks,
+          });
+          // 계산 화면은 스택에서 빼고 할 일 목록으로 바꾼다.
+          replace("RebalancingSession", { id });
+        }}
+      >
+        리밸런싱 시작
+      </ActionButton>
+    </section>
   );
 }
 

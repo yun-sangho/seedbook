@@ -13,6 +13,7 @@ import {
   doublePrecision,
   index,
   integer,
+  jsonb,
   pgSchema,
   primaryKey,
   serial,
@@ -416,6 +417,41 @@ export const portfolioAllocation = seedbook.table(
   (t) => [index("portfolio_allocation_portfolioId_idx").on(t.portfolioId)]
 );
 
+// ─── Rebalancing ────────────────────────────────────────────────────────────
+
+/**
+ * 계좌 하나에 대해 시작한 리밸런싱. 시작 시점의 권장 매매를 할 일(`tasks`)로 스냅샷해
+ * 두고, 모두 끝내면 `completedAt` 이 찍혀 기록으로 남는다. 계좌/포트폴리오가 지워져도
+ * 기록은 남도록 FK 대신 id 와 이름을 함께 보관한다.
+ */
+export const rebalancing = seedbook.table(
+  "rebalancing",
+  {
+    id: uuid("id").primaryKey(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    accountId: text("accountId").notNull(),
+    accountName: text("accountName").notNull(),
+    portfolioId: text("portfolioId").notNull(),
+    portfolioName: text("portfolioName").notNull(),
+    cashDelta: bigint("cashDelta", { mode: "bigint" }).notNull(),
+    // 할 일 목록 (종목별 매수/매도). 행 단위로 함께 바뀌므로 jsonb 한 컬럼에 둔다.
+    tasks: jsonb("tasks").notNull(),
+    startedAt: timestamp("startedAt", { precision: 3, mode: "date" }).notNull(),
+    completedAt: timestamp("completedAt", { precision: 3, mode: "date" }),
+    ...syncColumns(),
+    createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [
+    index("rebalancing_userId_idx").on(t.userId),
+    index("rebalancing_userId_updatedAt_idx").on(t.userId, t.updatedAt),
+  ]
+);
+
 // ─── Progress ───────────────────────────────────────────────────────────────
 
 export const assetProgressPoint = seedbook.table(
@@ -479,6 +515,7 @@ export const userRelations = relations(user, ({ many, one }) => ({
   assetPlans: many(assetPlan),
   assetProgressPoints: many(assetProgressPoint),
   portfolios: many(portfolio),
+  rebalancings: many(rebalancing),
   preference: one(userPreference, { fields: [user.id], references: [userPreference.userId] }),
   listOrders: many(userListOrder),
 }));
@@ -556,6 +593,10 @@ export const portfolioRelations = relations(portfolio, ({ one, many }) => ({
   user: one(user, { fields: [portfolio.userId], references: [user.id] }),
   allocations: many(portfolioAllocation),
   accounts: many(investmentAccount),
+}));
+
+export const rebalancingRelations = relations(rebalancing, ({ one }) => ({
+  user: one(user, { fields: [rebalancing.userId], references: [user.id] }),
 }));
 
 export const portfolioAllocationRelations = relations(portfolioAllocation, ({ one }) => ({

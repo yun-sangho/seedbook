@@ -21,7 +21,8 @@ type UserOwnedTable =
   | typeof schema.debt
   | typeof schema.realAsset
   | typeof schema.assetPlan
-  | typeof schema.portfolio;
+  | typeof schema.portfolio
+  | typeof schema.rebalancing;
 
 /**
  * 클라이언트가 보낸 id 중 이미 **다른 사용자** 소유인 행이 있으면 `ForeignRowError`.

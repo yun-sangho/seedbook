@@ -87,11 +87,11 @@ export function HomeMobile() {
         <div className="px-x4 pb-x4">
           <button
             type="button"
-            // 계좌 하나면 바로 그 계좌의 리밸런싱으로, 여러 개면 리밸런싱 탭에서 고른다.
+            // 계좌 하나면 바로 그 계좌의 리밸런싱으로, 여러 개면 새 리밸런싱에서 고른다.
             onClick={() =>
               accountsNeedingRebalance.length === 1
                 ? push("RebalancingDetail", { id: firstNeeding.id })
-                : switchTab("RebalancingTab")
+                : push("RebalancingNew", {})
             }
             className="bg-bg-critical-weak text-fg-critical active:bg-bg-critical-weak-pressed rounded-r3 flex w-full items-center gap-x2 px-x4 py-x3 text-left"
           >
