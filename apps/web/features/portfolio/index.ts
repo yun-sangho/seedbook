@@ -1,7 +1,7 @@
 // Types
 export type { PortfolioAllocation, PortfolioItem, StockSelection } from "./types/types";
 export {
-  DEFAULT_PORTFOLIO_NAMES,
+  DEFAULT_PORTFOLIO_NAME_PREFIX,
   DEFAULT_REBALANCE_THRESHOLD_PERCENT,
   MAX_TOTAL_PERCENT,
 } from "./types/constants";

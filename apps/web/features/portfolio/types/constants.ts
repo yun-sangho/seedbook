@@ -5,18 +5,10 @@
 export const MAX_TOTAL_PERCENT = 100;
 
 /**
- * 새 포트폴리오 추가 시 기본 이름 후보.
- * 사용자가 따로 입력하지 않을 때 순환 사용한다.
+ * 새 포트폴리오 추가 시 기본 이름 접두어. 사용자가 이름을 입력하지 않으면
+ * "포트폴리오 1", "포트폴리오 2" 처럼 번호를 붙인다.
  */
-export const DEFAULT_PORTFOLIO_NAMES = [
-  "안정형",
-  "공격형",
-  "성장형",
-  "배당형",
-  "AI 테마",
-  "반도체 집중",
-  "균형형",
-];
+export const DEFAULT_PORTFOLIO_NAME_PREFIX = "포트폴리오";
 
 /**
  * 리밸런싱 권장 액션 판정 기본 임계값 (단위: %).

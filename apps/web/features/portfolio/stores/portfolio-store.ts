@@ -6,7 +6,7 @@ import { getNextColor as getNextColorUtil } from "@web/utils/color-selection";
 import { parseNumericString } from "@web/utils/number-format";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { DEFAULT_DRIFT_THRESHOLD_PERCENT, DEFAULT_PORTFOLIO_NAMES } from "../types/constants";
+import { DEFAULT_DRIFT_THRESHOLD_PERCENT, DEFAULT_PORTFOLIO_NAME_PREFIX } from "../types/constants";
 import type { PortfolioAllocation, PortfolioItem, StockSelection } from "../types/types";
 import { dedupePortfolioLinks } from "../utils/portfolio-links";
 
@@ -17,12 +17,12 @@ const getNextColor = (existing: PortfolioItem[]): string => {
   return getNextColorUtil(used, ACCOUNT_COLORS, COLOR_FAMILIES);
 };
 
+/** "포트폴리오 N" 중 아직 쓰이지 않은 가장 작은 N 을 고른다. */
 const nextDefaultName = (existing: PortfolioItem[]): string => {
   const used = new Set(existing.map((p) => p.name));
-  for (const candidate of DEFAULT_PORTFOLIO_NAMES) {
-    if (!used.has(candidate)) return candidate;
-  }
-  return `포트폴리오 ${existing.length + 1}`;
+  let n = 1;
+  while (used.has(`${DEFAULT_PORTFOLIO_NAME_PREFIX} ${n}`)) n++;
+  return `${DEFAULT_PORTFOLIO_NAME_PREFIX} ${n}`;
 };
 
 interface PortfolioState {

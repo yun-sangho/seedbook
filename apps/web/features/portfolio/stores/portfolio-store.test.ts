@@ -39,10 +39,35 @@ describe("Portfolio Store", () => {
       expect(usePortfolioStore.getState().portfolios[0]!.name).toBe("내 전략");
     });
 
-    it("falls back to a default name when none is given", () => {
+    it("names the first unnamed portfolio '포트폴리오 1'", () => {
       usePortfolioStore.getState().addPortfolio();
-      const name = usePortfolioStore.getState().portfolios[0]!.name;
-      expect(name.length).toBeGreaterThan(0);
+      expect(usePortfolioStore.getState().portfolios[0]!.name).toBe("포트폴리오 1");
+    });
+
+    it("numbers subsequent unnamed portfolios sequentially", () => {
+      usePortfolioStore.getState().addPortfolio();
+      usePortfolioStore.getState().addPortfolio();
+      usePortfolioStore.getState().addPortfolio();
+      expect(usePortfolioStore.getState().portfolios.map((p) => p.name)).toEqual([
+        "포트폴리오 3",
+        "포트폴리오 2",
+        "포트폴리오 1",
+      ]);
+    });
+
+    it("does not count custom-named portfolios toward the number", () => {
+      usePortfolioStore.getState().addPortfolio("내 전략");
+      usePortfolioStore.getState().addPortfolio();
+      expect(usePortfolioStore.getState().portfolios[0]!.name).toBe("포트폴리오 1");
+    });
+
+    it("reuses the smallest number freed by a deleted portfolio", () => {
+      usePortfolioStore.getState().addPortfolio();
+      const second = usePortfolioStore.getState().addPortfolio();
+      usePortfolioStore.getState().addPortfolio();
+      usePortfolioStore.getState().removePortfolio(second);
+      usePortfolioStore.getState().addPortfolio();
+      expect(usePortfolioStore.getState().portfolios[0]!.name).toBe("포트폴리오 2");
     });
 
     it("assigns different colors to subsequent portfolios", () => {
