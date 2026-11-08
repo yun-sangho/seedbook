@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { IconChevronDownSmallLine, IconPlusLine } from "@karrotmarket/react-monochrome-icon";
 import { Divider, Icon } from "@seed-design/react";
+import { HoldingsPriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import {
   sortAccounts,
@@ -81,6 +82,7 @@ export function InvestmentMobile() {
 
   return (
     <div className="pb-x4">
+      <HoldingsPriceAsOfBanner investments={investments} />
       <div className="flex h-x12 items-center px-x4">
         <span className="t3-regular text-fg-neutral-subtle flex-1">
           {investments.length}개 계좌

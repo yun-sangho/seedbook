@@ -8,6 +8,7 @@ import {
 import { Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 import { useSwitchTab } from "@web/app/m/_stack/use-switch-tab";
+import { HoldingsPriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
 import { profitToneClass } from "@web/components/mobile/profit-tone";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { useLinkedPortfolioStatus } from "@web/features/portfolio/utils/use-linked-portfolio-status";
@@ -72,6 +73,7 @@ export function HomeMobile() {
 
   return (
     <div className="pb-x4">
+      <HoldingsPriceAsOfBanner investments={investments} />
       <section className="px-x5 pt-x6 pb-x5">
         <p className="t4-medium text-fg-neutral-muted">총 평가금액</p>
         <p className="t10-bold mt-x1 tabular-nums">{numberToKorean(totals.current) || "0원"}</p>
