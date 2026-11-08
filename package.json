@@ -19,9 +19,11 @@
     "db:generate": "pnpm --filter @seedbook/database prisma:generate",
     "db:seed": "pnpm --filter @seedbook/database db:seed",
     "db:seed:capture": "pnpm --filter @seedbook/database db:seed:capture",
-    "docker:dev": "bash scripts/docker-dev.sh up --build",
-    "docker:dev:down": "bash scripts/docker-dev.sh down",
-    "docker:dev:logs": "bash scripts/docker-dev.sh logs -f",
+    "docker:dev": "docker compose -f docker-compose.dev.yml up -d",
+    "docker:dev:down": "docker compose -f docker-compose.dev.yml down",
+    "docker:dev:logs": "docker compose -f docker-compose.dev.yml logs -f",
+    "db:dev:up": "docker compose -f docker-compose.dev.yml up postgres -d",
+    "db:dev:down": "docker compose -f docker-compose.dev.yml stop postgres",
     "docker:prod": "docker compose pull && docker compose up -d --remove-orphans"
   },
   "devDependencies": {

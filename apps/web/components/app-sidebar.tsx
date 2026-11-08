@@ -24,14 +24,25 @@ import {
   Building2,
   CreditCard,
   LineChart,
-  ListChecks,
   PieChart,
   PiggyBank,
   Settings,
-  Target,
   TrendingUp,
   Wallet,
 } from "lucide-react";
+
+const investmentItems = [
+  {
+    title: "투자",
+    url: "/assets/investments",
+    icon: TrendingUp,
+  },
+  {
+    title: "포트폴리오",
+    url: "/assets/portfolio",
+    icon: PieChart,
+  },
+];
 
 const assetItems = [
   {
@@ -43,16 +54,6 @@ const assetItems = [
     title: "자산 기록",
     url: "/assets/progress",
     icon: LineChart,
-  },
-  {
-    title: "투자",
-    url: "/assets/investments",
-    icon: TrendingUp,
-  },
-  {
-    title: "포트폴리오",
-    url: "/assets/portfolio",
-    icon: PieChart,
   },
   {
     title: "저축",
@@ -68,19 +69,6 @@ const assetItems = [
     title: "대출",
     url: "/assets/debt",
     icon: CreditCard,
-  },
-];
-
-const planItems = [
-  {
-    title: "자산 계획",
-    url: "/asset-plan",
-    icon: Target,
-  },
-  {
-    title: "계획 목록",
-    url: "/asset-plan-list",
-    icon: ListChecks,
   },
 ];
 
@@ -107,10 +95,10 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>자산 관리</SidebarGroupLabel>
+          <SidebarGroupLabel>투자 관리</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {assetItems.map((item) => (
+              {investmentItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <TooltipProvider delayDuration={0}>
                     <Tooltip>
@@ -134,10 +122,10 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>계획</SidebarGroupLabel>
+          <SidebarGroupLabel>자산 관리</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {planItems.map((item) => (
+              {assetItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <TooltipProvider delayDuration={0}>
                     <Tooltip>

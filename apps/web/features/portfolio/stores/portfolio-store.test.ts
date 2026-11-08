@@ -19,10 +19,9 @@ describe("Portfolio Store", () => {
   });
 
   describe("Initial State", () => {
-    it("starts with empty portfolios and no expanded form", () => {
+    it("starts with empty portfolios", () => {
       const state = usePortfolioStore.getState();
       expect(state.portfolios).toEqual([]);
-      expect(state.expandedFormId).toBe("");
     });
   });
 
@@ -33,7 +32,6 @@ describe("Portfolio Store", () => {
       expect(state.portfolios).toHaveLength(1);
       expect(state.portfolios[0]!.id).toBe(id);
       expect(state.portfolios[0]!.color).toMatch(/^#[0-9a-f]{6}$/i);
-      expect(state.expandedFormId).toBe(id);
     });
 
     it("uses provided name when given", () => {
@@ -129,19 +127,13 @@ describe("Portfolio Store", () => {
       expect(remaining[0]!.name).toBe("B");
     });
 
-    it("clears expandedFormId if the removed portfolio was expanded", () => {
-      const id = usePortfolioStore.getState().addPortfolio();
-      expect(usePortfolioStore.getState().expandedFormId).toBe(id);
-      usePortfolioStore.getState().removePortfolio(id);
-      expect(usePortfolioStore.getState().expandedFormId).toBe("");
-    });
   });
 
   describe("updatePortfolio", () => {
     it("updates a single field", () => {
       const id = usePortfolioStore.getState().addPortfolio();
-      usePortfolioStore.getState().updatePortfolio(id, "description", "공격형 분배");
-      expect(usePortfolioStore.getState().portfolios[0]!.description).toBe("공격형 분배");
+      usePortfolioStore.getState().updatePortfolio(id, "note", "리밸런싱 규칙: 분기마다");
+      expect(usePortfolioStore.getState().portfolios[0]!.note).toBe("리밸런싱 규칙: 분기마다");
     });
 
     it("touches updatedAt on update", () => {
@@ -279,16 +271,6 @@ describe("Portfolio Store", () => {
   });
 
   describe("Persist Config", () => {
-    it("partialize excludes expandedFormId", () => {
-      usePortfolioStore.getState().addPortfolio();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const persistApi = (usePortfolioStore as any).persist;
-      const partialize = persistApi.getOptions().partialize;
-      const snapshot = partialize(usePortfolioStore.getState()) as Record<string, unknown>;
-      expect(snapshot.portfolios).toBeDefined();
-      expect(snapshot.expandedFormId).toBeUndefined();
-    });
-
     it("migrate (v1 -> v2) fills accountIds and driftThresholdPercent with defaults", () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const persistApi = (usePortfolioStore as any).persist;
@@ -350,11 +332,9 @@ describe("Portfolio Store", () => {
     it("returns store to initial state", () => {
       usePortfolioStore.getState().addPortfolio();
       usePortfolioStore.getState().addPortfolio();
-      usePortfolioStore.getState().setExpandedFormId("anything");
       usePortfolioStore.getState().resetStore();
       const state = usePortfolioStore.getState();
       expect(state.portfolios).toEqual([]);
-      expect(state.expandedFormId).toBe("");
     });
   });
 });

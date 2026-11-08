@@ -5,11 +5,13 @@ import { SyncIndicator } from "@web/components/sync-indicator";
 import { Separator } from "@web/components/ui/separator";
 import { SidebarTrigger } from "@web/components/ui/sidebar";
 import { UserMenu } from "@web/components/user-menu";
+import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 
 const pageNames: Record<string, string> = {
   "/": "홈",
   "/assets": "전체 자산",
   "/assets/investments": "투자",
+  "/assets/portfolio": "포트폴리오",
   "/assets/savings": "저축",
   "/assets/real-assets": "실물 자산",
   "/assets/debt": "대출",
@@ -20,9 +22,19 @@ const pageNames: Record<string, string> = {
   "/contact": "문의하기",
 };
 
+function usePageName(pathname: string): string {
+  const portfolioMatch = pathname.match(/^\/assets\/portfolio\/([^/]+)$/);
+  const portfolioId = portfolioMatch?.[1];
+  const portfolioName = usePortfolioStore((s) =>
+    portfolioId ? s.portfolios.find((p) => p.id === portfolioId)?.name : undefined
+  );
+  if (portfolioId) return portfolioName ?? "포트폴리오";
+  return pageNames[pathname] || "페이지";
+}
+
 export function AppHeader() {
   const pathname = usePathname();
-  const pageName = pageNames[pathname] || "페이지";
+  const pageName = usePageName(pathname);
 
   return (
     <header className="w-full sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4">

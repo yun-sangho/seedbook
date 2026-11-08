@@ -12,21 +12,22 @@ pnpm check-types                      # TypeScript type checking
 pnpm format                           # Prettier + import sort + tailwind class sort
 pnpm --filter @seedbook/web test      # Run Vitest tests
 pnpm --filter @seedbook/web test:watch
-pnpm docker:dev                       # Docker Compose dev (postgres + stock-crawler + web)
+pnpm docker:dev                       # Dev infra in Docker (postgres + stock-crawler)
 pnpm docker:dev:down                  # Stop dev stack
 pnpm docker:dev:logs                  # Tail dev stack logs
+pnpm db:dev:up                        # Postgres only (lighter — skip stock-crawler)
+pnpm db:dev:down                      # Stop postgres only
 ```
 
 Requires Node >= 22, pnpm 8.
 
-### Worktree-aware Docker Dev
+### Dev topology
 
-`pnpm docker:dev`는 `scripts/docker-dev.sh` 래퍼를 통해 실행된다. 워크트리 디렉토리를 자동 감지하여 `COMPOSE_PROJECT_NAME`과 `WEB_PORT`를 계산하므로, 여러 워크트리에서 동시에 독립된 Docker 스택을 실행할 수 있다.
+Web 은 **호스트에서** `pnpm dev` 로 직접 띄운다 (Next.js + turbopack, port 3001). Docker 안에서는 `postgres` + `stock-crawler` 만 띄운다 — Docker for Mac (VirtioFS) 의 bind mount fs-event 전파 이슈로 컨테이너 내부 turbopack HMR 이 변경을 자주 놓치기 때문.
 
-- main repo: `WEB_PORT=3001`
-- worktree: 디렉토리 이름 해시 기반 자동 배분 (3002~3050)
-- 수동 오버라이드: `WEB_PORT=3005 pnpm docker:dev`
-- Postgres는 호스트에 포트를 노출하지 않는다. DB 접근: `docker compose exec postgres psql -U seedbook`
+- 호스트 `pnpm dev` → `localhost:3001` 에서 서비스
+- 컨테이너 postgres → `127.0.0.1:5432` 노출, 호스트 dev 가 그대로 접속
+- DB 접근: `docker compose -f docker-compose.dev.yml exec postgres psql -U seedbook`
 
 ### DB seed (capture/replay)
 
@@ -109,7 +110,7 @@ The web app builds with `output: 'standalone'` (see `apps/web/next.config.ts`) a
 
 DB 마이그레이션은 stock-crawler 이미지 entrypoint (`apps/stock-crawler/entrypoint.sh`) 의 `drizzle migrate` (`packages/database/scripts/migrate.ts`) 가 컨테이너 시작 시 자동으로 돌린다. 새 마이그레이션은 `pnpm --filter @seedbook/database db:generate` 로 schema 변경 후 자동 생성. Drizzle 은 단순 SQL apply 라 Supabase 풀러로도 동작하지만, 보수적으로 `DATABASE_URL` 은 direct connection (`db.<ref>.supabase.co:5432`) 을 권장한다.
 
-Local dev: `pnpm docker:dev`로 postgres + stock-crawler + web을 모두 Docker에서 실행. 워크트리별 자동 포트 격리 지원 (위 "Worktree-aware Docker Dev" 참조). 호스트에서 직접 실행하려면 `pnpm dev`.
+Local dev: `pnpm docker:dev` 로 인프라(postgres + stock-crawler) 를 띄우고, 별도 터미널에서 `pnpm dev` 로 web 을 호스트에서 실행한다. DB 만 필요하면 `pnpm db:dev:up`. 워크트리별 자동 격리 지원 (위 "Dev topology" 참조).
 
 ## Shell Command Rules
 
