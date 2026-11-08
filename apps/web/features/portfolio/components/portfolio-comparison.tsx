@@ -13,7 +13,6 @@ import {
   TableRow,
 } from "@web/components/ui/table";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
-import { ACCOUNT_COLORS, COLOR_FAMILIES } from "@web/features/investments/types/constants";
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import {
   stockPriceKey,
@@ -21,10 +20,10 @@ import {
   type StockPricePoint,
 } from "@web/features/investments/utils/use-stock-prices";
 import { cn } from "@web/lib/utils";
-import { getNextColor } from "@web/utils/color-selection";
 import { formatWithCommas, numberToKorean, parseNumericString } from "@web/utils/number-format";
 import { AlertTriangle, CheckCircle2, Minus, Plus } from "lucide-react";
 import type { PortfolioItem } from "../types/types";
+import { buildAllocationColors } from "../utils/allocation-colors";
 import {
   computeActualAllocation,
   type ActualAllocationResult,
@@ -38,21 +37,6 @@ interface PortfolioComparisonProps {
 }
 
 type ViewMode = "sum" | "per-account";
-
-/**
- * Allocations 길이만큼 색상을 생성한다. `getNextColor` 를 누적 호출해
- * 인접한 종목이 다른 색상 계열에서 뽑히도록 한다.
- */
-function buildAllocationColors(count: number): string[] {
-  const used: string[] = [];
-  const colors: string[] = [];
-  for (let i = 0; i < count; i++) {
-    const c = getNextColor(used, ACCOUNT_COLORS, COLOR_FAMILIES);
-    used.push(c);
-    colors.push(c);
-  }
-  return colors;
-}
 
 export function PortfolioComparison({ portfolio }: PortfolioComparisonProps) {
   const investments = useInvestmentStore((s) => s.investments);
@@ -127,17 +111,21 @@ export function PortfolioComparison({ portfolio }: PortfolioComparisonProps) {
     { label: "-100만원", value: -1000000 },
   ];
 
-  const scopeLabel =
-    portfolio.accountIds.length === 0
-      ? "모든 투자 계좌 합계"
-      : `연결된 ${scopedAccounts.length}개 계좌 합계`;
+  const noLinkedAccounts = portfolio.accountIds.length === 0;
+  const scopeLabel = noLinkedAccounts
+    ? "연결된 계좌 없음"
+    : `연결된 ${scopedAccounts.length}개 계좌 합계`;
 
   return (
     <div className="space-y-6 px-4 py-5 border-t bg-muted/20">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h4 className="text-sm font-semibold mb-1">목표 대비 실제 보유</h4>
-          <p className="text-xs text-muted-foreground">{scopeLabel} 기준으로 계산됩니다.</p>
+          <p className="text-xs text-muted-foreground">
+            {noLinkedAccounts
+              ? "적용 계좌를 연결하면 리밸런싱 비교가 활성화됩니다."
+              : `${scopeLabel} 기준으로 계산됩니다.`}
+          </p>
         </div>
         {perAccountAvailable && (
           <div className="inline-flex rounded-md border bg-background p-0.5">
@@ -154,39 +142,47 @@ export function PortfolioComparison({ portfolio }: PortfolioComparisonProps) {
         )}
       </div>
 
-      {portfolio.accountIds.length > 0 && scopedAccounts.length === 0 && (
+      {noLinkedAccounts && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 p-4 text-sm text-amber-800 dark:text-amber-200">
+          이 포트폴리오에 연결된 투자 계좌가 없습니다. <strong>기본 정보</strong> 탭의{" "}
+          <strong>적용 계좌</strong> 에서 계좌를 선택하면 목표 대비 실제 보유 비교가 표시됩니다.
+        </div>
+      )}
+
+      {!noLinkedAccounts && scopedAccounts.length === 0 && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 p-3 text-xs text-amber-800 dark:text-amber-200">
           연결된 계좌가 모두 삭제되었습니다. 포트폴리오 편집에서 계좌를 다시 선택하거나 연결을
           해제하세요.
         </div>
       )}
 
-      {effectiveMode === "sum" ? (
-        <SumView
-          portfolio={portfolio}
-          allocationColors={allocationColors}
-          colorMap={colorMap}
-          actual={sumActual}
-          summary={sumSummary}
-          drift={sumDrift}
-          cashDelta={cashDelta}
-          cashDeltaInput={cashDeltaInput}
-          onCashDeltaChange={(v) => setCashDeltaInput(v)}
-          onCashDeltaCommit={(v) => handleCashDeltaCommit(v)}
-          onCashDeltaSet={(value) => {
-            setCashDelta(value);
-            setCashDeltaInput(value === 0 ? "" : String(value));
-          }}
-          presets={presets}
-        />
-      ) : (
-        <PerAccountView
-          portfolio={portfolio}
-          accounts={scopedAccounts}
-          prices={prices}
-          colorMap={colorMap}
-        />
-      )}
+      {!noLinkedAccounts &&
+        (effectiveMode === "sum" ? (
+          <SumView
+            portfolio={portfolio}
+            allocationColors={allocationColors}
+            colorMap={colorMap}
+            actual={sumActual}
+            summary={sumSummary}
+            drift={sumDrift}
+            cashDelta={cashDelta}
+            cashDeltaInput={cashDeltaInput}
+            onCashDeltaChange={(v) => setCashDeltaInput(v)}
+            onCashDeltaCommit={(v) => handleCashDeltaCommit(v)}
+            onCashDeltaSet={(value) => {
+              setCashDelta(value);
+              setCashDeltaInput(value === 0 ? "" : String(value));
+            }}
+            presets={presets}
+          />
+        ) : (
+          <PerAccountView
+            portfolio={portfolio}
+            accounts={scopedAccounts}
+            prices={prices}
+            colorMap={colorMap}
+          />
+        ))}
     </div>
   );
 }

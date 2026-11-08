@@ -8,6 +8,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { ACCOUNT_COLORS, COLOR_FAMILIES } from "../types/constants";
 import { CashItem, InvestmentItem, InvestmentRecord, StockHolding } from "../types/types";
+import type { HoldingSeed } from "../utils/holding-seeds";
 
 export type HoldingsSortOption = "default" | "priceDesc" | "priceAsc" | "evalDesc" | "evalAsc";
 
@@ -15,6 +16,15 @@ export type HoldingsSortOption = "default" | "priceDesc" | "priceAsc" | "evalDes
 const getCurrentDate = (): string => {
   return new Date().toISOString().split("T")[0] || "";
 };
+
+export const DEFAULT_CASH_LABEL = "예수금";
+
+// 계좌마다 기본으로 두는 예수금 항목
+const createDefaultCashItem = (): CashItem => ({
+  id: crypto.randomUUID(),
+  label: DEFAULT_CASH_LABEL,
+  amount: 0,
+});
 
 // 사용 가능한 색상을 반환하는 헬퍼 함수
 const getNextColor = (existingInvestments: InvestmentItem[]): string => {
@@ -34,7 +44,8 @@ interface InvestmentState {
   holdingsSortOption: HoldingsSortOption;
   setHoldingsSortOption: (option: HoldingsSortOption) => void;
 
-  addInvestmentWithType: (accountType: string) => void;
+  /** 새 계좌를 맨 앞에 추가하고 id 를 돌려준다. `holdings` 로 시작 종목을 넣을 수 있다. */
+  addInvestmentWithType: (accountType: string, options?: { holdings?: HoldingSeed[] }) => string;
   removeInvestment: (id: string) => void;
   updateInvestment: (id: string, field: keyof InvestmentItem, value: string | number) => void;
   addInvestmentRecord: (id: string, record?: Partial<InvestmentRecord>) => void;
@@ -97,7 +108,7 @@ export const useInvestmentStore = create<InvestmentState>()(
 
       setHoldingsSortOption: (option) => set({ holdingsSortOption: option }),
 
-      addInvestmentWithType: (accountType: string) => {
+      addInvestmentWithType: (accountType, options) => {
         const { investments } = get();
         const newId = crypto.randomUUID();
         const newColor = getNextColor(investments);
@@ -112,8 +123,13 @@ export const useInvestmentStore = create<InvestmentState>()(
               initialInvestment: 0,
               currentValue: 0,
               records: [],
-              holdings: [],
-              cashItems: [],
+              holdings: (options?.holdings ?? []).map((seed) => ({
+                ...seed,
+                id: crypto.randomUUID(),
+                memo: "",
+              })),
+              // 모든 계좌는 예수금 항목 하나를 기본으로 가진다.
+              cashItems: [createDefaultCashItem()],
               note: "",
               color: newColor,
             },
@@ -121,6 +137,7 @@ export const useInvestmentStore = create<InvestmentState>()(
           ],
           expandedFormId: newId, // 새로 추가된 폼을 자동으로 펼침
         });
+        return newId;
       },
 
       removeInvestment: (id) => {
@@ -469,7 +486,7 @@ export const useInvestmentStore = create<InvestmentState>()(
     {
       name: "investment-storage", // 저장 backend key (local 모드면 localStorage, cloud 모드면 /api/storage)
       storage: createJSONStorage(() => createHybridStorage("investment-storage")),
-      version: 5,
+      version: 6,
       partialize: (state) => ({
         investments: state.investments,
         holdingsSortOption: state.holdingsSortOption,
@@ -505,6 +522,16 @@ export const useInvestmentStore = create<InvestmentState>()(
             delete next.accountOwner;
             return next;
           });
+        }
+        if (version < 6) {
+          // 현금 항목이 없는 기존 계좌에 기본 예수금을 채운다. 클라우드 envelope 은
+          // 항상 낮은 version 으로 내려오므로 매 로드마다 실행돼도 안전해야 한다
+          // (이미 현금 항목이 있으면 건드리지 않는다).
+          state.investments = state.investments.map((inv) =>
+            (inv.cashItems ?? []).length > 0
+              ? inv
+              : { ...inv, cashItems: [createDefaultCashItem()] }
+          );
         }
         return state;
       },

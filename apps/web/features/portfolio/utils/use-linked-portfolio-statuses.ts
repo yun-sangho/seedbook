@@ -1,0 +1,26 @@
+"use client";
+
+import { useCallback, useMemo } from "react";
+import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
+import { useStockPrices } from "@web/features/investments/utils/use-stock-prices";
+import { usePortfolioStore } from "../stores/portfolio-store";
+import { linkedPortfolioStatuses, type LinkedPortfolioStatus } from "./linked-portfolio-status";
+
+/**
+ * 계좌 id → 연결된 포트폴리오 상태 조회 함수를 돌려준다.
+ * 포트폴리오 판정은 연결된 모든 계좌 합산이 기준이라 전체 보유의 시세를 한 번에 받는다.
+ */
+export function useLinkedPortfolioStatuses(): (accountId: string) => LinkedPortfolioStatus[] {
+  const investments = useInvestmentStore((s) => s.investments);
+  const portfolios = usePortfolioStore((s) => s.portfolios);
+  const allHoldings = useMemo(
+    () => investments.flatMap((inv) => inv.holdings ?? []),
+    [investments]
+  );
+  const { prices } = useStockPrices(allHoldings);
+
+  return useCallback(
+    (accountId: string) => linkedPortfolioStatuses(accountId, portfolios, investments, prices),
+    [portfolios, investments, prices]
+  );
+}

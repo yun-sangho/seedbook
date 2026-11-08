@@ -77,7 +77,9 @@ describe("pushStorageModeToServer", () => {
 
   it("PUT /api/me/storage-mode 로 mode 를 보낸다", async () => {
     const { pushStorageModeToServer } = await import("./storage-mode");
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}", { status: 200 }));
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("{}", { status: 200 }));
 
     await pushStorageModeToServer("cloud");
 

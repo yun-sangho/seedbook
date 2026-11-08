@@ -859,6 +859,13 @@ describe("Investment Store", () => {
       const { addInvestmentWithType } = useInvestmentStore.getState();
       addInvestmentWithType("증권계좌");
       investmentId = useInvestmentStore.getState().investments[0]!.id;
+      // 새 계좌의 기본 예수금은 "Default cash item" 에서 검증한다. 여기선
+      // addCashItem/update/remove 를 단독으로 보기 위해 빈 목록에서 시작한다.
+      useInvestmentStore.setState((state) => ({
+        investments: state.investments.map((inv) =>
+          inv.id === investmentId ? { ...inv, cashItems: [] } : inv
+        ),
+      }));
     });
 
     it("addCashItem appends a new item with default label 예수금 and amount 0", () => {
@@ -1018,6 +1025,51 @@ describe("Investment Store", () => {
       const state = useInvestmentStore.getState();
       expect(state.investments[0]!.color).toBeDefined();
       expect(typeof state.investments[0]!.color).toBe("string");
+    });
+  });
+  describe("Default cash item (예수금)", () => {
+    it("creates a new account with one 예수금 cash item of 0원", () => {
+      useInvestmentStore.getState().addInvestmentWithType("ISA 계좌");
+
+      const { cashItems } = useInvestmentStore.getState().investments[0]!;
+      expect(cashItems).toHaveLength(1);
+      expect(cashItems[0]).toMatchObject({ label: "예수금", amount: 0 });
+    });
+
+    it("returns the new account id and seeds the given holdings", () => {
+      const id = useInvestmentStore.getState().addInvestmentWithType("ISA 계좌", {
+        holdings: [
+          { market: "KOSPI", ticker: "005930", name: "삼성전자", currency: "KRW", quantity: 0 },
+        ],
+      });
+
+      const created = useInvestmentStore.getState().investments.find((inv) => inv.id === id)!;
+      expect(created.holdings).toHaveLength(1);
+      expect(created.holdings[0]).toMatchObject({ ticker: "005930", quantity: 0, memo: "" });
+      expect(typeof created.holdings[0]!.id).toBe("string");
+      expect(created.cashItems).toHaveLength(1);
+    });
+
+    it("adds a 예수금 cash item to persisted accounts that have none", () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const persistApi = (useInvestmentStore as any).persist;
+      const migrated = persistApi
+        .getOptions()
+        .migrate({ investments: [{ id: "a", cashItems: [], holdings: [], records: [] }] }, 5);
+
+      expect(migrated.investments[0].cashItems).toHaveLength(1);
+      expect(migrated.investments[0].cashItems[0]).toMatchObject({ label: "예수금", amount: 0 });
+    });
+
+    it("leaves accounts that already have cash items untouched", () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const persistApi = (useInvestmentStore as any).persist;
+      const existing = [{ id: "c1", label: "CMA", amount: 1000 }];
+      const migrated = persistApi
+        .getOptions()
+        .migrate({ investments: [{ id: "a", cashItems: existing, holdings: [], records: [] }] }, 5);
+
+      expect(migrated.investments[0].cashItems).toEqual(existing);
     });
   });
 });
