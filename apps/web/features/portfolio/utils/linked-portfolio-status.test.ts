@@ -46,8 +46,14 @@ function portfolio(partial: Partial<PortfolioItem> & Pick<PortfolioItem, "id">):
 }
 
 const prices = new Map<string, StockPricePoint>([
-  [stockPriceKey("KOSPI", "A"), { close: 1000, date: "2026-11-06" }],
-  [stockPriceKey("KOSPI", "B"), { close: 1000, date: "2026-11-06" }],
+  [
+    stockPriceKey("KOSPI", "A"),
+    { close: 1000, date: "2026-11-06", asOf: "2026-11-06T06:30:00.000Z", kind: "close" },
+  ],
+  [
+    stockPriceKey("KOSPI", "B"),
+    { close: 1000, date: "2026-11-06", asOf: "2026-11-06T06:30:00.000Z", kind: "close" },
+  ],
 ]);
 
 describe("linkedPortfolioStatus", () => {

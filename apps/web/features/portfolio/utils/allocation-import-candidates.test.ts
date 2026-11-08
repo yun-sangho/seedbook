@@ -53,7 +53,12 @@ function portfolio(allocations: PortfolioAllocation[]): PortfolioItem {
   };
 }
 
-const price = (close: number): StockPricePoint => ({ close, date: "2026-11-06" });
+const price = (close: number): StockPricePoint => ({
+  close,
+  date: "2026-11-06",
+  asOf: "2026-11-06T06:30:00.000Z",
+  kind: "close",
+});
 
 describe("candidatesFromPortfolio", () => {
   it("copies each allocation's stock and target percent", () => {

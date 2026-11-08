@@ -6,7 +6,14 @@ const NOW = new Date("2024-01-15T10:00:00Z").getTime();
 
 function priceResponse(prices: Array<{ market: string; ticker: string; close: number }>) {
   return new Response(
-    JSON.stringify({ prices: prices.map((p) => ({ ...p, date: "2024-01-15" })) }),
+    JSON.stringify({
+      prices: prices.map((p) => ({
+        ...p,
+        date: "2024-01-15",
+        asOf: "2024-01-15T06:30:00.000Z",
+        kind: "close",
+      })),
+    }),
     { status: 200, headers: { "Content-Type": "application/json" } }
   );
 }
@@ -38,7 +45,7 @@ describe("useStockPriceStore.ensurePrices", () => {
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(useStockPriceStore.getState().entries["KOSPI:005930"]).toEqual({
-      point: { close: 70000, date: "2024-01-15" },
+      point: { close: 70000, date: "2024-01-15", asOf: "2024-01-15T06:30:00.000Z", kind: "close" },
       fetchedAt: NOW,
     });
   });
@@ -47,7 +54,15 @@ describe("useStockPriceStore.ensurePrices", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     useStockPriceStore.setState({
       entries: {
-        "KOSPI:005930": { point: { close: 70000, date: "2024-01-15" }, fetchedAt: NOW - 1000 },
+        "KOSPI:005930": {
+          point: {
+            close: 70000,
+            date: "2024-01-15",
+            asOf: "2024-01-15T06:30:00.000Z",
+            kind: "close",
+          },
+          fetchedAt: NOW - 1000,
+        },
       },
     });
 
@@ -63,7 +78,15 @@ describe("useStockPriceStore.ensurePrices", () => {
       .mockResolvedValue(priceResponse([{ market: "KOSPI", ticker: "000660", close: 130000 }]));
     useStockPriceStore.setState({
       entries: {
-        "KOSPI:005930": { point: { close: 70000, date: "2024-01-15" }, fetchedAt: NOW - 1000 },
+        "KOSPI:005930": {
+          point: {
+            close: 70000,
+            date: "2024-01-15",
+            asOf: "2024-01-15T06:30:00.000Z",
+            kind: "close",
+          },
+          fetchedAt: NOW - 1000,
+        },
       },
     });
 
@@ -81,7 +104,12 @@ describe("useStockPriceStore.ensurePrices", () => {
       })
     );
     const stale = {
-      point: { close: 70000, date: "2024-01-14" },
+      point: {
+        close: 70000,
+        date: "2024-01-14",
+        asOf: "2024-01-14T06:30:00.000Z",
+        kind: "close" as const,
+      },
       fetchedAt: NOW - PRICE_CACHE_TTL_MS - 1,
     };
     useStockPriceStore.setState({ entries: { "KOSPI:005930": stale } });
@@ -132,7 +160,12 @@ describe("useStockPriceStore.ensurePrices", () => {
   it("records an error and keeps the cached value when the request fails", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("", { status: 500 }));
     const stale = {
-      point: { close: 70000, date: "2024-01-14" },
+      point: {
+        close: 70000,
+        date: "2024-01-14",
+        asOf: "2024-01-14T06:30:00.000Z",
+        kind: "close" as const,
+      },
       fetchedAt: NOW - PRICE_CACHE_TTL_MS - 1,
     };
     useStockPriceStore.setState({ entries: { "KOSPI:005930": stale } });
@@ -144,5 +177,43 @@ describe("useStockPriceStore.ensurePrices", () => {
     expect(state.entries["KOSPI:005930"]).toEqual(stale);
     expect(state.errors["KOSPI:005930"]).toMatch(/500/);
     expect(state.inFlight["KOSPI:005930"]).toBeUndefined();
+  });
+
+  it("stores the realtime kind and trade time the server returns", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      Response.json({
+        prices: [
+          {
+            market: "KOSPI",
+            ticker: "005930",
+            close: 71200,
+            date: "2024-01-15",
+            asOf: "2024-01-15T01:31:12.000Z",
+            kind: "realtime",
+          },
+        ],
+      })
+    );
+
+    useStockPriceStore.getState().ensurePrices(["KOSPI:005930"]);
+    await vi.runAllTimersAsync();
+
+    expect(useStockPriceStore.getState().entries["KOSPI:005930"]?.point).toEqual({
+      close: 71200,
+      date: "2024-01-15",
+      asOf: "2024-01-15T01:31:12.000Z",
+      kind: "realtime",
+    });
+  });
+});
+
+describe("useStockPriceStore persistence", () => {
+  it("drops version 1 cache entries that have no price timestamp", () => {
+    const migrate = useStockPriceStore.persist.getOptions().migrate!;
+    const v1 = {
+      entries: { "KOSPI:005930": { point: { close: 70000, date: "2024-01-15" }, fetchedAt: 1 } },
+    };
+
+    expect(migrate(v1, 1)).toEqual({ entries: {} });
   });
 });

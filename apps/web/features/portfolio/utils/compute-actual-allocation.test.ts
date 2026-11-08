@@ -32,7 +32,12 @@ function makeInvestment(holdings: StockHolding[]): InvestmentItem {
 }
 
 function priceMap(entries: Array<[string, number]>): Map<string, StockPricePoint> {
-  return new Map(entries.map(([key, close]) => [key, { close, date: "2024-01-15" }]));
+  return new Map(
+    entries.map(([key, close]) => [
+      key,
+      { close, date: "2024-01-15", asOf: "2024-01-15T06:30:00.000Z", kind: "close" },
+    ])
+  );
 }
 
 describe("computeActualAllocation", () => {

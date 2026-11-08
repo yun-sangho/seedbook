@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { selectKeysToFetch, type CachedPrice } from "../utils/stock-price-cache";
+import type { StockPricePoint } from "../utils/use-stock-prices";
 
 /**
  * 앱 전역 시세 캐시.
@@ -17,7 +18,7 @@ import { selectKeysToFetch, type CachedPrice } from "../utils/stock-price-cache"
  */
 
 interface PriceApiResponse {
-  prices: Array<{ market: string; ticker: string; date: string; close: number }>;
+  prices: Array<{ market: string; ticker: string } & StockPricePoint>;
 }
 
 interface StockPriceState {
@@ -67,7 +68,10 @@ export const useStockPriceStore = create<StockPriceState>()(
           const data = await requestPrices(keys);
           const fetchedAt = Date.now();
           const received = new Map(
-            data.prices.map((p) => [`${p.market}:${p.ticker}`, { close: p.close, date: p.date }])
+            data.prices.map((p) => [
+              `${p.market}:${p.ticker}`,
+              { close: p.close, date: p.date, asOf: p.asOf, kind: p.kind },
+            ])
           );
           const entries = { ...get().entries };
           for (const key of keys) {
@@ -108,8 +112,11 @@ export const useStockPriceStore = create<StockPriceState>()(
     {
       name: "stock-price-cache",
       storage: createJSONStorage(() => localStorage),
-      version: 1,
+      version: 2,
       partialize: (state) => ({ entries: state.entries }),
+      // v1 항목에는 가격 기준 시각 (asOf/kind) 이 없다. 공용 시세 캐시라 버리고 다시 받는다.
+      migrate: (persisted, version) =>
+        version < 2 ? { entries: {} } : (persisted as { entries: Record<string, CachedPrice> }),
     }
   )
 );

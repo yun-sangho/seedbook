@@ -21,7 +21,10 @@ function cash(amount: number): CashItem {
 
 function prices(entries: Array<[string, string, number, string]>) {
   return new Map<string, StockPricePoint>(
-    entries.map(([market, ticker, close, date]) => [stockPriceKey(market, ticker), { close, date }])
+    entries.map(([market, ticker, close, date]) => [
+      stockPriceKey(market, ticker),
+      { close, date, asOf: `${date}T06:30:00.000Z`, kind: "close" as const },
+    ])
   );
 }
 

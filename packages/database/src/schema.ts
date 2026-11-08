@@ -90,6 +90,27 @@ export const stockPrice = seedbook.table(
   ]
 );
 
+/**
+ * 장중 현재가 캐시 (종목당 1행). web 의 `/api/stocks/prices` 가 요청 시 네이버 실시간
+ * 시세를 조회해 upsert 하고, 같은 종목을 다른 사용자가 짧은 시간 안에 다시 물으면
+ * 이 행을 그대로 쓴다. 일봉 확정값은 여전히 `StockPrice` 가 소스 오브 트루스.
+ */
+export const stockQuote = seedbook.table(
+  "StockQuote",
+  {
+    market: text("market").notNull(),
+    ticker: text("ticker").notNull(),
+    price: bigint("price", { mode: "bigint" }).notNull(),
+    /** 소스가 알려준 시장 상태 (예: OPEN, CLOSE). */
+    marketStatus: text("marketStatus").notNull(),
+    /** 소스가 알려준 마지막 체결 시각. */
+    tradedAt: timestamp("tradedAt", { withTimezone: true, precision: 3, mode: "date" }).notNull(),
+    /** 우리가 소스에서 가져온 시각. 캐시 만료 판단용. */
+    fetchedAt: timestamp("fetchedAt", { withTimezone: true, precision: 3, mode: "date" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.market, t.ticker], name: "StockQuote_pkey" })]
+);
+
 // ─── Better Auth (Kakao login) ──────────────────────────────────────────────
 
 export const user = seedbook.table("user", {

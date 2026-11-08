@@ -3,11 +3,17 @@
 import { useEffect, useMemo } from "react";
 import { useStockPriceStore } from "../stores/stock-price-store";
 import type { StockHolding } from "../types/types";
-import { isPriceFresh } from "./stock-price-cache";
+import { isPriceFresh, PRICE_CACHE_TTL_MS } from "./stock-price-cache";
+
+/** `realtime` = 장중 현재가, `close` = 해당 거래일 종가. */
+export type StockPriceKind = "realtime" | "close";
 
 export interface StockPricePoint {
   close: number;
-  date: string; // YYYY-MM-DD (DB 상의 실제 가격 일자)
+  date: string; // YYYY-MM-DD (KST 거래일)
+  /** 이 가격의 기준 시각 (ISO). 장중 = 마지막 체결 시각, 종가 = 해당일 15:30 KST. */
+  asOf: string;
+  kind: StockPriceKind;
 }
 
 export interface UseStockPricesResult {
@@ -48,7 +54,20 @@ export function useStockPrices(holdings: StockHolding[]): UseStockPricesResult {
   const errors = useStockPriceStore((s) => s.errors);
 
   useEffect(() => {
-    if (keys.length > 0) ensurePrices(keys);
+    if (keys.length === 0) return;
+    ensurePrices(keys);
+
+    // 화면을 켜 둔 동안에도 장중 시세가 따라오도록 주기적으로, 그리고 앱이 다시
+    // 앞으로 올 때 (백그라운드에서는 타이머가 멈춘다) 만료된 종목만 다시 묻는다.
+    const refresh = () => {
+      if (document.visibilityState === "visible") ensurePrices(keys);
+    };
+    const timer = setInterval(refresh, PRICE_CACHE_TTL_MS);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
   }, [keys, ensurePrices]);
 
   const prices = useMemo(() => {

@@ -15,6 +15,7 @@ import {
 } from "@web/components/mobile/detail-layout";
 import { HeaderAction } from "@web/components/mobile/header-action";
 import { LinkedPortfolioChip } from "@web/components/mobile/linked-portfolio-chip";
+import { PriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
 import { profitToneClass } from "@web/components/mobile/profit-tone";
 import {
   DEFAULT_CASH_LABEL,
@@ -126,7 +127,6 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
     sortedHoldings,
     prices,
     pricesLoading,
-    referenceDate,
     validHoldingCount,
     stocksTotal,
     cashTotal,
@@ -187,6 +187,7 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
 
   return (
     <div className="pb-x4">
+      <PriceAsOfBanner prices={prices} />
       {/* 평가금액 → 수익 → 투자원금·예수금 순서. */}
       <div>
         <section className="px-x4 pt-x4 pb-x3">
@@ -237,11 +238,8 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
                 validHoldingCount > 0
                   ? `${validHoldingCount}종목 · ${numberToKorean(stocksTotal)}`
                   : null,
-                pricesLoading
-                  ? "시세 불러오는 중"
-                  : referenceDate
-                    ? `${referenceDate.slice(5).replace("-", ".")} 기준`
-                    : null,
+                // 가격 기준 시각은 화면 상단 PriceAsOfBanner 가 보여준다.
+                pricesLoading ? "시세 불러오는 중" : null,
               ]
                 .filter(Boolean)
                 .join(" · ") || undefined

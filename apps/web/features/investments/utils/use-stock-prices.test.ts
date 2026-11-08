@@ -13,7 +13,14 @@ function holding(market: string, ticker: string): StockHolding {
 
 function priceResponse(prices: Array<{ market: string; ticker: string; close: number }>) {
   return new Response(
-    JSON.stringify({ prices: prices.map((p) => ({ ...p, date: "2024-01-15" })) }),
+    JSON.stringify({
+      prices: prices.map((p) => ({
+        ...p,
+        date: "2024-01-15",
+        asOf: "2024-01-15T06:30:00.000Z",
+        kind: "close",
+      })),
+    }),
     { status: 200, headers: { "Content-Type": "application/json" } }
   );
 }
@@ -34,7 +41,15 @@ describe("useStockPrices", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     useStockPriceStore.setState({
       entries: {
-        "KOSPI:005930": { point: { close: 70000, date: "2024-01-15" }, fetchedAt: NOW - 1000 },
+        "KOSPI:005930": {
+          point: {
+            close: 70000,
+            date: "2024-01-15",
+            asOf: "2024-01-15T06:30:00.000Z",
+            kind: "close",
+          },
+          fetchedAt: NOW - 1000,
+        },
       },
     });
 
@@ -43,6 +58,8 @@ describe("useStockPrices", () => {
     expect(result.current.prices.get(stockPriceKey("KOSPI", "005930"))).toEqual({
       close: 70000,
       date: "2024-01-15",
+      asOf: "2024-01-15T06:30:00.000Z",
+      kind: "close",
     });
     expect(result.current.isLoading).toBe(false);
     expect(result.current.isFetching).toBe(false);
@@ -57,7 +74,7 @@ describe("useStockPrices", () => {
     const { result } = renderHook(() => useStockPrices([holding("KOSPI", "005930")]));
     expect(result.current.isLoading).toBe(true);
 
-    await act(() => vi.runAllTimersAsync());
+    await act(() => vi.runOnlyPendingTimersAsync());
 
     expect(result.current.isLoading).toBe(false);
     expect(result.current.prices.get("KOSPI:005930")?.close).toBe(70000);
@@ -68,7 +85,12 @@ describe("useStockPrices", () => {
     useStockPriceStore.setState({
       entries: {
         "KOSPI:005930": {
-          point: { close: 70000, date: "2024-01-14" },
+          point: {
+            close: 70000,
+            date: "2024-01-14",
+            asOf: "2024-01-14T06:30:00.000Z",
+            kind: "close",
+          },
           fetchedAt: NOW - PRICE_CACHE_TTL_MS - 1,
         },
       },
@@ -94,8 +116,24 @@ describe("useStockPrices", () => {
   it("returns only the prices of the requested holdings", () => {
     useStockPriceStore.setState({
       entries: {
-        "KOSPI:005930": { point: { close: 70000, date: "2024-01-15" }, fetchedAt: NOW },
-        "KOSPI:000660": { point: { close: 130000, date: "2024-01-15" }, fetchedAt: NOW },
+        "KOSPI:005930": {
+          point: {
+            close: 70000,
+            date: "2024-01-15",
+            asOf: "2024-01-15T06:30:00.000Z",
+            kind: "close",
+          },
+          fetchedAt: NOW,
+        },
+        "KOSPI:000660": {
+          point: {
+            close: 130000,
+            date: "2024-01-15",
+            asOf: "2024-01-15T06:30:00.000Z",
+            kind: "close",
+          },
+          fetchedAt: NOW,
+        },
       },
     });
 
@@ -108,9 +146,66 @@ describe("useStockPrices", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("", { status: 500 }));
 
     const { result } = renderHook(() => useStockPrices([holding("KOSPI", "005930")]));
-    await act(() => vi.runAllTimersAsync());
+    await act(() => vi.advanceTimersByTimeAsync(100));
 
     expect(result.current.error).toBeInstanceOf(Error);
     expect(result.current.isLoading).toBe(false);
+  });
+
+  it("refetches prices once the cache expires while the screen stays open", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () =>
+        priceResponse([{ market: "KOSPI", ticker: "005930", close: 70000 }])
+      );
+    useStockPriceStore.setState({
+      entries: {
+        "KOSPI:005930": {
+          point: {
+            close: 70000,
+            date: "2024-01-15",
+            asOf: "2024-01-15T06:30:00.000Z",
+            kind: "close",
+          },
+          fetchedAt: NOW,
+        },
+      },
+    });
+
+    renderHook(() => useStockPrices([holding("KOSPI", "005930")]));
+    await act(() => vi.advanceTimersByTimeAsync(PRICE_CACHE_TTL_MS + 1000));
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("refetches expired prices when the app returns to the foreground", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () =>
+        priceResponse([{ market: "KOSPI", ticker: "005930", close: 70000 }])
+      );
+    useStockPriceStore.setState({
+      entries: {
+        "KOSPI:005930": {
+          point: {
+            close: 70000,
+            date: "2024-01-15",
+            asOf: "2024-01-15T06:30:00.000Z",
+            kind: "close",
+          },
+          fetchedAt: NOW,
+        },
+      },
+    });
+    renderHook(() => useStockPrices([holding("KOSPI", "005930")]));
+
+    // 백그라운드에 있는 동안 타이머가 멈췄다가 시계만 흐른 상황.
+    vi.setSystemTime(NOW + PRICE_CACHE_TTL_MS + 1000);
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+      await vi.runOnlyPendingTimersAsync();
+    });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 });

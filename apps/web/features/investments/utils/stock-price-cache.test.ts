@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { isPriceFresh, PRICE_CACHE_TTL_MS, selectKeysToFetch } from "./stock-price-cache";
 
 const NOW = 1_700_000_000_000;
-const point = { close: 70000, date: "2024-01-15" };
+const point = {
+  close: 70000,
+  date: "2024-01-15",
+  asOf: "2024-01-15T06:30:00.000Z",
+  kind: "close" as const,
+};
 
 describe("isPriceFresh", () => {
   it("returns false when there is no cached entry", () => {

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Divider } from "@seed-design/react";
 import { MoneyField } from "@web/components/mobile/money-field";
+import { PriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import { stockPriceKey, useStockPrices } from "@web/features/investments/utils/use-stock-prices";
 import type { PortfolioItem } from "@web/features/portfolio/types/types";
@@ -96,6 +97,7 @@ export function AccountRebalancingMobile({
   return (
     // 카드 대신 한 장의 표면 위에 섹션을 이어 붙이고 디바이더로 구분한다.
     <div>
+      <PriceAsOfBanner prices={prices} />
       <section className="flex flex-col gap-x3 px-x4 py-x4">
         <h2 className="t5-bold">현금 투입 / 인출</h2>
         <SegmentedControl
