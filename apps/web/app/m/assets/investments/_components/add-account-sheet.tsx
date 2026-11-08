@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { IconPlusCircleLine } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
+import { useFlow } from "@stackflow/react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { ACCOUNT_TYPES } from "@web/features/investments/types/constants";
 import { toHoldingSeeds, type HoldingSeed } from "@web/features/investments/utils/holding-seeds";
@@ -30,7 +30,7 @@ function SourceHeader({ children }: { children: string }) {
  * 포트폴리오에서 시작하면 새 계좌를 그 포트폴리오에 자동 연결한다.
  */
 export function AddAccountSheet({ open, onOpenChange }: AddAccountSheetProps) {
-  const router = useRouter();
+  const { push } = useFlow();
   const investments = useInvestmentStore((s) => s.investments);
   const addInvestmentWithType = useInvestmentStore((s) => s.addInvestmentWithType);
   const portfolios = usePortfolioStore((s) => s.portfolios);
@@ -55,7 +55,7 @@ export function AddAccountSheet({ open, onOpenChange }: AddAccountSheetProps) {
     const id = addInvestmentWithType(type, { holdings });
     if (linkPortfolioId) toggleAccountLink(linkPortfolioId, id);
     handleOpenChange(false);
-    router.push(`/assets/investments/${id}`);
+    push("AccountDetail", { id });
   };
 
   return (

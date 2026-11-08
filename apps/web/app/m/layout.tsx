@@ -3,9 +3,9 @@ import type { Metadata, Viewport } from "next";
 import { AuthGate } from "@web/components/auth-gate";
 import { AutoProgressTracker } from "@web/components/auto-progress-tracker";
 import { HydrationGate } from "@web/components/hydration-gate";
-import { MobileShell } from "@web/components/mobile/mobile-shell";
 import { SeedColorScheme } from "@web/components/mobile/seed-color-scheme";
 import { iosStartupImages } from "@web/lib/ios-splash";
+import { MobileStack } from "./_stack/mobile-stack";
 
 /**
  * 모바일 전용 트리. middleware 가 모바일 UA 요청을 URL 유지한 채 `/m/...` 로
@@ -43,7 +43,9 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
       <HydrationGate>
         <AuthGate>
           <AutoProgressTracker />
-          <MobileShell>{children}</MobileShell>
+          {/* 화면은 스택이 URL 을 보고 그린다. children(페이지)은 경로만 받아주는 빈 페이지. */}
+          <MobileStack />
+          {children}
         </AuthGate>
       </HydrationGate>
     </>

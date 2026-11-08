@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { IconChevronRightLine, IconPlusLine } from "@karrotmarket/react-monochrome-icon";
 import { Divider, Icon } from "@seed-design/react";
+import { useFlow } from "@stackflow/react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import { resolvePortfolioAccounts } from "@web/features/portfolio/utils/resolve-portfolio-accounts";
@@ -17,11 +16,11 @@ export function PortfolioListMobile() {
   const addPortfolio = usePortfolioStore((s) => s.addPortfolio);
   const investments = useInvestmentStore((s) => s.investments);
   const readOnly = useIsReadOnly();
-  const router = useRouter();
+  const { push } = useFlow();
 
   const handleAdd = () => {
     const id = addPortfolio();
-    router.push(`/assets/portfolio/${id}`);
+    push("PortfolioDetail", { id });
   };
 
   if (portfolios.length === 0) {
@@ -57,9 +56,10 @@ export function PortfolioListMobile() {
         return (
           <div key={portfolio.id}>
             <Divider inset />
-            <Link
-              href={`/assets/portfolio/${portfolio.id}`}
-              className="active:bg-bg-layer-default-pressed flex items-center gap-x3 px-x4 py-x4"
+            <button
+              type="button"
+              onClick={() => push("PortfolioDetail", { id: portfolio.id })}
+              className="active:bg-bg-layer-default-pressed flex w-full items-center gap-x3 px-x4 py-x4 text-left"
             >
               <span
                 className="size-x3 shrink-0 rounded-full"
@@ -91,7 +91,7 @@ export function PortfolioListMobile() {
                 </div>
               </div>
               <Icon svg={<IconChevronRightLine />} size="x5" color="fg.neutralSubtle" />
-            </Link>
+            </button>
           </div>
         );
       })}

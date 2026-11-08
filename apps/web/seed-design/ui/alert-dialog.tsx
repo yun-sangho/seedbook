@@ -7,7 +7,7 @@
 
 import { forwardRef } from "react";
 import type * as React from "react";
-import { AlertDialog } from "@seed-design/react";
+import { AlertDialog, Portal } from "@seed-design/react";
 import { ActionButton, type ActionButtonProps } from "./action-button";
 
 export interface AlertDialogRootProps extends AlertDialog.RootProps {}
@@ -23,13 +23,16 @@ export interface AlertDialogContentProps extends AlertDialog.ContentProps {
 
 export const AlertDialogContent = forwardRef<HTMLDivElement, AlertDialogContentProps>(
   ({ children, layerIndex, ...otherProps }, ref) => {
+    // bottom-sheet 와 같은 이유로 body 로 portal (Stackflow 레이어 안 position:fixed 문제).
     return (
-      <AlertDialog.Positioner style={{ "--layer-index": layerIndex } as React.CSSProperties}>
-        <AlertDialog.Backdrop />
-        <AlertDialog.Content ref={ref} {...otherProps}>
-          {children}
-        </AlertDialog.Content>
-      </AlertDialog.Positioner>
+      <Portal>
+        <AlertDialog.Positioner style={{ "--layer-index": layerIndex } as React.CSSProperties}>
+          <AlertDialog.Backdrop />
+          <AlertDialog.Content ref={ref} {...otherProps}>
+            {children}
+          </AlertDialog.Content>
+        </AlertDialog.Positioner>
+      </Portal>
     );
   }
 );

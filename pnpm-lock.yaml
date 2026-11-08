@@ -102,6 +102,9 @@ importers:
       '@seed-design/react':
         specifier: ^3.2.0
         version: 3.2.0(@seed-design/css@3.2.0)(@types/react-dom@19.1.1)(@types/react@19.1.0)(embla-carousel@8.6.0)(react-dom@19.1.0)(react@19.1.0)
+      '@seed-design/stackflow':
+        specifier: ^2.1.0
+        version: 2.1.0(@seed-design/css@3.2.0)(@stackflow/core@3.1.0)(@stackflow/react@2.1.4)(@types/react-dom@19.1.1)(@types/react@19.1.0)(react-dom@19.1.0)(react@19.1.0)
       '@seed-design/tailwind4-theme':
         specifier: ^3.1.0
         version: 3.1.0(@seed-design/css@3.2.0)(tailwindcss@4.1.5)
@@ -111,6 +114,21 @@ importers:
       '@serwist/next':
         specifier: 9.5.13
         version: 9.5.13(next@15.5.18)(react@19.1.0)(typescript@5.8.2)
+      '@stackflow/config':
+        specifier: ^2.0.0
+        version: 2.0.0
+      '@stackflow/core':
+        specifier: ^3.1.0
+        version: 3.1.0
+      '@stackflow/plugin-history-sync':
+        specifier: ^2.1.0
+        version: 2.1.0(@stackflow/config@2.0.0)(@stackflow/core@3.1.0)(@stackflow/react@2.1.4)(@types/react@19.1.0)(react@19.1.0)
+      '@stackflow/plugin-renderer-basic':
+        specifier: ^1.1.16
+        version: 1.1.16(@stackflow/core@3.1.0)(@stackflow/react@2.1.4)(@types/react@19.1.0)(react@19.1.0)
+      '@stackflow/react':
+        specifier: ^2.1.4
+        version: 2.1.4(@stackflow/config@2.0.0)(@stackflow/core@3.1.0)(@types/react@19.1.0)(react@19.1.0)
       '@tanstack/react-table':
         specifier: ^8.21.3
         version: 8.21.3(react-dom@19.1.0)(react@19.1.0)
@@ -135,6 +153,9 @@ importers:
       drizzle-orm:
         specifier: ^0.44.5
         version: 0.44.7(@opentelemetry/api@1.9.1)(kysely@0.28.16)(postgres@3.4.9)
+      history:
+        specifier: 5.3.0
+        version: 5.3.0
       lucide-react:
         specifier: ^0.525.0
         version: 0.525.0(react@19.1.0)
@@ -3756,6 +3777,33 @@ packages:
       - embla-carousel
     dev: false
 
+  /@seed-design/stackflow@2.1.0(@seed-design/css@3.2.0)(@stackflow/core@3.1.0)(@stackflow/react@2.1.4)(@types/react-dom@19.1.1)(@types/react@19.1.0)(react-dom@19.1.0)(react@19.1.0):
+    resolution: {integrity: sha512-Rl8sv9gQZk4O3Ncri4XV5IkFmEkONgdd3cqP/09prHI+dDwP/D/EetcP9yVsNTwHPgMN66IhhrcgPDamhS/yMQ==}
+    peerDependencies:
+      '@seed-design/css': ^3.1.0
+      '@stackflow/core': '>=1.1.0'
+      '@stackflow/react': '>=1.4.1'
+      react: '>=18.0.0'
+      react-dom: '>=18.0.0'
+    dependencies:
+      '@radix-ui/react-compose-refs': 1.1.5(@types/react@19.1.0)(react@19.1.0)
+      '@radix-ui/react-focus-scope': 1.3.1(@types/react-dom@19.1.1)(@types/react@19.1.0)(react-dom@19.1.0)(react@19.1.0)
+      '@radix-ui/react-slot': 1.5.0(@types/react@19.1.0)(react@19.1.0)
+      '@radix-ui/react-use-callback-ref': 1.1.5(@types/react@19.1.0)(react@19.1.0)
+      '@seed-design/css': 3.2.0
+      '@seed-design/dom-utils': 2.1.0(react-dom@19.1.0)(react@19.1.0)
+      '@seed-design/react-primitive': 2.0.2(@types/react@19.1.0)(react-dom@19.1.0)(react@19.1.0)
+      '@stackflow/core': 3.1.0
+      '@stackflow/react': 2.1.4(@stackflow/config@2.0.0)(@stackflow/core@3.1.0)(@types/react@19.1.0)(react@19.1.0)
+      '@stackflow/react-ui-core': 1.3.8(@stackflow/core@3.1.0)(@stackflow/react@2.1.4)(@types/react@19.1.0)(react@19.1.0)
+      clsx: 2.1.1
+      react: 19.1.0
+      react-dom: 19.1.0(react@19.1.0)
+    transitivePeerDependencies:
+      - '@types/react'
+      - '@types/react-dom'
+    dev: false
+
   /@seed-design/tailwind4-theme@3.1.0(@seed-design/css@3.2.0)(tailwindcss@4.1.5):
     resolution: {integrity: sha512-vIabks1336xlZQC1axVlygd8pZERkIKvEq/LFS+13l1+cRhl8xThQLfC4r6hhkW+58/RUbg1B2GwhsaJnBNT2w==}
     peerDependencies:
@@ -3868,6 +3916,79 @@ packages:
       typescript: 5.8.2
     transitivePeerDependencies:
       - browserslist
+    dev: false
+
+  /@stackflow/config@2.0.0:
+    resolution: {integrity: sha512-EmRyxf124SCuRxx1WhL0leq6WwV7yloejr8WbLq+QhoGFWWRfRY5SyMnvk2zWOuLsUDIDaQWbmFhO+D+xbQorA==}
+    dev: false
+
+  /@stackflow/core@3.1.0:
+    resolution: {integrity: sha512-KnpBrzmUHQQK20oD99eswspAtLxgGK0iu5LLeLJ5RJrWkzv2X77i0OymaT5Fr4Lt8CBYfYWGq5VUFJLo3idHKw==}
+    dependencies:
+      react-fast-compare: 3.2.2
+    dev: false
+
+  /@stackflow/plugin-history-sync@2.1.0(@stackflow/config@2.0.0)(@stackflow/core@3.1.0)(@stackflow/react@2.1.4)(@types/react@19.1.0)(react@19.1.0):
+    resolution: {integrity: sha512-JwMBHU6EhJcSqGU5xrrLEw1hyLncBqsCikZGON59nyJbkD7FHUUL3to1R6l2ZpYM3xmB0gqOSngPTdNECLHozQ==}
+    peerDependencies:
+      '@stackflow/config': ^1.1.0 || ^2.0.0
+      '@stackflow/core': ^3.0.0
+      '@stackflow/react': ^1.0.0 || ^2.0.0
+      '@types/react': '>=16.8.0'
+      react: '>=16.8.0'
+    dependencies:
+      '@stackflow/config': 2.0.0
+      '@stackflow/core': 3.1.0
+      '@stackflow/react': 2.1.4(@stackflow/config@2.0.0)(@stackflow/core@3.1.0)(@types/react@19.1.0)(react@19.1.0)
+      '@types/react': 19.1.0
+      flatted: 3.3.3
+      history: 5.3.0
+      react: 19.1.0
+      react18-use: 0.4.1(react@19.1.0)
+      url-pattern: 1.0.3
+    dev: false
+
+  /@stackflow/plugin-renderer-basic@1.1.16(@stackflow/core@3.1.0)(@stackflow/react@2.1.4)(@types/react@19.1.0)(react@19.1.0):
+    resolution: {integrity: sha512-OiDuHANNWZi4xJ8Jz7MDOAppuE2LX0/esaPdJgEE3RpglY7P8edmZWgcbni9yp+MF77z2bImp7aDqnhJWyO7GA==}
+    peerDependencies:
+      '@stackflow/core': ^2.0.0 || ^3.0.0
+      '@stackflow/react': ^2.0.0
+      '@types/react': '>=16.8.0'
+      react: '>=16.8.0'
+    dependencies:
+      '@stackflow/core': 3.1.0
+      '@stackflow/react': 2.1.4(@stackflow/config@2.0.0)(@stackflow/core@3.1.0)(@types/react@19.1.0)(react@19.1.0)
+      '@types/react': 19.1.0
+      react: 19.1.0
+    dev: false
+
+  /@stackflow/react-ui-core@1.3.8(@stackflow/core@3.1.0)(@stackflow/react@2.1.4)(@types/react@19.1.0)(react@19.1.0):
+    resolution: {integrity: sha512-7DX7m5MT1lSl7VubTczr6VgxLnAsUKzffsuiocZUEL9iiwYnzf3qaL0JTHAqA5Q2q/G4qzZGJ9wmSAN7dqAcnw==}
+    peerDependencies:
+      '@stackflow/core': ^1.1.0-canary.0 || ^2.0.0 || ^3.0.0
+      '@stackflow/react': ^1.3.2-canary.0 || ^2.0.0
+      '@types/react': '>=16.8.0'
+      react: '>=16.8.0'
+    dependencies:
+      '@stackflow/core': 3.1.0
+      '@stackflow/react': 2.1.4(@stackflow/config@2.0.0)(@stackflow/core@3.1.0)(@types/react@19.1.0)(react@19.1.0)
+      '@types/react': 19.1.0
+      react: 19.1.0
+    dev: false
+
+  /@stackflow/react@2.1.4(@stackflow/config@2.0.0)(@stackflow/core@3.1.0)(@types/react@19.1.0)(react@19.1.0):
+    resolution: {integrity: sha512-vp1ap4bcGnQShY4RdNKOP98eglQhUJL2XvW+vr9s7ACe6J2G3e8eUfR5OMbJRMcXcN/KD6npiGV2R1y2P99DCg==}
+    peerDependencies:
+      '@stackflow/config': ^2.0.0
+      '@stackflow/core': ^3.1.0
+      '@types/react': '>=16.8.0'
+      react: '>=16.8.0'
+    dependencies:
+      '@stackflow/config': 2.0.0
+      '@stackflow/core': 3.1.0
+      '@types/react': 19.1.0
+      react: 19.1.0
+      react-fast-compare: 3.2.2
     dev: false
 
   /@standard-schema/spec@1.1.0:
@@ -6159,6 +6280,12 @@ packages:
       function-bind: 1.1.2
     dev: true
 
+  /history@5.3.0:
+    resolution: {integrity: sha512-ZqaKwjjrAYUYfLG+htGaIIZ4nioX2L70ZUMIFysS3xvBsSG4x/n1V6TXV3N8ZYNuFGlDirFg32T7B6WOUPDYcQ==}
+    dependencies:
+      '@babel/runtime': 7.27.6
+    dev: false
+
   /html-encoding-sniffer@4.0.0:
     resolution: {integrity: sha512-Y22oTqIU4uuPgEemfz7NDJz6OeKf12Lsu+QC+s3BVpda64lTiMYCyGwg5ki4vFxkMwQdeZDl2adZoqUgdFuTgQ==}
     engines: {node: '>=18'}
@@ -7299,6 +7426,10 @@ packages:
       react: 19.1.0
       scheduler: 0.26.0
 
+  /react-fast-compare@3.2.2:
+    resolution: {integrity: sha512-nsO+KSNgo1SbJqJEYRE9ERzo7YtYbou/OqjSQKxV7jcKox7+usiUVZOAC+XnDOABXggQTno0Y1CpVnuWEc1boQ==}
+    dev: false
+
   /react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
 
@@ -7391,6 +7522,14 @@ packages:
       prop-types: 15.8.1
       react: 19.1.0
       react-dom: 19.1.0(react@19.1.0)
+    dev: false
+
+  /react18-use@0.4.1(react@19.1.0):
+    resolution: {integrity: sha512-NY59qMAOxmpjg3XJGfSotwmH9BVAD1kB4kZqjfB28yr6jQKaGh1F5i7X1N9OTn6dD5r8yqSH3X4SslcqxAxQCw==}
+    peerDependencies:
+      react: '>=18.0.0'
+    dependencies:
+      react: 19.1.0
     dev: false
 
   /react@19.1.0:
@@ -8200,6 +8339,11 @@ packages:
     dependencies:
       punycode: 2.3.1
     dev: true
+
+  /url-pattern@1.0.3:
+    resolution: {integrity: sha512-uQcEj/2puA4aq1R3A2+VNVBgaWYR24FdWjl7VNW83rnWftlhyzOZ/tBjezRiC2UkIzuxC8Top3IekN3vUf1WxA==}
+    engines: {node: '>=0.12.0'}
+    dev: false
 
   /use-callback-ref@1.3.3(@types/react@19.1.0)(react@19.1.0):
     resolution: {integrity: sha512-jQL3lRnocaFtu3V00JToYz/4QkNWswxijDaCVNZRiRTO3HQDLsdu1ZtmIUvV4yPp+rvWm5j0y0TG/S61cuijTg==}

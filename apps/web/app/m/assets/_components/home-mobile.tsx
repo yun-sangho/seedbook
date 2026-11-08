@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   IconChevronRightSmallLine,
   IconExclamationmarkCircleFill,
 } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
+import { useFlow } from "@stackflow/react";
+import { useSwitchTab } from "@web/app/m/_stack/use-switch-tab";
 import { profitToneClass } from "@web/components/mobile/profit-tone";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { useLinkedPortfolioStatuses } from "@web/features/portfolio/utils/use-linked-portfolio-statuses";
@@ -31,7 +31,8 @@ type Tab = "trend" | "monthly";
 export function HomeMobile() {
   const investments = useInvestmentStore((s) => s.investments);
   const statusesFor = useLinkedPortfolioStatuses();
-  const router = useRouter();
+  const { push } = useFlow();
+  const switchTab = useSwitchTab();
   const [tab, setTab] = useState<Tab>("trend");
 
   const totals = useMemo(() => {
@@ -60,7 +61,7 @@ export function HomeMobile() {
           description="계좌 탭에서 첫 투자 계좌를 추가하고 자산의 성장을 추적해보세요."
           primaryActionProps={{
             children: "계좌 탭으로 이동",
-            onClick: () => router.push("/assets/investments"),
+            onClick: () => switchTab("AccountsTab"),
           }}
         />
       </div>
@@ -85,19 +86,20 @@ export function HomeMobile() {
 
       {firstNeeding && (
         <div className="px-x4 pb-x4">
-          <Link
+          <button
+            type="button"
             // 계좌 하나면 바로 그 계좌의 리밸런싱으로, 여러 개면 리밸런싱 탭에서 고른다.
-            href={
+            onClick={() =>
               accountsNeedingRebalance.length === 1
-                ? `/assets/rebalancing/${firstNeeding.id}`
-                : "/assets/rebalancing"
+                ? push("RebalancingDetail", { id: firstNeeding.id })
+                : switchTab("RebalancingTab")
             }
-            className="bg-bg-critical-weak text-fg-critical active:bg-bg-critical-weak-pressed rounded-r3 flex items-center gap-x2 px-x4 py-x3"
+            className="bg-bg-critical-weak text-fg-critical active:bg-bg-critical-weak-pressed rounded-r3 flex w-full items-center gap-x2 px-x4 py-x3 text-left"
           >
             <Icon svg={<IconExclamationmarkCircleFill />} size="x5" />
             <span className="t4-bold min-w-0 flex-1">{bannerText}</span>
             <Icon svg={<IconChevronRightSmallLine />} size="x4" />
-          </Link>
+          </button>
         </div>
       )}
 

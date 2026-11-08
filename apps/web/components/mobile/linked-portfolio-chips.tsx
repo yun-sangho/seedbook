@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import {
   IconChevronRightSmallLine,
   IconExclamationmarkCircleFill,
 } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
+import { useFlow } from "@stackflow/react";
 import type { LinkedPortfolioStatus } from "@web/features/portfolio/utils/linked-portfolio-status";
 import { cn } from "@web/lib/utils";
 
@@ -24,6 +24,8 @@ export function LinkedPortfolioChips({
   /** 연결된 포트폴리오가 없을 때도 "없음" 안내를 보여줄지. */
   showEmpty?: boolean;
 }) {
+  const { push } = useFlow();
+
   if (statuses.length === 0) {
     return showEmpty ? (
       <p className="t3-regular text-fg-neutral-subtle px-x4 pb-x4">연결된 포트폴리오 없음</p>
@@ -35,9 +37,10 @@ export function LinkedPortfolioChips({
       {statuses.map((s) => {
         const alert = s.state === "needs-rebalancing";
         return (
-          <Link
+          <button
+            type="button"
             key={s.portfolioId}
-            href={`/assets/rebalancing/${accountId}`}
+            onClick={() => push("RebalancingDetail", { id: accountId })}
             className={cn(
               "t3-medium inline-flex max-w-full items-center gap-x1 rounded-full py-x1 pr-[6px] pl-x2.5",
               alert
@@ -58,7 +61,7 @@ export function LinkedPortfolioChips({
             {alert && <span className="shrink-0">· 리밸런싱 필요 {s.breachedCount}건</span>}
             {s.state === "ok" && <span className="text-fg-neutral-subtle shrink-0">· 정상</span>}
             <Icon svg={<IconChevronRightSmallLine />} size="x3_5" />
-          </Link>
+          </button>
         );
       })}
     </div>

@@ -43,8 +43,7 @@ function Avatar({ user, size }: { user: SessionUser | undefined; size: number })
 
 /**
  * 앱바 오른쪽의 계정 버튼. 하단 탭의 최상위 화면에서만 보인다 (상세 화면은 같은 자리에
- * "수정" 버튼). 시트는 셸 최상단에 따로 렌더한다 — 앱바(sticky, z-index) 안에 두면
- * 시트가 앱바의 쌓임 맥락에 갇혀 하단 탭바 아래로 가려진다.
+ * "수정" 버튼). 시트는 앱바 밖에 따로 렌더한다 (`app/m/_stack/screens.tsx`).
  */
 export function ProfileButton({ onClick }: { onClick: () => void }) {
   const user = useSessionUser();

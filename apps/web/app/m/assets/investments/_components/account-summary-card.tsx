@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { IconChevronRightLine } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
+import { useFlow } from "@stackflow/react";
 import { LinkedPortfolioChips } from "@web/components/mobile/linked-portfolio-chips";
 import { profitToneClass } from "@web/components/mobile/profit-tone";
 import type { InvestmentItem } from "@web/features/investments/types/types";
@@ -24,6 +24,7 @@ export function AccountSummaryCard({ item, linkedPortfolios }: AccountSummaryCar
   const needsRebalancing = linkedPortfolios.some((p) => p.state === "needs-rebalancing");
   const profit = item.currentValue - item.initialInvestment;
   const returnRate = calculateReturnRate(item.currentValue, item.initialInvestment);
+  const { push } = useFlow();
 
   return (
     <section className="relative">
@@ -33,9 +34,10 @@ export function AccountSummaryCard({ item, linkedPortfolios }: AccountSummaryCar
           aria-hidden
         />
       )}
-      <Link
-        href={`/assets/investments/${item.id}`}
-        className="active:bg-bg-layer-default-pressed flex w-full items-center gap-x3 px-x4 py-x4"
+      <button
+        type="button"
+        onClick={() => push("AccountDetail", { id: item.id })}
+        className="active:bg-bg-layer-default-pressed flex w-full items-center gap-x3 px-x4 py-x4 text-left"
       >
         <span
           className="size-x3 shrink-0 rounded-full"
@@ -53,7 +55,7 @@ export function AccountSummaryCard({ item, linkedPortfolios }: AccountSummaryCar
           </p>
         </div>
         <Icon svg={<IconChevronRightLine />} size="x4" color="fg.neutralSubtle" />
-      </Link>
+      </button>
       <LinkedPortfolioChips accountId={item.id} statuses={linkedPortfolios} showEmpty />
     </section>
   );

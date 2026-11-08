@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { IconChevronRightLine } from "@karrotmarket/react-monochrome-icon";
 import { Divider, Icon } from "@seed-design/react";
+import { useFlow } from "@stackflow/react";
+import { useSwitchTab } from "@web/app/m/_stack/use-switch-tab";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import {
   groupAccountsByRebalancingState,
@@ -30,7 +30,8 @@ const GROUP_TITLE: Record<AccountRebalancingState, string> = {
 export function RebalancingListMobile() {
   const investments = useInvestmentStore((s) => s.investments);
   const statusesFor = useLinkedPortfolioStatuses();
-  const router = useRouter();
+  const { push } = useFlow();
+  const switchTab = useSwitchTab();
 
   const groups = useMemo(
     () =>
@@ -47,8 +48,8 @@ export function RebalancingListMobile() {
           title="투자 계좌가 없어요"
           description="투자 계좌를 추가하고 포트폴리오에 연결하면 계좌별로 리밸런싱할 수 있어요."
           primaryActionProps={{
-            children: "투자로 이동",
-            onClick: () => router.push("/assets/investments"),
+            children: "계좌 탭으로 이동",
+            onClick: () => switchTab("AccountsTab"),
           }}
         />
       </div>
@@ -77,9 +78,10 @@ export function RebalancingListMobile() {
             return (
               <div key={account.id}>
                 {rowIndex > 0 && <Divider inset />}
-                <Link
-                  href={`/assets/rebalancing/${account.id}`}
-                  className="relative active:bg-bg-layer-default-pressed flex items-center gap-x3 px-x4 py-x4"
+                <button
+                  type="button"
+                  onClick={() => push("RebalancingDetail", { id: account.id })}
+                  className="relative active:bg-bg-layer-default-pressed flex w-full items-center gap-x3 px-x4 py-x4 text-left"
                 >
                   {needsRebalancing && (
                     <span
@@ -108,7 +110,7 @@ export function RebalancingListMobile() {
                     </div>
                   </div>
                   <Icon svg={<IconChevronRightLine />} size="x5" color="fg.neutralSubtle" />
-                </Link>
+                </button>
               </div>
             );
           })}

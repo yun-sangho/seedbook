@@ -1,9 +1,10 @@
 "use client";
 
 import { Fragment, useMemo, useState, type CSSProperties } from "react";
-import { useRouter } from "next/navigation";
 import { IconArrowDownHorizlineLine, IconPlusLine } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
+import { useFlow } from "@stackflow/react";
+import { usePopThenRemove } from "@web/app/m/_stack/use-pop-then-remove";
 import {
   EditHint,
   EmptyLine,
@@ -65,7 +66,7 @@ function totalTone(totalPct: number, hasAllocations: boolean) {
 /** 모바일 포트폴리오 상세 (`/assets/portfolio/[id]`). 계좌 상세와 같은 레이아웃. */
 export function PortfolioDetailMobile({ id }: { id: string }) {
   const portfolio = usePortfolioStore((s) => s.portfolios.find((p) => p.id === id));
-  const router = useRouter();
+  const { pop } = useFlow();
 
   if (!portfolio) {
     return (
@@ -74,8 +75,8 @@ export function PortfolioDetailMobile({ id }: { id: string }) {
           title="포트폴리오를 찾을 수 없어요"
           description="삭제되었거나 잘못된 링크일 수 있습니다."
           primaryActionProps={{
-            children: "포트폴리오 목록으로",
-            onClick: () => router.push("/assets/portfolio"),
+            children: "돌아가기",
+            onClick: () => pop(),
           }}
         />
       </div>
@@ -87,12 +88,12 @@ export function PortfolioDetailMobile({ id }: { id: string }) {
 
 function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
   const readOnly = useIsReadOnly();
-  const router = useRouter();
   const [tab, setTab] = useState<Tab>("allocations");
   const [editing, setEditing] = useState<Editing | null>(null);
 
   const updatePortfolio = usePortfolioStore((s) => s.updatePortfolio);
   const removePortfolio = usePortfolioStore((s) => s.removePortfolio);
+  const deletePortfolio = usePopThenRemove(() => removePortfolio(portfolio.id));
   const addAllocation = usePortfolioStore((s) => s.addAllocation);
   const updateAllocation = usePortfolioStore((s) => s.updateAllocation);
   const removeAllocation = usePortfolioStore((s) => s.removeAllocation);
@@ -305,10 +306,7 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
             portfolio={portfolio}
             onRename={(name) => updatePortfolio(portfolio.id, "name", name)}
             onColorChange={(color) => updatePortfolio(portfolio.id, "color", color)}
-            onDelete={() => {
-              router.push("/assets/portfolio");
-              removePortfolio(portfolio.id);
-            }}
+            onDelete={deletePortfolio}
           />
           <EditDriftThresholdSheet
             key={`drift-${editing?.kind === "drift"}`}

@@ -1,9 +1,10 @@
 "use client";
 
 import { Fragment, useCallback, useMemo, useState, type CSSProperties } from "react";
-import { useRouter } from "next/navigation";
 import { IconChevronDownSmallLine, IconPlusLine } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
+import { useFlow } from "@stackflow/react";
+import { usePopThenRemove } from "@web/app/m/_stack/use-pop-then-remove";
 import { ConfirmDialog } from "@web/components/mobile/confirm-dialog";
 import {
   AddButton,
@@ -77,7 +78,7 @@ const HOLDING_DIVIDER_STYLE: CSSProperties = {
 /** 모바일 계좌 상세 (`/assets/investments/[id]`). */
 export function AccountDetailMobile({ id }: { id: string }) {
   const item = useInvestmentStore((s) => s.investments.find((inv) => inv.id === id));
-  const router = useRouter();
+  const { pop } = useFlow();
 
   if (!item) {
     return (
@@ -86,8 +87,8 @@ export function AccountDetailMobile({ id }: { id: string }) {
           title="계좌를 찾을 수 없어요"
           description="삭제되었거나 잘못된 링크일 수 있습니다."
           primaryActionProps={{
-            children: "투자 목록으로",
-            onClick: () => router.push("/assets/investments"),
+            children: "돌아가기",
+            onClick: () => pop(),
           }}
         />
       </div>
@@ -98,7 +99,6 @@ export function AccountDetailMobile({ id }: { id: string }) {
 }
 
 function AccountDetailBody({ item }: { item: InvestmentItem }) {
-  const router = useRouter();
   const readOnly = useIsReadOnly();
   const [tab, setTab] = useState<Tab>("holdings");
   const [editing, setEditing] = useState<Editing | null>(null);
@@ -106,6 +106,7 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
 
   const updateInvestment = useInvestmentStore((s) => s.updateInvestment);
   const removeInvestment = useInvestmentStore((s) => s.removeInvestment);
+  const deleteAccount = usePopThenRemove(() => removeInvestment(item.id));
   const addHistoryRecord = useInvestmentStore((s) => s.addHistoryRecord);
   const removeInvestmentHistoryRecord = useInvestmentStore((s) => s.removeInvestmentHistoryRecord);
   const addStockHolding = useInvestmentStore((s) => s.addStockHolding);
@@ -425,10 +426,7 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
             item={item}
             onRename={(name) => updateInvestment(item.id, "accountName", name)}
             onColorChange={(color) => updateInvestment(item.id, "color", color)}
-            onDelete={() => {
-              router.push("/assets/investments");
-              removeInvestment(item.id);
-            }}
+            onDelete={deleteAccount}
           />
           <AddHoldingFlow
             {...sheetProps(editing?.kind === "add-holding")}

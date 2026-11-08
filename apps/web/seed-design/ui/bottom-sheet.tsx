@@ -8,7 +8,7 @@
 import type * as React from "react";
 import { forwardRef } from "react";
 import IconXmarkLine from "@karrotmarket/react-monochrome-icon/IconXmarkLine";
-import { Icon, BottomSheet as SeedBottomSheet, VisuallyHidden } from "@seed-design/react";
+import { Icon, Portal, BottomSheet as SeedBottomSheet, VisuallyHidden } from "@seed-design/react";
 
 export interface BottomSheetRootProps extends SeedBottomSheet.RootProps {}
 
@@ -72,34 +72,38 @@ export const BottomSheetContent = forwardRef<HTMLDivElement, BottomSheetContentP
 
     const shouldRenderHeader = title || description;
 
+    // Stackflow 앱 스크린 레이어는 transform + 스크롤 컨테이너라 그 안의 position:fixed 가
+    // 스크롤을 따라 움직인다. body 로 빼서 화면 기준으로 고정한다.
     return (
-      <SeedBottomSheet.Positioner style={{ "--layer-index": layerIndex } as React.CSSProperties}>
-        <SeedBottomSheet.Backdrop />
-        <SeedBottomSheet.Content ref={ref} {...otherProps}>
-          {showHandle && <SeedBottomSheet.Handle />}
-          {shouldRenderHeader && (
-            <SeedBottomSheet.Header>
-              {title ? (
-                <SeedBottomSheet.Title>{title}</SeedBottomSheet.Title>
-              ) : (
-                <VisuallyHidden asChild>
-                  <SeedBottomSheet.Title>{otherProps["aria-label"] || ""}</SeedBottomSheet.Title>
-                </VisuallyHidden>
-              )}
-              {description && (
-                <SeedBottomSheet.Description>{description}</SeedBottomSheet.Description>
-              )}
-            </SeedBottomSheet.Header>
-          )}
-          {children}
-          {showCloseButton && (
-            // You may implement your own i18n for dismiss label
-            <SeedBottomSheet.CloseButton aria-label="닫기">
-              <Icon svg={<IconXmarkLine />} />
-            </SeedBottomSheet.CloseButton>
-          )}
-        </SeedBottomSheet.Content>
-      </SeedBottomSheet.Positioner>
+      <Portal>
+        <SeedBottomSheet.Positioner style={{ "--layer-index": layerIndex } as React.CSSProperties}>
+          <SeedBottomSheet.Backdrop />
+          <SeedBottomSheet.Content ref={ref} {...otherProps}>
+            {showHandle && <SeedBottomSheet.Handle />}
+            {shouldRenderHeader && (
+              <SeedBottomSheet.Header>
+                {title ? (
+                  <SeedBottomSheet.Title>{title}</SeedBottomSheet.Title>
+                ) : (
+                  <VisuallyHidden asChild>
+                    <SeedBottomSheet.Title>{otherProps["aria-label"] || ""}</SeedBottomSheet.Title>
+                  </VisuallyHidden>
+                )}
+                {description && (
+                  <SeedBottomSheet.Description>{description}</SeedBottomSheet.Description>
+                )}
+              </SeedBottomSheet.Header>
+            )}
+            {children}
+            {showCloseButton && (
+              // You may implement your own i18n for dismiss label
+              <SeedBottomSheet.CloseButton aria-label="닫기">
+                <Icon svg={<IconXmarkLine />} />
+              </SeedBottomSheet.CloseButton>
+            )}
+          </SeedBottomSheet.Content>
+        </SeedBottomSheet.Positioner>
+      </Portal>
     );
   }
 );

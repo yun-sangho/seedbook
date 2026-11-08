@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useFlow } from "@stackflow/react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import { useLinkedPortfolioStatuses } from "@web/features/portfolio/utils/use-linked-portfolio-statuses";
@@ -17,7 +17,7 @@ export function RebalancingDetailMobile({ id }: { id: string }) {
   const account = useInvestmentStore((s) => s.investments.find((inv) => inv.id === id));
   const portfolios = usePortfolioStore((s) => s.portfolios);
   const statuses = useLinkedPortfolioStatuses()(id);
-  const router = useRouter();
+  const { push, pop } = useFlow();
 
   // statuses 는 리밸런싱 필요 → 정상 → 판단 불가 순이라 첫 항목이 기본 선택.
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -37,7 +37,7 @@ export function RebalancingDetailMobile({ id }: { id: string }) {
           description="삭제되었거나 잘못된 링크일 수 있습니다."
           primaryActionProps={{
             children: "리밸런싱 목록으로",
-            onClick: () => router.push("/assets/rebalancing"),
+            onClick: () => pop(),
           }}
         />
       </div>
@@ -52,7 +52,7 @@ export function RebalancingDetailMobile({ id }: { id: string }) {
           description="포트폴리오의 적용 계좌에 이 계좌를 추가하면 목표 비중대로 리밸런싱할 수 있어요."
           primaryActionProps={{
             children: "포트폴리오로 이동",
-            onClick: () => router.push("/assets/portfolio"),
+            onClick: () => push("PortfolioTab", {}),
           }}
         />
       </div>
@@ -85,7 +85,7 @@ export function RebalancingDetailMobile({ id }: { id: string }) {
             description={`"${portfolio.name}" 포트폴리오에서 목표 종목과 비중을 먼저 설정해주세요.`}
             primaryActionProps={{
               children: "포트폴리오 설정으로",
-              onClick: () => router.push(`/assets/portfolio/${portfolio.id}`),
+              onClick: () => push("PortfolioDetail", { id: portfolio.id }),
             }}
           />
         </div>
