@@ -1,8 +1,7 @@
 import type { Database } from "@seedbook/database";
-import { debtChanges } from "@web/server/debts/debt-sync";
-import { rebalancingChanges } from "@web/server/rebalancing/rebalancing-sync";
 import { listOrderChanges } from "./list-order";
-import type { PullResult } from "./types";
+import { SYNC_ENTITIES } from "./registry";
+import type { PullChanges, PullResult, SyncedEntity } from "./types";
 
 /**
  * 커밋 순서와 `updatedAt` 순서가 어긋날 수 있어 (동시 트랜잭션), 커서보다 조금 앞부터
@@ -21,19 +20,24 @@ export async function pullChanges(
 ): Promise<PullResult> {
   const sinceDate = since ? new Date(new Date(since).getTime() - PULL_OVERLAP_MS) : null;
 
-  const [debts, rebalancings, listOrders] = await Promise.all([
-    debtChanges(db, userId, sinceDate),
-    rebalancingChanges(db, userId, sinceDate),
+  const [entityChanges, listOrders] = await Promise.all([
+    Promise.all(SYNC_ENTITIES.map((e) => e.changes(db, userId, sinceDate))),
     listOrderChanges(db, userId, sinceDate),
   ]);
 
-  const latest = [debts.latest, rebalancings.latest, listOrders.latest].reduce<Date | null>(
+  const changes: Record<string, SyncedEntity<unknown>[]> = {};
+  SYNC_ENTITIES.forEach((e, i) => {
+    changes[e.entity] = entityChanges[i]!.rows;
+  });
+  changes.listOrder = listOrders.rows as never;
+
+  const latest = [...entityChanges.map((c) => c.latest), listOrders.latest].reduce<Date | null>(
     (max, d) => (d && (max === null || d > max) ? d : max),
     null
   );
 
   return {
     cursor: latest ? latest.toISOString() : since,
-    changes: { debt: debts.rows, rebalancing: rebalancings.rows, listOrder: listOrders.rows },
+    changes: changes as PullChanges,
   };
 }

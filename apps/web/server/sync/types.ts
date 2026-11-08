@@ -1,6 +1,3 @@
-import type { DebtPayload } from "@web/server/debts/debt-record";
-import type { RebalancingPayload } from "@web/server/rebalancing/rebalancing-record";
-
 /**
  * 엔티티 단위 동기화 프로토콜 (`POST /api/sync/mutations`, `GET /api/sync/pull`).
  *
@@ -20,10 +17,12 @@ export type SyncedEntity<T> = {
   data: T | null;
 };
 
-export type SyncedDebt = SyncedEntity<Omit<DebtPayload, "id">>;
-export type SyncedRebalancing = SyncedEntity<Omit<RebalancingPayload, "id">>;
-
 export type ListOrderChange = { domain: string; order: string[] };
+
+type EntityData = Record<string, unknown>;
+export type PullChanges = Record<string, SyncedEntity<EntityData>[]> & {
+  listOrder: ListOrderChange[];
+};
 
 export type MutationResult =
   | { status: "ok"; version?: number }
@@ -32,9 +31,6 @@ export type MutationResult =
 export type PullResult = {
   /** 다음 pull 에 `since` 로 넘길 값. 바뀐 것이 없으면 받은 `since` 를 그대로 돌려준다. */
   cursor: string | null;
-  changes: {
-    debt: SyncedDebt[];
-    rebalancing: SyncedRebalancing[];
-    listOrder: ListOrderChange[];
-  };
+  /** entity 이름 (`SYNC_ENTITIES`) → 바뀐 엔티티, 그리고 `listOrder` → 목록 순서. */
+  changes: PullChanges;
 };

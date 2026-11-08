@@ -55,7 +55,7 @@ describe("applyMutation: debt upsert", () => {
 
     expect(result).toEqual({ status: "ok", version: 2 });
     const { changes } = await pullChanges(db, userId, null);
-    expect(changes.debt).toEqual([
+    expect(changes.debt!).toEqual([
       expect.objectContaining({ id, version: 2, data: expect.objectContaining({ loanName: "b" }) }),
     ]);
   });
@@ -88,7 +88,7 @@ describe("applyMutation: debt upsert", () => {
 
     expect(result).toEqual({ status: "ok", version: 3 });
     const { changes } = await pullChanges(db, userId, null);
-    expect(changes.debt[0]?.data).toMatchObject({ loanName: "stale device, saved last" });
+    expect(changes.debt![0]?.data).toMatchObject({ loanName: "stale device, saved last" });
   });
 
   it("rejects writing another user's debt and leaves it unchanged", async () => {
@@ -111,7 +111,7 @@ describe("applyMutation: debt upsert", () => {
 
     expect(result).toEqual({ status: "rejected", reason: "forbidden" });
     const { changes } = await pullChanges(db, owner, null);
-    expect(changes.debt[0]?.data).toMatchObject({ loanName: "owner" });
+    expect(changes.debt![0]?.data).toMatchObject({ loanName: "owner" });
   });
 
   it("rejects malformed data", async () => {
@@ -147,7 +147,7 @@ describe("applyMutation: debt upsert", () => {
 
     expect(result).toEqual({ status: "ok", version: 3 });
     const { changes } = await pullChanges(db, userId, null);
-    expect(changes.debt).toEqual([expect.objectContaining({ id, deletedAt: null })]);
+    expect(changes.debt!).toEqual([expect.objectContaining({ id, deletedAt: null })]);
   });
 });
 
@@ -301,7 +301,7 @@ describe("pullChanges", () => {
 
     const { changes, cursor } = await pullChanges(db, userId, null);
 
-    expect(changes.debt.map((d) => d.id)).toEqual([live]);
+    expect(changes.debt!.map((d) => d.id)).toEqual([live]);
     expect(cursor).toEqual(expect.any(String));
   });
 
@@ -319,7 +319,7 @@ describe("pullChanges", () => {
     await applyMutation(db, userId, { entity: "debt", op: "delete", id });
     const { changes } = await pullChanges(db, userId, cursor);
 
-    expect(changes.debt).toEqual([
+    expect(changes.debt!).toEqual([
       expect.objectContaining({ id, version: 2, deletedAt: expect.any(String), data: null }),
     ]);
   });
@@ -336,7 +336,7 @@ describe("pullChanges", () => {
 
     const { changes } = await pullChanges(db, userId, null);
 
-    expect(changes.debt).toEqual([]);
+    expect(changes.debt!).toEqual([]);
   });
 
   it("sees debts written through the legacy envelope translator", async () => {
@@ -349,7 +349,7 @@ describe("pullChanges", () => {
 
     const { changes } = await pullChanges(db, userId, null);
 
-    expect(changes.debt).toEqual([
+    expect(changes.debt!).toEqual([
       expect.objectContaining({ id, data: expect.objectContaining({ loanName: "from envelope" }) }),
     ]);
     expect(changes.listOrder).toEqual([{ domain: "debts", order: [id] }]);

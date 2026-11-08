@@ -60,7 +60,7 @@ describe("applyMutation: rebalancing", () => {
 
     expect(result).toEqual({ status: "ok", version: 1 });
     const { changes } = await pullChanges(db, userId, null);
-    expect(changes.rebalancing).toEqual([{ id, version: 1, deletedAt: null, data }]);
+    expect(changes.rebalancing!).toEqual([{ id, version: 1, deletedAt: null, data }]);
   });
 
   it("records completion when the last task is checked", async () => {
@@ -83,7 +83,7 @@ describe("applyMutation: rebalancing", () => {
 
     expect(result).toEqual({ status: "ok", version: 2 });
     const { changes } = await pullChanges(db, userId, null);
-    expect(changes.rebalancing[0]?.data?.completedAt).toBe(completedAt);
+    expect(changes.rebalancing![0]?.data?.completedAt).toBe(completedAt);
   });
 
   it("rejects malformed tasks", async () => {
@@ -134,7 +134,7 @@ describe("applyMutation: rebalancing", () => {
     await applyMutation(db, userId, { entity: "rebalancing", op: "delete", id });
 
     const { changes } = await pullChanges(db, userId, first.cursor);
-    expect(changes.rebalancing).toEqual([
+    expect(changes.rebalancing!).toEqual([
       expect.objectContaining({ id, version: 2, data: null, deletedAt: expect.any(String) }),
     ]);
   });
@@ -183,6 +183,6 @@ describe("rebalancing envelope translator", () => {
     await rebalancingTranslator.write(db, userId, { state: { sessions: [kept] }, version: 1 });
 
     const { changes } = await pullChanges(db, userId, first.cursor);
-    expect(changes.rebalancing.find((r) => r.id === dropped.id)?.deletedAt).not.toBeNull();
+    expect(changes.rebalancing!.find((r) => r.id === dropped.id)?.deletedAt).not.toBeNull();
   });
 });
