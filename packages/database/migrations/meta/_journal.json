@@ -64,6 +64,13 @@
       "when": 1794126746724,
       "tag": "0008_omniscient_multiple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794128345207,
+      "tag": "0009_mean_photon",
+      "breakpoints": true
     }
   ]
 }

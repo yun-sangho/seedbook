@@ -187,6 +187,7 @@ export const investmentAccount = seedbook.table(
       onDelete: "set null",
       onUpdate: "cascade",
     }),
+    ...syncColumns(),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })
       .notNull()
@@ -195,6 +196,7 @@ export const investmentAccount = seedbook.table(
   (t) => [
     index("investment_account_userId_idx").on(t.userId),
     index("investment_account_portfolioId_idx").on(t.portfolioId),
+    index("investment_account_userId_updatedAt_idx").on(t.userId, t.updatedAt),
   ]
 );
 
@@ -397,12 +399,16 @@ export const portfolio = seedbook.table(
       .notNull()
       .default(sql`ARRAY[]::uuid[]`),
     driftThresholdPercent: doublePrecision("driftThresholdPercent").notNull().default(5),
+    ...syncColumns(),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })
       .notNull()
       .$onUpdate(() => new Date()),
   },
-  (t) => [index("portfolio_userId_idx").on(t.userId)]
+  (t) => [
+    index("portfolio_userId_idx").on(t.userId),
+    index("portfolio_userId_updatedAt_idx").on(t.userId, t.updatedAt),
+  ]
 );
 
 export const portfolioAllocation = seedbook.table(

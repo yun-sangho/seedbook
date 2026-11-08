@@ -1,3 +1,5 @@
+import { investmentsSyncConfig } from "@web/features/investments/sync/investments-sync-config";
+import { portfolioSyncConfig } from "@web/features/portfolio/sync/portfolio-sync-config";
 import { rebalancingSyncConfig } from "@web/features/rebalancing/sync/rebalancing-sync-config";
 import type { ManagedStoreConfig } from "./managed-store-config";
 
@@ -5,11 +7,17 @@ import type { ManagedStoreConfig } from "./managed-store-config";
  * cloud 모드에서 envelope 대신 엔티티 동기화(`/api/sync/*`)로 저장하는 store 들.
  * 도메인을 하나씩 옮길 때마다 여기에 추가한다.
  */
-export const SYNC_MANAGED_STORES: Record<string, ManagedStoreConfig<{ id: string }>> = {
-  [rebalancingSyncConfig.storageKey]: rebalancingSyncConfig as unknown as ManagedStoreConfig<{
-    id: string;
-  }>,
-};
+const managed = <T extends { id: string }>(config: ManagedStoreConfig<T>) =>
+  [config.storageKey, config as unknown as ManagedStoreConfig<{ id: string }>] as const;
+
+export const SYNC_MANAGED_STORES: Record<
+  string,
+  ManagedStoreConfig<{ id: string }>
+> = Object.fromEntries([
+  managed(investmentsSyncConfig),
+  managed(portfolioSyncConfig),
+  managed(rebalancingSyncConfig),
+]);
 
 export function getManagedStoreConfig(key: string): ManagedStoreConfig<{ id: string }> | null {
   return SYNC_MANAGED_STORES[key] ?? null;

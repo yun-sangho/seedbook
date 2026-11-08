@@ -15,6 +15,7 @@ type SqlExecutor = { execute: (query: SQL) => PromiseLike<unknown> };
  *   - 같은 사용자 소유의 포트폴리오만 매칭한다 — `accountIds` 는 클라이언트가 보낸 값이라
  *     다른 사용자의 계좌 id 가 섞여 있어도 연결되지 않는다.
  *   - 여러 포트폴리오에 들어 있으면 `updatedAt` 최신 → `id` 순으로 하나를 고른다.
+ *   - 삭제(톰스톤)된 포트폴리오는 연결 대상이 아니다.
  *   - 어떤 포트폴리오에도 없는 계좌는 NULL 로 되돌린다.
  */
 export async function syncAccountPortfolioLinks(
@@ -30,6 +31,7 @@ export async function syncAccountPortfolioLinks(
         SELECT p."id"
         FROM "seedbook"."portfolio" AS p
         WHERE p."userId" = a."userId"
+          AND p."deletedAt" IS NULL
           AND a."id" = ANY (p."accountIds")
         ORDER BY p."updatedAt" DESC, p."id"
         LIMIT 1

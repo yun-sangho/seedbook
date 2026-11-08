@@ -25,6 +25,8 @@ export type EntityRepoOptions<Fields, Data> = {
   toColumns: (fields: Fields) => Record<string, unknown>;
   /** 최상위 행을 쓴 뒤 하위 테이블(기록·보유종목 등)을 같은 트랜잭션에서 다시 쓴다. */
   writeChildren?: (tx: Tx, id: string, fields: Fields) => Promise<void>;
+  /** 저장·삭제 뒤 같은 트랜잭션에서 맞출 파생 데이터 (예: 계좌 ↔ 포트폴리오 연결). */
+  afterChange?: (tx: Tx, userId: string) => Promise<void>;
   /** 살아 있는 행들 → 클라이언트에 줄 데이터 (하위 테이블 포함). */
   toData: (db: Database, rows: RootRow[]) => Promise<Map<string, Data>>;
 };
@@ -67,17 +69,22 @@ export function createEntityRepo<Fields, Data>(
         .returning({ version: t.version });
       if (!row) return { status: "rejected", reason: "forbidden" };
       if (options.writeChildren) await options.writeChildren(tx, id, fields);
+      if (options.afterChange) await options.afterChange(tx, userId);
       return { status: "ok", version: row.version };
     });
   }
 
   async function remove(db: Database, userId: string, id: string): Promise<MutationResult> {
     const now = new Date();
-    const [row] = await db
-      .update(t)
-      .set({ deletedAt: now, updatedAt: now, version: sql`${t.version} + 1` })
-      .where(and(eq(t.id, id), eq(t.userId, userId), isNull(t.deletedAt)))
-      .returning({ version: t.version });
+    const [row] = await db.transaction(async (tx) => {
+      const deleted = await tx
+        .update(t)
+        .set({ deletedAt: now, updatedAt: now, version: sql`${t.version} + 1` })
+        .where(and(eq(t.id, id), eq(t.userId, userId), isNull(t.deletedAt)))
+        .returning({ version: t.version });
+      if (deleted.length > 0 && options.afterChange) await options.afterChange(tx, userId);
+      return deleted;
+    });
     if (row) return { status: "ok", version: row.version };
 
     const [current] = await db

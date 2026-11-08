@@ -198,6 +198,24 @@ describe("startEntitySync", () => {
     expect(sent.mutations).toContainEqual(expect.objectContaining({ id: "a" }));
   });
 
+  it("shares one request when several stores pull with the same cursor at once", async () => {
+    const otherConfig = { ...config, metaKey: "test.sync.other", storageKey: "other-storage" };
+    const server = fakeServer({
+      pull: () => ({ cursor: "c1", changes: { debt: [], listOrder: [] } }),
+    });
+    const a = startEntitySync(config, fakeStore([]), { userId: "u1", fetchFn: server.fetchFn });
+    const b = startEntitySync(otherConfig, fakeStore([]), {
+      userId: "u1",
+      fetchFn: server.fetchFn,
+    });
+
+    await Promise.all([a.pull(), b.pull()]);
+    a.stop();
+    b.stop();
+
+    expect(server.calls.filter((c) => c.url.startsWith("/api/sync/pull"))).toHaveLength(1);
+  });
+
   it("drops another user's pending queue and reloads everything from the server", async () => {
     const store = fakeStore([]);
     const offline = vi.fn(async () => {

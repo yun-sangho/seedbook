@@ -1,58 +1,29 @@
-import { schema, syncAccountPortfolioLinks } from "@seedbook/database";
-import { and, eq, notInArray } from "drizzle-orm";
-import { assertNoForeignRows } from "./ownership";
+import { schema, type Database } from "@seedbook/database";
 import {
-  bigIntToNumber,
-  formatDate,
-  parseDate,
-  toBigInt,
-  type DomainTranslator,
-  type Envelope,
-} from "./types";
+  investmentRowToFields,
+  parseInvestmentFields,
+} from "@web/server/investments/investment-record";
+import { investmentRepo } from "@web/server/investments/investment-sync";
+import { and, eq, isNull, notInArray, sql } from "drizzle-orm";
+import { assertNoForeignRows } from "./ownership";
+import type { DomainTranslator, Envelope } from "./types";
+
+/**
+ * `investment-storage` 번역기. cloud 모드의 일상 저장은 엔티티 동기화(`/api/sync`)가 맡고,
+ * 이 envelope 경로는 저장소 모드 전환(업로드/다운로드)에서 쓴다. 계좌 저장 규칙은 동기화와
+ * 같은 저장소(`investmentRepo`)를 쓴다. 보유 주식 정렬 설정(`holdingsSortOption`)은 계좌
+ * 목록이 아니라 사용자 설정이라 여기서만 다룬다.
+ */
 
 const DOMAIN = "investment-accounts";
 const VERSION = 4;
-
-type InvestmentItemPayload = {
-  id: string;
-  accountName: string;
-  accountType: string;
-  currency: string;
-  initialInvestment: number;
-  currentValue: number;
-  note?: string;
-  color: string;
-  records?: Array<{
-    date: string;
-    initialInvestment: number;
-    currentValue: number;
-  }>;
-  holdings?: Array<{
-    id: string;
-    market: string;
-    ticker: string;
-    name: string;
-    currency: string;
-    quantity: number;
-    memo?: string;
-  }>;
-  cashItems?: Array<{
-    id: string;
-    label: string;
-    amount: number;
-  }>;
-};
 
 export const investmentTranslator: DomainTranslator = {
   async read(db, userId) {
     const [accounts, preference, listOrder] = await Promise.all([
       db.query.investmentAccount.findMany({
-        where: (t, { eq }) => eq(t.userId, userId),
-        with: {
-          records: { orderBy: (t, { desc }) => [desc(t.date)] },
-          holdings: true,
-          cashItems: true,
-        },
+        where: (t, { and, eq, isNull }) => and(eq(t.userId, userId), isNull(t.deletedAt)),
+        with: { records: true, holdings: true, cashItems: true },
       }),
       db.query.userPreference.findFirst({
         where: (t, { eq }) => eq(t.userId, userId),
@@ -76,32 +47,7 @@ export const investmentTranslator: DomainTranslator = {
 
     const investments = sorted.map((acc) => ({
       id: acc.id,
-      accountName: acc.accountName,
-      accountType: acc.accountType,
-      currency: acc.currency,
-      initialInvestment: bigIntToNumber(acc.initialInvestment),
-      currentValue: bigIntToNumber(acc.currentValue),
-      note: acc.note,
-      color: acc.color,
-      records: acc.records.map((r) => ({
-        date: formatDate(r.date),
-        initialInvestment: bigIntToNumber(r.initialInvestment),
-        currentValue: bigIntToNumber(r.currentValue),
-      })),
-      holdings: acc.holdings.map((h) => ({
-        id: h.id,
-        market: h.market,
-        ticker: h.ticker,
-        name: h.name,
-        currency: h.currency,
-        quantity: h.quantity,
-        memo: h.memo,
-      })),
-      cashItems: acc.cashItems.map((c) => ({
-        id: c.id,
-        label: c.label,
-        amount: bigIntToNumber(c.amount),
-      })),
+      ...investmentRowToFields(acc, acc.records, acc.holdings, acc.cashItems),
     }));
 
     const envelope: Envelope = {
@@ -114,10 +60,14 @@ export const investmentTranslator: DomainTranslator = {
     return envelope;
   },
 
+  /**
+   * envelope 는 "현재 목록 전체" 다. 목록에 없는 계좌는 톰스톤으로 남겨 엔티티 동기화
+   * pull 이 삭제를 다른 기기에 전할 수 있게 한다.
+   */
   async write(db, userId, envelope) {
     const state = envelope.state ?? {};
     const investments = Array.isArray(state.investments)
-      ? (state.investments as InvestmentItemPayload[])
+      ? (state.investments as Array<{ id: string } & Record<string, unknown>>)
       : [];
 
     await db.transaction(async (tx) => {
@@ -131,8 +81,6 @@ export const investmentTranslator: DomainTranslator = {
 
       const holdingsSortOption =
         typeof state.holdingsSortOption === "string" ? state.holdingsSortOption : "default";
-
-      // 1) UserPreference upsert
       await tx
         .insert(schema.userPreference)
         .values({ userId, holdingsSortOption })
@@ -141,162 +89,37 @@ export const investmentTranslator: DomainTranslator = {
           set: { holdingsSortOption },
         });
 
-      // 2) UserListOrder upsert (composite key userId+domain)
+      const now = new Date();
       const order = investments.map((inv) => inv.id);
       await tx
         .insert(schema.userListOrder)
-        .values({ userId, domain: DOMAIN, order })
+        .values({ userId, domain: DOMAIN, order, updatedAt: now })
         .onConflictDoUpdate({
           target: [schema.userListOrder.userId, schema.userListOrder.domain],
-          set: { order },
+          set: { order, updatedAt: now },
         });
 
-      // 3) Stale 계좌 삭제 (cascade 로 records/holdings/cashItems 도 함께)
-      const incomingIds = investments.map((inv) => inv.id);
-      if (incomingIds.length > 0) {
-        await tx
-          .delete(schema.investmentAccount)
-          .where(
-            and(
-              eq(schema.investmentAccount.userId, userId),
-              notInArray(schema.investmentAccount.id, incomingIds)
-            )
-          );
-      } else {
-        await tx
-          .delete(schema.investmentAccount)
-          .where(eq(schema.investmentAccount.userId, userId));
-      }
+      // 목록에서 빠진 계좌 → 톰스톤. 이미 삭제된 행은 건드리지 않는다.
+      await tx
+        .update(schema.investmentAccount)
+        .set({
+          deletedAt: now,
+          updatedAt: now,
+          version: sql`${schema.investmentAccount.version} + 1`,
+        })
+        .where(
+          and(
+            eq(schema.investmentAccount.userId, userId),
+            isNull(schema.investmentAccount.deletedAt),
+            order.length > 0 ? notInArray(schema.investmentAccount.id, order) : undefined
+          )
+        );
 
-      // 4) 각 계좌 upsert + nested entities
-      const now = new Date();
       for (const inv of investments) {
-        await tx
-          .insert(schema.investmentAccount)
-          .values({
-            id: inv.id,
-            userId,
-            accountName: inv.accountName,
-            accountType: inv.accountType,
-            currency: inv.currency,
-            initialInvestment: toBigInt(inv.initialInvestment),
-            currentValue: toBigInt(inv.currentValue),
-            note: inv.note ?? "",
-            color: inv.color,
-            updatedAt: now,
-          })
-          .onConflictDoUpdate({
-            target: schema.investmentAccount.id,
-            // 방어적: 남의 행이면 갱신하지 않는다 (assertNoForeignRows 가 먼저 막음).
-            where: eq(schema.investmentAccount.userId, userId),
-            set: {
-              accountName: inv.accountName,
-              accountType: inv.accountType,
-              currency: inv.currency,
-              initialInvestment: toBigInt(inv.initialInvestment),
-              currentValue: toBigInt(inv.currentValue),
-              note: inv.note ?? "",
-              color: inv.color,
-              updatedAt: now,
-            },
-          });
-
-        // Records: 전체 지우고 재삽입
-        await tx
-          .delete(schema.investmentRecord)
-          .where(eq(schema.investmentRecord.accountId, inv.id));
-        const recordRows = (inv.records ?? [])
-          .map((r) => {
-            const date = parseDate(r.date);
-            if (!date) return null;
-            return {
-              accountId: inv.id,
-              date,
-              initialInvestment: toBigInt(r.initialInvestment),
-              currentValue: toBigInt(r.currentValue),
-            };
-          })
-          .filter((r): r is NonNullable<typeof r> => r !== null);
-        if (recordRows.length > 0) {
-          await tx.insert(schema.investmentRecord).values(recordRows).onConflictDoNothing();
-        }
-
-        // Holdings: stale 삭제 + upsert
-        const incomingHoldingIds = Array.from(new Set((inv.holdings ?? []).map((h) => h.id)));
-        if (incomingHoldingIds.length > 0) {
-          await tx
-            .delete(schema.stockHolding)
-            .where(
-              and(
-                eq(schema.stockHolding.accountId, inv.id),
-                notInArray(schema.stockHolding.id, incomingHoldingIds)
-              )
-            );
-        } else {
-          await tx.delete(schema.stockHolding).where(eq(schema.stockHolding.accountId, inv.id));
-        }
-        for (const h of inv.holdings ?? []) {
-          await tx
-            .insert(schema.stockHolding)
-            .values({
-              id: h.id,
-              accountId: inv.id,
-              market: h.market,
-              ticker: h.ticker,
-              name: h.name,
-              currency: h.currency,
-              quantity: h.quantity,
-              memo: h.memo ?? "",
-            })
-            .onConflictDoUpdate({
-              target: schema.stockHolding.id,
-              // 같은 id 의 남의 행(다른 계좌 소속)은 갱신하지 않는다.
-              where: eq(schema.stockHolding.accountId, inv.id),
-              set: {
-                market: h.market,
-                ticker: h.ticker,
-                name: h.name,
-                currency: h.currency,
-                quantity: h.quantity,
-                memo: h.memo ?? "",
-              },
-            });
-        }
-
-        // CashItems: stale 삭제 + upsert
-        const incomingCashIds = Array.from(new Set((inv.cashItems ?? []).map((c) => c.id)));
-        if (incomingCashIds.length > 0) {
-          await tx
-            .delete(schema.cashItem)
-            .where(
-              and(
-                eq(schema.cashItem.accountId, inv.id),
-                notInArray(schema.cashItem.id, incomingCashIds)
-              )
-            );
-        } else {
-          await tx.delete(schema.cashItem).where(eq(schema.cashItem.accountId, inv.id));
-        }
-        for (const c of inv.cashItems ?? []) {
-          await tx
-            .insert(schema.cashItem)
-            .values({
-              id: c.id,
-              accountId: inv.id,
-              label: c.label,
-              amount: toBigInt(c.amount),
-            })
-            .onConflictDoUpdate({
-              target: schema.cashItem.id,
-              // 같은 id 의 남의 행(다른 계좌 소속)은 갱신하지 않는다.
-              where: eq(schema.cashItem.accountId, inv.id),
-              set: { label: c.label, amount: toBigInt(c.amount) },
-            });
-        }
+        const fields = parseInvestmentFields(inv);
+        if (!fields) continue; // 깨진 항목은 건너뛴다 (톰스톤으로 만들지도 않는다).
+        await investmentRepo.upsert(tx as unknown as Database, userId, inv.id, fields);
       }
-
-      // 새 계좌가 포트폴리오 연결보다 늦게 도착했을 수 있다 — 연결을 여기서도 맞춘다.
-      await syncAccountPortfolioLinks(tx, userId);
     });
   },
 };

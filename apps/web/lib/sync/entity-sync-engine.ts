@@ -62,6 +62,44 @@ export function mergePullResponse<T extends { id: string }>(
   return mergePull(base, baseMeta, { cursor: response.cursor, entities, order }, config.fromData);
 }
 
+// 엔진들이 같은 함수를 써야 아래 pull 공유(키: fetch 함수 + URL)가 동작한다.
+const defaultFetch: typeof fetch = (...args) => fetch(...args);
+
+type PullResult =
+  | { kind: "ok"; body: PullResponse }
+  | { kind: "offline" }
+  | { kind: "unauthenticated" }
+  | { kind: "error" };
+
+// pull 응답은 모든 엔티티를 담고, 커서는 전체에서 가장 최근 변경이라 store 들이 같은 커서를
+// 갖는 경우가 많다. 같은 URL 로 동시에 나가는 pull 은 한 요청을 나눠 쓴다.
+const inflightPulls = new WeakMap<typeof fetch, Map<string, Promise<PullResult>>>();
+
+function fetchPullShared(fetchFn: typeof fetch, url: string): Promise<PullResult> {
+  let byUrl = inflightPulls.get(fetchFn);
+  if (!byUrl) {
+    byUrl = new Map();
+    inflightPulls.set(fetchFn, byUrl);
+  }
+  const existing = byUrl.get(url);
+  if (existing) return existing;
+
+  const request = (async (): Promise<PullResult> => {
+    try {
+      const res = await fetchFn(url, { credentials: "include" });
+      if (res.status === 401) return { kind: "unauthenticated" };
+      if (!res.ok) return { kind: "error" };
+      return { kind: "ok", body: (await res.json()) as PullResponse };
+    } catch {
+      return { kind: "offline" };
+    } finally {
+      byUrl.delete(url);
+    }
+  })();
+  byUrl.set(url, request);
+  return request;
+}
+
 /**
  * 한 store 의 엔티티 동기화를 시작한다:
  *   - store 변경 → outbox 기록 (localStorage) → debounce 후 `/api/sync/mutations`
@@ -75,7 +113,7 @@ export function startEntitySync<T extends { id: string }>(
   store: SyncedStoreBinding<T>,
   options: { userId: string; fetchFn?: typeof fetch; debounceMs?: number }
 ): EntitySyncHandle {
-  const fetchFn = options.fetchFn ?? ((...args) => fetch(...args));
+  const fetchFn = options.fetchFn ?? defaultFetch;
   const debounceMs = options.debounceMs ?? DEFAULT_DEBOUNCE_MS;
   const statusKey = `sync:${config.entity}`;
   const status = () => useSyncStatusStore.getState();
@@ -169,19 +207,17 @@ export function startEntitySync<T extends { id: string }>(
     const url = meta.cursor
       ? `/api/sync/pull?since=${encodeURIComponent(meta.cursor)}`
       : "/api/sync/pull";
-    let res: Response;
-    try {
-      res = await fetchFn(url, { credentials: "include" });
-    } catch {
+    const result = await fetchPullShared(fetchFn, url);
+    if (result.kind === "offline") {
       status().markOffline(statusKey);
       return;
     }
-    if (res.status === 401) {
+    if (result.kind === "unauthenticated") {
       status().markUnauthenticated();
       return;
     }
-    if (!res.ok) return;
-    const body = (await res.json()) as PullResponse;
+    if (result.kind === "error") return;
+    const body = result.body;
     // 응답을 기다리는 동안 생긴 로컬 변경을 덮지 않도록 최신 meta 로 합친다.
     const merged = mergePullResponse(config, store.get(), loadMeta(), body);
     saveMeta(merged.meta);

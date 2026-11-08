@@ -1,12 +1,12 @@
 import { useSyncStatusStore } from "@web/features/settings/stores/sync-status-store";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { __resetHybridStorageForTests, createHybridStorage } from "./hybrid-storage";
+import { createHybridStorage } from "./hybrid-storage";
 import { setStorageMode, STORAGE_MODE_KEY } from "./storage-mode";
 
 /**
  * 하이브리드 스토리지 어댑터는 두 가지 모드를 지원한다:
  *   - local: localStorage 에 직접 delegate
- *   - cloud: /api/storage/[key] 에 네트워크 왕복 + localStorage 캐시
+ *   - cloud: 로컬 캐시 + 엔티티 동기화 (hybrid-storage.sync-managed.test.ts)
  *
  * 주의: 모드는 모듈 초기화 시점에 한 번 고정된다. 이 테스트 파일은 모듈이 이미
  * 로드된 상태에서 실행되므로 `mode === "local"` 에 고정되어 있다. cloud 모드
@@ -17,7 +17,6 @@ import { setStorageMode, STORAGE_MODE_KEY } from "./storage-mode";
 describe("createHybridStorage (local mode)", () => {
   beforeEach(() => {
     window.localStorage.clear();
-    __resetHybridStorageForTests();
   });
 
   afterEach(() => {

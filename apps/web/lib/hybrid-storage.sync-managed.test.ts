@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * cloud 모드에서 엔티티 동기화가 관리하는 store (`rebalancing-storage`) 는 envelope
- * (`/api/storage`) 를 쓰지 않는다. hybrid-storage 는 모드를 모듈 초기화 때 읽으므로
+ * cloud 모드에서 store (`rebalancing-storage` 등) 는 엔티티 동기화로 저장된다 —
+ * envelope (`/api/storage`) 는 저장소 모드 전환에서만 쓴다. hybrid-storage 는 모드를 모듈 초기화 때 읽으므로
  * 테스트마다 모듈을 새로 불러온다.
  */
 
@@ -150,12 +150,13 @@ describe("hybrid storage for sync-managed stores in cloud mode", () => {
     expect(fetchMock.mock.calls.filter(([url]) => url === "/api/sync/pull")).toHaveLength(1);
   });
 
-  it("still uses the envelope API for stores that are not sync-managed", async () => {
-    fetchMock.mockResolvedValue(new Response(JSON.stringify({ data: null })));
-    const storage = (await loadCloudStorage())("investment-storage");
+  it("keeps a store without a sync config in this browser only", async () => {
+    const storage = (await loadCloudStorage())("unregistered-storage");
 
-    await storage.getItem("investment-storage");
+    await storage.setItem("unregistered-storage", '{"state":{},"version":1}');
+    const value = await storage.getItem("unregistered-storage");
 
-    expect(fetchMock).toHaveBeenCalledWith("/api/storage/investment-storage", expect.anything());
+    expect(value).toBe('{"state":{},"version":1}');
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
