@@ -7,6 +7,8 @@ import { useSyncStatusStore } from "@web/features/settings/stores/sync-status-st
 import { getCurrentViewContext } from "@web/features/sharing/stores/view-context-store";
 import type { StateStorage } from "zustand/middleware";
 import { getStorageMode } from "./storage-mode";
+import { loadManagedStoreFromServer } from "./sync/initial-load";
+import { getManagedStoreConfig } from "./sync/managed-stores";
 
 /**
  * 하이브리드 저장소 어댑터.
@@ -224,6 +226,24 @@ export function createHybridStorage(key: string): StateStorage {
           // noop
         }
       },
+    };
+  }
+
+  // cloud 모드 + 엔티티 동기화로 옮긴 store: persist storage 는 로컬 캐시만 맡는다.
+  // 하이드레이션 때 서버 전체 pull 로 상태를 만들고, 이후 변경은 EntitySyncRunner 가
+  // `/api/sync/mutations` 로 보낸다. 공유 열람 중에는 기존 envelope 경로(읽기 전용)를 쓴다.
+  const managed = sharedView ? null : getManagedStoreConfig(key);
+  if (managed) {
+    return {
+      getItem: async (name) => {
+        const cached = readCache(name || key);
+        const fromServer = await loadManagedStoreFromServer(managed, cached);
+        if (fromServer === null) return cached;
+        writeCache(name || key, fromServer);
+        return fromServer;
+      },
+      setItem: (name, value) => writeCache(name || key, value),
+      removeItem: (name) => removeCache(name || key),
     };
   }
 
