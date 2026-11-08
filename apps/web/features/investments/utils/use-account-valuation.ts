@@ -29,7 +29,7 @@ export function useAccountValuation(
   const holdings = useMemo(() => item.holdings ?? [], [item.holdings]);
   const cashItems = useMemo(() => item.cashItems ?? [], [item.cashItems]);
 
-  const { prices, isLoading: pricesLoading } = useStockPrices(holdings);
+  const { prices, isLoading: pricesLoading, isFetching: pricesFetching } = useStockPrices(holdings);
 
   const valuation = useMemo(
     () => computeAccountValuation(holdings, cashItems, prices),
@@ -47,14 +47,15 @@ export function useAccountValuation(
   useEffect(() => {
     if (readOnly) return;
     if (!pendingHistorySync) return;
-    if (pricesLoading) return;
+    // 만료된 캐시를 갱신 중이면 새 시세가 온 뒤에 동기화한다.
+    if (pricesFetching) return;
     if (!allHoldingsHavePrices) return;
     onSyncCurrentValue(totalValue);
     setPendingHistorySync(false);
   }, [
     readOnly,
     pendingHistorySync,
-    pricesLoading,
+    pricesFetching,
     allHoldingsHavePrices,
     totalValue,
     onSyncCurrentValue,
