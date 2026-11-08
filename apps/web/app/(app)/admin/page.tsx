@@ -4,6 +4,9 @@ import { useRef } from "react";
 import { Button } from "@web/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
+import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
+import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
+import { buildBackup, parseBackup } from "@web/features/settings/utils/data-backup";
 import { useAllStoresHydrated } from "@web/lib/zustand-hydration";
 import { Database, Download, Upload } from "lucide-react";
 import { StorageModeCard } from "./_components/storage-mode-card";
@@ -16,13 +19,11 @@ export default function AdminPage() {
   const storesHydrated = useAllStoresHydrated();
 
   const investments = useInvestmentStore((state) => state.investments);
+  const portfolios = usePortfolioStore((state) => state.portfolios);
+  const rebalancingSessions = useRebalancingStore((state) => state.sessions);
 
   const exportData = () => {
-    const data = {
-      investments,
-      exportedAt: new Date().toISOString(),
-      version: "1.0",
-    };
+    const data = buildBackup({ investments, portfolios, rebalancingSessions });
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -35,24 +36,21 @@ export default function AdminPage() {
     URL.revokeObjectURL(url);
   };
 
-  const applyImportedData = (data: unknown): boolean => {
-    if (!data || typeof data !== "object") {
+  const applyImportedData = (raw: unknown): boolean => {
+    const parsed = parseBackup(raw);
+    if (!parsed.ok) {
       alert("올바른 Seedbook 데이터 파일이 아닙니다.");
       return false;
     }
-    const envelope = data as Record<string, unknown>;
-    if (!envelope.version || !envelope.exportedAt) {
-      alert("올바른 Seedbook 데이터 파일이 아닙니다.");
+    if (!confirm("파일에 담긴 항목의 기존 데이터를 덮어씁니다. 계속하시겠습니까?")) {
       return false;
     }
-    if (!confirm("기존 데이터를 모두 덮어씁니다. 계속하시겠습니까?")) {
-      return false;
-    }
-    // 데이터 복원 - store 상태 직접 설정. ID 는 전부 문자열이라 별도의
-    // auto-increment 카운터가 없어 그대로 주입하면 된다.
-    if (Array.isArray(envelope.investments)) {
-      useInvestmentStore.setState({ investments: envelope.investments });
-    }
+    // 데이터 복원 - store 상태 직접 설정. 파일에 있는 항목만 바꾼다 (예전 백업에는
+    // 포트폴리오·리밸런싱이 없을 수 있다).
+    const { investments, portfolios, rebalancingSessions } = parsed.data;
+    if (investments) useInvestmentStore.setState({ investments });
+    if (portfolios) usePortfolioStore.setState({ portfolios });
+    if (rebalancingSessions) useRebalancingStore.setState({ sessions: rebalancingSessions });
     alert("데이터가 성공적으로 복원되었습니다. 페이지를 새로고침해주세요.");
     return true;
   };
@@ -104,9 +102,19 @@ export default function AdminPage() {
           <CardTitle>현재 데이터 상태</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{investments.length}</div>
-            <div className="text-sm text-gray-600">투자 계좌</div>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{investments.length}</div>
+              <div className="text-sm text-gray-600">투자 계좌</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{portfolios.length}</div>
+              <div className="text-sm text-gray-600">포트폴리오</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600">{rebalancingSessions.length}</div>
+              <div className="text-sm text-gray-600">리밸런싱</div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -160,7 +168,10 @@ export default function AdminPage() {
 
           <div className="text-sm text-gray-600 space-y-1">
             <p>• 데이터를 JSON 파일로 내보내거나 가져올 수 있습니다.</p>
-            <p>• 가져온 데이터는 기존 데이터를 완전히 덮어씁니다.</p>
+            <p>
+              • 투자 계좌 · 포트폴리오 · 리밸런싱을 담고, 가져오면 파일에 있는 항목의 기존 데이터를
+              덮어씁니다.
+            </p>
             <p>• 백업을 위해 정기적으로 데이터를 내보내는 것을 권장합니다.</p>
             <p>
               • &ldquo;데모 데이터 불러오기&rdquo; 는 번들된 샘플 데이터로 투자 계좌를 채웁니다.
