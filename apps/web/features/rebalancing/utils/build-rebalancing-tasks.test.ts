@@ -69,6 +69,8 @@ describe("buildRebalancingTasks", () => {
         amount: 1_000_000,
         price: null,
         quantity: null,
+        priceAsOf: null,
+        priceKind: null,
         done: false,
       },
     ]);
@@ -90,6 +92,15 @@ describe("buildRebalancingTasks", () => {
     );
 
     expect(task).toMatchObject({ price: 70_000, quantity: 14 });
+  });
+
+  it("records when and what kind of price the task was calculated with", () => {
+    const [task] = buildRebalancingTasks(
+      summary([row({ action: "매수", gapValue: 1_000_000 })]),
+      new Map([["KOSPI:005930", price(70_000)]])
+    );
+
+    expect(task).toMatchObject({ priceAsOf: "2026-11-06T06:30:00.000Z", priceKind: "close" });
   });
 
   it("lists sells before buys so cash is freed up first, larger amounts first", () => {

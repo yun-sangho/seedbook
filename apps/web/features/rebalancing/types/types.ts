@@ -1,3 +1,5 @@
+import type { StockPriceKind } from "@web/features/investments/utils/use-stock-prices";
+
 /**
  * 리밸런싱 할 일 한 건 — 종목 하나를 사거나 판다.
  *
@@ -16,6 +18,10 @@ export interface RebalancingTask {
   price: number | null;
   /** 예상 수량 (주). 가격이 없으면 null */
   quantity: number | null;
+  /** `price` 의 기준 시각 (ISO). 가격이 없거나 기록 전에 시작한 리밸런싱이면 null */
+  priceAsOf: string | null;
+  /** `price` 가 장중 시세인지 종가인지. `priceAsOf` 와 함께 null */
+  priceKind: StockPriceKind | null;
   done: boolean;
 }
 

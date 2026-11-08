@@ -11,6 +11,8 @@ function validTask(overrides: Record<string, unknown> = {}) {
     amount: 1_000_000,
     price: 70_000,
     quantity: 14,
+    priceAsOf: "2026-11-06T06:30:00.000Z",
+    priceKind: "close",
     done: false,
     ...overrides,
   };
@@ -42,8 +44,27 @@ describe("parseRebalancingFields", () => {
     expect(parseRebalancingFields(fields)?.completedAt).toBeNull();
   });
 
+  it("treats a missing price time as unknown for rebalancings started before it was recorded", () => {
+    const legacy: Record<string, unknown> = validTask();
+    delete legacy.priceAsOf;
+    delete legacy.priceKind;
+
+    expect(parseRebalancingFields(validFields({ tasks: [legacy] }))?.tasks[0]).toMatchObject({
+      priceAsOf: null,
+      priceKind: null,
+    });
+  });
+
+  it("rejects an unknown price kind", () => {
+    expect(
+      parseRebalancingFields(validFields({ tasks: [validTask({ priceKind: "after-hours" })] }))
+    ).toBeNull();
+  });
+
   it("accepts null price and quantity when there was no quote", () => {
-    const fields = validFields({ tasks: [validTask({ price: null, quantity: null })] });
+    const fields = validFields({
+      tasks: [validTask({ price: null, quantity: null, priceAsOf: null, priceKind: null })],
+    });
 
     expect(parseRebalancingFields(fields)?.tasks[0]).toMatchObject({ price: null, quantity: null });
   });

@@ -25,6 +25,8 @@ function rebalancingData(overrides: Record<string, unknown> = {}) {
         amount: 500_000,
         price: 70_000,
         quantity: 7,
+        priceAsOf: "2026-11-06T06:30:00.000Z",
+        priceKind: "close",
         done: true,
       },
       {
@@ -36,6 +38,8 @@ function rebalancingData(overrides: Record<string, unknown> = {}) {
         amount: 3_500_000,
         price: null,
         quantity: null,
+        priceAsOf: null,
+        priceKind: null,
         done: false,
       },
     ],

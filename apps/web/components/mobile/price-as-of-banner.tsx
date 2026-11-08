@@ -4,7 +4,12 @@ import { useMemo } from "react";
 import { IconClockLine } from "@karrotmarket/react-monochrome-icon";
 import { PageBanner, PrefixIcon } from "@seed-design/react";
 import type { InvestmentItem } from "@web/features/investments/types/types";
-import { describePriceAsOf, summarizePriceAsOf } from "@web/features/investments/utils/price-as-of";
+import {
+  describePriceAsOf,
+  summarizePriceAsOf,
+  type PriceAsOfLabel,
+  type PriceAsOfSummary,
+} from "@web/features/investments/utils/price-as-of";
 import {
   useStockPrices,
   type StockPricePoint,
@@ -19,23 +24,47 @@ import {
  */
 export function PriceAsOfBanner({ prices }: { prices: ReadonlyMap<string, StockPricePoint> }) {
   const summary = useMemo(() => summarizePriceAsOf(prices.values()), [prices]);
+  return <PriceAsOfSummaryBanner summary={summary} />;
+}
+
+/**
+ * 요약(`PriceAsOfSummary`)으로 바로 그리는 배너. 시세 맵이 아니라 저장해 둔 기준 시각을
+ * 보여줄 때 (예: 리밸런싱 할 일의 시작 시점 시세) 쓴다.
+ */
+export function PriceAsOfSummaryBanner({ summary }: { summary: PriceAsOfSummary | null }) {
   if (!summary) return null;
 
   // prices 는 70초마다 새로 받으므로 "오늘" 판정용 now 도 그때마다 갱신된다.
   const label = describePriceAsOf(summary, new Date());
 
+  return <PriceBanner title={label.title} description={label.description} tone={label.tone} />;
+}
+
+/**
+ * 가격 기준 배너의 모양. 스크롤해도 화면 상단(앱바 아래)에 붙어 있도록 고정하고, 뒤 내용이
+ * 비치지 않게 배경을 깐다. 시세 요약 없이 문구를 직접 정할 때도 쓴다.
+ */
+export function PriceBanner({
+  title,
+  description,
+  tone = "neutral",
+}: {
+  title: string;
+  description?: string;
+  tone?: PriceAsOfLabel["tone"];
+}) {
   return (
-    <PageBanner.Root variant="weak" tone={label.tone} role="status" aria-live="polite">
-      <PrefixIcon svg={<IconClockLine />} />
-      <PageBanner.Content>
-        <PageBanner.Body>
-          <PageBanner.Title>{label.title}</PageBanner.Title>
-          {label.description && (
-            <PageBanner.Description>{label.description}</PageBanner.Description>
-          )}
-        </PageBanner.Body>
-      </PageBanner.Content>
-    </PageBanner.Root>
+    <div className="bg-bg-layer-default sticky top-0 z-[1]">
+      <PageBanner.Root variant="weak" tone={tone} role="status" aria-live="polite">
+        <PrefixIcon svg={<IconClockLine />} />
+        <PageBanner.Content>
+          <PageBanner.Body>
+            <PageBanner.Title>{title}</PageBanner.Title>
+            {description && <PageBanner.Description>{description}</PageBanner.Description>}
+          </PageBanner.Body>
+        </PageBanner.Content>
+      </PageBanner.Root>
+    </div>
   );
 }
 

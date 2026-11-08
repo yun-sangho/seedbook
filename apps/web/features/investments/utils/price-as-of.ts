@@ -35,7 +35,9 @@ const timeFormat = new Intl.DateTimeFormat("ko-KR", {
 });
 const kstDateKey = new Intl.DateTimeFormat("en-CA", { timeZone: KST });
 
-export function summarizePriceAsOf(points: Iterable<StockPricePoint>): PriceAsOfSummary | null {
+export function summarizePriceAsOf(
+  points: Iterable<Pick<StockPricePoint, "asOf" | "kind">>
+): PriceAsOfSummary | null {
   const list = [...points];
   if (list.length === 0) return null;
 

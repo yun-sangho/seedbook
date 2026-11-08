@@ -5,10 +5,12 @@ import { Divider } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 import { ConfirmDialog } from "@web/components/mobile/confirm-dialog";
 import { HeaderAction } from "@web/components/mobile/header-action";
+import { PriceAsOfSummaryBanner, PriceBanner } from "@web/components/mobile/price-as-of-banner";
 import { RebalancingProgressBar } from "@web/features/rebalancing/components/rebalancing-progress-bar";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import type { RebalancingTask } from "@web/features/rebalancing/types/types";
 import { formatRebalancingDate } from "@web/features/rebalancing/utils/format-rebalancing-date";
+import { summarizeRebalancingPriceAsOf } from "@web/features/rebalancing/utils/rebalancing-price-as-of";
 import {
   isRebalancingCompleted,
   rebalancingProgress,
@@ -49,9 +51,17 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
   const completed = isRebalancingCompleted(session);
   const totalSell = sumAmount(session.tasks, "매도");
   const totalBuy = sumAmount(session.tasks, "매수");
+  const priceAsOf = summarizeRebalancingPriceAsOf(session.tasks);
 
   return (
     <div className="pb-x4">
+      {/* 할 일은 시작 시점 시세 스냅샷 — 지금 시세가 아니라 그때 기준을 보여준다. */}
+      {priceAsOf ? (
+        <PriceAsOfSummaryBanner summary={priceAsOf} />
+      ) : (
+        // 가격 기준 시각을 저장하기 전에 시작한 리밸런싱 — 시작 시점으로 알린다.
+        <PriceBanner title={`${formatRebalancingDate(session.startedAt)} 시작 시점 기준`} />
+      )}
       <section className="px-x4 py-x4">
         <div className="flex items-center gap-x2">
           <Badge tone={completed ? "positive" : "informative"} variant="weak">
@@ -89,7 +99,7 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
       <section className="py-x4">
         <h2 className="t5-bold px-x4 pb-x2">할 일</h2>
         <p className="t3-regular text-fg-neutral-subtle px-x4 pb-x2">
-          매도로 예수금을 먼저 만든 뒤 매수하세요. 수량은 시작 시점 시세 기준 예상치예요.
+          매도로 예수금을 먼저 만든 뒤 매수하세요. 수량은 위 시세 기준 예상치예요.
         </p>
         <List>
           {session.tasks.map((task) => (

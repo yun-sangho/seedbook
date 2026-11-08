@@ -23,7 +23,8 @@ export function buildRebalancingTasks(
   for (const row of summary.rows) {
     if (row.action === "유지") continue;
     const amount = Math.round(Math.abs(row.gapValue));
-    const price = prices.get(stockPriceKey(row.market, row.ticker))?.close ?? null;
+    const point = prices.get(stockPriceKey(row.market, row.ticker));
+    const price = point?.close ?? null;
     tasks.push({
       id: row.allocationId,
       market: row.market,
@@ -33,6 +34,8 @@ export function buildRebalancingTasks(
       amount,
       price,
       quantity: price && price > 0 ? Math.round(amount / price) : null,
+      priceAsOf: point?.asOf ?? null,
+      priceKind: point?.kind ?? null,
       done: false,
     });
   }

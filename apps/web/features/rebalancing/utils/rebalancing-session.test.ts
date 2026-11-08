@@ -16,6 +16,8 @@ function task(id: string, done = false): RebalancingTask {
     amount: 1000,
     price: null,
     quantity: null,
+    priceAsOf: null,
+    priceKind: null,
     done,
   };
 }

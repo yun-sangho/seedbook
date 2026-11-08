@@ -17,6 +17,8 @@ function toTask(value: unknown): RebalancingTask {
     amount: num(v.amount),
     price: nullableNum(v.price),
     quantity: nullableNum(v.quantity),
+    priceAsOf: typeof v.priceAsOf === "string" ? v.priceAsOf : null,
+    priceKind: v.priceKind === "realtime" || v.priceKind === "close" ? v.priceKind : null,
     done: v.done === true,
   };
 }
