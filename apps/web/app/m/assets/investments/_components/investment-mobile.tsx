@@ -9,7 +9,6 @@ import {
   type AccountSortOption,
 } from "@web/features/investments/utils/sort-accounts";
 import { useLinkedPortfolioStatus } from "@web/features/portfolio/utils/use-linked-portfolio-status";
-import { useIsReadOnly } from "@web/features/sharing/hooks/use-is-read-only";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { ResultSection } from "@web/seed-design/ui/result-section";
 import { AccountSummaryCard } from "./account-summary-card";
@@ -49,7 +48,6 @@ function useAccountSort(): [AccountSortOption, (value: AccountSortOption) => voi
  */
 export function InvestmentMobile() {
   const investments = useInvestmentStore((s) => s.investments);
-  const readOnly = useIsReadOnly();
   const statusFor = useLinkedPortfolioStatus();
 
   const [addOpen, setAddOpen] = useState(false);
@@ -73,14 +71,8 @@ export function InvestmentMobile() {
       <div className="flex min-h-[60dvh] flex-col">
         <ResultSection
           title="투자 계좌가 없어요"
-          description={
-            readOnly
-              ? "아직 등록된 투자 계좌가 없습니다."
-              : "첫 투자 계좌를 추가하고 자산의 성장을 추적해보세요."
-          }
-          primaryActionProps={
-            readOnly ? undefined : { children: "투자 계좌 추가", onClick: () => setAddOpen(true) }
-          }
+          description="첫 투자 계좌를 추가하고 자산의 성장을 추적해보세요."
+          primaryActionProps={{ children: "투자 계좌 추가", onClick: () => setAddOpen(true) }}
         />
         {addSheet}
       </div>
@@ -110,17 +102,15 @@ export function InvestmentMobile() {
           <AccountSummaryCard item={item} linkedPortfolio={statusByAccount.get(item.id) ?? null} />
         </div>
       ))}
-      {!readOnly && (
-        <>
-          <Divider />
-          <div className="flex justify-center pt-x4">
-            <ActionButton variant="ghost" size="medium" onClick={() => setAddOpen(true)}>
-              <Icon svg={<IconPlusLine />} />
-              투자 계좌 추가
-            </ActionButton>
-          </div>
-        </>
-      )}
+      <>
+        <Divider />
+        <div className="flex justify-center pt-x4">
+          <ActionButton variant="ghost" size="medium" onClick={() => setAddOpen(true)}>
+            <Icon svg={<IconPlusLine />} />
+            투자 계좌 추가
+          </ActionButton>
+        </div>
+      </>
 
       {addSheet}
       <SortSheet

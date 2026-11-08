@@ -35,7 +35,6 @@ interface DebtItemComponentProps {
   onUpdateDebt: <K extends keyof DebtsItem>(id: string, key: K, value: DebtsItem[K]) => void;
   onRemoveDebt: (id: string) => void;
   readOnly?: boolean;
-  ownerLabel?: string | null;
 }
 
 export function DebtItemComponent({
@@ -43,7 +42,6 @@ export function DebtItemComponent({
   onUpdateDebt,
   onRemoveDebt,
   readOnly = false,
-  ownerLabel = null,
 }: DebtItemComponentProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -67,14 +65,6 @@ export function DebtItemComponent({
       className={`gap-4 ${readOnly ? "border-amber-300 dark:border-amber-700" : ""}`}
     >
       <CardHeader>
-        {readOnly && ownerLabel && (
-          <Badge
-            variant="secondary"
-            className="self-start mb-1 bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-100 border border-amber-300 dark:border-amber-700"
-          >
-            공유대상 데이터 · {ownerLabel}
-          </Badge>
-        )}
         <div className="flex gap-2 flex-wrap sm:items-center max-sm:flex-col">
           <div className="flex items-center gap-2">
             <Badge variant={"secondary"}>{item.loanType}</Badge>

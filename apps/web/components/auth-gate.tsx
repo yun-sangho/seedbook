@@ -1,7 +1,6 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { usePathname } from "next/navigation";
 import { EntitySyncRunner } from "@web/components/entity-sync-runner";
 import { StorageModeSync } from "@web/components/storage-mode-sync";
 import { Button } from "@web/components/ui/button";
@@ -11,14 +10,8 @@ import { LogIn } from "lucide-react";
 // Next.js 가 빌드 타임에 치환하므로 클라이언트 번들에서도 사용 가능.
 const isDevEnv = process.env.NODE_ENV === "development";
 
-/**
- * 로그인 후 돌아갈 경로. 초대 링크(/invite/...)는 그 자리에서 다시 수락 흐름을
- * 이어가야 하므로 현재 경로를 그대로 callbackURL 로 쓴다. 그 외는 기본 /assets.
- */
-function resolveCallbackURL(pathname: string | null): string {
-  if (pathname && pathname.startsWith("/invite/")) return pathname;
-  return "/assets";
-}
+/** 로그인 후 돌아갈 경로. */
+const CALLBACK_URL = "/assets";
 
 async function signInWithDevBypass(callbackURL: string) {
   const response = await fetch("/api/auth/dev-login", { method: "POST" });
@@ -37,8 +30,7 @@ async function signInWithDevBypass(callbackURL: string) {
  */
 export function AuthGate({ children }: { children: ReactNode }) {
   const { data: session, isPending } = useSession();
-  const pathname = usePathname();
-  const callbackURL = resolveCallbackURL(pathname);
+  const callbackURL = CALLBACK_URL;
 
   if (isPending) {
     // better-auth 세션 조회 중에는 공백만 띄운다 (HydrationGate 가 이미 로딩 UI

@@ -20,7 +20,6 @@ interface SavingsItemComponentProps {
   onAddHistory: (id: string, date: string, balance: number) => void;
   onRemoveSavings: (id: string) => void;
   readOnly?: boolean;
-  ownerLabel?: string | null;
 }
 
 export function SavingsItemComponent({
@@ -30,7 +29,6 @@ export function SavingsItemComponent({
   onAddHistory,
   onRemoveSavings,
   readOnly = false,
-  ownerLabel = null,
 }: SavingsItemComponentProps) {
   const [isRecordsExpanded, setIsRecordsExpanded] = useState(false);
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
@@ -51,14 +49,6 @@ export function SavingsItemComponent({
       className={`gap-4 ${readOnly ? "border-amber-300 dark:border-amber-700" : ""}`}
     >
       <CardHeader>
-        {readOnly && ownerLabel && (
-          <Badge
-            variant="secondary"
-            className="self-start mb-1 bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-100 border border-amber-300 dark:border-amber-700"
-          >
-            공유대상 데이터 · {ownerLabel}
-          </Badge>
-        )}
         <div className="flex gap-2 flex-wrap sm:items-center max-sm:flex-col ">
           <div className="flex items-center gap-2">
             {readOnly ? (

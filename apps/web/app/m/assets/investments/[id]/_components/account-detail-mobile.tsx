@@ -25,7 +25,6 @@ import type { InvestmentItem } from "@web/features/investments/types/types";
 import { useAccountValuation } from "@web/features/investments/utils/use-account-valuation";
 import { stockPriceKey } from "@web/features/investments/utils/use-stock-prices";
 import { useLinkedPortfolioStatus } from "@web/features/portfolio/utils/use-linked-portfolio-status";
-import { useIsReadOnly } from "@web/features/sharing/hooks/use-is-read-only";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
   ChipTabsContent,
@@ -99,7 +98,6 @@ export function AccountDetailMobile({ id }: { id: string }) {
 }
 
 function AccountDetailBody({ item }: { item: InvestmentItem }) {
-  const readOnly = useIsReadOnly();
   const [tab, setTab] = useState<Tab>("holdings");
   const [editing, setEditing] = useState<Editing | null>(null);
   const [showAllRecords, setShowAllRecords] = useState(false);
@@ -134,7 +132,10 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
     cashTotal,
     totalValue,
     markHistoryDirty,
-  } = useAccountValuation(item, { readOnly, onSyncCurrentValue: syncCurrentValue });
+  } = useAccountValuation(item, {
+    readOnly: false,
+    onSyncCurrentValue: syncCurrentValue,
+  });
 
   // 모바일은 예수금을 하나로 다룬다: 첫 현금 항목(기본 예수금)을 고친다. PC 에서 만든
   // 추가 현금 항목이 있으면 합계에는 포함하되 여기서는 건드리지 않는다.
@@ -201,12 +202,12 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
             <InlineAmount
               label="투자원금"
               value={numberToKorean(item.initialInvestment) || "입력"}
-              onEdit={readOnly ? undefined : () => setEditing({ kind: "initial" })}
+              onEdit={() => setEditing({ kind: "initial" })}
             />
             <InlineAmount
               label={DEFAULT_CASH_LABEL}
               value={numberToKorean(deposit?.amount ?? 0) || "0원"}
-              onEdit={readOnly ? undefined : () => setEditing({ kind: "deposit" })}
+              onEdit={() => setEditing({ kind: "deposit" })}
             />
           </div>
           {otherCash.length > 0 && (
@@ -284,7 +285,7 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
                         // 수량은 이 줄에서 고치므로 "수정" 표시도 수량 옆에 둔다.
                         <span className="t4-regular text-fg-neutral-muted mt-[2px] inline-flex items-center gap-x1">
                           {detail}
-                          {!readOnly && <EditHint />}
+                          <EditHint />
                         </span>
                       }
                       suffix={
@@ -294,7 +295,6 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
                       }
                       alignItems="center"
                       rootProps={{ style: HOLDING_ROW_STYLE }}
-                      disabled={readOnly}
                       aria-label={`${h.name || h.ticker || "종목"} 수량 수정`}
                       onClick={() => setEditing({ kind: "holding", id: h.id })}
                     />
@@ -304,25 +304,21 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
             </List>
           )}
           {/* 종목 추가는 목록 맨 아래에 둔다 (목록을 다 본 뒤 이어서 추가하는 흐름). */}
-          {!readOnly && (
-            <div className="flex justify-center pt-x2">
-              <ActionButton
-                variant="ghost"
-                size="medium"
-                onClick={() => setEditing({ kind: "add-holding" })}
-              >
-                <Icon svg={<IconPlusLine />} />
-                종목 추가
-              </ActionButton>
-            </div>
-          )}
+          <div className="flex justify-center pt-x2">
+            <ActionButton
+              variant="ghost"
+              size="medium"
+              onClick={() => setEditing({ kind: "add-holding" })}
+            >
+              <Icon svg={<IconPlusLine />} />
+              종목 추가
+            </ActionButton>
+          </div>
         </ChipTabsContent>
 
         <ChipTabsContent value="records">
           <TabToolbar meta={sortedRecords.length > 0 ? `${sortedRecords.length}건` : undefined}>
-            {!readOnly && (
-              <AddButton onClick={() => setEditing({ kind: "add-history" })}>추가</AddButton>
-            )}
+            <AddButton onClick={() => setEditing({ kind: "add-history" })}>추가</AddButton>
           </TabToolbar>
           {sortedRecords.length === 0 ? (
             <EmptyLine>기록이 없습니다.</EmptyLine>
@@ -330,7 +326,7 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
             <List>
               {visibleRecords.map((r, index) => {
                 // 최신 기록은 현재 값과 연동되므로 삭제를 막는다 (데스크탑과 동일).
-                const deletable = !readOnly && index !== 0;
+                const deletable = index !== 0;
                 return (
                   <ListButtonItem
                     key={r.date}
@@ -365,18 +361,16 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
         </ChipTabsContent>
       </ChipTabsRoot>
 
-      {!readOnly && (
-        <HeaderAction>
-          <ActionButton
-            variant="ghost"
-            size="small"
-            aria-label="계좌 수정"
-            onClick={() => setEditing({ kind: "settings" })}
-          >
-            수정
-          </ActionButton>
-        </HeaderAction>
-      )}
+      <HeaderAction>
+        <ActionButton
+          variant="ghost"
+          size="small"
+          aria-label="계좌 수정"
+          onClick={() => setEditing({ kind: "settings" })}
+        >
+          수정
+        </ActionButton>
+      </HeaderAction>
 
       <SortSheet
         {...sheetProps(editing?.kind === "holdings-sort")}
@@ -386,82 +380,80 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
         onChange={setHoldingsSortOption}
       />
 
-      {!readOnly && (
-        <>
-          <EditAmountSheet
-            key={`initial-${editing?.kind === "initial"}`}
-            {...sheetProps(editing?.kind === "initial")}
-            title="투자원금"
-            value={item.initialInvestment}
-            onSave={(value) => updateInvestment(item.id, "initialInvestment", value)}
-          />
-          <EditAmountSheet
-            key={`deposit-${editing?.kind === "deposit"}`}
-            {...sheetProps(editing?.kind === "deposit")}
-            title={DEFAULT_CASH_LABEL}
-            value={deposit?.amount ?? 0}
-            onSave={saveDeposit}
-          />
-          {editingHolding && (
-            <EditHoldingSheet
-              key={editingHolding.id}
-              {...sheetProps(true)}
-              holding={editingHolding}
-              price={holdingPrice(editingHolding.market, editingHolding.ticker)}
-              onSave={(quantity) => {
-                updateStockHolding(item.id, editingHolding.id, "quantity", quantity);
-                markHistoryDirty();
-              }}
-              onDelete={() => {
-                removeStockHolding(item.id, editingHolding.id);
-                markHistoryDirty();
-              }}
-            />
-          )}
-          <AccountSettingsSheet
-            key={`settings-${editing?.kind === "settings"}`}
-            {...sheetProps(editing?.kind === "settings")}
-            item={item}
-            onRename={(name) => updateInvestment(item.id, "accountName", name)}
-            onColorChange={(color) => updateInvestment(item.id, "color", color)}
-            onDelete={deleteAccount}
-          />
-          <AddHoldingFlow
-            {...sheetProps(editing?.kind === "add-holding")}
-            existingHoldingKeys={existingHoldingKeys}
-            onAdd={(stock: Stock, quantity: number) => {
-              addStockHolding(item.id, {
-                market: stock.market,
-                ticker: stock.ticker,
-                name: stock.name,
-                currency: stock.currency,
-                quantity,
-              });
+      <>
+        <EditAmountSheet
+          key={`initial-${editing?.kind === "initial"}`}
+          {...sheetProps(editing?.kind === "initial")}
+          title="투자원금"
+          value={item.initialInvestment}
+          onSave={(value) => updateInvestment(item.id, "initialInvestment", value)}
+        />
+        <EditAmountSheet
+          key={`deposit-${editing?.kind === "deposit"}`}
+          {...sheetProps(editing?.kind === "deposit")}
+          title={DEFAULT_CASH_LABEL}
+          value={deposit?.amount ?? 0}
+          onSave={saveDeposit}
+        />
+        {editingHolding && (
+          <EditHoldingSheet
+            key={editingHolding.id}
+            {...sheetProps(true)}
+            holding={editingHolding}
+            price={holdingPrice(editingHolding.market, editingHolding.ticker)}
+            onSave={(quantity) => {
+              updateStockHolding(item.id, editingHolding.id, "quantity", quantity);
+              markHistoryDirty();
+            }}
+            onDelete={() => {
+              removeStockHolding(item.id, editingHolding.id);
               markHistoryDirty();
             }}
           />
-          <AddHistorySheet
-            {...sheetProps(editing?.kind === "add-history")}
-            onAdd={(date, initial, current) => addHistoryRecord(item.id, date, initial, current)}
-          />
-          <ConfirmDialog
-            open={editing?.kind === "delete-record"}
-            onOpenChange={(next) => !next && close()}
-            title="이 기록을 삭제할까요?"
-            description={
-              editing?.kind === "delete-record"
-                ? new Date(editing.date).toLocaleDateString("ko-KR")
-                : undefined
+        )}
+        <AccountSettingsSheet
+          key={`settings-${editing?.kind === "settings"}`}
+          {...sheetProps(editing?.kind === "settings")}
+          item={item}
+          onRename={(name) => updateInvestment(item.id, "accountName", name)}
+          onColorChange={(color) => updateInvestment(item.id, "color", color)}
+          onDelete={deleteAccount}
+        />
+        <AddHoldingFlow
+          {...sheetProps(editing?.kind === "add-holding")}
+          existingHoldingKeys={existingHoldingKeys}
+          onAdd={(stock: Stock, quantity: number) => {
+            addStockHolding(item.id, {
+              market: stock.market,
+              ticker: stock.ticker,
+              name: stock.name,
+              currency: stock.currency,
+              quantity,
+            });
+            markHistoryDirty();
+          }}
+        />
+        <AddHistorySheet
+          {...sheetProps(editing?.kind === "add-history")}
+          onAdd={(date, initial, current) => addHistoryRecord(item.id, date, initial, current)}
+        />
+        <ConfirmDialog
+          open={editing?.kind === "delete-record"}
+          onOpenChange={(next) => !next && close()}
+          title="이 기록을 삭제할까요?"
+          description={
+            editing?.kind === "delete-record"
+              ? new Date(editing.date).toLocaleDateString("ko-KR")
+              : undefined
+          }
+          onConfirm={() => {
+            if (editing?.kind === "delete-record") {
+              removeInvestmentHistoryRecord(item.id, editing.date);
             }
-            onConfirm={() => {
-              if (editing?.kind === "delete-record") {
-                removeInvestmentHistoryRecord(item.id, editing.date);
-              }
-              close();
-            }}
-          />
-        </>
-      )}
+            close();
+          }}
+        />
+      </>
     </div>
   );
 }

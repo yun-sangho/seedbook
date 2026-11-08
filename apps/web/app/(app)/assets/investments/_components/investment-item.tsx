@@ -59,7 +59,6 @@ interface InvestmentItemComponentProps {
   /** 공유받은 사용자의 데이터를 읽기 전용으로 표시할 때 true. */
   readOnly?: boolean;
   /** 공유 출처 라벨 (예: "공유대상 데이터 · 홍길동"). readOnly 일 때만 표시. */
-  ownerLabel?: string | null;
 }
 
 function HoldingQuantityInput({
@@ -131,7 +130,6 @@ export function InvestmentItemComponent({
   onUpdateCashItem,
   onRemoveCashItem,
   readOnly = false,
-  ownerLabel = null,
 }: InvestmentItemComponentProps) {
   const [isRecordsExpanded, setIsRecordsExpanded] = useState(false);
   const [isAddHistoryModalOpen, setIsAddHistoryModalOpen] = useState(false);
@@ -245,14 +243,6 @@ export function InvestmentItemComponent({
       className={`gap-4 ${readOnly ? "border-amber-300 dark:border-amber-700" : ""}`}
     >
       <CardHeader>
-        {readOnly && ownerLabel && (
-          <Badge
-            variant="secondary"
-            className="self-start mb-1 bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-100 border border-amber-300 dark:border-amber-700"
-          >
-            공유대상 데이터 · {ownerLabel}
-          </Badge>
-        )}
         <div className="flex gap-2 flex-wrap sm:items-center max-sm:flex-col ">
           <div className="flex items-center gap-2">
             {readOnly ? (

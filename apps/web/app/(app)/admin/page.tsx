@@ -8,7 +8,6 @@ import { useDebtsStore } from "@web/features/debts/stores/debts-store";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { useRealAssetsStore } from "@web/features/real-assets/stores/real-assets-store";
 import { useSavingsStore } from "@web/features/savings/stores/savings-store";
-import { SharingSection } from "@web/features/sharing/components/sharing-section";
 import { useAllStoresHydrated } from "@web/lib/zustand-hydration";
 import { Database, Download, Upload } from "lucide-react";
 import { StorageModeCard } from "./_components/storage-mode-card";
@@ -136,7 +135,6 @@ export default function AdminPage() {
       <StorageModeCard />
 
       {/* 데이터 공유 */}
-      <SharingSection />
 
       {/* 데이터 요약 */}
       <Card>

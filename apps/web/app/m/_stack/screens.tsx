@@ -18,7 +18,6 @@ import { useActivity } from "@stackflow/react";
 import { HeaderActionSlotContext } from "@web/components/mobile/header-action";
 import { MobileMoreSheet } from "@web/components/mobile/mobile-more-sheet";
 import { ProfileButton, ProfileSheet } from "@web/components/mobile/profile-menu";
-import { SharedViewBanner } from "@web/features/sharing/components/shared-view-banner";
 import { usePwaInstall } from "@web/hooks/use-pwa-install";
 import { cn } from "@web/lib/utils";
 import {
@@ -87,7 +86,6 @@ export function TabScreen({ name, children }: { name: TabActivityName; children:
         </AppBarRight>
       </AppBar>
       <AppScreenContent>
-        <SharedViewBanner />
         <div
           style={{
             // 하단 탭바 + 홈 인디케이터만큼 여백.
@@ -205,7 +203,6 @@ export function DetailScreen({ title, subtitle, dotColor, children }: DetailScre
       </AppBar>
       <AppScreenContent>
         <HeaderActionSlotContext.Provider value={actionSlot}>
-          <SharedViewBanner />
           <div style={{ paddingBottom: "var(--seed-safe-area-bottom)" }}>{children}</div>
         </HeaderActionSlotContext.Provider>
       </AppScreenContent>

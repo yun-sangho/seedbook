@@ -4,7 +4,6 @@ import { AuthGate } from "@web/components/auth-gate";
 import { AutoProgressTracker } from "@web/components/auto-progress-tracker";
 import { HydrationGate } from "@web/components/hydration-gate";
 import { SidebarProvider } from "@web/components/ui/sidebar";
-import { SharedViewBanner } from "@web/features/sharing/components/shared-view-banner";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -14,7 +13,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <SidebarProvider>
           <AppSidebar />
           <div className="w-full h-full">
-            <SharedViewBanner />
             <AppHeader />
             <main className="w-full h-full max-w-screen-lg mx-auto">{children}</main>
           </div>

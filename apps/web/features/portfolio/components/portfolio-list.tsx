@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Button } from "@web/components/ui/button";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { useStockPrices } from "@web/features/investments/utils/use-stock-prices";
-import { useIsReadOnly } from "@web/features/sharing/hooks/use-is-read-only";
 import { cn } from "@web/lib/utils";
 import { AlertTriangle, CheckCircle2, ChevronRight, Trash2 } from "lucide-react";
 import { usePortfolioStore } from "../stores/portfolio-store";
@@ -22,7 +21,6 @@ interface PortfolioListProps {
 export function PortfolioList({ portfolios }: PortfolioListProps) {
   const removePortfolio = usePortfolioStore((s) => s.removePortfolio);
   const investments = useInvestmentStore((s) => s.investments);
-  const isReadOnly = useIsReadOnly();
 
   // 모든 계좌의 holdings 를 한 번에 받아와 리스트 내 모든 포트폴리오가 공유.
   const allHoldings = useMemo(
@@ -108,24 +106,23 @@ export function PortfolioList({ portfolios }: PortfolioListProps) {
                   )}
                 </div>
               </div>
-              {!isReadOnly && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (confirm(`"${portfolio.name}" 포트폴리오를 삭제할까요?`)) {
-                      removePortfolio(portfolio.id);
-                    }
-                  }}
-                  aria-label="포트폴리오 삭제"
-                  className="text-muted-foreground hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (confirm(`"${portfolio.name}" 포트폴리오를 삭제할까요?`)) {
+                    removePortfolio(portfolio.id);
+                  }
+                }}
+                aria-label="포트폴리오 삭제"
+                className="text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+
               <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
             </div>
           </Link>

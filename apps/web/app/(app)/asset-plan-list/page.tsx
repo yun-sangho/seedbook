@@ -4,14 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@web/components/ui/button";
 import { useAssetPlanStore } from "@web/features/asset-plan/stores/asset-plan-store";
-import { useIsReadOnly } from "@web/features/sharing/hooks/use-is-read-only";
 import { numberToKorean } from "@web/utils/number-format";
 import { Calculator, Calendar, ChevronLeft, Plus, Trash2, TrendingUp } from "lucide-react";
 
 export default function AssetPlanListPage() {
   const plans = useAssetPlanStore((state) => state.plans);
   const deletePlan = useAssetPlanStore((state) => state.deletePlan);
-  const isReadOnly = useIsReadOnly();
   const [isLoaded, setIsLoaded] = useState(false);
 
   // 클라이언트 사이드에서만 실행되도록 useEffect 사용
@@ -70,27 +68,23 @@ export default function AssetPlanListPage() {
                 새로운 자산계획을 만들어 미래 자산 증가를 시뮬레이션해보세요
               </p>
             </div>
-            {!isReadOnly && (
-              <Link href="/asset-plan">
-                <Button className="flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  자산계획 만들기
-                </Button>
-              </Link>
-            )}
+            <Link href="/asset-plan">
+              <Button className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                자산계획 만들기
+              </Button>
+            </Link>
           </div>
         ) : (
           <div className="space-y-6">
             {/* 새 계획 만들기 버튼 */}
-            {!isReadOnly && (
-              <div className="flex justify-end">
-                <Link href="/asset-plan">
-                  <Button className="flex items-center gap-2">
-                    <Plus className="w-4 h-4" />새 자산계획 만들기
-                  </Button>
-                </Link>
-              </div>
-            )}
+            <div className="flex justify-end">
+              <Link href="/asset-plan">
+                <Button className="flex items-center gap-2">
+                  <Plus className="w-4 h-4" />새 자산계획 만들기
+                </Button>
+              </Link>
+            </div>
 
             {/* 자산계획 목록 */}
             <div className="grid grid-cols-1 gap-6">
@@ -110,16 +104,14 @@ export default function AssetPlanListPage() {
                         <div>생성일: {plan.createdAt.toLocaleDateString()}</div>
                       </div>
                     </div>
-                    {!isReadOnly && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeletePlan(plan.id, plan.planName)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeletePlan(plan.id, plan.planName)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">

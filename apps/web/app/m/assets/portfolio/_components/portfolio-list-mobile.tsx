@@ -6,7 +6,6 @@ import { useFlow } from "@stackflow/react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import { resolvePortfolioAccounts } from "@web/features/portfolio/utils/resolve-portfolio-accounts";
-import { useIsReadOnly } from "@web/features/sharing/hooks/use-is-read-only";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { Badge } from "@web/seed-design/ui/badge";
 import { ResultSection } from "@web/seed-design/ui/result-section";
@@ -15,7 +14,6 @@ export function PortfolioListMobile() {
   const portfolios = usePortfolioStore((s) => s.portfolios);
   const addPortfolio = usePortfolioStore((s) => s.addPortfolio);
   const investments = useInvestmentStore((s) => s.investments);
-  const readOnly = useIsReadOnly();
   const { push } = useFlow();
 
   const handleAdd = () => {
@@ -28,14 +26,8 @@ export function PortfolioListMobile() {
       <div className="flex min-h-[60dvh] flex-col">
         <ResultSection
           title="포트폴리오가 없어요"
-          description={
-            readOnly
-              ? "아직 등록된 포트폴리오가 없습니다."
-              : "목표 비중을 정의하면 리밸런싱 탭에서 실제 보유와 비교할 수 있어요."
-          }
-          primaryActionProps={
-            readOnly ? undefined : { children: "첫 포트폴리오 만들기", onClick: handleAdd }
-          }
+          description="목표 비중을 정의하면 리밸런싱 탭에서 실제 보유와 비교할 수 있어요."
+          primaryActionProps={{ children: "첫 포트폴리오 만들기", onClick: handleAdd }}
         />
       </div>
     );
@@ -96,17 +88,15 @@ export function PortfolioListMobile() {
         );
       })}
 
-      {!readOnly && (
-        <>
-          <Divider />
-          <div className="flex justify-center pt-x4">
-            <ActionButton variant="ghost" size="medium" onClick={handleAdd}>
-              <Icon svg={<IconPlusLine />} />
-              포트폴리오 추가
-            </ActionButton>
-          </div>
-        </>
-      )}
+      <>
+        <Divider />
+        <div className="flex justify-center pt-x4">
+          <ActionButton variant="ghost" size="medium" onClick={handleAdd}>
+            <Icon svg={<IconPlusLine />} />
+            포트폴리오 추가
+          </ActionButton>
+        </div>
+      </>
     </div>
   );
 }

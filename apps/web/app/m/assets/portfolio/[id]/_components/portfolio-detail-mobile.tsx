@@ -17,7 +17,6 @@ import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-stor
 import type { PortfolioItem } from "@web/features/portfolio/types/types";
 import { accountPortfolioMap } from "@web/features/portfolio/utils/portfolio-links";
 import { validateAllocations } from "@web/features/portfolio/utils/validate-allocations";
-import { useIsReadOnly } from "@web/features/sharing/hooks/use-is-read-only";
 import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { Badge } from "@web/seed-design/ui/badge";
@@ -88,7 +87,6 @@ export function PortfolioDetailMobile({ id }: { id: string }) {
 }
 
 function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
-  const readOnly = useIsReadOnly();
   const [tab, setTab] = useState<Tab>("allocations");
   const [editing, setEditing] = useState<Editing | null>(null);
 
@@ -149,7 +147,7 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
           <InlineAmount
             label="이격 경고"
             value={`${portfolio.driftThresholdPercent}% 초과 시`}
-            onEdit={readOnly ? undefined : () => setEditing({ kind: "drift" })}
+            onEdit={() => setEditing({ kind: "drift" })}
           />
         </div>
       </section>
@@ -198,7 +196,7 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
                     detail={
                       <span className="t4-regular text-fg-neutral-muted mt-[2px] inline-flex items-center gap-x1">
                         {a.market && a.ticker ? `${a.market} · ${a.ticker}` : "종목 미선택"}
-                        {!readOnly && <EditHint />}
+                        <EditHint />
                       </span>
                     }
                     suffix={
@@ -208,7 +206,6 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
                     }
                     alignItems="center"
                     rootProps={{ style: ROW_STYLE }}
-                    disabled={readOnly}
                     aria-label={`${a.name || "종목"} 비중 수정`}
                     onClick={() => setEditing({ kind: "allocation", id: a.id })}
                   />
@@ -217,26 +214,24 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
             </List>
           )}
           {/* 종목 추가는 목록 맨 아래에 둔다 (계좌 상세와 같은 흐름). 검색 또는 계좌·포트폴리오에서 가져오기. */}
-          {!readOnly && (
-            <div className="flex justify-center gap-x2 pt-x2">
-              <ActionButton
-                variant="ghost"
-                size="medium"
-                onClick={() => setEditing({ kind: "add-allocation" })}
-              >
-                <Icon svg={<IconPlusLine />} />
-                종목 추가
-              </ActionButton>
-              <ActionButton
-                variant="ghost"
-                size="medium"
-                onClick={() => setEditing({ kind: "import-allocations" })}
-              >
-                <Icon svg={<IconArrowDownHorizlineLine />} />
-                가져오기
-              </ActionButton>
-            </div>
-          )}
+          <div className="flex justify-center gap-x2 pt-x2">
+            <ActionButton
+              variant="ghost"
+              size="medium"
+              onClick={() => setEditing({ kind: "add-allocation" })}
+            >
+              <Icon svg={<IconPlusLine />} />
+              종목 추가
+            </ActionButton>
+            <ActionButton
+              variant="ghost"
+              size="medium"
+              onClick={() => setEditing({ kind: "import-allocations" })}
+            >
+              <Icon svg={<IconArrowDownHorizlineLine />} />
+              가져오기
+            </ActionButton>
+          </div>
         </ChipTabsContent>
 
         <ChipTabsContent value="accounts">
@@ -271,7 +266,6 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
                   }
                   checked={linkedIds.has(inv.id)}
                   onCheckedChange={() => toggleAccountLink(portfolio.id, inv.id)}
-                  disabled={readOnly}
                 />
               ))}
             </List>
@@ -284,7 +278,6 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
               aria-label="메모"
               value={portfolio.note}
               onValueChange={({ value }) => updatePortfolio(portfolio.id, "note", value)}
-              readOnly={readOnly}
             >
               <TextFieldTextarea placeholder="리밸런싱 기준, 매매 규칙 등을 기록" />
             </TextField>
@@ -292,55 +285,39 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
         </ChipTabsContent>
       </ChipTabsRoot>
 
-      {!readOnly && (
-        <>
-          <HeaderAction>
-            <ActionButton
-              variant="ghost"
-              size="small"
-              aria-label="포트폴리오 수정"
-              onClick={() => setEditing({ kind: "settings" })}
-            >
-              수정
-            </ActionButton>
-          </HeaderAction>
+      <>
+        <HeaderAction>
+          <ActionButton
+            variant="ghost"
+            size="small"
+            aria-label="포트폴리오 수정"
+            onClick={() => setEditing({ kind: "settings" })}
+          >
+            수정
+          </ActionButton>
+        </HeaderAction>
 
-          <PortfolioSettingsSheet
-            key={`settings-${editing?.kind === "settings"}`}
-            {...sheetProps(editing?.kind === "settings")}
-            portfolio={portfolio}
-            onRename={(name) => updatePortfolio(portfolio.id, "name", name)}
-            onColorChange={(color) => updatePortfolio(portfolio.id, "color", color)}
-            onDelete={deletePortfolio}
-          />
-          <EditDriftThresholdSheet
-            key={`drift-${editing?.kind === "drift"}`}
-            {...sheetProps(editing?.kind === "drift")}
-            value={portfolio.driftThresholdPercent}
-            onSave={(value) => setDriftThreshold(portfolio.id, value)}
-          />
-          <ImportAllocationsSheet
-            key={`import-${editing?.kind === "import-allocations"}`}
-            {...sheetProps(editing?.kind === "import-allocations")}
-            targetPortfolioId={portfolio.id}
-            existingKeys={usedKeys}
-            onImport={(items) =>
-              items.forEach(({ stock, targetPercent }) =>
-                addAllocation(portfolio.id, {
-                  market: stock.market,
-                  ticker: stock.ticker,
-                  name: stock.name,
-                  currency: stock.currency,
-                  targetPercent,
-                })
-              )
-            }
-          />
-          <AddAllocationFlow
-            {...sheetProps(editing?.kind === "add-allocation")}
-            disabledKeys={usedKeys}
-            remainingPercent={100 - totalPct}
-            onAdd={(stock, targetPercent) =>
+        <PortfolioSettingsSheet
+          key={`settings-${editing?.kind === "settings"}`}
+          {...sheetProps(editing?.kind === "settings")}
+          portfolio={portfolio}
+          onRename={(name) => updatePortfolio(portfolio.id, "name", name)}
+          onColorChange={(color) => updatePortfolio(portfolio.id, "color", color)}
+          onDelete={deletePortfolio}
+        />
+        <EditDriftThresholdSheet
+          key={`drift-${editing?.kind === "drift"}`}
+          {...sheetProps(editing?.kind === "drift")}
+          value={portfolio.driftThresholdPercent}
+          onSave={(value) => setDriftThreshold(portfolio.id, value)}
+        />
+        <ImportAllocationsSheet
+          key={`import-${editing?.kind === "import-allocations"}`}
+          {...sheetProps(editing?.kind === "import-allocations")}
+          targetPortfolioId={portfolio.id}
+          existingKeys={usedKeys}
+          onImport={(items) =>
+            items.forEach(({ stock, targetPercent }) =>
               addAllocation(portfolio.id, {
                 market: stock.market,
                 ticker: stock.ticker,
@@ -348,22 +325,36 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
                 currency: stock.currency,
                 targetPercent,
               })
+            )
+          }
+        />
+        <AddAllocationFlow
+          {...sheetProps(editing?.kind === "add-allocation")}
+          disabledKeys={usedKeys}
+          remainingPercent={100 - totalPct}
+          onAdd={(stock, targetPercent) =>
+            addAllocation(portfolio.id, {
+              market: stock.market,
+              ticker: stock.ticker,
+              name: stock.name,
+              currency: stock.currency,
+              targetPercent,
+            })
+          }
+        />
+        {editingAllocation && (
+          <EditAllocationSheet
+            key={editingAllocation.id}
+            {...sheetProps(true)}
+            allocation={editingAllocation}
+            remainingPercent={100 - totalPct}
+            onSave={(percent) =>
+              updateAllocation(portfolio.id, editingAllocation.id, "targetPercent", percent)
             }
+            onDelete={() => removeAllocation(portfolio.id, editingAllocation.id)}
           />
-          {editingAllocation && (
-            <EditAllocationSheet
-              key={editingAllocation.id}
-              {...sheetProps(true)}
-              allocation={editingAllocation}
-              remainingPercent={100 - totalPct}
-              onSave={(percent) =>
-                updateAllocation(portfolio.id, editingAllocation.id, "targetPercent", percent)
-              }
-              onDelete={() => removeAllocation(portfolio.id, editingAllocation.id)}
-            />
-          )}
-        </>
-      )}
+        )}
+      </>
     </div>
   );
 }

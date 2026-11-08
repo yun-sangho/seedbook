@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@web/components/ui/button";
 import { useAssetPlanStore } from "@web/features/asset-plan/stores/asset-plan-store";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
-import { useIsReadOnly } from "@web/features/sharing/hooks/use-is-read-only";
 import { preparePlanComparisonChartData } from "@web/utils/plan-comparison-utils";
 import { TrendingUp } from "lucide-react";
 import { AccountPlansSection } from "./_components/account-plans-section";
@@ -20,7 +19,6 @@ export default function AssetPlanPage() {
   const router = useRouter();
   const investments = useInvestmentStore((state) => state.investments);
   const addPlan = useAssetPlanStore((state) => state.addPlan);
-  const isReadOnly = useIsReadOnly();
   const validInvestments = investments.filter((item) => item.currentValue > 0);
 
   // 폼 상태 관리
@@ -247,11 +245,9 @@ export default function AssetPlanPage() {
                   취소
                 </Button>
               </Link>
-              {!isReadOnly && (
-                <Button type="submit" disabled={!isFormValid()} className="px-8">
-                  자산계획 생성하기
-                </Button>
-              )}
+              <Button type="submit" disabled={!isFormValid()} className="px-8">
+                자산계획 생성하기
+              </Button>
             </div>
           </form>
         )}

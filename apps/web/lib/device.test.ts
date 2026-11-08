@@ -119,9 +119,8 @@ describe("decideMobileRoute", () => {
     expect(decideMobileRoute("/admin", "mobile").type).toBe("redirect");
   });
 
-  it("keeps the landing page and invite links untouched on mobile", () => {
+  it("keeps the landing page untouched on mobile", () => {
     expect(decideMobileRoute("/", "mobile")).toEqual({ type: "pass" });
-    expect(decideMobileRoute("/invite/tok", "mobile")).toEqual({ type: "pass" });
   });
 
   it("does not treat a path that merely shares a prefix as an app page", () => {

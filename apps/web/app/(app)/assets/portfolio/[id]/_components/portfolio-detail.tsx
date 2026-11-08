@@ -7,7 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@web/components/ui/tab
 import { PortfolioComparison } from "@web/features/portfolio/components/portfolio-comparison";
 import { PortfolioEditor } from "@web/features/portfolio/components/portfolio-editor";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
-import { useIsReadOnly } from "@web/features/sharing/hooks/use-is-read-only";
 import { ArrowLeft, Trash2 } from "lucide-react";
 
 interface PortfolioDetailProps {
@@ -17,7 +16,6 @@ interface PortfolioDetailProps {
 export function PortfolioDetail({ id }: PortfolioDetailProps) {
   const portfolio = usePortfolioStore((s) => s.portfolios.find((p) => p.id === id));
   const removePortfolio = usePortfolioStore((s) => s.removePortfolio);
-  const isReadOnly = useIsReadOnly();
   const router = useRouter();
 
   if (!portfolio) {
@@ -46,23 +44,21 @@ export function PortfolioDetail({ id }: PortfolioDetailProps) {
             목록
           </Link>
         </Button>
-        {!isReadOnly && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              if (confirm(`"${portfolio.name}" 포트폴리오를 삭제할까요?`)) {
-                removePortfolio(portfolio.id);
-                router.push("/assets/portfolio");
-              }
-            }}
-            className="text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 className="h-4 w-4" />
-            삭제
-          </Button>
-        )}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            if (confirm(`"${portfolio.name}" 포트폴리오를 삭제할까요?`)) {
+              removePortfolio(portfolio.id);
+              router.push("/assets/portfolio");
+            }
+          }}
+          className="text-muted-foreground hover:text-destructive"
+        >
+          <Trash2 className="h-4 w-4" />
+          삭제
+        </Button>
       </div>
 
       <div className="border rounded-xl bg-card">
