@@ -1,0 +1,75 @@
+name: CI
+
+# 깨끗한 checkout 에서 포맷 · lint · 타입 · 테스트 · 빌드를 확인한다. 로컬 작업 트리에만 있고
+# 커밋되지 않은 파일에 기대는 커밋도 여기서 걸린다.
+#   - PR 마다 실행
+#   - main push 때는 deploy.yml 이 이 워크플로를 먼저 불러, 통과해야 이미지 빌드/배포로 간다.
+on:
+  pull_request:
+  workflow_call:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      # DB 통합 테스트 (`test:db`). apps/web/test/db 의 기본 URL 과 같은 계정을 쓴다 —
+      # 테스트가 `seedbook_test` DB 를 만들고 drizzle 마이그레이션을 적용한다.
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: seedbook
+          POSTGRES_PASSWORD: seedbook
+          POSTGRES_DB: seedbook
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U seedbook"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Next.js 빌드 중 익명 통계 전송 끄기.
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      # 버전은 package.json 의 packageManager (pnpm@8.15.6) 를 따른다.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # web 의 타입 / 테스트 / 빌드가 database 패키지의 dist 를 쓴다.
+      - name: Build database package
+        run: pnpm --filter @seedbook/database build
+
+      - name: Format
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm check-types
+
+      - name: Unit tests
+        run: pnpm --filter @seedbook/web test
+
+      - name: DB integration tests
+        run: pnpm --filter @seedbook/web test:db
+
+      - name: Build web
+        run: pnpm --filter @seedbook/web build

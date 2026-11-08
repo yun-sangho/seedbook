@@ -18,7 +18,15 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
+  # 깨끗한 checkout 에서 포맷 · lint · 타입 · 테스트 · 빌드 확인 (ci.yml). 통과해야 이미지를
+  # 빌드하고 배포한다.
+  checks:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
   build:
+    needs: checks
     # 서버가 ARM64 (OCI Ampere). public repo 는 ubuntu-*-arm runner 를 무료로
     # 쓸 수 있어 native arm64 빌드로 진행 — QEMU emulation 단계 불필요.
     runs-on: ubuntu-24.04-arm
