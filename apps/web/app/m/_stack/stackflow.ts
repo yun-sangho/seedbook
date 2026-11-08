@@ -3,6 +3,7 @@ import { defineConfig } from "@stackflow/config";
 import { historySyncPlugin } from "@stackflow/plugin-history-sync";
 import { basicRendererPlugin } from "@stackflow/plugin-renderer-basic";
 import { stackflow } from "@stackflow/react";
+import { isIOSUserAgent } from "@web/lib/pwa-install";
 import {
   AccountDetailActivity,
   AccountsTabActivity,
@@ -12,6 +13,7 @@ import {
   RebalancingDetailActivity,
   RebalancingTabActivity,
 } from "./activities";
+import { nativeBackGesturePlugin } from "./native-back-gesture-plugin";
 import { createNextAwareHistory } from "./next-aware-history";
 
 /**
@@ -86,6 +88,10 @@ export const { Stack } = stackflow({
       fallbackActivity: () => "HomeTab",
       // 첫 렌더 중 history 기록이 Next 라우터를 setState 하지 않도록 (next-aware-history.ts).
       history: createNextAwareHistory(),
+    }),
+    // iOS 는 OS 스와이프 제스처가 전환 애니메이션을 이미 보여준다 (native-back-gesture-plugin.ts).
+    nativeBackGesturePlugin({
+      enabled: () => isIOSUserAgent(navigator.userAgent, navigator.maxTouchPoints),
     }),
   ],
 });

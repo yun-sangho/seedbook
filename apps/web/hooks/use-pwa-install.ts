@@ -32,7 +32,7 @@ export function usePwaInstall(): {
 
   useEffect(() => {
     setStandalone(isStandaloneDisplay());
-    setIsIOS(isIOSUserAgent(navigator.userAgent));
+    setIsIOS(isIOSUserAgent(navigator.userAgent, navigator.maxTouchPoints));
 
     const onPrompt = (event: Event) => {
       // 브라우저 기본 미니 인포바 대신 우리 버튼에서 띄운다.

@@ -1,4 +1,5 @@
 import { createBrowserHistory, type History } from "history";
+import { withBrowserPopFlag } from "./native-back-gesture-plugin";
 
 /**
  * Stackflow history sync 가 쓸 브라우저 history.
@@ -43,6 +44,8 @@ function bindingProxy<T extends object>(target: T, overrides: Partial<Record<key
   });
 }
 
+type PopListener = (event: PopStateEvent) => void;
+
 export function createNextAwareHistory(): History {
   const nativeHistory = window.history;
   const historyProxy = bindingProxy(nativeHistory, {
@@ -51,5 +54,26 @@ export function createNextAwareHistory(): History {
     replaceState: (data: HistoryData, unused: string, url?: string | URL | null) =>
       nativeHistory.replaceState(initialRender ? withNextInternalState(data) : data, unused, url),
   });
-  return createBrowserHistory({ window: bindingProxy(window, { history: historyProxy }) });
+
+  // history 의 popstate 리스너를 감싸 OS 제스처 이동을 표시한다 (native-back-gesture-plugin.ts).
+  const wrapped = new Map<PopListener, PopListener>();
+  const addEventListener = (type: string, listener: PopListener, options?: unknown) => {
+    if (type !== "popstate")
+      return window.addEventListener(
+        type,
+        listener as EventListener,
+        options as AddEventListenerOptions
+      );
+    const wrapper = wrapped.get(listener) ?? withBrowserPopFlag(listener);
+    wrapped.set(listener, wrapper);
+    window.addEventListener(type, wrapper as EventListener, options as AddEventListenerOptions);
+  };
+  const removeEventListener = (type: string, listener: PopListener, options?: unknown) => {
+    const target = type === "popstate" ? (wrapped.get(listener) ?? listener) : listener;
+    window.removeEventListener(type, target as EventListener, options as EventListenerOptions);
+  };
+
+  return createBrowserHistory({
+    window: bindingProxy(window, { history: historyProxy, addEventListener, removeEventListener }),
+  });
 }

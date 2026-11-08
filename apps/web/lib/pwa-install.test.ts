@@ -3,6 +3,9 @@ import { isIOSUserAgent, needsSeparateStorageNotice, resolveInstallMode } from "
 
 const IPHONE_SAFARI =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
+// iPadOS 13+ Safari 는 "데스크톱 웹사이트 요청" 이 기본이라 Mac 과 같은 UA 를 보낸다.
+const MAC_SAFARI =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15";
 const ANDROID_CHROME =
   "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36";
 
@@ -13,6 +16,18 @@ describe("isIOSUserAgent", () => {
 
   it("does not treat Android as iOS", () => {
     expect(isIOSUserAgent(ANDROID_CHROME)).toBe(false);
+  });
+
+  it("detects an iPad that reports a desktop Mac user agent (iPadOS 13+)", () => {
+    expect(isIOSUserAgent(MAC_SAFARI, 5)).toBe(true);
+  });
+
+  it("does not treat a Mac without touch support as iOS", () => {
+    expect(isIOSUserAgent(MAC_SAFARI, 0)).toBe(false);
+  });
+
+  it("does not treat a Mac as iOS when touch points are unknown", () => {
+    expect(isIOSUserAgent(MAC_SAFARI)).toBe(false);
   });
 });
 

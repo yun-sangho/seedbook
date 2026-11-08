@@ -10,8 +10,13 @@ import type { StorageMode } from "@web/lib/storage-mode";
  */
 export type InstallMode = "installed" | "prompt" | "ios-manual" | "unavailable";
 
-export function isIOSUserAgent(userAgent: string): boolean {
-  return /iPhone|iPad|iPod/i.test(userAgent);
+/**
+ * iPadOS 13+ Safari 는 Mac 과 같은 UA 를 보내므로, "Mac UA 인데 멀티터치" 를 iPad 로 본다
+ * (Mac 은 `navigator.maxTouchPoints` 가 0). `maxTouchPoints` 를 모르면 Mac 으로 둔다.
+ */
+export function isIOSUserAgent(userAgent: string, maxTouchPoints = 0): boolean {
+  if (/iPhone|iPad|iPod/i.test(userAgent)) return true;
+  return /Macintosh/i.test(userAgent) && maxTouchPoints > 1;
 }
 
 export function resolveInstallMode(input: {
