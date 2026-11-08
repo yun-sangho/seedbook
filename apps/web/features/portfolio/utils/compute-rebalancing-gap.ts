@@ -48,6 +48,21 @@ export interface RebalancingSummary {
   cashRow?: RebalancingGapRow;
 }
 
+/**
+ * 포트폴리오 목표 종목의 현재 평가액 합. 리밸런싱의 기준 금액은 이 값 + 예수금이어야 한다 —
+ * 계좌의 모든 주식 평가액을 넣으면, 목표에 없는 종목의 금액까지 목표 종목에 배분되어
+ * 권장 매수가 실제로 쓸 수 있는 돈보다 커진다. 같은 종목이 목표에 두 번 있어도 한 번만 더한다.
+ */
+export function portfolioStockValue(
+  allocations: PortfolioAllocation[],
+  perStock: Map<string, ActualHoldingValue>
+): number {
+  const keys = new Set(allocations.map((a) => stockPriceKey(a.market, a.ticker)));
+  let total = 0;
+  for (const key of keys) total += perStock.get(key)?.value ?? 0;
+  return total;
+}
+
 export const CASH_ROW_ID = "cash";
 
 interface Options {

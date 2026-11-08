@@ -11,7 +11,7 @@ import { usePortfolioStore } from "../stores/portfolio-store";
 import type { PortfolioItem } from "../types/types";
 import { computeActualAllocation } from "../utils/compute-actual-allocation";
 import { computeDriftAlert } from "../utils/compute-drift-alert";
-import { computeRebalancingGap } from "../utils/compute-rebalancing-gap";
+import { computeRebalancingGap, portfolioStockValue } from "../utils/compute-rebalancing-gap";
 import { resolvePortfolioAccounts } from "../utils/resolve-portfolio-accounts";
 
 interface PortfolioListProps {
@@ -38,7 +38,7 @@ export function PortfolioList({ portfolios }: PortfolioListProps) {
         const summary = computeRebalancingGap(
           portfolio.allocations,
           actual.perStock,
-          actual.totalStockValue,
+          portfolioStockValue(portfolio.allocations, actual.perStock),
           0
         );
         const drift = computeDriftAlert(summary, portfolio.driftThresholdPercent);

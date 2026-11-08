@@ -29,7 +29,11 @@ import {
   type ActualAllocationResult,
 } from "../utils/compute-actual-allocation";
 import { computeDriftAlert, type DriftAlert } from "../utils/compute-drift-alert";
-import { computeRebalancingGap, type RebalancingSummary } from "../utils/compute-rebalancing-gap";
+import {
+  computeRebalancingGap,
+  portfolioStockValue,
+  type RebalancingSummary,
+} from "../utils/compute-rebalancing-gap";
 import { resolvePortfolioAccounts } from "../utils/resolve-portfolio-accounts";
 
 interface PortfolioComparisonProps {
@@ -84,10 +88,11 @@ export function PortfolioComparison({ portfolio }: PortfolioComparisonProps) {
       computeRebalancingGap(
         portfolio.allocations,
         sumActual.perStock,
-        sumActual.totalStockValue,
+        // 기준 금액은 포트폴리오 종목만 — 목표에 없는 보유 종목은 리밸런싱에서 제외한다.
+        portfolioStockValue(portfolio.allocations, sumActual.perStock),
         cashDelta
       ),
-    [portfolio.allocations, sumActual.perStock, sumActual.totalStockValue, cashDelta]
+    [portfolio.allocations, sumActual.perStock, cashDelta]
   );
   const sumDrift = useMemo(
     () => computeDriftAlert(sumSummary, portfolio.driftThresholdPercent),
@@ -442,10 +447,10 @@ function PerAccountCard({ portfolio, account, prices, colorMap }: PerAccountCard
       computeRebalancingGap(
         portfolio.allocations,
         actual.perStock,
-        actual.totalStockValue,
+        portfolioStockValue(portfolio.allocations, actual.perStock),
         0 // 계좌별 뷰는 cashDelta 미지원 (단순화)
       ),
-    [portfolio.allocations, actual.perStock, actual.totalStockValue]
+    [portfolio.allocations, actual.perStock]
   );
   const drift = useMemo(
     () => computeDriftAlert(summary, portfolio.driftThresholdPercent),

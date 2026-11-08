@@ -3,7 +3,7 @@ import type { StockPricePoint } from "@web/features/investments/utils/use-stock-
 import type { PortfolioItem } from "../types/types";
 import { computeActualAllocation } from "./compute-actual-allocation";
 import { computeDriftAlert } from "./compute-drift-alert";
-import { computeRebalancingGap } from "./compute-rebalancing-gap";
+import { computeRebalancingGap, portfolioStockValue } from "./compute-rebalancing-gap";
 
 export type LinkedPortfolioState = "needs-rebalancing" | "ok" | "unknown";
 
@@ -50,7 +50,7 @@ export function linkedPortfolioStatus(
   const summary = computeRebalancingGap(
     portfolio.allocations,
     actual.perStock,
-    actual.totalStockValue,
+    portfolioStockValue(portfolio.allocations, actual.perStock),
     0,
     { cashBalance }
   );

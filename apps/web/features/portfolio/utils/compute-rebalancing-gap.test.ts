@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PortfolioAllocation } from "../types/types";
 import type { ActualHoldingValue } from "./compute-actual-allocation";
-import { computeRebalancingGap } from "./compute-rebalancing-gap";
+import { computeRebalancingGap, portfolioStockValue } from "./compute-rebalancing-gap";
 
 function makeAllocation(overrides: Partial<PortfolioAllocation> = {}): PortfolioAllocation {
   return {
@@ -325,5 +325,38 @@ describe("computeRebalancingGap", () => {
       expect(result.cashRow).toBeUndefined();
       expect(result.newBaseValue).toBe(500_000);
     });
+  });
+});
+
+describe("portfolioStockValue", () => {
+  it("포트폴리오 종목의 평가액만 더한다 — 포트폴리오에 없는 보유 종목은 빠진다", () => {
+    const perStock = new Map([
+      ["KOSPI:AAA", { value: 600_000, percent: 0 }],
+      ["KOSPI:OTHER", { value: 1_267_000, percent: 0 }],
+    ]);
+
+    const value = portfolioStockValue(
+      [
+        { id: "a", market: "KOSPI", ticker: "AAA", name: "A", currency: "KRW", targetPercent: 50 },
+        { id: "b", market: "KOSPI", ticker: "BBB", name: "B", currency: "KRW", targetPercent: 50 },
+      ],
+      perStock
+    );
+
+    expect(value).toBe(600_000);
+  });
+
+  it("같은 종목이 목표에 두 번 들어 있어도 한 번만 더한다", () => {
+    const perStock = new Map([["KOSPI:AAA", { value: 600_000, percent: 0 }]]);
+
+    const value = portfolioStockValue(
+      [
+        { id: "a", market: "KOSPI", ticker: "AAA", name: "A", currency: "KRW", targetPercent: 50 },
+        { id: "a2", market: "KOSPI", ticker: "AAA", name: "A", currency: "KRW", targetPercent: 50 },
+      ],
+      perStock
+    );
+
+    expect(value).toBe(600_000);
   });
 });
