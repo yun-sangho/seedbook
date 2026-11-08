@@ -19,8 +19,16 @@ import { Textarea } from "@web/components/ui/textarea";
 import { LOAN_TYPES } from "@web/features/debts/types/constants";
 import { DebtsItem } from "@web/features/debts/types/types";
 import { CurrencyType } from "@web/types/account.consts";
-import { numberToKorean } from "@web/utils/number-format";
+import { numberToKorean, parseNumericString } from "@web/utils/number-format";
 import { Trash2 } from "lucide-react";
+
+/**
+ * 금액 입력값 → 원 (정수). 입력창은 "5,000" 처럼 쉼표를 넣어 보여주므로 쉼표를 빼고
+ * 읽어야 한다 (`parseInt` 는 쉼표에서 멈춰 네 자리 이상을 입력할 수 없었다).
+ */
+function parseWonInput(value: string): number {
+  return Math.trunc(parseNumericString(value)) || 0;
+}
 
 interface DebtItemComponentProps {
   item: DebtsItem;
@@ -99,7 +107,7 @@ export function DebtItemComponent({
               id={`amount-${item.id}`}
               value={item.amount}
               currency={CurrencyType.KRW}
-              onChange={(value) => onUpdateDebt(item.id, "amount", parseInt(value) || 0)}
+              onChange={(value) => onUpdateDebt(item.id, "amount", parseWonInput(value))}
               readOnly={readOnly}
             />
           </div>
@@ -206,7 +214,7 @@ export function DebtItemComponent({
                   value={item.monthlyPayment}
                   currency={CurrencyType.KRW}
                   onChange={(value) =>
-                    onUpdateDebt(item.id, "monthlyPayment", parseInt(value) || 0)
+                    onUpdateDebt(item.id, "monthlyPayment", parseWonInput(value))
                   }
                   readOnly={readOnly}
                 />
