@@ -297,3 +297,75 @@ describe("investment_account.portfolioId sync", () => {
     expect(portfolios.find((x) => x.id === older.id)?.accountIds).toEqual([]);
   });
 });
+
+describe("debts translator sync columns", () => {
+  function debt(id: string, loanName = "대출") {
+    return {
+      id,
+      loanName,
+      loanType: "신용",
+      lender: "은행",
+      amount: 1_000,
+      interestRate: 5,
+      monthlyPayment: 100,
+      note: "",
+    };
+  }
+
+  async function debtRow(id: string) {
+    const [row] = await db
+      .select({ version: schema.debt.version, deletedAt: schema.debt.deletedAt })
+      .from(schema.debt)
+      .where(eq(schema.debt.id, id));
+    return row;
+  }
+
+  it("keeps a debt removed from the envelope as a tombstone instead of deleting it", async () => {
+    const userId = await createTestUser();
+    const kept = randomUUID();
+    const removed = randomUUID();
+    await debtsTranslator.write(db, userId, {
+      state: { debts: [debt(kept), debt(removed)] },
+      version: 2,
+    });
+
+    await debtsTranslator.write(db, userId, { state: { debts: [debt(kept)] }, version: 2 });
+
+    expect((await debtRow(removed))?.deletedAt).toBeInstanceOf(Date);
+    const envelope = await debtsTranslator.read(db, userId);
+    expect((envelope?.state.debts as Array<{ id: string }>).map((d) => d.id)).toEqual([kept]);
+  });
+
+  it("bumps version when an existing debt is written again", async () => {
+    const userId = await createTestUser();
+    const id = randomUUID();
+    await debtsTranslator.write(db, userId, { state: { debts: [debt(id, "a")] }, version: 2 });
+
+    await debtsTranslator.write(db, userId, { state: { debts: [debt(id, "b")] }, version: 2 });
+
+    expect((await debtRow(id))?.version).toBe(2);
+  });
+
+  it("revives a tombstoned debt that an envelope sends again", async () => {
+    const userId = await createTestUser();
+    const id = randomUUID();
+    await debtsTranslator.write(db, userId, { state: { debts: [debt(id)] }, version: 2 });
+    await debtsTranslator.write(db, userId, { state: { debts: [] }, version: 2 });
+
+    await debtsTranslator.write(db, userId, { state: { debts: [debt(id)] }, version: 2 });
+
+    expect((await debtRow(id))?.deletedAt).toBeNull();
+  });
+
+  it("does not bump the version of a debt that stays deleted", async () => {
+    const userId = await createTestUser();
+    const id = randomUUID();
+    await debtsTranslator.write(db, userId, { state: { debts: [debt(id)] }, version: 2 });
+    await debtsTranslator.write(db, userId, { state: { debts: [] }, version: 2 });
+    const afterDelete = await debtRow(id);
+
+    await debtsTranslator.write(db, userId, { state: { debts: [] }, version: 2 });
+
+    expect((await debtRow(id))?.version).toBe(afterDelete?.version);
+  });
+});

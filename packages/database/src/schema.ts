@@ -25,6 +25,20 @@ import {
 
 export const seedbook = pgSchema("seedbook");
 
+/**
+ * 엔티티 단위 동기화 (`/api/sync/*`) 대상 최상위 테이블이 갖는 컬럼.
+ *
+ * - `version`: 행이 바뀔 때마다 +1. 클라이언트는 마지막으로 본 version 을 `baseVersion`
+ *   으로 보내고, 다르면 서버가 충돌로 돌려준다 (낙관적 동시성 제어).
+ * - `deletedAt`: 삭제 톰스톤. 다른 기기가 pull 로 삭제를 알 수 있도록 행을 바로 지우지 않는다.
+ */
+function syncColumns() {
+  return {
+    version: integer("version").notNull().default(1),
+    deletedAt: timestamp("deletedAt", { precision: 3, mode: "date" }),
+  };
+}
+
 // ─── Stock master ───────────────────────────────────────────────────────────
 
 export const stock = seedbook.table(
@@ -264,12 +278,16 @@ export const debt = seedbook.table(
     maturityDate: date("maturityDate", { mode: "date" }),
     monthlyPayment: bigint("monthlyPayment", { mode: "bigint" }).notNull(),
     note: text("note").notNull().default(""),
+    ...syncColumns(),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })
       .notNull()
       .$onUpdate(() => new Date()),
   },
-  (t) => [index("debt_userId_idx").on(t.userId)]
+  (t) => [
+    index("debt_userId_idx").on(t.userId),
+    index("debt_userId_updatedAt_idx").on(t.userId, t.updatedAt),
+  ]
 );
 
 // ─── Real Assets ────────────────────────────────────────────────────────────
@@ -419,6 +437,8 @@ export const userListOrder = seedbook.table(
       .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
     domain: text("domain").notNull(),
     order: text("order").array().notNull(),
+    // 동기화 pull 커서용. 순서는 last-write-wins 라 version 은 두지 않는다.
+    updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
   },
   (t) => [
     primaryKey({ columns: [t.userId, t.domain], name: "user_list_order_pkey" }),
