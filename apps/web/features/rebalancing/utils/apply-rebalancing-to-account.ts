@@ -1,6 +1,7 @@
-import type { CashItem, InvestmentItem } from "@web/features/investments/types/types";
+import type { CashItem, InvestmentItem, StockHolding } from "@web/features/investments/types/types";
 import { stockPriceKey } from "@web/features/investments/utils/use-stock-prices";
 import type { RebalancingSession, RebalancingTask } from "../types/types";
+import { executedQuantityOf } from "./rebalancing-session";
 
 const DEFAULT_CASH_LABEL = "예수금";
 
@@ -31,7 +32,9 @@ export interface CashChange {
 /**
  * 완료한 리밸런싱의 매매를 계좌에 반영한다.
  *
- * - 체크한 할 일의 예상 수량만큼 보유 수량을 늘리거나 줄인다 (0 아래로 내려가지 않음).
+ * - 완료한 할 일의 실제 수량(`executedQuantityOf`)만큼 보유 수량을 늘리거나 줄인다 (0 아래로 내려가지 않음).
+ *   같은 종목이 여러 줄이면 매도는 앞 줄부터 차례로 뺀다. 보유보다 많이 판 기록이면
+ *   실제로 있던 수량만큼만 팔고, 예수금도 그만큼만 더한다.
  *   보유하지 않던 종목을 샀으면 새 보유 종목을 만든다 (`currencyFor` 로 통화를 정한다).
  * - 예수금은 시작 시점 시세 × 수량으로 매도 금액을 더하고 매수 금액을 뺀 뒤, 시작할 때
  *   입력한 현금 투입/인출을 더한다. 첫 "예수금" 항목(없으면 첫 현금 항목, 그것도 없으면 새로 만듦)에
@@ -49,13 +52,14 @@ export function applyRebalancingToAccount(
 
   for (const task of session.tasks) {
     if (!task.done) continue;
-    if (task.quantity === null || task.price === null || task.quantity <= 0) {
+    const tradeQuantity = executedQuantityOf(task);
+    if (tradeQuantity === null || task.price === null || tradeQuantity <= 0) {
       skipped.push(task);
       continue;
     }
     const key = stockPriceKey(task.market, task.ticker);
     const existing = holdings.find((h) => stockPriceKey(h.market, h.ticker) === key);
-    const tradeQuantity = task.quantity;
+
     const tradeValue = tradeQuantity * task.price;
 
     if (task.action === "매도") {
@@ -63,10 +67,20 @@ export function applyRebalancingToAccount(
         skipped.push(task);
         continue;
       }
-      const quantity = Math.max(0, existing.quantity - tradeQuantity);
-      holdings = holdings.map((h) => (h.id === existing.id ? { ...h, quantity } : h));
-      holdingChanges.push({ task, before: existing.quantity, after: quantity });
-      cashChange += tradeValue;
+      // 같은 종목이 여러 줄로 있으면 앞 줄부터 차례로 뺀다 (0 아래로는 내려가지 않음).
+      const before = sumQuantity(holdings, key);
+      let toSell = tradeQuantity;
+      holdings = holdings.map((h) => {
+        if (toSell <= 0 || stockPriceKey(h.market, h.ticker) !== key) return h;
+        const sold = Math.min(h.quantity, toSell);
+        toSell -= sold;
+        return { ...h, quantity: h.quantity - sold };
+      });
+      const after = sumQuantity(holdings, key);
+      holdingChanges.push({ task, before, after });
+      // 보유보다 많이 판 기록이면 실제로 있던 수량만큼만 예수금에 더한다 — 없는 주식의 돈이
+      // 생기지 않도록.
+      cashChange += (before - after) * task.price;
       continue;
     }
 
@@ -102,6 +116,12 @@ export function applyRebalancingToAccount(
     holdingChanges,
     cash,
   };
+}
+
+function sumQuantity(holdings: StockHolding[], key: string): number {
+  return holdings
+    .filter((h) => stockPriceKey(h.market, h.ticker) === key)
+    .reduce((sum, h) => sum + h.quantity, 0);
 }
 
 function applyCashChange(

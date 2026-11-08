@@ -51,7 +51,7 @@ export function PriceBanner({
 }: {
   title: string;
   description?: string;
-  tone?: PriceAsOfLabel["tone"];
+  tone?: PriceAsOfLabel["tone"] | "warning";
 }) {
   return (
     <div className="bg-bg-layer-default sticky top-0 z-[1]">

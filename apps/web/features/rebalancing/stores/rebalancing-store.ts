@@ -4,7 +4,11 @@ import { createHybridStorage } from "@web/lib/hybrid-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { RebalancingSession } from "../types/types";
-import { completeRebalancing, toggleRebalancingTask } from "../utils/rebalancing-session";
+import {
+  completeRebalancing,
+  completeRebalancingTaskWith,
+  toggleRebalancingTask,
+} from "../utils/rebalancing-session";
 
 export type StartRebalancingInput = Omit<RebalancingSession, "id" | "startedAt" | "completedAt">;
 
@@ -15,6 +19,8 @@ interface RebalancingState {
   /** 새 리밸런싱을 시작하고 id 를 돌려준다. */
   startRebalancing: (input: StartRebalancingInput) => string;
   toggleTask: (sessionId: string, taskId: string) => void;
+  /** 실제로 사고판 수량과 함께 완료로 기록한다 (이미 완료했으면 수량을 바꾼다). */
+  completeTaskWith: (sessionId: string, taskId: string, executedQuantity: number) => void;
   /** 할 일을 모두 마쳤으면 완료 기록으로 넘긴다. */
   completeRebalancing: (sessionId: string) => void;
   removeRebalancing: (sessionId: string) => void;
@@ -41,6 +47,14 @@ export const useRebalancingStore = create<RebalancingState>()(
         set((state) => ({
           sessions: state.sessions.map((s) =>
             s.id === sessionId ? toggleRebalancingTask(s, taskId) : s
+          ),
+        }));
+      },
+
+      completeTaskWith: (sessionId, taskId, executedQuantity) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? completeRebalancingTaskWith(s, taskId, executedQuantity) : s
           ),
         }));
       },

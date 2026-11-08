@@ -3,7 +3,10 @@ import type { RebalancingSession, RebalancingTask } from "../types/types";
 import {
   canCompleteRebalancing,
   completeRebalancing,
+  completeRebalancingTaskWith,
+  executedQuantityOf,
   findInProgressForAccount,
+  groupRebalancingTasks,
   inProgressAccountIds,
   isRebalancingStopped,
   rebalancingProgress,
@@ -200,5 +203,75 @@ describe("isRebalancingStopped", () => {
 
   it("is false while still in progress", () => {
     expect(isRebalancingStopped(session({ tasks: [task("a")] }))).toBe(false);
+  });
+});
+
+describe("groupRebalancingTasks", () => {
+  it("puts unchecked tasks in remaining and checked ones in done, keeping their order", () => {
+    const result = groupRebalancingTasks([task("a", true), task("b"), task("c", true)]);
+
+    expect(result.remaining.map((t) => t.id)).toEqual(["b"]);
+    expect(result.done.map((t) => t.id)).toEqual(["a", "c"]);
+  });
+
+  it("keeps a just-checked task in remaining while it animates out", () => {
+    const result = groupRebalancingTasks([task("a", true), task("b")], new Set(["a"]));
+
+    expect(result.remaining.map((t) => t.id)).toEqual(["a", "b"]);
+    expect(result.done).toEqual([]);
+  });
+
+  it("ignores leaving ids for tasks that are no longer checked", () => {
+    const result = groupRebalancingTasks([task("a"), task("b")], new Set(["a"]));
+
+    expect(result.remaining.map((t) => t.id)).toEqual(["a", "b"]);
+  });
+
+  it("returns empty groups for no tasks", () => {
+    expect(groupRebalancingTasks([])).toEqual({ remaining: [], done: [] });
+  });
+});
+
+describe("completeRebalancingTaskWith", () => {
+  const planned = { ...task("a"), quantity: 54, price: 104_010 };
+
+  it("marks the task done with the quantity actually traded, keeping the recommendation", () => {
+    const result = completeRebalancingTaskWith(session({ tasks: [planned] }), "a", 50);
+
+    expect(result.tasks[0]).toMatchObject({ done: true, quantity: 54, executedQuantity: 50 });
+  });
+
+  it("changes the recorded quantity of a task that is already done", () => {
+    const done = completeRebalancingTaskWith(session({ tasks: [planned] }), "a", 50);
+
+    const result = completeRebalancingTaskWith(done, "a", 54);
+
+    expect(result.tasks[0]).toMatchObject({ done: true, executedQuantity: 54 });
+  });
+
+  it("does not change a completed rebalancing", () => {
+    const completed = session({ tasks: [planned], completedAt: NOW });
+
+    expect(completeRebalancingTaskWith(completed, "a", 50)).toBe(completed);
+  });
+
+  it("ignores an unknown task", () => {
+    const s = session({ tasks: [planned] });
+
+    expect(completeRebalancingTaskWith(s, "nope", 50)).toBe(s);
+  });
+});
+
+describe("executedQuantityOf", () => {
+  it("is null for a task that is not done", () => {
+    expect(executedQuantityOf({ ...task("a"), quantity: 54 })).toBeNull();
+  });
+
+  it("is the quantity actually traded once recorded", () => {
+    expect(executedQuantityOf({ ...task("a", true), quantity: 54, executedQuantity: 50 })).toBe(50);
+  });
+
+  it("treats a task checked without a quantity as traded at the recommendation", () => {
+    expect(executedQuantityOf({ ...task("a", true), quantity: 54 })).toBe(54);
   });
 });

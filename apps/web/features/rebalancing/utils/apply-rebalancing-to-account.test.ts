@@ -83,6 +83,34 @@ describe("applyRebalancingToAccount", () => {
     expect(result.holdings[0]?.quantity).toBe(7);
   });
 
+  it("sells across every holding row of the same stock", () => {
+    const acc = account({
+      holdings: [holding({ id: "h1", quantity: 3 }), holding({ id: "h2", quantity: 4 })],
+    });
+
+    const result = applyRebalancingToAccount(
+      acc,
+      session([task({ action: "매도", quantity: 5 })]),
+      () => "KRW"
+    );
+
+    expect(result.account.holdings.map((h) => [h.id, h.quantity])).toEqual([
+      ["h1", 0],
+      ["h2", 2],
+    ]);
+  });
+
+  it("applies the quantity actually traded, not the recommendation", () => {
+    const result = applyRebalancingToAccount(
+      account(),
+      session([task({ action: "매수", quantity: 5, executedQuantity: 3 })]),
+      () => "KRW"
+    );
+
+    expect(result.account.holdings[0]!.quantity).toBe(13);
+    expect(result.cashChange).toBe(-150_000);
+  });
+
   it("keeps a fully sold holding at zero instead of going negative", () => {
     const { account: result } = applyRebalancingToAccount(
       account(),
@@ -91,6 +119,17 @@ describe("applyRebalancingToAccount", () => {
     );
 
     expect(result.holdings[0]?.quantity).toBe(0);
+  });
+
+  it("adds cash only for the shares actually held when selling more than held", () => {
+    // 10주 보유인데 15주 매도로 기록 → 실제로 판 10주 × 5만원만 예수금에 더한다
+    const result = applyRebalancingToAccount(
+      account(),
+      session([task({ action: "매도", quantity: 15 })]),
+      KRW
+    );
+
+    expect(result.cashChange).toBe(500_000);
   });
 
   it("adds a new holding for a stock the account did not hold", () => {

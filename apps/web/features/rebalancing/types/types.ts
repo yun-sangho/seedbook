@@ -16,8 +16,13 @@ export interface RebalancingTask {
   amount: number;
   /** 시작 시점 종가 (원). 시세가 없었으면 null */
   price: number | null;
-  /** 예상 수량 (주). 가격이 없으면 null */
+  /** 권장 수량 (주). 시작 시점 가격으로 고정. 가격이 없으면 null */
   quantity: number | null;
+  /**
+   * 실제로 사고판 수량 (주) — 완료할 때 입력한다. 이 필드가 생기기 전에 체크한 할 일은 권장
+   * 수량대로 거래한 것으로 본다 (`executedQuantityOf`).
+   */
+  executedQuantity?: number | null;
   /** `price` 의 기준 시각 (ISO). 가격이 없거나 기록 전에 시작한 리밸런싱이면 null */
   priceAsOf: string | null;
   /** `price` 가 장중 시세인지 종가인지. `priceAsOf` 와 함께 null */

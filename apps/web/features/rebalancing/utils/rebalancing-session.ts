@@ -75,3 +75,45 @@ export function visibleRebalancingTasks(
 export function inProgressAccountIds(sessions: RebalancingSession[]): Set<string> {
   return new Set(sessions.filter((s) => !isRebalancingCompleted(s)).map((s) => s.accountId));
 }
+
+/**
+ * 할 일을 "남은 매매" 와 "완료" 그룹으로 나눈다 (각 그룹 안 순서는 원래 순서 그대로).
+ *
+ * `leavingIds` 는 방금 체크해 남은 목록에서 빠지는 애니메이션 중인 할 일 — 체크된 모습을
+ * 잠깐 보여준 뒤 완료 그룹으로 옮기도록 그동안은 남은 매매에 둔다.
+ */
+export function groupRebalancingTasks(
+  tasks: RebalancingTask[],
+  leavingIds: ReadonlySet<string> = new Set()
+): { remaining: RebalancingTask[]; done: RebalancingTask[] } {
+  const remaining: RebalancingTask[] = [];
+  const done: RebalancingTask[] = [];
+  for (const t of tasks) {
+    if (!t.done || leavingIds.has(t.id)) remaining.push(t);
+    else done.push(t);
+  }
+  return { remaining, done };
+}
+
+/**
+ * 할 일을 실제로 사고판 수량과 함께 완료로 기록한다. 이미 완료한 할 일이면 기록한 수량을
+ * 바꾼다. 권장 수량(`quantity`)은 그대로 두어 비교할 수 있게 한다.
+ */
+export function completeRebalancingTaskWith(
+  session: RebalancingSession,
+  taskId: string,
+  executedQuantity: number
+): RebalancingSession {
+  if (isRebalancingCompleted(session)) return session;
+  if (!session.tasks.some((t) => t.id === taskId)) return session;
+  return {
+    ...session,
+    tasks: session.tasks.map((t) => (t.id === taskId ? { ...t, done: true, executedQuantity } : t)),
+  };
+}
+
+/** 실제로 사고판 수량. 완료하지 않았으면 null, 수량 없이 체크했으면 권장 수량. */
+export function executedQuantityOf(task: RebalancingTask): number | null {
+  if (!task.done) return null;
+  return task.executedQuantity ?? task.quantity;
+}

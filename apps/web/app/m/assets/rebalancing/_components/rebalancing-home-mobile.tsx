@@ -5,10 +5,12 @@ import { IconChevronRightLine, IconPlusLine } from "@karrotmarket/react-monochro
 import { Divider, Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
+import { describePriceAsOf } from "@web/features/investments/utils/price-as-of";
 import { RebalancingProgressBar } from "@web/features/rebalancing/components/rebalancing-progress-bar";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import type { RebalancingSession } from "@web/features/rebalancing/types/types";
 import { formatRebalancingDate } from "@web/features/rebalancing/utils/format-rebalancing-date";
+import { summarizeRebalancingPriceAsOf } from "@web/features/rebalancing/utils/rebalancing-price-as-of";
 import {
   isRebalancingCompleted,
   isRebalancingStopped,
@@ -171,7 +173,7 @@ function SessionRow({
             {session.portfolioName} ·{" "}
             {completed
               ? `${formatRebalancingDate(session.completedAt ?? "")} ${stopped ? "중지" : "완료"} · 매도 ${sellCount} · 매수 ${buyCount}`
-              : `${formatRebalancingDate(session.startedAt)} 시작`}
+              : inProgressBasisLabel(session)}
           </p>
           {!completed && <RebalancingProgressBar done={done} total={total} />}
         </div>
@@ -179,4 +181,14 @@ function SessionRow({
       </button>
     </div>
   );
+}
+
+/**
+ * 진행 중 카드의 기준 표시 — 시작한 날보다 권장 수량을 계산한 가격의 기준 시각이 중요하다
+ * ("11월 6일 (금) 종가 기준"). 가격 시각을 저장하기 전에 시작한 리밸런싱은 시작한 날.
+ */
+function inProgressBasisLabel(session: RebalancingSession): string {
+  const priceAsOf = summarizeRebalancingPriceAsOf(session.tasks);
+  if (!priceAsOf) return `${formatRebalancingDate(session.startedAt)} 시작`;
+  return describePriceAsOf(priceAsOf, new Date()).title;
 }
