@@ -17,7 +17,7 @@ export function PriceAsOfBanner({ prices }: { prices: ReadonlyMap<string, StockP
   const summary = useMemo(() => summarizePriceAsOf(prices.values()), [prices]);
   if (!summary) return null;
 
-  // prices 는 1분마다 새로 받으므로 "오늘" 판정용 now 도 그때마다 갱신된다.
+  // prices 는 70초마다 새로 받으므로 "오늘" 판정용 now 도 그때마다 갱신된다.
   const label = describePriceAsOf(summary, new Date());
 
   return (

@@ -2,11 +2,17 @@ import { db, schema } from "@seedbook/database";
 import { and, eq, or, sql } from "drizzle-orm";
 import { fetchNaverRealtimeQuotes } from "./naver-realtime";
 import { isQuoteStale, type QuoteSnapshot } from "./quote-policy";
+import { createSourceBackoff } from "./source-backoff";
 
 /** 네이버 실시간 시세로 조회 가능한 국내 시장. */
 const DOMESTIC_MARKETS = new Set(["KOSPI", "KOSDAQ", "KONEX"]);
 /** 소스가 느려도 시세 API 전체가 늘어지지 않게 짧게 끊는다. 실패 시 캐시/일봉으로 대체. */
 const SOURCE_TIMEOUT_MS = 3000;
+/**
+ * 소스 실패 시 서버 프로세스 전체에서 소스 호출을 멈추는 기간. 2분 → 4분 … 최대 30분.
+ * 쉬는 동안에는 캐시/일봉으로만 답한다 (배너가 그 기준 시각을 그대로 보여준다).
+ */
+const sourceBackoff = createSourceBackoff({ baseMs: 2 * 60 * 1000, maxMs: 30 * 60 * 1000 });
 
 export interface StockRef {
   market: string;
@@ -51,11 +57,17 @@ export async function loadQuotes(
     isQuoteStale(cachedByKey.get(stockRefKey(r.market, r.ticker)) ?? null, now)
   );
   if (stale.length === 0) return quotes;
+  if (!sourceBackoff.canCall(now.getTime())) return quotes;
 
-  const fetched = await fetchNaverRealtimeQuotes(
+  const { quotes: fetched, failed } = await fetchNaverRealtimeQuotes(
     stale.map((r) => r.ticker),
     { timeoutMs: SOURCE_TIMEOUT_MS }
   );
+  if (failed) {
+    sourceBackoff.recordFailure(Date.now());
+  } else {
+    sourceBackoff.recordSuccess();
+  }
   // 네이버는 종목 코드만 안다. 같은 코드를 요청한 market 에 되돌려 붙인다.
   const fetchedByTicker = new Map(fetched.map((q) => [q.ticker, q]));
   const rows = stale.flatMap((r) => {

@@ -35,6 +35,14 @@ describe("isQuoteStale", () => {
     expect(isQuoteStale({ fetchedAt: kst("09:59:30") }, kst("10:00:00"))).toBe(false);
   });
 
+  it("keeps a 65 second old quote during trading hours (Naver polls every 70s)", () => {
+    expect(isQuoteStale({ fetchedAt: kst("09:58:55") }, kst("10:00:00"))).toBe(false);
+  });
+
+  it("refreshes a 70 second old quote during trading hours", () => {
+    expect(isQuoteStale({ fetchedAt: kst("09:58:50") }, kst("10:00:00"))).toBe(true);
+  });
+
   it("refreshes a 2 minute old quote during trading hours", () => {
     expect(isQuoteStale({ fetchedAt: kst("09:58:00") }, kst("10:00:00"))).toBe(true);
   });

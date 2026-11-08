@@ -59,11 +59,17 @@ export function parseNaverRealtime(body: unknown): RealtimeQuote[] {
   return quotes;
 }
 
-/** 종목 코드 목록의 현재가. 일부 묶음이 실패하면 나머지 결과만 돌려준다. */
+export interface RealtimeQuoteResult {
+  quotes: RealtimeQuote[];
+  /** 한 묶음이라도 실패했는지. 호출측이 소스 호출을 잠시 멈출지 판단한다. */
+  failed: boolean;
+}
+
+/** 종목 코드 목록의 현재가. 일부 묶음이 실패해도 나머지 결과는 돌려준다. */
 export async function fetchNaverRealtimeQuotes(
   tickers: readonly string[],
   { timeoutMs }: { timeoutMs: number }
-): Promise<RealtimeQuote[]> {
+): Promise<RealtimeQuoteResult> {
   const groups = chunk([...new Set(tickers)], MAX_CODES_PER_REQUEST);
   const results = await Promise.allSettled(
     groups.map(async (codes) => {
@@ -78,12 +84,14 @@ export async function fetchNaverRealtimeQuotes(
   );
 
   const quotes: RealtimeQuote[] = [];
+  let failed = false;
   for (const result of results) {
     if (result.status === "fulfilled") {
       quotes.push(...result.value);
     } else {
+      failed = true;
       console.warn("[stock-quotes] naver realtime fetch failed", String(result.reason));
     }
   }
-  return quotes;
+  return { quotes, failed };
 }

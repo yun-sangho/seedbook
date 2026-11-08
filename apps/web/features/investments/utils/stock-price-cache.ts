@@ -1,11 +1,11 @@
 import type { StockPricePoint } from "./use-stock-prices";
 
 /**
- * 캐시된 시세를 "신선하다" 고 보는 기간. 서버는 장중 현재가를 1분 단위로 캐시하므로
- * 클라이언트도 1분마다 다시 묻는다. 기간이 지난 값도 즉시 보여주고 백그라운드에서만
- * 갱신한다. (장외 시간에는 서버가 DB 캐시로 바로 답하므로 비용이 거의 없다.)
+ * 캐시된 시세를 "신선하다" 고 보는 기간. 서버가 장중 현재가를 70초 단위로 캐시하므로
+ * (`QUOTE_TTL_TRADING_MS`) 클라이언트도 같은 주기로 다시 묻는다. 기간이 지난 값도 즉시
+ * 보여주고 백그라운드에서만 갱신한다. (장외에는 서버가 DB 캐시로 바로 답한다.)
  */
-export const PRICE_CACHE_TTL_MS = 60 * 1000;
+export const PRICE_CACHE_TTL_MS = 70 * 1000;
 
 /**
  * `market:ticker` 하나에 대한 캐시 항목.

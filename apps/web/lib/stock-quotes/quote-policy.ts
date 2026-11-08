@@ -38,8 +38,11 @@ const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const TRADING_START_MINUTE = 9 * 60;
 const TRADING_END_MINUTE = 15 * 60 + 40;
 
-/** 장중에는 1분마다, 장외에는 30분마다 소스에서 새로 받는다. */
-export const QUOTE_TTL_TRADING_MS = 60 * 1000;
+/**
+ * 장중에는 70초마다, 장외에는 30분마다 소스에서 새로 받는다.
+ * 70초는 네이버 실시간 API 응답의 `pollingInterval` (네이버 증권 웹의 갱신 주기) 이다.
+ */
+export const QUOTE_TTL_TRADING_MS = 70 * 1000;
 export const QUOTE_TTL_OFF_HOURS_MS = 30 * 60 * 1000;
 
 const MARKET_STATUS_OPEN = "OPEN";
