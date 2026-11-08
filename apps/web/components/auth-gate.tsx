@@ -2,6 +2,7 @@
 
 import { type ReactNode } from "react";
 import { EntitySyncRunner } from "@web/components/entity-sync-runner";
+import { PreferencesSync } from "@web/components/preferences-sync";
 import { StorageModeSync } from "@web/components/storage-mode-sync";
 import { Button } from "@web/components/ui/button";
 import { authClient, useSession } from "@web/lib/auth-client";
@@ -42,6 +43,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     return (
       <>
         <StorageModeSync />
+        <PreferencesSync />
         <EntitySyncRunner />
         {children}
       </>

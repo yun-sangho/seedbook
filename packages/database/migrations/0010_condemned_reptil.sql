@@ -1,0 +1,1 @@
+ALTER TABLE "seedbook"."user_preference" ADD COLUMN "rebalancingTaskSort" text DEFAULT 'nameDesc' NOT NULL;
