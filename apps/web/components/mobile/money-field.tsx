@@ -1,8 +1,7 @@
 "use client";
 
 import { TextField, TextFieldInput } from "@web/seed-design/ui/text-field";
-import { numberToKorean, parseNumericString } from "@web/utils/number-format";
-import { formatMoneyDraft } from "./input-format";
+import { formatMoneyDraft, moneyDraftReading } from "./input-format";
 
 interface MoneyFieldProps {
   /**
@@ -18,10 +17,12 @@ interface MoneyFieldProps {
   errorMessage?: string;
   readOnly?: boolean;
   autoFocus?: boolean;
+  /** 값이 있을 때 만원 단위 읽기 옆에 "초기화" 버튼을 보여준다. */
+  clearable?: boolean;
 }
 
 /**
- * 원 단위 금액 입력. 숫자 키패드를 띄우고, 아래에 만원 단위 읽기를 보여준다.
+ * 원 단위 금액 입력. 숫자 키패드를 띄우고, 1만원 이상이면 아래에 만원 단위 읽기를 보여준다.
  */
 export function MoneyField({
   label,
@@ -32,15 +33,33 @@ export function MoneyField({
   errorMessage,
   readOnly,
   autoFocus,
+  clearable = false,
 }: MoneyFieldProps) {
-  const parsed = parseNumericString(value);
+  const reading = moneyDraftReading(value);
+  const showClear = clearable && !readOnly && value !== "";
   return (
     <TextField
       label={label}
       value={value}
       onValueChange={({ value: next }) => onValueChange(formatMoneyDraft(next))}
       suffix="원"
-      description={Number.isFinite(parsed) && parsed > 0 ? numberToKorean(parsed) : undefined}
+      description={
+        showClear ? (
+          <span className="flex items-center gap-x2">
+            {reading}
+            {/* 버튼은 기본 스타일에서 글꼴을 물려받아 설명 글자와 같은 크기로 보인다. */}
+            <button
+              type="button"
+              className="text-fg-neutral-muted underline underline-offset-2"
+              onClick={() => onValueChange("")}
+            >
+              초기화
+            </button>
+          </span>
+        ) : (
+          reading
+        )
+      }
       invalid={!!errorMessage}
       errorMessage={errorMessage}
       readOnly={readOnly}

@@ -95,7 +95,8 @@ export const TextField = React.forwardRef<HTMLDivElement, TextFieldProps>(
     const renderGraphemeCount = !hideCharacterCount && maxGraphemeCount !== undefined;
     const renderFooter = renderDescription || renderErrorMessage || renderGraphemeCount;
 
-    if (process.env.NODE_ENV !== "production" && !label) {
+    // 안쪽 input 에 aria-label / aria-labelledby 를 준 경우는 접근성 문제가 아니므로 경고하지 않는다.
+    if (process.env.NODE_ENV !== "production" && !label && !hasLabelledChild(children)) {
       console.warn(
         "TextField: Provide a `label` prop for better accessibility. Please ignore this warning if you've provided `aria-label` or `aria-labelledby` props to the `TextFieldInput` or `TextFieldTextarea` inside. This warning will not be shown in production builds."
       );
@@ -157,6 +158,14 @@ export interface TextFieldInputProps extends SeedTextField.InputProps {}
 /**
  * @see https://seed-design.io/react/components/text-field-input
  */
+function hasLabelledChild(children: React.ReactNode): boolean {
+  return React.Children.toArray(children).some(
+    (child) =>
+      React.isValidElement<{ "aria-label"?: string; "aria-labelledby"?: string }>(child) &&
+      !!(child.props["aria-label"] || child.props["aria-labelledby"])
+  );
+}
+
 export const TextFieldInput = SeedTextField.Input;
 
 export interface TextFieldTextareaProps extends SeedTextField.TextareaProps {}

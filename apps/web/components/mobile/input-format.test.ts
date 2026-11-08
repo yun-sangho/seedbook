@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatMoneyDraft, sanitizePercentDraft } from "./input-format";
+import { formatMoneyDraft, moneyDraftReading, sanitizePercentDraft } from "./input-format";
 
 describe("formatMoneyDraft", () => {
   it("adds thousands separators", () => {
@@ -39,5 +39,28 @@ describe("sanitizePercentDraft", () => {
 
   it("drops non-numeric characters", () => {
     expect(sanitizePercentDraft("10%")).toBe("10");
+  });
+});
+
+describe("moneyDraftReading", () => {
+  it("reads 1만원 and above in Korean units", () => {
+    expect(moneyDraftReading("1,234,567")).toBe("123만원");
+  });
+
+  it("shows nothing below 1만원 instead of 0원", () => {
+    expect(moneyDraftReading("5,000")).toBeUndefined();
+  });
+
+  it("shows nothing for exactly 9,999원", () => {
+    expect(moneyDraftReading("9,999")).toBeUndefined();
+  });
+
+  it("reads exactly 10,000원 as 1만원", () => {
+    expect(moneyDraftReading("10,000")).toBe("1만원");
+  });
+
+  it("shows nothing for empty or zero input", () => {
+    expect(moneyDraftReading("")).toBeUndefined();
+    expect(moneyDraftReading("0")).toBeUndefined();
   });
 });
