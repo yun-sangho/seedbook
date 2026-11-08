@@ -8,7 +8,7 @@ import {
   sortAccounts,
   type AccountSortOption,
 } from "@web/features/investments/utils/sort-accounts";
-import { useLinkedPortfolioStatuses } from "@web/features/portfolio/utils/use-linked-portfolio-statuses";
+import { useLinkedPortfolioStatus } from "@web/features/portfolio/utils/use-linked-portfolio-status";
 import { useIsReadOnly } from "@web/features/sharing/hooks/use-is-read-only";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { ResultSection } from "@web/seed-design/ui/result-section";
@@ -50,7 +50,7 @@ function useAccountSort(): [AccountSortOption, (value: AccountSortOption) => voi
 export function InvestmentMobile() {
   const investments = useInvestmentStore((s) => s.investments);
   const readOnly = useIsReadOnly();
-  const statusesFor = useLinkedPortfolioStatuses();
+  const statusFor = useLinkedPortfolioStatus();
 
   const [addOpen, setAddOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
@@ -61,9 +61,9 @@ export function InvestmentMobile() {
     [investments, accountSort]
   );
 
-  const statusesByAccount = useMemo(
-    () => new Map(investments.map((inv) => [inv.id, statusesFor(inv.id)])),
-    [investments, statusesFor]
+  const statusByAccount = useMemo(
+    () => new Map(investments.map((inv) => [inv.id, statusFor(inv.id)])),
+    [investments, statusFor]
   );
 
   const addSheet = <AddAccountSheet open={addOpen} onOpenChange={setAddOpen} />;
@@ -107,7 +107,7 @@ export function InvestmentMobile() {
       {sortedAccounts.map((item) => (
         <div key={item.id}>
           <Divider inset />
-          <AccountSummaryCard item={item} linkedPortfolios={statusesByAccount.get(item.id) ?? []} />
+          <AccountSummaryCard item={item} linkedPortfolio={statusByAccount.get(item.id) ?? null} />
         </div>
       ))}
       {!readOnly && (

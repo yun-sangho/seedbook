@@ -10,7 +10,7 @@ import { useFlow } from "@stackflow/react";
 import { useSwitchTab } from "@web/app/m/_stack/use-switch-tab";
 import { profitToneClass } from "@web/components/mobile/profit-tone";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
-import { useLinkedPortfolioStatuses } from "@web/features/portfolio/utils/use-linked-portfolio-statuses";
+import { useLinkedPortfolioStatus } from "@web/features/portfolio/utils/use-linked-portfolio-status";
 import {
   ChipTabsContent,
   ChipTabsList,
@@ -30,7 +30,7 @@ type Tab = "monthly" | "trend";
  */
 export function HomeMobile() {
   const investments = useInvestmentStore((s) => s.investments);
-  const statusesFor = useLinkedPortfolioStatuses();
+  const statusFor = useLinkedPortfolioStatus();
   const { push } = useFlow();
   const switchTab = useSwitchTab();
   const [tab, setTab] = useState<Tab>("monthly");
@@ -46,11 +46,10 @@ export function HomeMobile() {
     };
   }, [investments]);
 
-  // 연결된 포트폴리오 중 하나라도 리밸런싱이 필요한 계좌 (계좌 목록 순서대로).
+  // 연결된 포트폴리오 기준으로 리밸런싱이 필요한 계좌 (계좌 목록 순서대로).
   const accountsNeedingRebalance = useMemo(
-    () =>
-      investments.filter((inv) => statusesFor(inv.id).some((s) => s.state === "needs-rebalancing")),
-    [investments, statusesFor]
+    () => investments.filter((inv) => statusFor(inv.id)?.state === "needs-rebalancing"),
+    [investments, statusFor]
   );
 
   if (investments.length === 0) {

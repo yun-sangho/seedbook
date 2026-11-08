@@ -14,7 +14,7 @@ import {
   TabToolbar,
 } from "@web/components/mobile/detail-layout";
 import { HeaderAction } from "@web/components/mobile/header-action";
-import { LinkedPortfolioChips } from "@web/components/mobile/linked-portfolio-chips";
+import { LinkedPortfolioChip } from "@web/components/mobile/linked-portfolio-chip";
 import { profitToneClass } from "@web/components/mobile/profit-tone";
 import {
   DEFAULT_CASH_LABEL,
@@ -24,7 +24,7 @@ import type { Stock } from "@web/features/investments/types/stock";
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import { useAccountValuation } from "@web/features/investments/utils/use-account-valuation";
 import { stockPriceKey } from "@web/features/investments/utils/use-stock-prices";
-import { useLinkedPortfolioStatuses } from "@web/features/portfolio/utils/use-linked-portfolio-statuses";
+import { useLinkedPortfolioStatus } from "@web/features/portfolio/utils/use-linked-portfolio-status";
 import { useIsReadOnly } from "@web/features/sharing/hooks/use-is-read-only";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
@@ -117,7 +117,7 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
   const holdingsSortOption = useInvestmentStore((s) => s.holdingsSortOption);
   const setHoldingsSortOption = useInvestmentStore((s) => s.setHoldingsSortOption);
 
-  const linkedPortfolios = useLinkedPortfolioStatuses()(item.id);
+  const linkedPortfolio = useLinkedPortfolioStatus()(item.id);
 
   const syncCurrentValue = useCallback(
     (value: number) => updateInvestment(item.id, "currentValue", String(value)),
@@ -216,9 +216,7 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
           )}
         </section>
 
-        {linkedPortfolios.length > 0 && (
-          <LinkedPortfolioChips accountId={item.id} statuses={linkedPortfolios} />
-        )}
+        <LinkedPortfolioChip accountId={item.id} status={linkedPortfolio} />
       </div>
 
       <ChipTabsRoot

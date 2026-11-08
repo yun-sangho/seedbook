@@ -1,9 +1,11 @@
 import { schema } from "@seedbook/database";
+import { dedupePortfolioLinks } from "@web/features/portfolio/utils/portfolio-links";
 import { and, eq, notInArray } from "drizzle-orm";
 import type { DomainTranslator, Envelope } from "./types";
 
 const DOMAIN = "portfolios";
-const VERSION = 2;
+// v3: 한 계좌는 하나의 포트폴리오에만 연결 (클라이언트 portfolio-store 와 동일 버전).
+const VERSION = 3;
 const DEFAULT_DRIFT_THRESHOLD_PERCENT = 5;
 
 type PortfolioAllocationPayload = {
@@ -52,7 +54,7 @@ export const portfolioTranslator: DomainTranslator = {
       return ai - bi;
     });
 
-    const payload: PortfolioItemPayload[] = sorted.map((p) => ({
+    const payload = sorted.map((p): PortfolioItemPayload & { accountIds: string[] } => ({
       id: p.id,
       name: p.name,
       description: p.description,
@@ -73,7 +75,9 @@ export const portfolioTranslator: DomainTranslator = {
     }));
 
     const envelope: Envelope = {
-      state: { portfolios: payload },
+      // v3 이전 클라이언트가 저장한 중복 연결이 남아 있을 수 있어 읽을 때 정리한다.
+      // (envelope 가 v3 라 클라이언트 migrate 는 돌지 않는다.)
+      state: { portfolios: dedupePortfolioLinks(payload) },
       version: VERSION,
     };
     return envelope;

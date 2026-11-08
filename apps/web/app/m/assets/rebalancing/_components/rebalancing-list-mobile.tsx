@@ -11,7 +11,7 @@ import {
   type AccountRebalancingState,
 } from "@web/features/portfolio/utils/group-accounts-by-rebalancing-state";
 import type { LinkedPortfolioStatus } from "@web/features/portfolio/utils/linked-portfolio-status";
-import { useLinkedPortfolioStatuses } from "@web/features/portfolio/utils/use-linked-portfolio-statuses";
+import { useLinkedPortfolioStatus } from "@web/features/portfolio/utils/use-linked-portfolio-status";
 import { Badge } from "@web/seed-design/ui/badge";
 import { ResultSection } from "@web/seed-design/ui/result-section";
 import { numberToKorean } from "@web/utils/number-format";
@@ -29,16 +29,16 @@ const GROUP_TITLE: Record<AccountRebalancingState, string> = {
  */
 export function RebalancingListMobile() {
   const investments = useInvestmentStore((s) => s.investments);
-  const statusesFor = useLinkedPortfolioStatuses();
+  const statusFor = useLinkedPortfolioStatus();
   const { push } = useFlow();
   const switchTab = useSwitchTab();
 
   const groups = useMemo(
     () =>
       groupAccountsByRebalancingState(
-        investments.map((account) => ({ account, statuses: statusesFor(account.id) }))
+        investments.map((account) => ({ account, status: statusFor(account.id) }))
       ),
-    [investments, statusesFor]
+    [investments, statusFor]
   );
 
   if (investments.length === 0) {
@@ -73,8 +73,8 @@ export function RebalancingListMobile() {
               {group.rows.length}
             </span>
           </div>
-          {group.rows.map(({ account, statuses }, rowIndex) => {
-            const needsRebalancing = statuses.some((s) => s.state === "needs-rebalancing");
+          {group.rows.map(({ account, status }, rowIndex) => {
+            const needsRebalancing = status?.state === "needs-rebalancing";
             return (
               <div key={account.id}>
                 {rowIndex > 0 && <Divider inset />}
@@ -100,12 +100,12 @@ export function RebalancingListMobile() {
                       {account.accountType} · {numberToKorean(account.currentValue) || "0원"}
                     </p>
                     <div className="mt-x2 flex flex-wrap gap-x1">
-                      {statuses.length === 0 ? (
+                      {status ? (
+                        <PortfolioStatusBadge status={status} />
+                      ) : (
                         <Badge tone="neutral" variant="weak">
                           연결된 포트폴리오 없음
                         </Badge>
-                      ) : (
-                        statuses.map((s) => <PortfolioStatusBadge key={s.portfolioId} status={s} />)
                       )}
                     </div>
                   </div>

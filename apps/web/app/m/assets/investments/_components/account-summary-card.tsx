@@ -3,7 +3,7 @@
 import { IconChevronRightLine } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
-import { LinkedPortfolioChips } from "@web/components/mobile/linked-portfolio-chips";
+import { LinkedPortfolioChip } from "@web/components/mobile/linked-portfolio-chip";
 import { profitToneClass } from "@web/components/mobile/profit-tone";
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import type { LinkedPortfolioStatus } from "@web/features/portfolio/utils/linked-portfolio-status";
@@ -12,16 +12,16 @@ import { formatProfitKorean } from "@web/utils/profit-color";
 
 interface AccountSummaryCardProps {
   item: InvestmentItem;
-  /** 이 계좌가 연결된 포트폴리오들 (리밸런싱 필요한 것 먼저). */
-  linkedPortfolios: LinkedPortfolioStatus[];
+  /** 이 계좌가 연결된 포트폴리오 (없으면 null). */
+  linkedPortfolio: LinkedPortfolioStatus | null;
 }
 
 /**
  * 투자 홈의 계좌 행. 탭하면 계좌 상세로 이동하고, 연결된 포트폴리오를 칩으로
- * 보여준다. 리밸런싱이 필요한 포트폴리오가 있으면 왼쪽에 빨간 막대로 강조한다.
+ * 보여준다. 연결된 포트폴리오가 리밸런싱이 필요하면 왼쪽에 빨간 막대로 강조한다.
  */
-export function AccountSummaryCard({ item, linkedPortfolios }: AccountSummaryCardProps) {
-  const needsRebalancing = linkedPortfolios.some((p) => p.state === "needs-rebalancing");
+export function AccountSummaryCard({ item, linkedPortfolio }: AccountSummaryCardProps) {
+  const needsRebalancing = linkedPortfolio?.state === "needs-rebalancing";
   const profit = item.currentValue - item.initialInvestment;
   const returnRate = calculateReturnRate(item.currentValue, item.initialInvestment);
   const { push } = useFlow();
@@ -56,7 +56,7 @@ export function AccountSummaryCard({ item, linkedPortfolios }: AccountSummaryCar
         </div>
         <Icon svg={<IconChevronRightLine />} size="x4" color="fg.neutralSubtle" />
       </button>
-      <LinkedPortfolioChips accountId={item.id} statuses={linkedPortfolios} showEmpty />
+      <LinkedPortfolioChip accountId={item.id} status={linkedPortfolio} showEmpty />
     </section>
   );
 }

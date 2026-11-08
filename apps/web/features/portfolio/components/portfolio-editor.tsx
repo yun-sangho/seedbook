@@ -12,6 +12,7 @@ import { parseNumericString } from "@web/utils/number-format";
 import { Plus } from "lucide-react";
 import { usePortfolioStore } from "../stores/portfolio-store";
 import type { PortfolioItem } from "../types/types";
+import { accountPortfolioMap } from "../utils/portfolio-links";
 import { validateAllocations } from "../utils/validate-allocations";
 import { PortfolioAllocationRow } from "./portfolio-allocation-row";
 
@@ -30,6 +31,9 @@ export function PortfolioEditor({ portfolio }: PortfolioEditorProps) {
 
   const investments = useInvestmentStore((s) => s.investments);
   const linkedIdSet = useMemo(() => new Set(portfolio.accountIds), [portfolio.accountIds]);
+  const portfolios = usePortfolioStore((s) => s.portfolios);
+  // 한 계좌는 하나의 포트폴리오에만 연결된다 — 다른 포트폴리오에 연결된 계좌는 체크하면 옮겨온다.
+  const portfolioByAccount = useMemo(() => accountPortfolioMap(portfolios), [portfolios]);
 
   const validation = useMemo(
     () => validateAllocations(portfolio.allocations),
@@ -177,6 +181,7 @@ export function PortfolioEditor({ portfolio }: PortfolioEditorProps) {
           <div className="grid gap-1.5 sm:grid-cols-2">
             {investments.map((inv) => {
               const checked = linkedIdSet.has(inv.id);
+              const linkedElsewhere = checked ? undefined : portfolioByAccount.get(inv.id);
               return (
                 <label
                   key={inv.id}
@@ -195,7 +200,17 @@ export function PortfolioEditor({ portfolio }: PortfolioEditorProps) {
                     className="h-2.5 w-2.5 rounded-full flex-shrink-0"
                     style={{ backgroundColor: inv.color }}
                   />
-                  <span className="truncate text-sm font-medium">{inv.accountName}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium">{inv.accountName}</span>
+                    {linkedElsewhere && (
+                      <span
+                        className="block truncate text-[11px] text-muted-foreground"
+                        title="체크하면 이 포트폴리오로 옮겨집니다"
+                      >
+                        {linkedElsewhere.name || "다른 포트폴리오"}에 연결됨
+                      </span>
+                    )}
+                  </span>
                   {inv.accountType && (
                     <span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground flex-shrink-0">
                       {inv.accountType}

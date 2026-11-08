@@ -1,33 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { useFlow } from "@stackflow/react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
-import { useLinkedPortfolioStatuses } from "@web/features/portfolio/utils/use-linked-portfolio-statuses";
 import { ResultSection } from "@web/seed-design/ui/result-section";
-import { SegmentedControl, SegmentedControlItem } from "@web/seed-design/ui/segmented-control";
 import { AccountRebalancingMobile } from "./account-rebalancing-mobile";
 
 /**
  * 계좌 리밸런싱 상세. 계좌에 연결된 포트폴리오의 목표 비중으로 이 계좌를 맞춘다.
- * 여러 포트폴리오가 연결돼 있으면 상단에서 고른다 (리밸런싱이 필요한 것이 기본).
  */
 export function RebalancingDetailMobile({ id }: { id: string }) {
   const account = useInvestmentStore((s) => s.investments.find((inv) => inv.id === id));
-  const portfolios = usePortfolioStore((s) => s.portfolios);
-  const statuses = useLinkedPortfolioStatuses()(id);
+  // 한 계좌는 하나의 포트폴리오에만 연결된다 (`portfolio-links.ts`).
+  const portfolio = usePortfolioStore((s) => s.portfolios.find((p) => p.accountIds.includes(id)));
   const { push, pop } = useFlow();
-
-  // statuses 는 리밸런싱 필요 → 정상 → 판단 불가 순이라 첫 항목이 기본 선택.
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const activeId = statuses.some((s) => s.portfolioId === selectedId)
-    ? selectedId
-    : (statuses[0]?.portfolioId ?? null);
-  const portfolio = useMemo(
-    () => portfolios.find((p) => p.id === activeId),
-    [portfolios, activeId]
-  );
 
   if (!account) {
     return (
@@ -61,23 +47,6 @@ export function RebalancingDetailMobile({ id }: { id: string }) {
 
   return (
     <div className="pb-x4">
-      {statuses.length >= 2 && (
-        <div className="px-x4 pt-x4">
-          <SegmentedControl
-            aria-label="기준 포트폴리오"
-            value={portfolio.id}
-            onValueChange={setSelectedId}
-            className="w-full"
-          >
-            {statuses.map((s) => (
-              <SegmentedControlItem key={s.portfolioId} value={s.portfolioId}>
-                {s.name}
-              </SegmentedControlItem>
-            ))}
-          </SegmentedControl>
-        </div>
-      )}
-
       {portfolio.allocations.length === 0 ? (
         <div className="flex min-h-[50dvh] flex-col">
           <ResultSection
@@ -90,7 +59,7 @@ export function RebalancingDetailMobile({ id }: { id: string }) {
           />
         </div>
       ) : (
-        // 포트폴리오를 바꾸면 현금 시뮬레이션 입력을 초기화한다.
+        // 연결 포트폴리오가 바뀌면 현금 시뮬레이션 입력을 초기화한다.
         <AccountRebalancingMobile key={portfolio.id} portfolio={portfolio} account={account} />
       )}
     </div>

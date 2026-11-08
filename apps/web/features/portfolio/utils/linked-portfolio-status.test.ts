@@ -5,7 +5,7 @@ import {
 } from "@web/features/investments/utils/use-stock-prices";
 import { describe, expect, it } from "vitest";
 import type { PortfolioAllocation, PortfolioItem } from "../types/types";
-import { linkedPortfolioStatuses } from "./linked-portfolio-status";
+import { linkedPortfolioStatus } from "./linked-portfolio-status";
 
 function holding(ticker: string, quantity: number): StockHolding {
   return { id: ticker, market: "KOSPI", ticker, name: ticker, currency: "KRW", quantity, memo: "" };
@@ -50,12 +50,12 @@ const prices = new Map<string, StockPricePoint>([
   [stockPriceKey("KOSPI", "B"), { close: 1000, date: "2026-11-06" }],
 ]);
 
-describe("linkedPortfolioStatuses", () => {
-  it("returns nothing for an account no portfolio links to", () => {
+describe("linkedPortfolioStatus", () => {
+  it("returns null for an account no portfolio links to", () => {
     const acc = account("acc-1", [holding("A", 10)]);
     const p = portfolio({ id: "p", accountIds: ["other"], allocations: [allocation("A", 100)] });
 
-    expect(linkedPortfolioStatuses("acc-1", [p], [acc], prices)).toEqual([]);
+    expect(linkedPortfolioStatus("acc-1", [p], [acc], prices)).toBeNull();
   });
 
   it("reports ok when the linked portfolio is within its drift threshold", () => {
@@ -66,7 +66,7 @@ describe("linkedPortfolioStatuses", () => {
       allocations: [allocation("A", 50), allocation("B", 50)],
     });
 
-    const [status] = linkedPortfolioStatuses("acc-1", [p], [acc], prices);
+    const status = linkedPortfolioStatus("acc-1", [p], [acc], prices);
 
     expect(status).toMatchObject({ portfolioId: "p", state: "ok", breachedCount: 0 });
   });
@@ -80,7 +80,7 @@ describe("linkedPortfolioStatuses", () => {
       driftThresholdPercent: 5,
     });
 
-    const [status] = linkedPortfolioStatuses("acc-1", [p], [acc], prices);
+    const status = linkedPortfolioStatus("acc-1", [p], [acc], prices);
 
     expect(status).toMatchObject({ state: "needs-rebalancing", breachedCount: 2 });
     expect(status?.maxAbsGapPercent).toBeCloseTo(30);
@@ -96,7 +96,7 @@ describe("linkedPortfolioStatuses", () => {
       allocations: [allocation("A", 50), allocation("B", 50)],
     });
 
-    const [status] = linkedPortfolioStatuses("acc-a", [p], [accA, accB], prices);
+    const status = linkedPortfolioStatus("acc-a", [p], [accA, accB], prices);
 
     expect(status).toMatchObject({ state: "needs-rebalancing", breachedCount: 2 });
     expect(status?.maxAbsGapPercent).toBeCloseTo(50);
@@ -111,7 +111,7 @@ describe("linkedPortfolioStatuses", () => {
       allocations: [allocation("A", 100)],
     });
 
-    const [status] = linkedPortfolioStatuses("acc-a", [p], [accA, accB], prices);
+    const status = linkedPortfolioStatus("acc-a", [p], [accA, accB], prices);
 
     expect(status?.state).toBe("unknown");
   });
@@ -120,7 +120,7 @@ describe("linkedPortfolioStatuses", () => {
     const acc = account("acc-1", [holding("A", 10)]);
     const p = portfolio({ id: "p", accountIds: ["acc-1"] });
 
-    const [status] = linkedPortfolioStatuses("acc-1", [p], [acc], prices);
+    const status = linkedPortfolioStatus("acc-1", [p], [acc], prices);
 
     expect(status?.state).toBe("unknown");
   });
@@ -129,27 +129,27 @@ describe("linkedPortfolioStatuses", () => {
     const acc = account("acc-1", [holding("A", 10)]);
     const p = portfolio({ id: "p", accountIds: ["acc-1"], allocations: [allocation("A", 100)] });
 
-    const [status] = linkedPortfolioStatuses("acc-1", [p], [acc], new Map());
+    const status = linkedPortfolioStatus("acc-1", [p], [acc], new Map());
 
     expect(status?.state).toBe("unknown");
   });
 
-  it("lists every portfolio linked to the account, needing rebalancing first", () => {
+  it("picks the portfolio the account is linked to among several portfolios", () => {
     const acc = account("acc-1", [holding("A", 80), holding("B", 20)]);
-    const ok = portfolio({
-      id: "ok",
+    const unrelated = portfolio({
+      id: "unrelated",
+      accountIds: ["acc-2"],
+      allocations: [allocation("A", 50), allocation("B", 50)],
+    });
+    const linked = portfolio({
+      id: "linked",
       accountIds: ["acc-1"],
       allocations: [allocation("A", 80), allocation("B", 20)],
     });
-    const bad = portfolio({
-      id: "bad",
-      accountIds: ["acc-1"],
-      allocations: [allocation("A", 50), allocation("B", 50)],
-    });
 
-    const statuses = linkedPortfolioStatuses("acc-1", [ok, bad], [acc], prices);
+    const status = linkedPortfolioStatus("acc-1", [unrelated, linked], [acc], prices);
 
-    expect(statuses.map((s) => s.portfolioId)).toEqual(["bad", "ok"]);
+    expect(status).toMatchObject({ portfolioId: "linked", state: "ok" });
   });
 
   it("counts the account's cash, which targets 0원, when judging drift", () => {
@@ -161,7 +161,7 @@ describe("linkedPortfolioStatuses", () => {
       allocations: [allocation("A", 50), allocation("B", 50)],
     });
 
-    const [status] = linkedPortfolioStatuses("acc-1", [p], [acc], prices);
+    const status = linkedPortfolioStatus("acc-1", [p], [acc], prices);
 
     expect(status?.state).toBe("needs-rebalancing");
     expect(status?.maxAbsGapPercent).toBeCloseTo(50);
@@ -171,7 +171,7 @@ describe("linkedPortfolioStatuses", () => {
     const acc = account("acc-1", [], 1_000_000);
     const p = portfolio({ id: "p", accountIds: ["acc-1"], allocations: [allocation("A", 100)] });
 
-    const [status] = linkedPortfolioStatuses("acc-1", [p], [acc], prices);
+    const status = linkedPortfolioStatus("acc-1", [p], [acc], prices);
 
     expect(status?.state).toBe("needs-rebalancing");
   });

@@ -18,31 +18,23 @@ function status(state: LinkedPortfolioState, portfolioId = state): LinkedPortfol
 
 describe("accountRebalancingState", () => {
   it("is unlinked when no portfolio links to the account", () => {
-    expect(accountRebalancingState([])).toBe("unlinked");
+    expect(accountRebalancingState(null)).toBe("unlinked");
   });
 
-  it("needs rebalancing when any linked portfolio is over its threshold", () => {
-    expect(accountRebalancingState([status("ok"), status("needs-rebalancing")])).toBe(
-      "needs-rebalancing"
-    );
-  });
-
-  it("is ok when none needs rebalancing and at least one is ok", () => {
-    expect(accountRebalancingState([status("unknown"), status("ok")])).toBe("ok");
-  });
-
-  it("is unknown when every linked portfolio is undeterminable", () => {
-    expect(accountRebalancingState([status("unknown")])).toBe("unknown");
+  it("follows the linked portfolio's state", () => {
+    expect(accountRebalancingState(status("needs-rebalancing"))).toBe("needs-rebalancing");
+    expect(accountRebalancingState(status("ok"))).toBe("ok");
+    expect(accountRebalancingState(status("unknown"))).toBe("unknown");
   });
 });
 
 describe("groupAccountsByRebalancingState", () => {
   const rows = [
-    { id: "ok-1", statuses: [status("ok")] },
-    { id: "unlinked-1", statuses: [] },
-    { id: "bad-1", statuses: [status("needs-rebalancing")] },
-    { id: "unknown-1", statuses: [status("unknown")] },
-    { id: "bad-2", statuses: [status("ok"), status("needs-rebalancing")] },
+    { id: "ok-1", status: status("ok") },
+    { id: "unlinked-1", status: null },
+    { id: "bad-1", status: status("needs-rebalancing") },
+    { id: "unknown-1", status: status("unknown") },
+    { id: "bad-2", status: status("needs-rebalancing") },
   ];
 
   it("orders groups: needs rebalancing, ok, unknown, unlinked — keeping account order inside", () => {
@@ -57,7 +49,7 @@ describe("groupAccountsByRebalancingState", () => {
   });
 
   it("omits empty groups", () => {
-    const groups = groupAccountsByRebalancingState([{ id: "ok-1", statuses: [status("ok")] }]);
+    const groups = groupAccountsByRebalancingState([{ id: "ok-1", status: status("ok") }]);
 
     expect(groups.map((g) => g.state)).toEqual(["ok"]);
   });

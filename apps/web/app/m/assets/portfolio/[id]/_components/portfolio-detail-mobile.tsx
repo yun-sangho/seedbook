@@ -15,6 +15,7 @@ import { HeaderAction } from "@web/components/mobile/header-action";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import type { PortfolioItem } from "@web/features/portfolio/types/types";
+import { accountPortfolioMap } from "@web/features/portfolio/utils/portfolio-links";
 import { validateAllocations } from "@web/features/portfolio/utils/validate-allocations";
 import { useIsReadOnly } from "@web/features/sharing/hooks/use-is-read-only";
 import { cn } from "@web/lib/utils";
@@ -100,6 +101,9 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
   const toggleAccountLink = usePortfolioStore((s) => s.toggleAccountLink);
   const setDriftThreshold = usePortfolioStore((s) => s.setDriftThreshold);
   const investments = useInvestmentStore((s) => s.investments);
+  const portfolios = usePortfolioStore((s) => s.portfolios);
+  // 한 계좌는 하나의 포트폴리오에만 연결된다 — 다른 포트폴리오에 연결된 계좌는 체크하면 옮겨온다.
+  const portfolioByAccount = useMemo(() => accountPortfolioMap(portfolios), [portfolios]);
 
   const validation = useMemo(
     () => validateAllocations(portfolio.allocations),
@@ -251,6 +255,7 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
                 <ListCheckItem
                   key={inv.id}
                   title={inv.accountName || "이름 없는 계좌"}
+                  detail={linkedElsewhereDetail(portfolioByAccount.get(inv.id), portfolio.id)}
                   prefix={
                     <span
                       className="size-x3 block rounded-full"
@@ -361,4 +366,13 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
       )}
     </div>
   );
+}
+
+/** 다른 포트폴리오에 연결된 계좌라면 그 사실과 체크 시 동작을 알려준다. */
+function linkedElsewhereDetail(
+  linked: PortfolioItem | undefined,
+  currentPortfolioId: string
+): string | undefined {
+  if (!linked || linked.id === currentPortfolioId) return undefined;
+  return `${linked.name || "다른 포트폴리오"}에 연결됨 · 체크하면 이 포트폴리오로 옮겨요`;
 }

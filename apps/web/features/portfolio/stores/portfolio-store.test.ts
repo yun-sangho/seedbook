@@ -78,6 +78,19 @@ describe("Portfolio Store", () => {
       usePortfolioStore.getState().setPortfolioAccountIds(id, ["a", "a", "b"]);
       expect(usePortfolioStore.getState().portfolios[0]!.accountIds).toEqual(["a", "b"]);
     });
+
+    it("moves accounts out of any other portfolio they were linked to", () => {
+      const other = usePortfolioStore.getState().addPortfolio("other");
+      const target = usePortfolioStore.getState().addPortfolio("target");
+      usePortfolioStore.getState().setPortfolioAccountIds(other, ["a", "b"]);
+
+      usePortfolioStore.getState().setPortfolioAccountIds(target, ["a"]);
+
+      const byId = (id: string) =>
+        usePortfolioStore.getState().portfolios.find((p) => p.id === id)!;
+      expect(byId(target).accountIds).toEqual(["a"]);
+      expect(byId(other).accountIds).toEqual(["b"]);
+    });
   });
 
   describe("toggleAccountLink", () => {
@@ -92,6 +105,48 @@ describe("Portfolio Store", () => {
       usePortfolioStore.getState().setPortfolioAccountIds(id, ["acc-1", "acc-2"]);
       usePortfolioStore.getState().toggleAccountLink(id, "acc-1");
       expect(usePortfolioStore.getState().portfolios[0]!.accountIds).toEqual(["acc-2"]);
+    });
+
+    it("moves the account from the portfolio it was linked to", () => {
+      const from = usePortfolioStore.getState().addPortfolio("from");
+      const to = usePortfolioStore.getState().addPortfolio("to");
+      usePortfolioStore.getState().setPortfolioAccountIds(from, ["acc-1", "acc-2"]);
+
+      usePortfolioStore.getState().toggleAccountLink(to, "acc-1");
+
+      const byId = (id: string) =>
+        usePortfolioStore.getState().portfolios.find((p) => p.id === id)!;
+      expect(byId(to).accountIds).toEqual(["acc-1"]);
+      expect(byId(from).accountIds).toEqual(["acc-2"]);
+    });
+
+    it("touches updatedAt of the portfolio the account was moved out of", () => {
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+        const from = usePortfolioStore.getState().addPortfolio("from");
+        const to = usePortfolioStore.getState().addPortfolio("to");
+        usePortfolioStore.getState().setPortfolioAccountIds(from, ["acc-1"]);
+
+        vi.setSystemTime(new Date("2026-02-01T00:00:00.000Z"));
+        usePortfolioStore.getState().toggleAccountLink(to, "acc-1");
+
+        const fromAfter = usePortfolioStore.getState().portfolios.find((p) => p.id === from)!;
+        expect(fromAfter.updatedAt).toBe("2026-02-01T00:00:00.000Z");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("leaves portfolios that never had the account untouched", () => {
+      const untouched = usePortfolioStore.getState().addPortfolio("untouched");
+      const to = usePortfolioStore.getState().addPortfolio("to");
+      const before = usePortfolioStore.getState().portfolios.find((p) => p.id === untouched);
+
+      usePortfolioStore.getState().toggleAccountLink(to, "acc-1");
+
+      const after = usePortfolioStore.getState().portfolios.find((p) => p.id === untouched);
+      expect(after).toBe(before);
     });
   });
 
@@ -324,6 +379,51 @@ describe("Portfolio Store", () => {
       const migrated = migrate(existing, 2);
       expect(migrated.portfolios[0]!.accountIds).toEqual(["acc-1"]);
       expect(migrated.portfolios[0]!.driftThresholdPercent).toBe(3);
+    });
+
+    it("migrate (v2 -> v3) keeps a shared account only in the most recently updated portfolio", () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const persistApi = (usePortfolioStore as any).persist;
+      const migrate = persistApi.getOptions().migrate as (
+        persisted: unknown,
+        version: number
+      ) => { portfolios: PortfolioItem[] };
+
+      const base = {
+        color: "#3b82f6",
+        allocations: [],
+        driftThresholdPercent: 5,
+        note: "",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      };
+      const v2 = {
+        portfolios: [
+          {
+            ...base,
+            id: "old",
+            name: "old",
+            accountIds: ["acc-1", "acc-2"],
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          },
+          {
+            ...base,
+            id: "new",
+            name: "new",
+            accountIds: ["acc-1"],
+            updatedAt: "2026-02-01T00:00:00.000Z",
+          },
+        ],
+      };
+
+      const migrated = migrate(v2, 2);
+
+      expect(migrated.portfolios.map((p) => p.accountIds)).toEqual([["acc-2"], ["acc-1"]]);
+    });
+
+    it("persists at version 3", () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const persistApi = (usePortfolioStore as any).persist;
+      expect(persistApi.getOptions().version).toBe(3);
     });
   });
 

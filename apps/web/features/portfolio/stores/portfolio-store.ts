@@ -8,6 +8,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { DEFAULT_DRIFT_THRESHOLD_PERCENT, DEFAULT_PORTFOLIO_NAMES } from "../types/constants";
 import type { PortfolioAllocation, PortfolioItem, StockSelection } from "../types/types";
+import { dedupePortfolioLinks } from "../utils/portfolio-links";
 
 const nowIso = () => new Date().toISOString();
 
@@ -59,6 +60,15 @@ interface PortfolioState {
 }
 
 const touch = (p: PortfolioItem): PortfolioItem => ({ ...p, updatedAt: nowIso() });
+
+/**
+ * 한 계좌는 하나의 포트폴리오에만 연결된다 — 다른 포트폴리오에 연결하면 기존 연결에서
+ * 빠진다. 해당 계좌가 없던 포트폴리오는 같은 참조를 그대로 돌려준다.
+ */
+const withoutAccounts = (p: PortfolioItem, accountIds: Set<string>): PortfolioItem =>
+  p.accountIds.some((id) => accountIds.has(id))
+    ? touch({ ...p, accountIds: p.accountIds.filter((id) => !accountIds.has(id)) })
+    : p;
 
 export const usePortfolioStore = create<PortfolioState>()(
   persist(
@@ -172,7 +182,9 @@ export const usePortfolioStore = create<PortfolioState>()(
         const unique = Array.from(new Set(accountIds));
         set((state) => ({
           portfolios: state.portfolios.map((p) =>
-            p.id === portfolioId ? touch({ ...p, accountIds: unique }) : p
+            p.id === portfolioId
+              ? touch({ ...p, accountIds: unique })
+              : withoutAccounts(p, new Set(unique))
           ),
         }));
       },
@@ -180,7 +192,7 @@ export const usePortfolioStore = create<PortfolioState>()(
       toggleAccountLink: (portfolioId, accountId) => {
         set((state) => ({
           portfolios: state.portfolios.map((p) => {
-            if (p.id !== portfolioId) return p;
+            if (p.id !== portfolioId) return withoutAccounts(p, new Set([accountId]));
             const has = p.accountIds.includes(accountId);
             const next = has
               ? p.accountIds.filter((id) => id !== accountId)
@@ -212,7 +224,7 @@ export const usePortfolioStore = create<PortfolioState>()(
     {
       name: "portfolio-storage",
       storage: createJSONStorage(() => createHybridStorage("portfolio-storage")),
-      version: 2,
+      version: 3,
       partialize: (state) => ({
         portfolios: state.portfolios,
       }),
@@ -224,6 +236,10 @@ export const usePortfolioStore = create<PortfolioState>()(
             accountIds: p.accountIds ?? [],
             driftThresholdPercent: p.driftThresholdPercent ?? DEFAULT_DRIFT_THRESHOLD_PERCENT,
           }));
+        }
+        if (version < 3) {
+          // v3: 한 계좌는 하나의 포트폴리오에만 연결된다.
+          state.portfolios = dedupePortfolioLinks(state.portfolios ?? []);
         }
         return state;
       },

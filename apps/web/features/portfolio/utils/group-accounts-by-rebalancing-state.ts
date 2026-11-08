@@ -11,17 +11,11 @@ export const ACCOUNT_REBALANCING_STATE_ORDER: AccountRebalancingState[] = [
   "unlinked",
 ];
 
-/**
- * 연결된 포트폴리오 상태 중 가장 나쁜 것을 계좌 상태로 쓴다.
- * 하나라도 이격 초과면 초과, 아니면 정상이 하나라도 있으면 정상, 전부 판단 불가면 판단 불가.
- */
+/** 계좌의 리밸런싱 상태 — 연결된 포트폴리오의 상태를 따르고, 연결이 없으면 `unlinked`. */
 export function accountRebalancingState(
-  statuses: LinkedPortfolioStatus[]
+  status: LinkedPortfolioStatus | null
 ): AccountRebalancingState {
-  if (statuses.length === 0) return "unlinked";
-  if (statuses.some((s) => s.state === "needs-rebalancing")) return "needs-rebalancing";
-  if (statuses.some((s) => s.state === "ok")) return "ok";
-  return "unknown";
+  return status?.state ?? "unlinked";
 }
 
 export interface AccountRebalancingGroup<T> {
@@ -30,14 +24,14 @@ export interface AccountRebalancingGroup<T> {
 }
 
 /** 계좌 행을 상태별로 묶는다. 그룹 안에서는 입력 순서를 유지하고, 빈 그룹은 뺀다. */
-export function groupAccountsByRebalancingState<T extends { statuses: LinkedPortfolioStatus[] }>(
+export function groupAccountsByRebalancingState<T extends { status: LinkedPortfolioStatus | null }>(
   rows: T[]
 ): AccountRebalancingGroup<T>[] {
   const byState = new Map<AccountRebalancingState, T[]>(
     ACCOUNT_REBALANCING_STATE_ORDER.map((state) => [state, []])
   );
   for (const row of rows) {
-    byState.get(accountRebalancingState(row.statuses))?.push(row);
+    byState.get(accountRebalancingState(row.status))?.push(row);
   }
   return ACCOUNT_REBALANCING_STATE_ORDER.map((state) => ({
     state,
