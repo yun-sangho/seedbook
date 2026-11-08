@@ -88,6 +88,35 @@ describe("uploadAllToCloud", () => {
     await expect(uploadAllToCloud()).rejects.toThrow(/업로드 실패/);
   });
 
+  it("클라우드에만 있는 항목을 지우지 않고 로컬과 합쳐서 PUT 한다", async () => {
+    window.localStorage.setItem(
+      "debts-storage",
+      JSON.stringify({ state: { debts: [{ id: "local", loanName: "로컬" }] }, version: 3 })
+    );
+    const calls = mockFetch((call) =>
+      call.init?.method === "PUT"
+        ? jsonResponse({ ok: true })
+        : jsonResponse({
+            data: { state: { debts: [{ id: "cloud", loanName: "클라우드" }] }, version: 2 },
+          })
+    );
+
+    await uploadAllToCloud();
+
+    const put = calls.find((c) => c.init?.method === "PUT" && c.url.includes("debts-storage"));
+    const sent = JSON.parse(String(put!.init!.body)).data;
+    expect(sent.state.debts.map((d: { id: string }) => d.id)).toEqual(["local", "cloud"]);
+  });
+
+  it("전환 뒤 이전 클라우드 세션의 동기화 대기열을 비운다", async () => {
+    window.localStorage.setItem("seedbook.sync.debt", JSON.stringify({ userId: "u", meta: {} }));
+    mockFetch(() => jsonResponse({ ok: true }));
+
+    await uploadAllToCloud();
+
+    expect(window.localStorage.getItem("seedbook.sync.debt")).toBeNull();
+  });
+
   it("envelope 가 손상된 key 는 조용히 스킵한다", async () => {
     window.localStorage.setItem("investment-storage", "not-json");
     const calls = mockFetch(() => jsonResponse({ ok: true }));
@@ -126,13 +155,36 @@ describe("downloadAllFromCloud", () => {
     }
   });
 
-  it("data 가 null 이면 localStorage 에서도 제거한다", async () => {
-    window.localStorage.setItem("investment-storage", "stale");
+  it("클라우드에 데이터가 없어도 로컬 데이터는 지우지 않는다", async () => {
+    const local = JSON.stringify({ state: { investments: [{ id: "a" }] }, version: 6 });
+    window.localStorage.setItem("investment-storage", local);
     mockFetch(() => jsonResponse({ data: null, updatedAt: null }));
 
     await downloadAllFromCloud();
 
-    expect(window.localStorage.getItem("investment-storage")).toBeNull();
+    expect(window.localStorage.getItem("investment-storage")).toBe(local);
+  });
+
+  it("로컬에만 있는 항목(아직 못 보낸 변경 포함)을 남기고 클라우드와 합친다", async () => {
+    window.localStorage.setItem(
+      "debts-storage",
+      JSON.stringify({ state: { debts: [{ id: "unsent", loanName: "방금 입력" }] }, version: 3 })
+    );
+    mockFetch(() => jsonResponse({ data: { state: { debts: [{ id: "cloud" }] }, version: 2 } }));
+
+    await downloadAllFromCloud();
+
+    const merged = JSON.parse(window.localStorage.getItem("debts-storage")!);
+    expect(merged.state.debts.map((d: { id: string }) => d.id)).toEqual(["unsent", "cloud"]);
+  });
+
+  it("로컬 모드로 바꾸면 동기화 대기열을 비운다 (다시 켰을 때 옛 변경을 재전송하지 않도록)", async () => {
+    window.localStorage.setItem("seedbook.sync.debt", JSON.stringify({ userId: "u", meta: {} }));
+    mockFetch(() => jsonResponse({ data: null }));
+
+    await downloadAllFromCloud();
+
+    expect(window.localStorage.getItem("seedbook.sync.debt")).toBeNull();
   });
 
   it("GET 실패 시 에러를 throw 한다", async () => {

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useSession } from "@web/lib/auth-client";
+import { downloadAllFromCloud, uploadAllToCloud } from "@web/lib/storage-migration";
 import { getStorageMode, setStorageMode, type StorageMode } from "@web/lib/storage-mode";
 
 /**
@@ -43,12 +44,17 @@ export function StorageModeSync() {
 
         const localMode = getStorageMode();
         if (serverMode !== localMode) {
-          // 서버가 진실의 원천 — 로컬을 서버에 맞추고 새 mode 로 재하이드레이션.
+          // 서버가 진실의 원천 — 다른 기기에서 바꾼 모드를 따른다. 단, 모드만 바꾸면 이
+          // 기기 데이터가 가려지거나 덮일 수 있으므로 설정 화면의 전환과 똑같이 먼저
+          // 양쪽을 합친다. 합치기에 실패하면 모드를 바꾸지 않고 다음 로드에 다시 시도.
+          if (serverMode === "cloud") await uploadAllToCloud();
+          else await downloadAllFromCloud();
+          if (cancelled) return;
           setStorageMode(serverMode satisfies StorageMode);
           window.location.reload();
         }
       } catch {
-        // 네트워크 오류는 무시 — 다음 마운트에서 다시 시도.
+        // 네트워크 오류 / 합치기 실패는 무시 — 모드는 그대로 두고 다음 마운트에서 다시 시도.
       }
     })();
 

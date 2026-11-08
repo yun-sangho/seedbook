@@ -87,13 +87,16 @@ describe("startEntitySync", () => {
     expect(server.calls.filter((c) => c.url === "/api/sync/mutations")).toEqual([]);
   });
 
-  it("sends a local change as an upsert with the known base version", async () => {
+  it("sends only the changed item as an upsert", async () => {
     const store = fakeStore([]);
     const server = fakeServer({
       pull: () => ({
         cursor: "c1",
         changes: {
-          debt: [{ id: "a", version: 3, deletedAt: null, data: { name: "x" } }],
+          debt: [
+            { id: "a", version: 3, deletedAt: null, data: { name: "x" } },
+            { id: "b", version: 1, deletedAt: null, data: { name: "y" } },
+          ],
           listOrder: [],
         },
       }),
@@ -102,41 +105,41 @@ describe("startEntitySync", () => {
     handle = startEntitySync(config, store, { userId: "u1", fetchFn: server.fetchFn });
     await handle.pull();
 
-    store.set([{ id: "a", name: "edited" }]);
+    store.set([
+      { id: "a", name: "edited" },
+      { id: "b", name: "y" },
+    ]);
     await handle.flush();
 
     const sent = server.calls.find((c) => c.url === "/api/sync/mutations")?.body as {
       mutations: unknown[];
     };
     expect(sent.mutations).toEqual([
-      { entity: "debt", op: "upsert", id: "a", baseVersion: 3, data: { name: "edited" } },
+      { entity: "debt", op: "upsert", id: "a", data: { name: "edited" } },
     ]);
   });
 
-  it("applies the server's row when a mutation conflicts", async () => {
+  it("restores the server state with a full pull after a rejected change", async () => {
     const store = fakeStore([]);
     const server = fakeServer({
       pull: () => ({
-        cursor: "c1",
+        cursor: "c2",
         changes: {
-          debt: [{ id: "a", version: 1, deletedAt: null, data: { name: "x" } }],
+          debt: [{ id: "a", version: 1, deletedAt: null, data: { name: "server" } }],
           listOrder: [],
         },
       }),
-      mutations: () => [
-        {
-          status: "conflict",
-          current: { id: "a", version: 2, deletedAt: null, data: { name: "other device" } },
-        },
-      ],
+      mutations: () => [{ status: "rejected", reason: "invalid" }],
     });
     handle = startEntitySync(config, store, { userId: "u1", fetchFn: server.fetchFn });
     await handle.pull();
 
-    store.set([{ id: "a", name: "mine" }]);
+    store.set([{ id: "a", name: "not accepted" }]);
     await handle.flush();
 
-    expect(store.get()).toEqual([{ id: "a", name: "other device" }]);
+    expect(store.get()).toEqual([{ id: "a", name: "server" }]);
+    const pulls = server.calls.filter((c) => c.url.startsWith("/api/sync/pull"));
+    expect(pulls.at(-1)?.url).toBe("/api/sync/pull");
   });
 
   it("keeps pending changes across a restart (offline queue)", async () => {

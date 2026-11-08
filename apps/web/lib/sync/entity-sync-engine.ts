@@ -1,7 +1,6 @@
 import { useSyncStatusStore } from "@web/features/settings/stores/sync-status-store";
 import {
   applyMutationResults,
-  applyRemoteEntities,
   buildMutations,
   emptySyncMeta,
   mergePull,
@@ -166,9 +165,8 @@ export function startEntitySync<T extends { id: string }>(
     const { results } = (await res.json()) as { results: MutationResult[] };
     const applied = applyMutationResults(loadMeta(), batchSent, results);
     saveMeta(applied.meta);
-    if (applied.remote.length > 0) {
-      setItemsFromRemote(applyRemoteEntities(store.get(), applied.remote, config.fromData));
-    }
+    // 서버가 받지 않은 변경이 화면에 남지 않도록 서버 상태로 다시 맞춘다 (커서가 지워져 전체 pull).
+    if (applied.rejected > 0) await pull();
     status().markSaved(statusKey);
     // 한 번에 다 못 보냈으면 이어서 보낸다.
     return mutations.length > batch.length;

@@ -3,9 +3,9 @@ import type { DebtPayload } from "@web/server/debts/debt-record";
 /**
  * 엔티티 단위 동기화 프로토콜 (`POST /api/sync/mutations`, `GET /api/sync/pull`).
  *
- * 클라이언트는 바뀐 엔티티만 mutation 으로 보내고, 각 mutation 은 마지막으로 본
- * `version` 을 `baseVersion` 으로 싣는다 (새 엔티티는 0). 서버 version 과 다르면
- * 충돌로 현재 값을 돌려준다 — 덮어쓰지 않는다.
+ * 클라이언트는 바뀐 엔티티만 mutation 으로 보낸다. 자산은 본인만 수정하므로 기기 사이의
+ * 충돌은 따지지 않고 마지막 저장이 이긴다. `version` 은 행이 바뀔 때마다 올라가며,
+ * 클라이언트가 pull 에서 이미 본 변경을 걸러내는 데 쓴다.
  */
 
 /** 한 요청에 담을 수 있는 mutation 수. 오프라인 큐가 길면 클라이언트가 나눠 보낸다. */
@@ -25,7 +25,6 @@ export type ListOrderChange = { domain: string; order: string[] };
 
 export type MutationResult =
   | { status: "ok"; version?: number }
-  | { status: "conflict"; current: SyncedEntity<unknown> | null }
   | { status: "rejected"; reason: "invalid" | "forbidden" };
 
 export type PullResult = {

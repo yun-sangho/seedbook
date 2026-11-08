@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   applyMutationResults,
-  applyRemoteEntities,
   buildMutations,
   emptySyncMeta,
   mergePull,
@@ -83,7 +82,7 @@ describe("recordLocalChange", () => {
 });
 
 describe("buildMutations", () => {
-  it("uses the last seen server version as baseVersion (0 for new)", () => {
+  it("sends upserts for changed items and the pending order", () => {
     const meta = recordLocalChange(
       metaWith({ versions: { a: 4 } }),
       [item("a")],
@@ -98,10 +97,9 @@ describe("buildMutations", () => {
         entity: "debt",
         op: "upsert",
         id: "a",
-        baseVersion: 4,
         data: { name: "edited", amount: 0 },
       },
-      { entity: "debt", op: "upsert", id: "b", baseVersion: 0, data: { name: "b", amount: 0 } },
+      { entity: "debt", op: "upsert", id: "b", data: { name: "b", amount: 0 } },
       { entity: "listOrder", op: "set", domain: "debts", order: ["a", "b"] },
     ]);
   });
@@ -128,10 +126,10 @@ describe("applyMutationResults", () => {
     expect(result.meta.versions.a).toBe(1);
     expect(result.meta.outbox).toEqual({});
     expect(result.meta.pendingOrder).toBeNull();
-    expect(result.remote).toEqual([]);
+    expect(result.rejected).toBe(0);
   });
 
-  it("keeps an entry that changed while its request was in flight, with the new base version", () => {
+  it("keeps an entry that changed while its request was in flight", () => {
     const meta = recordLocalChange(
       metaWith({ versions: { a: 1 } }),
       [item("a")],
@@ -147,39 +145,6 @@ describe("applyMutationResults", () => {
     expect(result.meta.outbox.a).toMatchObject({ op: "upsert", data: { name: "y" } });
   });
 
-  it("lets the server win on conflict and returns its row to apply locally", () => {
-    const meta = recordLocalChange(
-      metaWith({ versions: { a: 1 } }),
-      [item("a")],
-      [item("a", "mine")],
-      toData
-    );
-    const { sent } = sendOne(meta);
-    const current = { id: "a", version: 2, deletedAt: null, data: { name: "theirs", amount: 0 } };
-
-    const result = applyMutationResults(meta, sent, [{ status: "conflict", current }]);
-
-    expect(result.meta.versions.a).toBe(2);
-    expect(result.meta.outbox.a).toBeUndefined();
-    expect(result.remote).toEqual([current]);
-  });
-
-  it("treats a conflict whose server data equals what was sent as success (retried request)", () => {
-    const meta = recordLocalChange(
-      metaWith({ versions: { a: 1 } }),
-      [item("a")],
-      [item("a", "same")],
-      toData
-    );
-    const { sent } = sendOne(meta);
-    const current = { id: "a", version: 2, deletedAt: null, data: { name: "same", amount: 0 } };
-
-    const result = applyMutationResults(meta, sent, [{ status: "conflict", current }]);
-
-    expect(result.meta.versions.a).toBe(2);
-    expect(result.remote).toEqual([]);
-  });
-
   it("drops a rejected mutation", () => {
     const meta = recordLocalChange(emptySyncMeta(), [item("a")], [item("a", "bad")], toData);
     const { sent } = sendOne(meta);
@@ -187,6 +152,21 @@ describe("applyMutationResults", () => {
     const result = applyMutationResults(meta, sent, [{ status: "rejected", reason: "invalid" }]);
 
     expect(result.meta.outbox).toEqual({});
+  });
+
+  it("forces a full resync after a rejection so the local list matches the server again", () => {
+    const meta = recordLocalChange(
+      metaWith({ cursor: "c5", versions: { a: 1 } }),
+      [item("a")],
+      [item("a", "bad")],
+      toData
+    );
+    const { sent } = sendOne(meta);
+
+    const result = applyMutationResults(meta, sent, [{ status: "rejected", reason: "invalid" }]);
+
+    expect(result.meta.cursor).toBeNull();
+    expect(result.rejected).toBe(1);
   });
 });
 
@@ -303,21 +283,5 @@ describe("mergePull", () => {
     );
 
     expect(result.items.map((i) => i.id)).toEqual(["b", "a"]);
-  });
-});
-
-describe("applyRemoteEntities", () => {
-  it("replaces, adds and removes items from server rows regardless of known versions", () => {
-    const result = applyRemoteEntities(
-      [item("a", "mine"), item("b")],
-      [
-        { id: "a", version: 2, deletedAt: null, data: { name: "theirs", amount: 0 } },
-        { id: "b", version: 3, deletedAt: "2026-11-08T00:00:00.000Z", data: null },
-        { id: "c", version: 1, deletedAt: null, data: { name: "c", amount: 0 } },
-      ],
-      fromData
-    );
-
-    expect(result).toEqual([item("a", "theirs"), item("c")]);
   });
 });

@@ -22,7 +22,7 @@ function debtData(loanName = "전세대출") {
 }
 
 describe("applyMutation: debt upsert", () => {
-  it("creates a new debt at version 1 when baseVersion is 0", async () => {
+  it("creates a new debt at version 1", async () => {
     const userId = await createTestUser();
     const id = randomUUID();
 
@@ -30,21 +30,19 @@ describe("applyMutation: debt upsert", () => {
       entity: "debt",
       op: "upsert",
       id,
-      baseVersion: 0,
       data: debtData(),
     });
 
     expect(result).toEqual({ status: "ok", version: 1 });
   });
 
-  it("updates a debt when baseVersion matches and bumps the version", async () => {
+  it("updates a debt and bumps the version", async () => {
     const userId = await createTestUser();
     const id = randomUUID();
     await applyMutation(db, userId, {
       entity: "debt",
       op: "upsert",
       id,
-      baseVersion: 0,
       data: debtData("a"),
     });
 
@@ -52,7 +50,6 @@ describe("applyMutation: debt upsert", () => {
       entity: "debt",
       op: "upsert",
       id,
-      baseVersion: 1,
       data: debtData("b"),
     });
 
@@ -63,7 +60,7 @@ describe("applyMutation: debt upsert", () => {
     ]);
   });
 
-  it("reports a conflict with the current row when baseVersion is stale", async () => {
+  it("lets the last write win and ignores a stale baseVersion from older clients", async () => {
     const userId = await createTestUser();
     const id = randomUUID();
     await applyMutation(db, userId, {
@@ -86,40 +83,12 @@ describe("applyMutation: debt upsert", () => {
       op: "upsert",
       id,
       baseVersion: 1,
-      data: debtData("stale"),
+      data: debtData("stale device, saved last"),
     });
 
-    expect(result).toEqual({
-      status: "conflict",
-      current: expect.objectContaining({
-        id,
-        version: 2,
-        deletedAt: null,
-        data: expect.objectContaining({ loanName: "other device" }),
-      }),
-    });
-  });
-
-  it("reports a conflict when creating an id that already exists for the user", async () => {
-    const userId = await createTestUser();
-    const id = randomUUID();
-    await applyMutation(db, userId, {
-      entity: "debt",
-      op: "upsert",
-      id,
-      baseVersion: 0,
-      data: debtData(),
-    });
-
-    const result = await applyMutation(db, userId, {
-      entity: "debt",
-      op: "upsert",
-      id,
-      baseVersion: 0,
-      data: debtData("again"),
-    });
-
-    expect(result).toMatchObject({ status: "conflict", current: { id, version: 1 } });
+    expect(result).toEqual({ status: "ok", version: 3 });
+    const { changes } = await pullChanges(db, userId, null);
+    expect(changes.debt[0]?.data).toMatchObject({ loanName: "stale device, saved last" });
   });
 
   it("rejects writing another user's debt and leaves it unchanged", async () => {
@@ -130,7 +99,6 @@ describe("applyMutation: debt upsert", () => {
       entity: "debt",
       op: "upsert",
       id,
-      baseVersion: 0,
       data: debtData("owner"),
     });
 
@@ -138,7 +106,6 @@ describe("applyMutation: debt upsert", () => {
       entity: "debt",
       op: "upsert",
       id,
-      baseVersion: 1,
       data: debtData("hijacked"),
     });
 
@@ -154,30 +121,27 @@ describe("applyMutation: debt upsert", () => {
       entity: "debt",
       op: "upsert",
       id: randomUUID(),
-      baseVersion: 0,
       data: { ...debtData(), amount: "lots" },
     });
 
     expect(result).toEqual({ status: "rejected", reason: "invalid" });
   });
 
-  it("revives a deleted debt when upserted against its tombstone version", async () => {
+  it("revives a deleted debt when it is saved again", async () => {
     const userId = await createTestUser();
     const id = randomUUID();
     await applyMutation(db, userId, {
       entity: "debt",
       op: "upsert",
       id,
-      baseVersion: 0,
       data: debtData(),
     });
-    await applyMutation(db, userId, { entity: "debt", op: "delete", id, baseVersion: 1 });
+    await applyMutation(db, userId, { entity: "debt", op: "delete", id });
 
     const result = await applyMutation(db, userId, {
       entity: "debt",
       op: "upsert",
       id,
-      baseVersion: 2,
       data: debtData("back"),
     });
 
@@ -195,7 +159,6 @@ describe("applyMutation: debt delete", () => {
       entity: "debt",
       op: "upsert",
       id,
-      baseVersion: 0,
       data: debtData(),
     });
 
@@ -203,7 +166,6 @@ describe("applyMutation: debt delete", () => {
       entity: "debt",
       op: "delete",
       id,
-      baseVersion: 1,
     });
 
     expect(result).toEqual({ status: "ok", version: 2 });
@@ -216,43 +178,38 @@ describe("applyMutation: debt delete", () => {
       entity: "debt",
       op: "upsert",
       id,
-      baseVersion: 0,
       data: debtData(),
     });
-    await applyMutation(db, userId, { entity: "debt", op: "delete", id, baseVersion: 1 });
+    await applyMutation(db, userId, { entity: "debt", op: "delete", id });
 
     const again = await applyMutation(db, userId, {
       entity: "debt",
       op: "delete",
       id,
-      baseVersion: 1,
     });
     const unknown = await applyMutation(db, userId, {
       entity: "debt",
       op: "delete",
       id: randomUUID(),
-      baseVersion: 1,
     });
 
     expect(again).toEqual({ status: "ok", version: 2 });
     expect(unknown).toEqual({ status: "ok" });
   });
 
-  it("reports a conflict when the debt changed since the client saw it", async () => {
+  it("deletes even when the debt changed since the client saw it (last write wins)", async () => {
     const userId = await createTestUser();
     const id = randomUUID();
     await applyMutation(db, userId, {
       entity: "debt",
       op: "upsert",
       id,
-      baseVersion: 0,
       data: debtData(),
     });
     await applyMutation(db, userId, {
       entity: "debt",
       op: "upsert",
       id,
-      baseVersion: 1,
       data: debtData("edited elsewhere"),
     });
 
@@ -260,10 +217,9 @@ describe("applyMutation: debt delete", () => {
       entity: "debt",
       op: "delete",
       id,
-      baseVersion: 1,
     });
 
-    expect(result).toMatchObject({ status: "conflict", current: { id, version: 2 } });
+    expect(result).toEqual({ status: "ok", version: 3 });
   });
 
   it("rejects deleting another user's debt", async () => {
@@ -274,7 +230,6 @@ describe("applyMutation: debt delete", () => {
       entity: "debt",
       op: "upsert",
       id,
-      baseVersion: 0,
       data: debtData(),
     });
 
@@ -282,7 +237,6 @@ describe("applyMutation: debt delete", () => {
       entity: "debt",
       op: "delete",
       id,
-      baseVersion: 1,
     });
 
     expect(result).toEqual({ status: "rejected", reason: "forbidden" });
@@ -340,11 +294,10 @@ describe("pullChanges", () => {
         entity: "debt",
         op: "upsert",
         id,
-        baseVersion: 0,
         data: debtData(),
       });
     }
-    await applyMutation(db, userId, { entity: "debt", op: "delete", id: gone, baseVersion: 1 });
+    await applyMutation(db, userId, { entity: "debt", op: "delete", id: gone });
 
     const { changes, cursor } = await pullChanges(db, userId, null);
 
@@ -359,12 +312,11 @@ describe("pullChanges", () => {
       entity: "debt",
       op: "upsert",
       id,
-      baseVersion: 0,
       data: debtData(),
     });
     const { cursor } = await pullChanges(db, userId, null);
 
-    await applyMutation(db, userId, { entity: "debt", op: "delete", id, baseVersion: 1 });
+    await applyMutation(db, userId, { entity: "debt", op: "delete", id });
     const { changes } = await pullChanges(db, userId, cursor);
 
     expect(changes.debt).toEqual([
@@ -379,7 +331,6 @@ describe("pullChanges", () => {
       entity: "debt",
       op: "upsert",
       id: randomUUID(),
-      baseVersion: 0,
       data: debtData(),
     });
 

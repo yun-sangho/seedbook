@@ -1,15 +1,19 @@
 "use client";
 
 import { CLOUD_STORE_KEYS, type CloudStoreKey } from "@web/lib/storage-mode";
+import { mergeEnvelopes, type PersistEnvelope } from "./storage-merge";
+import { clearEntitySyncState } from "./sync/managed-stores";
 
 /**
  * 저장소 모드 전환 시 사용하는 일괄 업로드 / 다운로드 헬퍼.
  *
  * 원칙:
- *   - 6 개 key 를 **순차적**으로 처리 (병렬 실패 복구가 복잡해지므로).
+ *   - **전환으로 데이터를 잃지 않는다.** 덮어쓰지 않고 로컬과 클라우드를 합친다
+ *     (`mergeEnvelopes`: 합집합, 같은 항목은 로컬 우선).
+ *   - 7 개 key 를 **순차적**으로 처리 (병렬 실패 복구가 복잡해지므로).
  *   - 각 단계 진행 상황을 `onProgress` 콜백으로 노출.
- *   - 실패 시 에러를 throw — 호출자는 이미 업로드된 key 는 그대로 두고
- *     사용자가 재시도할 수 있게 한다 (idempotent upsert 라 재시도 안전).
+ *   - 실패 시 에러를 throw — 호출자는 모드를 바꾸지 않고 재시도하게 한다
+ *     (합치기는 몇 번을 다시 해도 결과가 같다).
  */
 
 export type MigrationProgress = {
@@ -20,46 +24,39 @@ export type MigrationProgress = {
 };
 
 /**
- * 로컬 → 클라우드: 현재 localStorage 에 있는 6 개 envelope 를 순서대로
- * `PUT /api/storage/[key]` 한다. 빈 key 는 스킵 (빈 store 로 cloud 를
- * 덮어쓰지 않도록).
+ * 로컬 → 클라우드: 로컬 envelope 를 클라우드 envelope 와 합쳐 `PUT` 한다.
+ * 로컬에 없는 key 는 건드리지 않는다 (클라우드 데이터가 그대로 남음).
  */
 export async function uploadAllToCloud(onProgress?: (p: MigrationProgress) => void): Promise<void> {
   for (let i = 0; i < CLOUD_STORE_KEYS.length; i += 1) {
     const key = CLOUD_STORE_KEYS[i]!;
-    const raw = readLocalEnvelope(key);
-    if (raw === null) {
+    const local = parseEnvelope(readLocalEnvelope(key));
+    if (local === null) {
       onProgress?.({ index: i, total: CLOUD_STORE_KEYS.length, key, phase: "skipped" });
       continue;
     }
     onProgress?.({ index: i, total: CLOUD_STORE_KEYS.length, key, phase: "uploading" });
 
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      // 손상된 blob — 조용히 스킵한다. 어차피 서버가 거부할 거라 위로 에러를
-      // 전파해도 무방하지만, 전환 자체는 계속 진행시키는 편이 안전.
-      onProgress?.({ index: i, total: CLOUD_STORE_KEYS.length, key, phase: "skipped" });
-      continue;
-    }
+    const cloud = await fetchCloudEnvelope(key, "업로드");
+    const merged = mergeEnvelopes(key, local, cloud);
 
     const res = await fetch(`/api/storage/${encodeURIComponent(key)}`, {
       method: "PUT",
       credentials: "include",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ data: parsed }),
+      body: JSON.stringify({ data: merged }),
     });
     if (!res.ok) {
       throw new Error(`업로드 실패 (${key}): ${res.status}`);
     }
     onProgress?.({ index: i, total: CLOUD_STORE_KEYS.length, key, phase: "done" });
   }
+  clearEntitySyncState();
 }
 
 /**
- * 클라우드 → 로컬: 6 개 envelope 를 GET 해서 localStorage 에 그대로 기록한다.
- * 클라우드에 데이터가 없는 key 는 로컬도 클리어 (일관성 유지).
+ * 클라우드 → 로컬: 클라우드 envelope 를 로컬 envelope 와 합쳐 localStorage 에 쓴다.
+ * 로컬 캐시에만 있는 항목 (아직 서버로 못 보낸 변경 포함) 도 남는다.
  */
 export async function downloadAllFromCloud(
   onProgress?: (p: MigrationProgress) => void
@@ -68,21 +65,48 @@ export async function downloadAllFromCloud(
     const key = CLOUD_STORE_KEYS[i]!;
     onProgress?.({ index: i, total: CLOUD_STORE_KEYS.length, key, phase: "downloading" });
 
-    const res = await fetch(`/api/storage/${encodeURIComponent(key)}`, {
-      method: "GET",
-      credentials: "include",
-    });
-    if (!res.ok) {
-      throw new Error(`다운로드 실패 (${key}): ${res.status}`);
-    }
-    const body = (await res.json()) as { data: unknown };
-    if (body.data === null || body.data === undefined) {
-      writeLocalEnvelope(key, null);
-    } else {
-      writeLocalEnvelope(key, JSON.stringify(body.data));
-    }
+    const cloud = await fetchCloudEnvelope(key, "다운로드");
+    const merged = mergeEnvelopes(key, parseEnvelope(readLocalEnvelope(key)), cloud);
+    if (merged !== null) writeLocalEnvelope(key, JSON.stringify(merged));
     onProgress?.({ index: i, total: CLOUD_STORE_KEYS.length, key, phase: "done" });
   }
+  clearEntitySyncState();
+}
+
+async function fetchCloudEnvelope(
+  key: CloudStoreKey,
+  action: "업로드" | "다운로드"
+): Promise<PersistEnvelope | null> {
+  const res = await fetch(`/api/storage/${encodeURIComponent(key)}`, {
+    method: "GET",
+    credentials: "include",
+  });
+  if (!res.ok) {
+    throw new Error(`${action} 실패 (${key}): ${res.status}`);
+  }
+  const body = (await res.json()) as { data?: unknown };
+  return isEnvelope(body.data) ? body.data : null;
+}
+
+function parseEnvelope(raw: string | null): PersistEnvelope | null {
+  if (raw === null) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return isEnvelope(parsed) ? parsed : null;
+  } catch {
+    // 손상된 blob — 없는 것으로 본다.
+    return null;
+  }
+}
+
+function isEnvelope(value: unknown): value is PersistEnvelope {
+  return (
+    !!value &&
+    typeof value === "object" &&
+    typeof (value as PersistEnvelope).state === "object" &&
+    (value as PersistEnvelope).state !== null &&
+    typeof (value as PersistEnvelope).version === "number"
+  );
 }
 
 /**
@@ -101,13 +125,9 @@ function readLocalEnvelope(key: CloudStoreKey): string | null {
   }
 }
 
-function writeLocalEnvelope(key: CloudStoreKey, value: string | null): void {
+function writeLocalEnvelope(key: CloudStoreKey, value: string): void {
   try {
-    if (value === null) {
-      window.localStorage.removeItem(key);
-    } else {
-      window.localStorage.setItem(key, value);
-    }
+    window.localStorage.setItem(key, value);
   } catch {
     // 쓰기 실패는 무시 — 전환 자체는 계속 진행.
   }

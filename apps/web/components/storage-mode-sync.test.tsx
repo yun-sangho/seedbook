@@ -4,6 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StorageModeSync } from "./storage-mode-sync";
 
 const mockUseSession = vi.fn();
+const { uploadAllToCloud, downloadAllFromCloud } = vi.hoisted(() => ({
+  uploadAllToCloud: vi.fn(),
+  downloadAllFromCloud: vi.fn(),
+}));
+
+vi.mock("@web/lib/storage-migration", () => ({ uploadAllToCloud, downloadAllFromCloud }));
 
 vi.mock("@web/lib/auth-client", () => ({
   useSession: () => mockUseSession(),
@@ -17,6 +23,8 @@ vi.mock("@web/lib/auth-client", () => ({
 describe("StorageModeSync", () => {
   beforeEach(() => {
     mockUseSession.mockReset();
+    uploadAllToCloud.mockReset().mockResolvedValue(undefined);
+    downloadAllFromCloud.mockReset().mockResolvedValue(undefined);
     window.localStorage.clear();
   });
 
@@ -118,5 +126,51 @@ describe("StorageModeSync", () => {
       expect(window.localStorage.getItem(STORAGE_MODE_KEY)).toBe("local");
       expect(reload).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it("다른 기기에서 클라우드를 켰으면 이 기기 로컬 데이터를 합쳐 올린 뒤 전환한다", async () => {
+    window.localStorage.setItem(STORAGE_MODE_KEY, "local");
+    mockUseSession.mockReturnValue({ data: { user: { id: "u-1" } }, isPending: false });
+    const reload = stubLocationReload();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ storageMode: "cloud" }), { status: 200 })
+    );
+
+    render(<StorageModeSync />);
+
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+    expect(uploadAllToCloud).toHaveBeenCalledTimes(1);
+    expect(downloadAllFromCloud).not.toHaveBeenCalled();
+  });
+
+  it("다른 기기에서 클라우드를 껐으면 클라우드 데이터를 합쳐 내려받은 뒤 전환한다", async () => {
+    window.localStorage.setItem(STORAGE_MODE_KEY, "cloud");
+    mockUseSession.mockReturnValue({ data: { user: { id: "u-1" } }, isPending: false });
+    const reload = stubLocationReload();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ storageMode: "local" }), { status: 200 })
+    );
+
+    render(<StorageModeSync />);
+
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+    expect(downloadAllFromCloud).toHaveBeenCalledTimes(1);
+    expect(window.localStorage.getItem(STORAGE_MODE_KEY)).toBe("local");
+  });
+
+  it("합치기에 실패하면 모드를 바꾸지 않는다 (데이터를 잃지 않도록)", async () => {
+    window.localStorage.setItem(STORAGE_MODE_KEY, "local");
+    mockUseSession.mockReturnValue({ data: { user: { id: "u-1" } }, isPending: false });
+    const reload = stubLocationReload();
+    uploadAllToCloud.mockRejectedValue(new Error("offline"));
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ storageMode: "cloud" }), { status: 200 })
+    );
+
+    render(<StorageModeSync />);
+
+    await waitFor(() => expect(uploadAllToCloud).toHaveBeenCalledTimes(1));
+    expect(window.localStorage.getItem(STORAGE_MODE_KEY)).toBe("local");
+    expect(reload).not.toHaveBeenCalled();
   });
 });

@@ -2,12 +2,13 @@
  * 엔티티 단위 동기화의 순수 상태 전환. 브라우저/네트워크 의존 없이 테스트한다.
  *
  * 클라이언트는 store 의 목록(`T[]`)을 그대로 두고, 옆에 `SyncMeta` 를 둔다:
- *   - `versions`: 엔티티별로 마지막으로 본 서버 version (mutation 의 baseVersion)
+ *   - `versions`: 엔티티별로 마지막으로 본 서버 version
  *   - `outbox`: 아직 서버가 받지 않은 변경. 엔티티당 최신 하나만 남긴다.
  *   - `pendingOrder`: 아직 보내지 않은 목록 순서
  *   - `cursor`: 다음 pull 의 since
  *
- * 충돌 정책: 서버가 이긴다. 충돌한 엔티티는 서버 값으로 덮고 로컬 변경은 버린다.
+ * 충돌 정책: 마지막 저장이 이긴다. 자산은 본인만 수정하므로 기기 사이의 변경 충돌은
+ * 따지지 않는다. `versions` 는 pull 로 이미 본 변경을 다시 적용하지 않는 데만 쓴다.
  */
 
 export type EntityData = Record<string, unknown>;
@@ -34,13 +35,10 @@ export type SyncedEntity = {
 
 export type MutationResult =
   | { status: "ok"; version?: number }
-  | { status: "conflict"; current: SyncedEntity | null }
   | { status: "rejected"; reason: string };
 
 /** 보낸 mutation 이 무엇이었는지 — 결과를 outbox 에 되돌려 적용할 때 쓴다. */
-export type SentRef =
-  | { kind: "entity"; id: string; seq: number; data: EntityData | null }
-  | { kind: "order"; seq: number };
+export type SentRef = { kind: "entity"; id: string; seq: number } | { kind: "order"; seq: number };
 
 export function emptySyncMeta(): SyncMeta {
   return { cursor: null, versions: {}, outbox: {}, pendingOrder: null, seq: 0 };
@@ -106,14 +104,12 @@ export function buildMutations(
   const sent: SentRef[] = [];
 
   for (const [id, entry] of Object.entries(meta.outbox)) {
-    const baseVersion = meta.versions[id] ?? 0;
-    if (entry.op === "upsert") {
-      mutations.push({ entity, op: "upsert", id, baseVersion, data: entry.data });
-      sent.push({ kind: "entity", id, seq: entry.seq, data: entry.data });
-    } else {
-      mutations.push({ entity, op: "delete", id, baseVersion });
-      sent.push({ kind: "entity", id, seq: entry.seq, data: null });
-    }
+    mutations.push(
+      entry.op === "upsert"
+        ? { entity, op: "upsert", id, data: entry.data }
+        : { entity, op: "delete", id }
+    );
+    sent.push({ kind: "entity", id, seq: entry.seq });
   }
 
   if (meta.pendingOrder) {
@@ -130,18 +126,19 @@ export function buildMutations(
 }
 
 /**
- * 서버 결과를 반영한다. `remote` 는 충돌로 서버 값이 이긴 엔티티 — 호출자가 store 에 적용.
- * 결과를 기다리는 동안 같은 엔티티가 또 바뀌었다면 (seq 가 다름) outbox 항목은 남긴다.
+ * 서버 결과를 반영한다. 결과를 기다리는 동안 같은 엔티티가 또 바뀌었다면 (seq 가 다름)
+ * outbox 항목은 남긴다. 거부된 변경이 있으면 로컬 목록이 서버와 어긋났으므로 커서를
+ * 지워 다음 pull 이 전체를 다시 받게 한다 (`rejected` 개수로 호출자에게 알린다).
  */
 export function applyMutationResults(
   meta: SyncMeta,
   sent: SentRef[],
   results: MutationResult[]
-): { meta: SyncMeta; remote: SyncedEntity[] } {
+): { meta: SyncMeta; rejected: number } {
   const versions = { ...meta.versions };
   const outbox = { ...meta.outbox };
   let pendingOrder = meta.pendingOrder;
-  const remote: SyncedEntity[] = [];
+  let rejected = 0;
 
   sent.forEach((ref, i) => {
     const result = results[i];
@@ -151,45 +148,15 @@ export function applyMutationResults(
       if (pendingOrder?.seq === ref.seq) pendingOrder = null;
       return;
     }
-
-    const unchangedSinceSent = outbox[ref.id]?.seq === ref.seq;
-    const clear = () => {
-      if (unchangedSinceSent) delete outbox[ref.id];
-    };
-
-    if (result.status === "ok") {
-      if (result.version !== undefined) versions[ref.id] = result.version;
-      clear();
-      return;
+    if (result.status === "ok" && result.version !== undefined) {
+      versions[ref.id] = result.version;
     }
-
-    if (result.status === "rejected") {
-      clear();
-      return;
-    }
-
-    // conflict
-    const current = result.current;
-    if (!current) {
-      // 서버에 행이 없다 — 이 엔티티는 서버 기준으로 존재하지 않는다.
-      delete versions[ref.id];
-      delete outbox[ref.id];
-      remote.push({ id: ref.id, version: 0, deletedAt: new Date(0).toISOString(), data: null });
-      return;
-    }
-    versions[ref.id] = current.version;
-    const echoOfMine =
-      (ref.data === null && current.deletedAt !== null) ||
-      (ref.data !== null && current.deletedAt === null && sameData(ref.data, current.data));
-    if (echoOfMine) {
-      clear();
-      return;
-    }
-    delete outbox[ref.id];
-    remote.push(current);
+    if (result.status === "rejected") rejected += 1;
+    if (outbox[ref.id]?.seq === ref.seq) delete outbox[ref.id];
   });
 
-  return { meta: { ...meta, versions, outbox, pendingOrder }, remote };
+  const cursor = rejected > 0 ? null : meta.cursor;
+  return { meta: { ...meta, cursor, versions, outbox, pendingOrder }, rejected };
 }
 
 /**
@@ -236,27 +203,4 @@ export function applyOrder<T extends { id: string }>(items: T[], order: string[]
     .sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);
   const rest = items.filter((i) => !rank.has(i.id));
   return [...ranked, ...rest];
-}
-
-/**
- * 충돌로 이긴 서버 값을 목록에 그대로 반영한다 (version 비교 없이 — `applyMutationResults`
- * 가 이미 versions 를 서버 값으로 맞춰 둔다).
- */
-export function applyRemoteEntities<T extends { id: string }>(
-  items: T[],
-  remote: SyncedEntity[],
-  fromData: (id: string, data: EntityData) => T
-): T[] {
-  let next = items.slice();
-  for (const entity of remote) {
-    if (entity.deletedAt !== null || entity.data === null) {
-      next = next.filter((i) => i.id !== entity.id);
-      continue;
-    }
-    const incoming = fromData(entity.id, entity.data);
-    const index = next.findIndex((i) => i.id === entity.id);
-    if (index === -1) next.push(incoming);
-    else next[index] = incoming;
-  }
-  return next;
 }

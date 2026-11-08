@@ -196,8 +196,9 @@ function ModeSwitchDialog({
             <DialogHeader>
               <DialogTitle>클라우드 저장으로 전환</DialogTitle>
               <DialogDescription>
-                현재 브라우저에 저장된 데이터를 클라우드로 업로드합니다. 클라우드에 기존 데이터가
-                있으면 <strong>덮어씁니다</strong>. 계속하시겠습니까?
+                이 브라우저의 데이터를 클라우드에 올립니다. 클라우드에 이미 있는 데이터와{" "}
+                <strong>합쳐지며 지워지는 항목은 없습니다</strong>. 같은 항목은 이 브라우저의 내용이
+                반영됩니다.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -214,8 +215,9 @@ function ModeSwitchDialog({
             <DialogHeader>
               <DialogTitle>브라우저 저장으로 전환</DialogTitle>
               <DialogDescription>
-                클라우드 데이터를 이 브라우저로 복사합니다. 이 브라우저에 남아 있는 기존 데이터는{" "}
-                <strong>덮어씁니다</strong>. 전환 전에 JSON 백업을 내보내는 것을 권장합니다.
+                클라우드 데이터를 이 브라우저로 내려받습니다. 이 브라우저의 데이터와{" "}
+                <strong>합쳐지며 지워지는 항목은 없습니다</strong>. 같은 항목은 이 브라우저의 내용이
+                유지됩니다.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
