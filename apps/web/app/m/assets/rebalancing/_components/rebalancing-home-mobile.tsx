@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { IconChevronRightLine } from "@karrotmarket/react-monochrome-icon";
+import { IconChevronRightLine, IconPlusLine } from "@karrotmarket/react-monochrome-icon";
 import { Divider, Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
@@ -11,9 +11,11 @@ import type { RebalancingSession } from "@web/features/rebalancing/types/types";
 import { formatRebalancingDate } from "@web/features/rebalancing/utils/format-rebalancing-date";
 import {
   isRebalancingCompleted,
+  isRebalancingStopped,
   rebalancingProgress,
 } from "@web/features/rebalancing/utils/rebalancing-session";
 import { ActionButton } from "@web/seed-design/ui/action-button";
+import { Badge } from "@web/seed-design/ui/badge";
 import {
   ChipTabsContent,
   ChipTabsList,
@@ -25,11 +27,6 @@ import { ResultSection } from "@web/seed-design/ui/result-section";
 const FALLBACK_DOT_COLOR = "#cbd5e1";
 
 type Tab = "in-progress" | "completed";
-
-/** 하단 탭바 높이 (`_stack/screens.tsx` 의 TAB_BAR_HEIGHT 와 같다). */
-const TAB_BAR_HEIGHT = "56px";
-/** 하단 고정 버튼 영역 높이 — 목록 끝이 버튼에 가리지 않도록 그만큼 비워 둔다. */
-const BOTTOM_CTA_SPACE = "88px";
 
 /**
  * 하단 탭 "리밸런싱": 진행 중인 리밸런싱(할 일 목록)과 완료 기록을 탭으로 나눠 보여준다.
@@ -51,32 +48,20 @@ export function RebalancingHomeMobile() {
 
   const startNew = () => push("RebalancingNew", {});
 
-  const startButton = (
-    // 하단 탭바 바로 위에 고정한다.
-    <div
-      className="bg-bg-layer-default fixed inset-x-0 px-x4 pt-x3 pb-x3"
-      style={{ bottom: `calc(${TAB_BAR_HEIGHT} + var(--seed-safe-area-bottom))` }}
-    >
-      <ActionButton size="large" className="w-full" onClick={startNew}>
-        새 리밸런싱
-      </ActionButton>
-    </div>
-  );
-
   if (sessions.length === 0) {
     return (
       <div className="flex min-h-[60dvh] flex-col">
         <ResultSection
           title="진행 중인 리밸런싱이 없어요"
-          description="계좌를 골라 목표 비중과의 차이를 계산하고, 사고팔 종목을 할 일로 만들어 하나씩 처리하세요."
+          description="계좌를 골라 목표 비중과의 차이를 계산하고, 사고팔 종목을 매매 목록으로 만들어 하나씩 처리하세요."
+          primaryActionProps={{ children: "새 리밸런싱", onClick: startNew }}
         />
-        {startButton}
       </div>
     );
   }
 
   return (
-    <div style={{ paddingBottom: BOTTOM_CTA_SPACE }}>
+    <div className="pb-x4">
       <ChipTabsRoot
         value={tab}
         onValueChange={(value) => setTab(value as Tab)}
@@ -98,12 +83,17 @@ export function RebalancingHomeMobile() {
         <ChipTabsContent value="completed">
           <SessionList
             sessions={completed}
-            emptyText="아직 완료한 리밸런싱이 없어요. 할 일을 모두 체크하면 여기에 기록돼요."
+            emptyText="아직 완료한 리밸런싱이 없어요. 매매를 모두 마치고 완료하면 여기에 기록돼요."
             onOpen={(id) => push("RebalancingSession", { id })}
           />
         </ChipTabsContent>
       </ChipTabsRoot>
-      {startButton}
+      <Divider />
+      <div className="flex justify-center pt-x4">
+        <ActionButton variant="ghost" size="medium" onClick={startNew}>
+          <Icon svg={<IconPlusLine />} />새 리밸런싱
+        </ActionButton>
+      </div>
     </div>
   );
 }
@@ -149,6 +139,7 @@ function SessionRow({
   );
   const { done, total } = rebalancingProgress(session);
   const completed = isRebalancingCompleted(session);
+  const stopped = isRebalancingStopped(session);
   const sellCount = session.tasks.filter((t) => t.action === "매도").length;
   const buyCount = total - sellCount;
 
@@ -166,13 +157,20 @@ function SessionRow({
           aria-hidden
         />
         <div className="min-w-0 flex-1">
-          <p className="t5-bold truncate">
-            {account?.accountName || session.accountName || "이름 없는 계좌"}
-          </p>
+          <div className="flex items-center gap-x2">
+            <p className="t5-bold min-w-0 truncate">
+              {account?.accountName || session.accountName || "이름 없는 계좌"}
+            </p>
+            {completed && (
+              <Badge tone={stopped ? "warning" : "positive"} variant="weak" className="shrink-0">
+                {stopped ? "중지" : "완료"}
+              </Badge>
+            )}
+          </div>
           <p className="t3-regular text-fg-neutral-subtle mt-[2px] truncate tabular-nums">
             {session.portfolioName} ·{" "}
             {completed
-              ? `${formatRebalancingDate(session.completedAt ?? "")} 완료 · 매도 ${sellCount} · 매수 ${buyCount}`
+              ? `${formatRebalancingDate(session.completedAt ?? "")} ${stopped ? "중지" : "완료"} · 매도 ${sellCount} · 매수 ${buyCount}`
               : `${formatRebalancingDate(session.startedAt)} 시작`}
           </p>
           {!completed && <RebalancingProgressBar done={done} total={total} />}

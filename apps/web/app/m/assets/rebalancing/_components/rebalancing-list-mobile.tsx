@@ -12,6 +12,9 @@ import {
 } from "@web/features/portfolio/utils/group-accounts-by-rebalancing-state";
 import type { LinkedPortfolioStatus } from "@web/features/portfolio/utils/linked-portfolio-status";
 import { useLinkedPortfolioStatus } from "@web/features/portfolio/utils/use-linked-portfolio-status";
+import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
+import { inProgressAccountIds } from "@web/features/rebalancing/utils/rebalancing-session";
+import { cn } from "@web/lib/utils";
 import { Badge } from "@web/seed-design/ui/badge";
 import { ResultSection } from "@web/seed-design/ui/result-section";
 import { numberToKorean } from "@web/utils/number-format";
@@ -29,6 +32,9 @@ const GROUP_TITLE: Record<AccountRebalancingState, string> = {
  */
 export function RebalancingListMobile() {
   const investments = useInvestmentStore((s) => s.investments);
+  const sessions = useRebalancingStore((s) => s.sessions);
+  // 한 계좌에는 리밸런싱을 하나만 진행한다 — 진행 중인 계좌는 고를 수 없다.
+  const busyAccountIds = useMemo(() => inProgressAccountIds(sessions), [sessions]);
   const statusFor = useLinkedPortfolioStatus();
   const { push } = useFlow();
   const switchTab = useSwitchTab();
@@ -74,14 +80,19 @@ export function RebalancingListMobile() {
             </span>
           </div>
           {group.rows.map(({ account, status }, rowIndex) => {
-            const needsRebalancing = status?.state === "needs-rebalancing";
+            const busy = busyAccountIds.has(account.id);
+            const needsRebalancing = !busy && status?.state === "needs-rebalancing";
             return (
               <div key={account.id}>
                 {rowIndex > 0 && <Divider inset />}
                 <button
                   type="button"
                   onClick={() => push("RebalancingDetail", { id: account.id })}
-                  className="relative active:bg-bg-layer-default-pressed flex w-full items-center gap-x3 px-x4 py-x4 text-left"
+                  disabled={busy}
+                  className={cn(
+                    "relative flex w-full items-center gap-x3 px-x4 py-x4 text-left",
+                    busy ? "opacity-50" : "active:bg-bg-layer-default-pressed"
+                  )}
                 >
                   {needsRebalancing && (
                     <span
@@ -100,7 +111,11 @@ export function RebalancingListMobile() {
                       {account.accountType} · {numberToKorean(account.currentValue) || "0원"}
                     </p>
                     <div className="mt-x2 flex flex-wrap gap-x1">
-                      {status ? (
+                      {busy ? (
+                        <Badge tone="neutral" variant="weak">
+                          이미 진행 중인 리밸런싱이 있어요
+                        </Badge>
+                      ) : status ? (
                         <PortfolioStatusBadge status={status} />
                       ) : (
                         <Badge tone="neutral" variant="weak">
@@ -109,7 +124,9 @@ export function RebalancingListMobile() {
                       )}
                     </div>
                   </div>
-                  <Icon svg={<IconChevronRightLine />} size="x5" color="fg.neutralSubtle" />
+                  {!busy && (
+                    <Icon svg={<IconChevronRightLine />} size="x5" color="fg.neutralSubtle" />
+                  )}
                 </button>
               </div>
             );

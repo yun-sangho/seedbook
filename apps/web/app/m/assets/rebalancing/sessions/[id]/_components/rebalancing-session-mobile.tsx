@@ -6,14 +6,16 @@ import { useFlow } from "@stackflow/react";
 import { ConfirmDialog } from "@web/components/mobile/confirm-dialog";
 import { HeaderAction } from "@web/components/mobile/header-action";
 import { PriceAsOfSummaryBanner, PriceBanner } from "@web/components/mobile/price-as-of-banner";
-import { RebalancingProgressBar } from "@web/features/rebalancing/components/rebalancing-progress-bar";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import type { RebalancingTask } from "@web/features/rebalancing/types/types";
 import { formatRebalancingDate } from "@web/features/rebalancing/utils/format-rebalancing-date";
 import { summarizeRebalancingPriceAsOf } from "@web/features/rebalancing/utils/rebalancing-price-as-of";
 import {
+  canCompleteRebalancing,
   isRebalancingCompleted,
+  isRebalancingStopped,
   rebalancingProgress,
+  visibleRebalancingTasks,
 } from "@web/features/rebalancing/utils/rebalancing-session";
 import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
@@ -23,9 +25,11 @@ import { Checkmark } from "@web/seed-design/ui/checkbox";
 import { List, ListCheckItem } from "@web/seed-design/ui/list";
 import { ResultSection } from "@web/seed-design/ui/result-section";
 import { formatWithCommas, numberToKorean } from "@web/utils/number-format";
+import { CompleteRebalancingSheet } from "./complete-rebalancing-sheet";
 
 /**
- * 리밸런싱 할 일 목록. 종목별 매도/매수를 하나씩 체크하고, 모두 체크하면 완료 기록이 된다.
+ * 리밸런싱 할 일 목록. 종목별 매도/매수를 하나씩 체크하고, 모두 마치면 "리밸런싱 완료하기"로
+ * 완료 기록을 남긴다 (원하면 계좌에도 반영).
  * 할 일은 시작 시점의 계산 결과 스냅샷이라 시세가 바뀌어도 그대로다.
  */
 export function RebalancingSessionMobile({ id }: { id: string }) {
@@ -34,6 +38,8 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
   const removeRebalancing = useRebalancingStore((s) => s.removeRebalancing);
   const { pop } = useFlow();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [showAllTasks, setShowAllTasks] = useState(false);
+  const [completing, setCompleting] = useState(false);
 
   if (!session) {
     return (
@@ -47,11 +53,16 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
     );
   }
 
-  const { done, total } = rebalancingProgress(session);
   const completed = isRebalancingCompleted(session);
   const totalSell = sumAmount(session.tasks, "매도");
   const totalBuy = sumAmount(session.tasks, "매수");
   const priceAsOf = summarizeRebalancingPriceAsOf(session.tasks);
+  const tasks = visibleRebalancingTasks(session, showAllTasks);
+  const { done, total } = rebalancingProgress(session);
+  const remaining = total - done;
+  const canComplete = canCompleteRebalancing(session);
+  const stopped = isRebalancingStopped(session);
+  const endLabel = stopped ? "중지" : "완료";
 
   return (
     <div className="pb-x4">
@@ -64,15 +75,14 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
       )}
       <section className="px-x4 py-x4">
         <div className="flex items-center gap-x2">
-          <Badge tone={completed ? "positive" : "informative"} variant="weak">
-            {completed ? "완료" : "진행 중"}
+          <Badge tone={stopped ? "warning" : completed ? "positive" : "informative"} variant="weak">
+            {completed ? endLabel : "진행 중"}
           </Badge>
           <span className="t3-regular text-fg-neutral-subtle">
             {formatRebalancingDate(session.startedAt)} 시작
-            {session.completedAt && ` · ${formatRebalancingDate(session.completedAt)} 완료`}
+            {session.completedAt && ` · ${formatRebalancingDate(session.completedAt)} ${endLabel}`}
           </span>
         </div>
-        <RebalancingProgressBar done={done} total={total} />
         <div className="mt-x4 grid grid-cols-2 gap-x-x4 gap-y-x3">
           <Stat label="총 매도" value={totalSell} className="text-fg-critical" />
           <Stat label="총 매수" value={totalBuy} className="text-fg-positive" />
@@ -87,22 +97,49 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
 
       {completed && (
         <div className="px-x4 pb-x4">
-          <Callout
-            tone="positive"
-            description="모든 매매를 마쳤어요. 리밸런싱 기록에 남았습니다."
-          />
+          {stopped ? (
+            <Callout
+              tone="neutral"
+              description={`매매 ${remaining}건을 하지 않고 중지했어요. 리밸런싱 기록에 남았습니다.`}
+            />
+          ) : (
+            <Callout
+              tone="positive"
+              description="모든 매매를 마쳤어요. 리밸런싱 기록에 남았습니다."
+            />
+          )}
         </div>
       )}
 
       <Divider />
 
       <section className="py-x4">
-        <h2 className="t5-bold px-x4 pb-x2">할 일</h2>
-        <p className="t3-regular text-fg-neutral-subtle px-x4 pb-x2">
-          매도로 예수금을 먼저 만든 뒤 매수하세요. 수량은 위 시세 기준 예상치예요.
-        </p>
+        <div className="flex items-center px-x4 pb-x2">
+          <h2 className="t5-bold flex-1">
+            남은 매매{" "}
+            <span className="text-fg-neutral-subtle tabular-nums">
+              {remaining} / {total}
+            </span>
+          </h2>
+          {/* 완료된 리밸런싱은 원래 전부 보이므로 전환할 게 없다. */}
+          {!completed && (
+            <ActionButton
+              variant="ghost"
+              size="small"
+              bleedX="asPadding"
+              onClick={() => setShowAllTasks((v) => !v)}
+            >
+              {showAllTasks ? "남은 것만" : "전체 보기"}
+            </ActionButton>
+          )}
+        </div>
+        {tasks.length === 0 && (
+          <p className="t4-regular text-fg-neutral-subtle px-x4 py-x6 text-center">
+            모든 매매를 마쳤어요.
+          </p>
+        )}
         <List>
-          {session.tasks.map((task) => (
+          {tasks.map((task) => (
             <ListCheckItem
               key={task.id}
               prefix={
@@ -119,10 +156,21 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
               suffix={<Checkmark tone="neutral" size="large" />}
               checked={task.done}
               onCheckedChange={() => toggleTask(session.id, task.id)}
+              // 완료된 기록은 계좌에 반영됐을 수 있어 체크를 바꾸지 않는다.
+              disabled={completed}
             />
           ))}
         </List>
       </section>
+
+      {canComplete && (
+        <div className="px-x4 pt-x2">
+          <ActionButton size="large" className="w-full" onClick={() => setCompleting(true)}>
+            {remaining > 0 ? "리밸런싱 중지하기" : "리밸런싱 완료하기"}
+          </ActionButton>
+        </div>
+      )}
+      <CompleteRebalancingSheet session={session} open={completing} onOpenChange={setCompleting} />
 
       <HeaderAction>
         <ActionButton

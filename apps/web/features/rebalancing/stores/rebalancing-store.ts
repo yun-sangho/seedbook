@@ -4,7 +4,7 @@ import { createHybridStorage } from "@web/lib/hybrid-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { RebalancingSession } from "../types/types";
-import { toggleRebalancingTask } from "../utils/rebalancing-session";
+import { completeRebalancing, toggleRebalancingTask } from "../utils/rebalancing-session";
 
 export type StartRebalancingInput = Omit<RebalancingSession, "id" | "startedAt" | "completedAt">;
 
@@ -15,6 +15,8 @@ interface RebalancingState {
   /** 새 리밸런싱을 시작하고 id 를 돌려준다. */
   startRebalancing: (input: StartRebalancingInput) => string;
   toggleTask: (sessionId: string, taskId: string) => void;
+  /** 할 일을 모두 마쳤으면 완료 기록으로 넘긴다. */
+  completeRebalancing: (sessionId: string) => void;
   removeRebalancing: (sessionId: string) => void;
 }
 
@@ -36,10 +38,18 @@ export const useRebalancingStore = create<RebalancingState>()(
       },
 
       toggleTask: (sessionId, taskId) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? toggleRebalancingTask(s, taskId) : s
+          ),
+        }));
+      },
+
+      completeRebalancing: (sessionId) => {
         const now = new Date().toISOString();
         set((state) => ({
           sessions: state.sessions.map((s) =>
-            s.id === sessionId ? toggleRebalancingTask(s, taskId, now) : s
+            s.id === sessionId ? completeRebalancing(s, now) : s
           ),
         }));
       },

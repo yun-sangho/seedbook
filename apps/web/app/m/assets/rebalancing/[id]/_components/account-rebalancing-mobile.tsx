@@ -249,7 +249,7 @@ function StartRebalancingSection({
     <section className="flex flex-col gap-x2 px-x4 py-x4">
       <p className="t3-regular text-fg-neutral-subtle">
         {tasks.length > 0
-          ? `매도 ${tasks.filter((t) => t.action === "매도").length}건 · 매수 ${tasks.filter((t) => t.action === "매수").length}건을 할 일로 만들어요. 모두 체크하면 기록으로 남아요.`
+          ? `매도 ${tasks.filter((t) => t.action === "매도").length}건 · 매수 ${tasks.filter((t) => t.action === "매수").length}건을 매매 목록으로 만들어요. 모두 마치고 완료하면 기록으로 남아요.`
           : "지금은 사고팔 종목이 없어요."}
       </p>
       <ActionButton

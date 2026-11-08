@@ -415,6 +415,21 @@ describe("Investment Store", () => {
     });
   });
 
+  describe("Replace Investment", () => {
+    it("replaces only the account with the same id", () => {
+      const store = useInvestmentStore.getState();
+      const first = store.addInvestmentWithType("ISA");
+      const second = store.addInvestmentWithType("연금저축");
+      const original = useInvestmentStore.getState().investments.find((i) => i.id === first)!;
+
+      useInvestmentStore.getState().replaceInvestment({ ...original, accountName: "바뀐 이름" });
+
+      const after = useInvestmentStore.getState().investments;
+      expect(after.find((i) => i.id === first)?.accountName).toBe("바뀐 이름");
+      expect(after.find((i) => i.id === second)?.accountType).toBe("연금저축");
+    });
+  });
+
   describe("Reorder Investments", () => {
     it("should reorder investments array", () => {
       const { addInvestmentWithType, updateInvestment, reorderInvestments } =

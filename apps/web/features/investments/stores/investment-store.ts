@@ -95,6 +95,8 @@ interface InvestmentState {
   removeCashItem: (investmentId: string, cashItemId: string) => void;
   setExpandedFormId: (id: string) => void;
   reorderInvestments: (reorderedInvestments: InvestmentItem[]) => void;
+  /** 같은 id 의 계좌를 통째로 바꾼다 (리밸런싱 반영처럼 여러 필드를 한 번에 고칠 때). */
+  replaceInvestment: (item: InvestmentItem) => void;
   resetStore: () => void;
 }
 
@@ -473,6 +475,12 @@ export const useInvestmentStore = create<InvestmentState>()(
 
       reorderInvestments: (reorderedInvestments) => {
         set({ investments: reorderedInvestments });
+      },
+
+      replaceInvestment: (item) => {
+        set((state) => ({
+          investments: state.investments.map((inv) => (inv.id === item.id ? item : inv)),
+        }));
       },
 
       resetStore: () => {

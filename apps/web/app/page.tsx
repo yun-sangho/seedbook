@@ -16,7 +16,7 @@ const features = [
   },
   {
     icon: Target,
-    title: "리밸런싱 할 일",
+    title: "리밸런싱 매매 목록",
     description: "목표에서 벗어난 종목을 사고팔 금액으로 정리하고, 진행 상황을 체크해요.",
   },
 ];

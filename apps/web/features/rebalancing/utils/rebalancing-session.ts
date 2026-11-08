@@ -1,26 +1,47 @@
-import type { RebalancingSession } from "../types/types";
+import type { RebalancingSession, RebalancingTask } from "../types/types";
 
 /**
- * 할 일 하나의 완료 여부를 뒤집는다. 모두 끝나면 `completedAt` 을 찍어 기록으로 넘기고,
- * 완료된 리밸런싱에서 하나라도 되돌리면 다시 진행 중이 된다.
+ * 할 일 하나의 완료 여부를 뒤집는다. 모두 체크해도 바로 완료되지 않는다 —
+ * 사용자가 "리밸런싱 완료하기"(`completeRebalancing`)를 눌러야 기록으로 넘어간다
+ * (다 체크하지 않아도 완료할 수 있다).
+ * 완료된 리밸런싱은 (계좌에 반영됐을 수 있으므로) 더 이상 바꾸지 않는다.
  */
 export function toggleRebalancingTask(
   session: RebalancingSession,
-  taskId: string,
-  nowIso: string
+  taskId: string
 ): RebalancingSession {
+  if (isRebalancingCompleted(session)) return session;
   if (!session.tasks.some((t) => t.id === taskId)) return session;
-  const tasks = session.tasks.map((t) => (t.id === taskId ? { ...t, done: !t.done } : t));
-  const allDone = tasks.length > 0 && tasks.every((t) => t.done);
   return {
     ...session,
-    tasks,
-    completedAt: allDone ? (session.completedAt ?? nowIso) : null,
+    tasks: session.tasks.map((t) => (t.id === taskId ? { ...t, done: !t.done } : t)),
   };
+}
+
+/**
+ * 진행 중이면 언제든 완료할 수 있다 — 매매를 다 하지 않았어도 된다.
+ * 체크하지 않은 매매는 체크하지 않은 채로 기록에 남는다.
+ */
+export function canCompleteRebalancing(session: RebalancingSession): boolean {
+  return !isRebalancingCompleted(session);
+}
+
+/** 진행 중인 리밸런싱을 완료 기록으로 넘긴다. 이미 완료됐으면 그대로 돌려준다. */
+export function completeRebalancing(
+  session: RebalancingSession,
+  nowIso: string
+): RebalancingSession {
+  if (!canCompleteRebalancing(session)) return session;
+  return { ...session, completedAt: nowIso };
 }
 
 export function isRebalancingCompleted(session: RebalancingSession): boolean {
   return session.completedAt !== null;
+}
+
+/** 매매를 다 하지 않고 끝낸(중지한) 리밸런싱. */
+export function isRebalancingStopped(session: RebalancingSession): boolean {
+  return isRebalancingCompleted(session) && session.tasks.some((t) => !t.done);
 }
 
 export function rebalancingProgress(session: RebalancingSession): { done: number; total: number } {
@@ -36,4 +57,21 @@ export function findInProgressForAccount(
   accountId: string
 ): RebalancingSession | undefined {
   return sessions.find((s) => s.accountId === accountId && !isRebalancingCompleted(s));
+}
+
+/**
+ * 화면에 보일 할 일. 진행 중에는 남은 것만 보여 주고 (모두 체크했으면 빈 목록),
+ * 전체 보기를 켰거나 완료된 리밸런싱이면 전부 보여 준다.
+ */
+export function visibleRebalancingTasks(
+  session: RebalancingSession,
+  showAll: boolean
+): RebalancingTask[] {
+  if (showAll || isRebalancingCompleted(session)) return session.tasks;
+  return session.tasks.filter((t) => !t.done);
+}
+
+/** 진행 중인 리밸런싱이 있는 계좌 id. 이런 계좌는 새 리밸런싱을 시작할 수 없다. */
+export function inProgressAccountIds(sessions: RebalancingSession[]): Set<string> {
+  return new Set(sessions.filter((s) => !isRebalancingCompleted(s)).map((s) => s.accountId));
 }

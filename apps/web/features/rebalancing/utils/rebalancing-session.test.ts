@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { RebalancingSession, RebalancingTask } from "../types/types";
 import {
+  canCompleteRebalancing,
+  completeRebalancing,
   findInProgressForAccount,
+  inProgressAccountIds,
+  isRebalancingStopped,
   rebalancingProgress,
   toggleRebalancingTask,
+  visibleRebalancingTasks,
 } from "./rebalancing-session";
 
 function task(id: string, done = false): RebalancingTask {
@@ -41,34 +46,29 @@ const NOW = "2026-11-08T09:00:00.000Z";
 
 describe("toggleRebalancingTask", () => {
   it("marks a task done without completing while others remain", () => {
-    const result = toggleRebalancingTask(session(), "a", NOW);
+    const result = toggleRebalancingTask(session(), "a");
 
     expect(result.tasks.map((t) => t.done)).toEqual([true, false]);
     expect(result.completedAt).toBeNull();
   });
 
-  it("completes the rebalancing when the last task is done", () => {
-    const result = toggleRebalancingTask(
-      session({ tasks: [task("a", true), task("b")] }),
-      "b",
-      NOW
-    );
+  it("keeps the rebalancing in progress when the last task is done", () => {
+    const result = toggleRebalancingTask(session({ tasks: [task("a", true), task("b")] }), "b");
 
-    expect(result.completedAt).toBe(NOW);
+    expect(result.tasks.every((t) => t.done)).toBe(true);
+    expect(result.completedAt).toBeNull();
   });
 
-  it("reopens a completed rebalancing when a task is unchecked", () => {
+  it("ignores toggles on a completed rebalancing", () => {
     const completed = session({ tasks: [task("a", true), task("b", true)], completedAt: NOW });
 
-    const result = toggleRebalancingTask(completed, "a", "2026-11-09T00:00:00.000Z");
-
-    expect(result.completedAt).toBeNull();
+    expect(toggleRebalancingTask(completed, "a")).toBe(completed);
   });
 
   it("returns the same session for an unknown task id", () => {
     const original = session();
 
-    expect(toggleRebalancingTask(original, "missing", NOW)).toBe(original);
+    expect(toggleRebalancingTask(original, "missing")).toBe(original);
   });
 });
 
@@ -92,5 +92,113 @@ describe("findInProgressForAccount", () => {
 
   it("returns undefined when the account has nothing in progress", () => {
     expect(findInProgressForAccount([session({ completedAt: NOW })], "acc")).toBeUndefined();
+  });
+});
+
+describe("visibleRebalancingTasks", () => {
+  it("hides done tasks while the rebalancing is in progress", () => {
+    const result = visibleRebalancingTasks(session({ tasks: [task("a", true), task("b")] }), false);
+
+    expect(result.map((t) => t.id)).toEqual(["b"]);
+  });
+
+  it("shows every task when show-all is on", () => {
+    const result = visibleRebalancingTasks(session({ tasks: [task("a", true), task("b")] }), true);
+
+    expect(result.map((t) => t.id)).toEqual(["a", "b"]);
+  });
+
+  it("shows nothing once every task is checked, before completing", () => {
+    const result = visibleRebalancingTasks(
+      session({ tasks: [task("a", true), task("b", true)] }),
+      false
+    );
+
+    expect(result).toEqual([]);
+  });
+
+  it("shows every task of a completed rebalancing even without show-all", () => {
+    const result = visibleRebalancingTasks(
+      session({ tasks: [task("a", true), task("b", true)], completedAt: NOW }),
+      false
+    );
+
+    expect(result.map((t) => t.id)).toEqual(["a", "b"]);
+  });
+});
+
+describe("canCompleteRebalancing", () => {
+  it("is true while tasks remain unchecked", () => {
+    expect(canCompleteRebalancing(session({ tasks: [task("a", true), task("b")] }))).toBe(true);
+  });
+
+  it("is true when every task is done and it is still in progress", () => {
+    expect(canCompleteRebalancing(session({ tasks: [task("a", true), task("b", true)] }))).toBe(
+      true
+    );
+  });
+
+  it("is false once completed", () => {
+    expect(
+      canCompleteRebalancing(
+        session({ tasks: [task("a", true), task("b", true)], completedAt: NOW })
+      )
+    ).toBe(false);
+  });
+});
+
+describe("completeRebalancing", () => {
+  it("stamps completedAt when every task is done", () => {
+    const result = completeRebalancing(session({ tasks: [task("a", true), task("b", true)] }), NOW);
+
+    expect(result.completedAt).toBe(NOW);
+  });
+
+  it("stamps completedAt even with unchecked tasks, leaving them unchecked", () => {
+    const result = completeRebalancing(session({ tasks: [task("a", true), task("b")] }), NOW);
+
+    expect(result.completedAt).toBe(NOW);
+    expect(result.tasks.map((t) => t.done)).toEqual([true, false]);
+  });
+
+  it("does nothing to an already completed rebalancing", () => {
+    const completed = session({ completedAt: "2026-11-01T00:00:00.000Z" });
+
+    expect(completeRebalancing(completed, NOW)).toBe(completed);
+  });
+});
+
+describe("inProgressAccountIds", () => {
+  it("collects accounts that have a rebalancing in progress, skipping completed ones", () => {
+    const sessions = [
+      session({ id: "1", accountId: "acc-a" }),
+      session({ id: "2", accountId: "acc-b", completedAt: NOW }),
+    ];
+
+    expect(inProgressAccountIds(sessions)).toEqual(new Set(["acc-a"]));
+  });
+
+  it("counts an account whose tasks are all checked but not yet completed", () => {
+    const sessions = [session({ accountId: "acc-a", tasks: [task("a", true)] })];
+
+    expect(inProgressAccountIds(sessions).has("acc-a")).toBe(true);
+  });
+});
+
+describe("isRebalancingStopped", () => {
+  it("is true for a completed rebalancing with unchecked tasks", () => {
+    expect(
+      isRebalancingStopped(session({ tasks: [task("a", true), task("b")], completedAt: NOW }))
+    ).toBe(true);
+  });
+
+  it("is false when every task was done", () => {
+    expect(
+      isRebalancingStopped(session({ tasks: [task("a", true), task("b", true)], completedAt: NOW }))
+    ).toBe(false);
+  });
+
+  it("is false while still in progress", () => {
+    expect(isRebalancingStopped(session({ tasks: [task("a")] }))).toBe(false);
   });
 });
