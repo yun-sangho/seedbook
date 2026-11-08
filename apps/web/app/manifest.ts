@@ -20,7 +20,36 @@ export default function manifest(): MetadataRoute.Manifest {
         type: "image/png",
         purpose: "any",
       },
+      // Android 적응형 아이콘용. 흰 배경 위 로고를 62% 로 줄여 안전 영역(중앙 80% 원)
+      // 안에 넣었다. 런처가 원·둥근사각 등으로 잘라도 가지 끝이 잘리지 않는다.
+      {
+        src: "/maskable-192x192.png",
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "maskable",
+      },
+      {
+        src: "/maskable-512x512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
+      },
     ],
+    // 홈 화면 아이콘 길게 누르기 메뉴. 모바일 SEED 트리가 지원하는 경로만 둔다
+    // (그 외 경로는 모바일에서 투자로 redirect 됨 — lib/device.ts).
+    shortcuts: [
+      {
+        name: "투자",
+        url: "/assets/investments",
+        icons: [{ src: "/maskable-192x192.png", sizes: "192x192", type: "image/png" }],
+      },
+      {
+        name: "포트폴리오",
+        url: "/assets/portfolio",
+        icons: [{ src: "/maskable-192x192.png", sizes: "192x192", type: "image/png" }],
+      },
+    ],
+    categories: ["finance"],
     theme_color: "#ffffff",
     background_color: "#ffffff",
     display: "standalone",
