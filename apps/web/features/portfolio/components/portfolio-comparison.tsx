@@ -53,12 +53,12 @@ export function PortfolioComparison({ portfolio }: PortfolioComparisonProps) {
   const { prices } = useStockPrices(allHoldings);
 
   const [viewMode, setViewMode] = useState<ViewMode>(() =>
-    scopedAccounts.length >= 2 && portfolio.accountIds.length > 0 ? "per-account" : "sum"
+    scopedAccounts.length >= 2 ? "per-account" : "sum"
   );
   const [cashDelta, setCashDelta] = useState(0);
   const [cashDeltaInput, setCashDeltaInput] = useState("");
 
-  const perAccountAvailable = portfolio.accountIds.length > 0 && scopedAccounts.length > 0;
+  const perAccountAvailable = scopedAccounts.length > 0;
   const effectiveMode: ViewMode = perAccountAvailable ? viewMode : "sum";
 
   // 종목별 색상 — getNextColor 로 계열이 분산되도록 미리 계산
@@ -111,7 +111,8 @@ export function PortfolioComparison({ portfolio }: PortfolioComparisonProps) {
     { label: "-100만원", value: -1000000 },
   ];
 
-  const noLinkedAccounts = portfolio.accountIds.length === 0;
+  // 삭제된 계좌만 남은 연결은 연결 없음으로 본다.
+  const noLinkedAccounts = scopedAccounts.length === 0;
   const scopeLabel = noLinkedAccounts
     ? "연결된 계좌 없음"
     : `연결된 ${scopedAccounts.length}개 계좌 합계`;

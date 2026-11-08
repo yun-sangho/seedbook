@@ -11,6 +11,7 @@ import { useSwitchTab } from "@web/app/m/_stack/use-switch-tab";
 import { HoldingsPriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
 import { profitToneClass } from "@web/components/mobile/profit-tone";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
+import { summarizeAccounts } from "@web/features/investments/utils/summarize-accounts";
 import { useLinkedPortfolioStatus } from "@web/features/portfolio/utils/use-linked-portfolio-status";
 import {
   ChipTabsContent,
@@ -19,7 +20,7 @@ import {
   ChipTabsTrigger,
 } from "@web/seed-design/ui/chip-tabs";
 import { ResultSection } from "@web/seed-design/ui/result-section";
-import { calculateReturnRate, formatReturnRate, numberToKorean } from "@web/utils/number-format";
+import { formatReturnRate, numberToKorean } from "@web/utils/number-format";
 import { formatProfitKorean } from "@web/utils/profit-color";
 import { InvestmentTrend, MonthlySummaryList } from "./investment-stats";
 
@@ -36,16 +37,7 @@ export function HomeMobile() {
   const switchTab = useSwitchTab();
   const [tab, setTab] = useState<Tab>("monthly");
 
-  const totals = useMemo(() => {
-    const initial = investments.reduce((sum, inv) => sum + (inv.initialInvestment || 0), 0);
-    const current = investments.reduce((sum, inv) => sum + (inv.currentValue || 0), 0);
-    return {
-      initial,
-      current,
-      profit: current - initial,
-      returnRate: calculateReturnRate(current, initial),
-    };
-  }, [investments]);
+  const totals = useMemo(() => summarizeAccounts(investments), [investments]);
 
   // 연결된 포트폴리오 기준으로 리밸런싱이 필요한 계좌 (계좌 목록 순서대로).
   const accountsNeedingRebalance = useMemo(

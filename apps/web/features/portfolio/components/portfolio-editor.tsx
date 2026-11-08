@@ -31,6 +31,8 @@ export function PortfolioEditor({ portfolio }: PortfolioEditorProps) {
 
   const investments = useInvestmentStore((s) => s.investments);
   const linkedIdSet = useMemo(() => new Set(portfolio.accountIds), [portfolio.accountIds]);
+  // 삭제된 계좌는 연결 목록에 남아 있어도 세지 않는다.
+  const linkedCount = investments.filter((inv) => linkedIdSet.has(inv.id)).length;
   const portfolios = usePortfolioStore((s) => s.portfolios);
   // 한 계좌는 하나의 포트폴리오에만 연결된다 — 다른 포트폴리오에 연결된 계좌는 체크하면 옮겨온다.
   const portfolioByAccount = useMemo(() => accountPortfolioMap(portfolios), [portfolios]);
@@ -168,9 +170,7 @@ export function PortfolioEditor({ portfolio }: PortfolioEditorProps) {
         <div className="flex items-baseline justify-between mb-2">
           <Label>적용 계좌</Label>
           <span className="text-xs text-muted-foreground">
-            {portfolio.accountIds.length === 0
-              ? "연결된 계좌 없음"
-              : `${portfolio.accountIds.length}개 계좌 연결`}
+            {linkedCount === 0 ? "연결된 계좌 없음" : `${linkedCount}개 계좌 연결`}
           </span>
         </div>
         {investments.length === 0 ? (

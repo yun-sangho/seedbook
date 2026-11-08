@@ -12,10 +12,18 @@ import {
   TabToolbar,
 } from "@web/components/mobile/detail-layout";
 import { HeaderAction } from "@web/components/mobile/header-action";
+import { HoldingsPriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
+import { profitToneClass } from "@web/components/mobile/profit-tone";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
+import { summarizeAccounts } from "@web/features/investments/utils/summarize-accounts";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import type { PortfolioItem } from "@web/features/portfolio/types/types";
-import { accountPortfolioMap } from "@web/features/portfolio/utils/portfolio-links";
+import {
+  accountPortfolioMap,
+  otherLinkedPortfolio,
+  sortLinkedElsewhereLast,
+} from "@web/features/portfolio/utils/portfolio-links";
+import { resolvePortfolioAccounts } from "@web/features/portfolio/utils/resolve-portfolio-accounts";
 import { validateAllocations } from "@web/features/portfolio/utils/validate-allocations";
 import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
@@ -31,11 +39,15 @@ import {
 import { List, ListButtonItem, ListCheckItem, ListDivider } from "@web/seed-design/ui/list";
 import { ResultSection } from "@web/seed-design/ui/result-section";
 import { TextField, TextFieldTextarea } from "@web/seed-design/ui/text-field";
+import { formatReturnRate, numberToKorean } from "@web/utils/number-format";
+import { formatProfitKorean } from "@web/utils/profit-color";
 import { AddAllocationFlow, EditAllocationSheet } from "./allocation-sheets";
 import { ImportAllocationsSheet } from "./import-allocations-sheet";
+import { MoveAccountSheet, type AccountMove } from "./move-account-sheet";
 import { EditDriftThresholdSheet, PortfolioSettingsSheet } from "./portfolio-edit-sheets";
+import { PortfolioOverviewTab } from "./portfolio-overview-tab";
 
-type Tab = "allocations" | "accounts" | "memo";
+type Tab = "overview" | "allocations" | "accounts" | "memo";
 
 type Editing =
   | { kind: "settings" }
@@ -54,13 +66,11 @@ const ROW_DIVIDER_STYLE: CSSProperties = {
   marginRight: "var(--seed-dimension-x4)",
 };
 
-/** 합계 상태별 색 (초과 critical / 미달 warning / 100% positive). */
-function totalTone(totalPct: number, hasAllocations: boolean) {
-  if (totalPct > 100) return { text: "text-fg-critical", bar: "bg-bg-critical-solid" };
-  if (totalPct < 100 && hasAllocations) {
-    return { text: "text-fg-warning", bar: "bg-bg-warning-solid" };
-  }
-  return { text: "text-fg-positive", bar: "bg-bg-positive-solid" };
+/** 합계 상태별 글자 색 (초과 critical / 미달 warning / 100% positive). */
+function totalToneClass(totalPct: number, hasAllocations: boolean): string {
+  if (totalPct > 100) return "text-fg-critical";
+  if (totalPct < 100 && hasAllocations) return "text-fg-warning";
+  return "text-fg-positive";
 }
 
 /** 모바일 포트폴리오 상세 (`/assets/portfolio/[id]`). 계좌 상세와 같은 레이아웃. */
@@ -87,7 +97,7 @@ export function PortfolioDetailMobile({ id }: { id: string }) {
 }
 
 function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
-  const [tab, setTab] = useState<Tab>("allocations");
+  const [tab, setTab] = useState<Tab>("overview");
   const [editing, setEditing] = useState<Editing | null>(null);
 
   const updatePortfolio = usePortfolioStore((s) => s.updatePortfolio);
@@ -100,8 +110,14 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
   const setDriftThreshold = usePortfolioStore((s) => s.setDriftThreshold);
   const investments = useInvestmentStore((s) => s.investments);
   const portfolios = usePortfolioStore((s) => s.portfolios);
-  // 한 계좌는 하나의 포트폴리오에만 연결된다 — 다른 포트폴리오에 연결된 계좌는 체크하면 옮겨온다.
+  // 한 계좌는 하나의 포트폴리오에만 연결된다 — 다른 포트폴리오에 연결된 계좌는 확인 후 옮겨온다.
   const portfolioByAccount = useMemo(() => accountPortfolioMap(portfolios), [portfolios]);
+  const [pendingMove, setPendingMove] = useState<AccountMove | null>(null);
+  // 다른 포트폴리오에 연결된 계좌는 목록 끝에.
+  const accountsForLinking = useMemo(
+    () => sortLinkedElsewhereLast(investments, portfolioByAccount, portfolio.id),
+    [investments, portfolioByAccount, portfolio.id]
+  );
 
   const validation = useMemo(
     () => validateAllocations(portfolio.allocations),
@@ -117,10 +133,16 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
     [portfolio.allocations]
   );
   const linkedIds = useMemo(() => new Set(portfolio.accountIds), [portfolio.accountIds]);
-  const linkedCount = investments.filter((inv) => linkedIds.has(inv.id)).length;
+  // 삭제된 계좌는 연결 목록에 남아 있어도 빠진다.
+  const linkedAccounts = useMemo(
+    () => resolvePortfolioAccounts(portfolio, investments),
+    [portfolio, investments]
+  );
+  const linkedCount = linkedAccounts.length;
+  const linkedTotals = useMemo(() => summarizeAccounts(linkedAccounts), [linkedAccounts]);
 
   const totalPct = validation.totalPercent;
-  const tone = totalTone(totalPct, portfolio.allocations.length > 0);
+  const totalClass = totalToneClass(totalPct, portfolio.allocations.length > 0);
   const editingAllocation =
     editing?.kind === "allocation"
       ? portfolio.allocations.find((a) => a.id === editing.id)
@@ -134,16 +156,27 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
 
   return (
     <div className="pb-x4">
+      {/* 평가금액은 연결 계좌 보유 종목의 시세 기준 — 그 기준 시각을 알린다. */}
+      <HoldingsPriceAsOfBanner investments={linkedAccounts} />
       <section className="px-x4 pt-x4 pb-x3">
-        <p className="t3-medium text-fg-neutral-muted">목표 비중 합계</p>
-        <p className={cn("t9-bold tabular-nums", tone.text)}>{totalPct.toFixed(1)}%</p>
-        <div className="bg-bg-neutral-weak mt-x2 h-x2 w-full overflow-hidden rounded-full">
-          <div
-            className={cn("h-full transition-all", tone.bar)}
-            style={{ width: `${Math.min(100, totalPct)}%` }}
-          />
-        </div>
-        <div className="border-stroke-neutral-muted rounded-r3 mt-x3 flex flex-col gap-y-x3 border-2 px-x4 py-x3">
+        {/* 홈의 총 평가금액과 같은 모양 — 이 포트폴리오에 연결된 계좌만 합친다. */}
+        <p className="t10-bold tabular-nums">{numberToKorean(linkedTotals.current) || "0원"}</p>
+        {linkedCount > 0 ? (
+          <>
+            <p className={`t5-medium mt-x1 tabular-nums ${profitToneClass(linkedTotals.profit)}`}>
+              {formatProfitKorean(linkedTotals.profit)} ({formatReturnRate(linkedTotals.returnRate)}
+              )
+            </p>
+            <p className="t3-regular text-fg-neutral-subtle mt-x2">
+              투자원금 {numberToKorean(linkedTotals.initial) || "0원"} · 계좌 {linkedCount}개
+            </p>
+          </>
+        ) : (
+          <p className="t3-regular text-fg-neutral-subtle mt-x2">
+            연결된 계좌가 없어요. 적용 계좌 탭에서 연결하세요.
+          </p>
+        )}
+        <div className="border-stroke-neutral-muted rounded-r3 mt-x4 flex flex-col gap-y-x3 border-2 px-x4 py-x3">
           <InlineAmount
             label="이격 경고"
             value={`${portfolio.driftThresholdPercent}% 초과 시`}
@@ -160,6 +193,7 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
       >
         <div className="pt-x3">
           <ChipTabsList>
+            <ChipTabsTrigger value="overview">현황</ChipTabsTrigger>
             <ChipTabsTrigger value="allocations">
               종목 비중 {portfolio.allocations.length}
             </ChipTabsTrigger>
@@ -168,12 +202,22 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
           </ChipTabsList>
         </div>
 
+        <ChipTabsContent value="overview">
+          <PortfolioOverviewTab portfolio={portfolio} linkedAccounts={linkedAccounts} />
+        </ChipTabsContent>
+
         <ChipTabsContent value="allocations">
           <TabToolbar
             meta={
-              portfolio.allocations.length > 0
-                ? `${portfolio.allocations.length}종목 · 남은 비중 ${Math.max(0, 100 - totalPct).toFixed(1)}%`
-                : undefined
+              portfolio.allocations.length > 0 ? (
+                <>
+                  {portfolio.allocations.length}종목 · 남은 비중{" "}
+                  {Math.max(0, 100 - totalPct).toFixed(1)}% ·{" "}
+                  <span className={cn("tabular-nums", totalClass)}>
+                    합계 {totalPct.toFixed(1)}%
+                  </span>
+                </>
+              ) : undefined
             }
           />
           {validation.code !== "OK" && portfolio.allocations.length > 0 && (
@@ -246,30 +290,51 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
             <EmptyLine>투자 계좌를 먼저 추가한 뒤 연결할 수 있습니다.</EmptyLine>
           ) : (
             <List as="fieldset">
-              {investments.map((inv) => (
-                <ListCheckItem
-                  key={inv.id}
-                  title={inv.accountName || "이름 없는 계좌"}
-                  detail={linkedElsewhereDetail(portfolioByAccount.get(inv.id), portfolio.id)}
-                  prefix={
-                    <span
-                      className="size-x3 block rounded-full"
-                      style={{ backgroundColor: inv.color }}
-                      aria-hidden
-                    />
-                  }
-                  suffix={
-                    <div className="flex items-center gap-x2">
-                      {inv.accountType && <Badge variant="weak">{inv.accountType}</Badge>}
-                      <Checkmark tone="neutral" size="large" />
-                    </div>
-                  }
-                  checked={linkedIds.has(inv.id)}
-                  onCheckedChange={() => toggleAccountLink(portfolio.id, inv.id)}
-                />
-              ))}
+              {accountsForLinking.map((inv) => {
+                const other = otherLinkedPortfolio(portfolioByAccount, inv.id, portfolio.id);
+                return (
+                  <ListCheckItem
+                    key={inv.id}
+                    title={inv.accountName || "이름 없는 계좌"}
+                    detail={linkedElsewhereDetail(other)}
+                    // 다른 포트폴리오에 연결된 계좌는 흐리게 — 체크하면 이동 확인 시트가 뜬다.
+                    className={cn(other && "opacity-50")}
+                    prefix={
+                      <span
+                        className="size-x3 block rounded-full"
+                        style={{ backgroundColor: inv.color }}
+                        aria-hidden
+                      />
+                    }
+                    suffix={
+                      <div className="flex items-center gap-x2">
+                        {inv.accountType && <Badge variant="weak">{inv.accountType}</Badge>}
+                        <Checkmark tone="neutral" size="large" />
+                      </div>
+                    }
+                    checked={linkedIds.has(inv.id)}
+                    onCheckedChange={() => {
+                      if (other) {
+                        setPendingMove({
+                          accountId: inv.id,
+                          accountName: inv.accountName || "이름 없는 계좌",
+                          fromPortfolioName: other.name || "다른 포트폴리오",
+                        });
+                        return;
+                      }
+                      toggleAccountLink(portfolio.id, inv.id);
+                    }}
+                  />
+                );
+              })}
             </List>
           )}
+          <MoveAccountSheet
+            move={pendingMove}
+            toPortfolioName={portfolio.name}
+            onConfirm={(accountId) => toggleAccountLink(portfolio.id, accountId)}
+            onClose={() => setPendingMove(null)}
+          />
         </ChipTabsContent>
 
         <ChipTabsContent value="memo">
@@ -359,11 +424,8 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
   );
 }
 
-/** 다른 포트폴리오에 연결된 계좌라면 그 사실과 체크 시 동작을 알려준다. */
-function linkedElsewhereDetail(
-  linked: PortfolioItem | undefined,
-  currentPortfolioId: string
-): string | undefined {
-  if (!linked || linked.id === currentPortfolioId) return undefined;
-  return `${linked.name || "다른 포트폴리오"}에 연결됨 · 체크하면 이 포트폴리오로 옮겨요`;
+/** 다른 포트폴리오에 연결된 계좌라면 그 사실을 알려준다 (체크하면 이동 확인 시트가 뜬다). */
+function linkedElsewhereDetail(linked: PortfolioItem | undefined): string | undefined {
+  if (!linked) return undefined;
+  return `${linked.name || "다른 포트폴리오"}에 연결됨`;
 }

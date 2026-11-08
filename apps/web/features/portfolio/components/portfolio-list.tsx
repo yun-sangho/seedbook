@@ -42,12 +42,10 @@ export function PortfolioList({ portfolios }: PortfolioListProps) {
           0
         );
         const drift = computeDriftAlert(summary, portfolio.driftThresholdPercent);
-        const linkEmpty = portfolio.accountIds.length === 0;
-        const linkLabel = linkEmpty
-          ? "연결 계좌 없음"
-          : `계좌 ${scopedAccounts.length}/${portfolio.accountIds.length}`;
-        const linkStale = !linkEmpty && scopedAccounts.length < portfolio.accountIds.length;
-        const linkWarn = linkEmpty || linkStale;
+        // 삭제된 계좌는 연결 목록에 남아 있어도 세지 않는다.
+        const linkEmpty = scopedAccounts.length === 0;
+        const linkLabel = linkEmpty ? "연결 계좌 없음" : `계좌 ${scopedAccounts.length}개`;
+        const linkWarn = linkEmpty;
 
         return (
           <Link
@@ -85,7 +83,6 @@ export function PortfolioList({ portfolios }: PortfolioListProps) {
                     )}
                   >
                     {linkLabel}
-                    {linkStale ? " (삭제된 계좌 포함)" : ""}
                   </span>
                   {portfolio.allocations.length > 0 && actual.totalStockValue > 0 && (
                     <span

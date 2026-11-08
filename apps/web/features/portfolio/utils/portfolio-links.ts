@@ -55,3 +55,30 @@ function isNewer(candidate: LinkedPortfolio, incumbent: LinkedPortfolio): boolea
 function sameIds(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((id, i) => id === b[i]);
 }
+
+/**
+ * 계좌가 현재 포트폴리오가 아닌 다른 포트폴리오에 연결돼 있으면 그 포트폴리오.
+ * 여기에 연결하면 그쪽 연결이 풀리므로 사용자에게 먼저 확인받는다.
+ */
+export function otherLinkedPortfolio(
+  portfolioByAccount: Map<string, PortfolioItem>,
+  accountId: string,
+  currentPortfolioId: string
+): PortfolioItem | undefined {
+  const linked = portfolioByAccount.get(accountId);
+  return linked && linked.id !== currentPortfolioId ? linked : undefined;
+}
+
+/**
+ * 다른 포트폴리오에 연결된 계좌를 뒤로 보낸다. 각 묶음 안의 순서(사용자가 정한 계좌 순서)는
+ * 그대로 둔다.
+ */
+export function sortLinkedElsewhereLast<T extends { id: string }>(
+  accounts: T[],
+  portfolioByAccount: Map<string, PortfolioItem>,
+  currentPortfolioId: string
+): T[] {
+  const isElsewhere = (a: T) =>
+    otherLinkedPortfolio(portfolioByAccount, a.id, currentPortfolioId) !== undefined;
+  return [...accounts.filter((a) => !isElsewhere(a)), ...accounts.filter(isElsewhere)];
+}

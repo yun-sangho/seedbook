@@ -10,7 +10,7 @@ import { ActionButton } from "@web/seed-design/ui/action-button";
  * 화면 전체가 스크롤된다 — 탭 안쪽만 따로 스크롤하지 않는다.
  */
 
-export function TabToolbar({ meta, children }: { meta?: string; children?: ReactNode }) {
+export function TabToolbar({ meta, children }: { meta?: ReactNode; children?: ReactNode }) {
   return (
     <div className="flex h-x12 items-center gap-x1 px-x4">
       {meta && (

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { PortfolioItem } from "../types/types";
-import { accountPortfolioMap, dedupePortfolioLinks } from "./portfolio-links";
+import {
+  accountPortfolioMap,
+  dedupePortfolioLinks,
+  otherLinkedPortfolio,
+  sortLinkedElsewhereLast,
+} from "./portfolio-links";
 
 function portfolio(partial: Partial<PortfolioItem> & Pick<PortfolioItem, "id">): PortfolioItem {
   return {
@@ -100,5 +105,37 @@ describe("accountPortfolioMap", () => {
     expect(map.get("b")?.id).toBe("p1");
     expect(map.get("c")?.id).toBe("p2");
     expect(map.has("d")).toBe(false);
+  });
+});
+
+describe("otherLinkedPortfolio", () => {
+  const p1 = portfolio({ id: "p1", accountIds: ["a"] });
+  const p2 = portfolio({ id: "p2", accountIds: ["b"] });
+  const map = accountPortfolioMap([p1, p2]);
+
+  it("returns the other portfolio the account is linked to", () => {
+    expect(otherLinkedPortfolio(map, "b", "p1")?.id).toBe("p2");
+  });
+
+  it("returns undefined when the account is linked to the current portfolio", () => {
+    expect(otherLinkedPortfolio(map, "a", "p1")).toBeUndefined();
+  });
+
+  it("returns undefined when the account is not linked anywhere", () => {
+    expect(otherLinkedPortfolio(map, "c", "p1")).toBeUndefined();
+  });
+});
+
+describe("sortLinkedElsewhereLast", () => {
+  it("moves accounts linked to other portfolios to the end, keeping the order within each group", () => {
+    const map = accountPortfolioMap([
+      portfolio({ id: "current", accountIds: ["b"] }),
+      portfolio({ id: "other", accountIds: ["a", "c"] }),
+    ]);
+    const accounts = [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }];
+
+    const result = sortLinkedElsewhereLast(accounts, map, "current");
+
+    expect(result.map((a) => a.id)).toEqual(["b", "d", "a", "c"]);
   });
 });
