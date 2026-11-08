@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Button } from "@web/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@web/components/ui/popover";
 import { authClient, useSession } from "@web/lib/auth-client";
 import { cn } from "@web/lib/utils";
-import { LogOut } from "lucide-react";
+import { getViewOverride, setViewOverride } from "@web/lib/view-override";
+import { LogOut, Smartphone } from "lucide-react";
 
 function getInitials(name: string | null | undefined) {
   if (!name) return "?";
@@ -15,6 +17,9 @@ function getInitials(name: string | null | undefined) {
 
 export function UserMenu() {
   const { data: session, isPending } = useSession();
+  // 모바일에서 "PC 화면으로 보기" 를 고른 사용자에게만 되돌아갈 길을 보여준다.
+  const [forcedDesktop, setForcedDesktop] = useState(false);
+  useEffect(() => setForcedDesktop(getViewOverride() === "desktop"), []);
 
   if (isPending) {
     return <div className="h-8 w-24 animate-pulse rounded-md bg-muted" />;
@@ -69,6 +74,23 @@ export function UserMenu() {
           <div className="px-2 py-1.5 text-xs text-muted-foreground">
             {user.email ?? user.name ?? "로그인됨"}
           </div>
+          {forcedDesktop && (
+            <button
+              type="button"
+              onClick={() => {
+                setViewOverride(null);
+                window.location.reload();
+              }}
+              className={cn(
+                "flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm",
+                "hover:bg-accent hover:text-accent-foreground",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              )}
+            >
+              <Smartphone className="size-4" />
+              모바일 화면으로 보기
+            </button>
+          )}
           <button
             type="button"
             onClick={async () => {

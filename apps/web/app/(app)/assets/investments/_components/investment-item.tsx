@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AssetNameInput } from "@web/components/ui/asset-name-input";
 import { Badge } from "@web/components/ui/badge";
 import { Button } from "@web/components/ui/button";
@@ -9,12 +9,11 @@ import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@web/components/ui/popover";
 import { StockCombobox } from "@web/features/investments/components/stock-combobox";
-import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { ACCOUNT_COLORS } from "@web/features/investments/types/constants";
 import type { Stock } from "@web/features/investments/types/stock";
 import { CashItem, InvestmentItem, StockHolding } from "@web/features/investments/types/types";
-import { sortHoldings } from "@web/features/investments/utils/sort-holdings";
-import { stockPriceKey, useStockPrices } from "@web/features/investments/utils/use-stock-prices";
+import { useAccountValuation } from "@web/features/investments/utils/use-account-valuation";
+import { stockPriceKey } from "@web/features/investments/utils/use-stock-prices";
 import { numberToKorean } from "@web/utils/number-format";
 import { AddCashItemModal } from "./add-cash-item-modal";
 import { AddHistoryModal } from "./add-history-modal";
@@ -139,79 +138,34 @@ export function InvestmentItemComponent({
   const [isAddHoldingModalOpen, setIsAddHoldingModalOpen] = useState(false);
   const [isAddCashModalOpen, setIsAddCashModalOpen] = useState(false);
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
-  const [pendingHistorySync, setPendingHistorySync] = useState(false);
-
-  const holdingsSortOption = useInvestmentStore((state) => state.holdingsSortOption);
 
   const cashListRef = useRef<HTMLDivElement>(null);
   const prevCashItemsCount = useRef(item.cashItems?.length ?? 0);
 
-  const cashItems = useMemo(() => item.cashItems ?? [], [item.cashItems]);
-  const holdings = useMemo(() => item.holdings ?? [], [item.holdings]);
-
-  const { prices, isLoading: pricesLoading } = useStockPrices(holdings);
-
-  const referenceDate = useMemo(() => {
-    let latest: string | null = null;
-    prices.forEach((p) => {
-      if (!latest || p.date > latest) latest = p.date;
-    });
-    return latest;
-  }, [prices]);
-
-  const validHoldings = holdings.filter((h) => h.market && h.ticker);
-  const allHoldingsHavePrices =
-    validHoldings.length === 0 ||
-    validHoldings.every((h) => prices.has(stockPriceKey(h.market, h.ticker)));
-
-  const stocksTotal = useMemo(() => {
-    return holdings.reduce((sum, h) => {
-      if (!h.market || !h.ticker) return sum;
-      const point = prices.get(stockPriceKey(h.market, h.ticker));
-      if (!point) return sum;
-      return sum + point.close * h.quantity;
-    }, 0);
-  }, [holdings, prices]);
-
-  // 정렬된 보유 주식 목록. 가격 정보가 없는 종목은 항상 맨 뒤로 밀어 순서가 흔들리는 것을 방지한다.
-  const sortedHoldings = useMemo(
-    () => sortHoldings(holdings, prices, holdingsSortOption),
-    [holdings, prices, holdingsSortOption]
-  );
-
-  const cashTotal = useMemo(
-    () => cashItems.reduce((sum, c) => sum + (c.amount || 0), 0),
-    [cashItems]
-  );
-
-  const totalValue = stocksTotal + cashTotal;
-
   // 보유주식/현금 항목 변경 시 currentValue 에 totalValue 를 반영한다. updateInvestment
-  // 내부 로직이 오늘 날짜로 히스토리 레코드를 자동 생성/갱신한다. 가격 로딩이 끝나고
-  // 모든 종목의 시세가 준비된 뒤에만 적용해야 잘못된 0 원/이전 시세로 덮어쓰지 않는다.
-  useEffect(() => {
-    if (readOnly) return;
-    if (!pendingHistorySync) return;
-    if (pricesLoading) return;
-    if (!allHoldingsHavePrices) return;
-    onUpdateItem(item.id, "currentValue", String(totalValue));
-    setPendingHistorySync(false);
-  }, [
-    readOnly,
-    pendingHistorySync,
+  // 내부 로직이 오늘 날짜로 히스토리 레코드를 자동 생성/갱신한다.
+  const syncCurrentValue = useCallback(
+    (value: number) => onUpdateItem(item.id, "currentValue", String(value)),
+    [item.id, onUpdateItem]
+  );
+  const {
+    holdings,
+    cashItems,
+    sortedHoldings,
+    prices,
     pricesLoading,
-    allHoldingsHavePrices,
+    referenceDate,
+    validHoldingCount,
+    stocksTotal,
+    cashTotal,
     totalValue,
-    item.id,
-    onUpdateItem,
-  ]);
+    markHistoryDirty,
+  } = useAccountValuation(item, { readOnly, onSyncCurrentValue: syncCurrentValue });
 
   const handleColorChange = (color: string) => {
     onUpdateItem(item.id, "color", color);
     setIsColorPickerOpen(false);
   };
-
-  const markHistoryDirty = () => setPendingHistorySync(true);
 
   const handleUpdateStockHolding = (
     investmentId: string,
@@ -286,7 +240,10 @@ export function InvestmentItemComponent({
   }, [holdings]);
 
   return (
-    <Card key={item.id} className={`gap-4 ${readOnly ? "border-amber-300 dark:border-amber-700" : ""}`}>
+    <Card
+      key={item.id}
+      className={`gap-4 ${readOnly ? "border-amber-300 dark:border-amber-700" : ""}`}
+    >
       <CardHeader>
         {readOnly && ownerLabel && (
           <Badge
@@ -373,7 +330,9 @@ export function InvestmentItemComponent({
                   : ""
               }
               onChange={
-                readOnly ? undefined : (e) => onUpdateItem(item.id, "initialInvestment", e.target.value)
+                readOnly
+                  ? undefined
+                  : (e) => onUpdateItem(item.id, "initialInvestment", e.target.value)
               }
               placeholder="투자원금 입력"
               readOnly={readOnly}
@@ -414,9 +373,9 @@ export function InvestmentItemComponent({
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   보유 주식
                 </span>
-                {validHoldings.length > 0 && (
+                {validHoldingCount > 0 && (
                   <span className="text-sm text-muted-foreground">
-                    {validHoldings.length}종목 · {numberToKorean(stocksTotal)}
+                    {validHoldingCount}종목 · {numberToKorean(stocksTotal)}
                   </span>
                 )}
                 {pricesLoading ? (
