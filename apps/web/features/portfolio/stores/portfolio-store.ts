@@ -26,15 +26,10 @@ const nextDefaultName = (existing: PortfolioItem[]): string => {
 
 interface PortfolioState {
   portfolios: PortfolioItem[];
-  expandedFormId: string;
 
   addPortfolio: (name?: string) => string;
   removePortfolio: (id: string) => void;
-  updatePortfolio: (
-    id: string,
-    field: "name" | "description" | "note" | "color",
-    value: string
-  ) => void;
+  updatePortfolio: (id: string, field: "name" | "note" | "color", value: string) => void;
 
   addAllocation: (
     portfolioId: string,
@@ -60,7 +55,6 @@ interface PortfolioState {
   setDriftThreshold: (portfolioId: string, value: number) => void;
 
   reorderPortfolios: (reordered: PortfolioItem[]) => void;
-  setExpandedFormId: (id: string) => void;
   resetStore: () => void;
 }
 
@@ -70,7 +64,6 @@ export const usePortfolioStore = create<PortfolioState>()(
   persist(
     (set, get) => ({
       portfolios: [],
-      expandedFormId: "",
 
       addPortfolio: (name) => {
         const { portfolios } = get();
@@ -78,7 +71,6 @@ export const usePortfolioStore = create<PortfolioState>()(
         const newPortfolio: PortfolioItem = {
           id,
           name: name && name.trim().length > 0 ? name.trim() : nextDefaultName(portfolios),
-          description: "",
           color: getNextColor(portfolios),
           allocations: [],
           accountIds: [],
@@ -89,7 +81,6 @@ export const usePortfolioStore = create<PortfolioState>()(
         };
         set({
           portfolios: [newPortfolio, ...portfolios],
-          expandedFormId: id,
         });
         return id;
       },
@@ -97,7 +88,6 @@ export const usePortfolioStore = create<PortfolioState>()(
       removePortfolio: (id) => {
         set((state) => ({
           portfolios: state.portfolios.filter((p) => p.id !== id),
-          expandedFormId: state.expandedFormId === id ? "" : state.expandedFormId,
         }));
       },
 
@@ -215,12 +205,8 @@ export const usePortfolioStore = create<PortfolioState>()(
         set({ portfolios: reordered });
       },
 
-      setExpandedFormId: (id) => {
-        set({ expandedFormId: id });
-      },
-
       resetStore: () => {
-        set({ portfolios: [], expandedFormId: "" });
+        set({ portfolios: [] });
       },
     }),
     {
@@ -229,7 +215,6 @@ export const usePortfolioStore = create<PortfolioState>()(
       version: 2,
       partialize: (state) => ({
         portfolios: state.portfolios,
-        // expandedFormId 는 UI 상태라 저장 안 함
       }),
       migrate: (persisted, version) => {
         const state = (persisted ?? {}) as { portfolios?: PortfolioItem[] };
@@ -251,7 +236,6 @@ export const usePortfolioStore = create<PortfolioState>()(
           accountIds: p.accountIds ?? [],
           driftThresholdPercent: p.driftThresholdPercent ?? DEFAULT_DRIFT_THRESHOLD_PERCENT,
           note: p.note ?? "",
-          description: p.description ?? "",
           createdAt: p.createdAt ?? nowIso(),
           updatedAt: p.updatedAt ?? nowIso(),
         }));

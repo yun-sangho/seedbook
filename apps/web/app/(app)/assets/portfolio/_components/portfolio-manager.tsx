@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Button } from "@web/components/ui/button";
 import { PortfolioList } from "@web/features/portfolio/components/portfolio-list";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
@@ -31,16 +32,22 @@ export function PortfolioManager() {
   const portfolios = usePortfolioStore((s) => s.portfolios);
   const addPortfolio = usePortfolioStore((s) => s.addPortfolio);
   const isReadOnly = useIsReadOnly();
+  const router = useRouter();
+
+  const handleAdd = () => {
+    const id = addPortfolio();
+    router.push(`/assets/portfolio/${id}`);
+  };
 
   if (portfolios.length === 0) {
-    return <EmptyState onAdd={() => addPortfolio()} readOnly={isReadOnly} />;
+    return <EmptyState onAdd={handleAdd} readOnly={isReadOnly} />;
   }
 
   return (
     <div className="space-y-4">
       {!isReadOnly && (
         <div className="flex justify-end">
-          <Button onClick={() => addPortfolio()}>
+          <Button onClick={handleAdd}>
             <Plus className="h-4 w-4" />
             포트폴리오 추가
           </Button>

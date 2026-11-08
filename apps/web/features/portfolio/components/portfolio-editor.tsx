@@ -50,29 +50,17 @@ export function PortfolioEditor({ portfolio }: PortfolioEditorProps) {
   const isUnder = totalPct < 100 && portfolio.allocations.length > 0;
 
   return (
-    <div className="space-y-6 px-4 py-5 border-t">
+    <div className="space-y-4 border-t pt-4">
       {/* 메타데이터 */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <Label htmlFor={`portfolio-name-${portfolio.id}`}>이름</Label>
-          <Input
-            id={`portfolio-name-${portfolio.id}`}
-            value={portfolio.name}
-            onChange={(e) => updatePortfolio(portfolio.id, "name", e.target.value)}
-            placeholder="포트폴리오 이름"
-            className="mt-1.5"
-          />
-        </div>
-        <div>
-          <Label htmlFor={`portfolio-desc-${portfolio.id}`}>설명</Label>
-          <Input
-            id={`portfolio-desc-${portfolio.id}`}
-            value={portfolio.description}
-            onChange={(e) => updatePortfolio(portfolio.id, "description", e.target.value)}
-            placeholder="이 전략의 목표나 특징"
-            className="mt-1.5"
-          />
-        </div>
+      <div>
+        <Label htmlFor={`portfolio-name-${portfolio.id}`}>이름</Label>
+        <Input
+          id={`portfolio-name-${portfolio.id}`}
+          value={portfolio.name}
+          onChange={(e) => updatePortfolio(portfolio.id, "name", e.target.value)}
+          placeholder="포트폴리오 이름"
+          className="mt-1.5"
+        />
       </div>
 
       {/* 색상 */}
@@ -177,7 +165,7 @@ export function PortfolioEditor({ portfolio }: PortfolioEditorProps) {
           <Label>적용 계좌</Label>
           <span className="text-xs text-muted-foreground">
             {portfolio.accountIds.length === 0
-              ? "연결 없음 = 전체 계좌 합산"
+              ? "연결된 계좌 없음"
               : `${portfolio.accountIds.length}개 계좌 연결`}
           </span>
         </div>

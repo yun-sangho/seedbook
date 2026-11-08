@@ -22,12 +22,11 @@ export interface PortfolioAllocation {
 export interface PortfolioItem {
   id: string;
   name: string; // "안정형", "공격형", "AI 테마" 등
-  description: string;
   color: string; // ACCOUNT_COLORS 에서 자동 할당
   allocations: PortfolioAllocation[];
   /**
    * 이 포트폴리오가 적용되는 `InvestmentItem.id` 목록.
-   * 빈 배열이면 "연결 없음 = 모든 투자 계좌 합산" 을 의미한다 (하위호환).
+   * 빈 배열이면 적용 계좌가 없는 것 — 리밸런싱 비교가 불가능한 상태.
    */
   accountIds: string[];
   /**

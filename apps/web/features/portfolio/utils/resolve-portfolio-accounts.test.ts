@@ -21,9 +21,9 @@ function makeAccount(id: string, name = id): InvestmentItem {
 describe("resolvePortfolioAccounts", () => {
   const investments: InvestmentItem[] = [makeAccount("a"), makeAccount("b"), makeAccount("c")];
 
-  it("returns all investments when accountIds is empty (backward compat)", () => {
+  it("returns empty array when accountIds is empty (no accounts linked)", () => {
     const result = resolvePortfolioAccounts({ accountIds: [] }, investments);
-    expect(result).toEqual(investments);
+    expect(result).toEqual([]);
   });
 
   it("filters to the specified ids", () => {
