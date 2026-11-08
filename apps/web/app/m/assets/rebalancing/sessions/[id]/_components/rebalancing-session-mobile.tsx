@@ -1,16 +1,23 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Divider } from "@seed-design/react";
+import { IconChevronDownSmallLine } from "@karrotmarket/react-monochrome-icon";
+import { Divider, Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
+import {
+  sortOptionLabel,
+  SortSheet,
+  type SortOptionList,
+} from "@web/app/m/assets/investments/_components/investment-sheets";
 import { ConfirmDialog } from "@web/components/mobile/confirm-dialog";
 import { HeaderAction } from "@web/components/mobile/header-action";
 import { PriceAsOfSummaryBanner, PriceBanner } from "@web/components/mobile/price-as-of-banner";
+import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import {
   describePriceAsOf,
   type PriceAsOfSummary,
 } from "@web/features/investments/utils/price-as-of";
-import { RebalancingProgressBar } from "@web/features/rebalancing/components/rebalancing-progress-bar";
+import { stockPriceKey } from "@web/features/investments/utils/use-stock-prices";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import type { RebalancingTask } from "@web/features/rebalancing/types/types";
 import { priceAgeWarning } from "@web/features/rebalancing/utils/price-age";
@@ -23,6 +30,12 @@ import {
   isRebalancingStopped,
   rebalancingProgress,
 } from "@web/features/rebalancing/utils/rebalancing-session";
+import {
+  sortRebalancingTasks,
+  type RebalancingTaskSort,
+} from "@web/features/rebalancing/utils/sort-rebalancing-tasks";
+import { pushRebalancingTaskSort } from "@web/lib/preferences";
+import { usePreferencesStore } from "@web/lib/preferences-store";
 import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { Badge } from "@web/seed-design/ui/badge";
@@ -51,6 +64,17 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [completing, setCompleting] = useState(false);
   const { leavingIds, markLeaving, cancelLeaving } = useLeavingTasks();
+  const [sortOpen, setSortOpen] = useState(false);
+  // 정렬은 개인 설정 — 계정에 저장되어 어느 기기에서든 이어진다.
+  const sort = usePreferencesStore((s) => s.rebalancingTaskSort);
+  const setLocalSort = usePreferencesStore((s) => s.setRebalancingTaskSort);
+  const setSort = (next: RebalancingTaskSort) => {
+    setLocalSort(next);
+    void pushRebalancingTaskSort(next);
+  };
+  const account = useInvestmentStore((s) =>
+    s.investments.find((inv) => inv.id === session?.accountId)
+  );
   // 수량 시트로 여는 매매. 남은 매매면 완료 기록, 완료한 매매면 수량 수정/완료 취소.
   const [editingId, setEditingId] = useState<string | null>(null);
   // 완료를 취소한 매매의 직전 기록 수량 — 다시 완료할 때 미리 채워 실수로 풀어도 그대로 되돌린다.
@@ -73,6 +97,13 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
   const totalBuy = sumAmount(session.tasks, "매수");
   const priceAsOf = summarizeRebalancingPriceAsOf(session.tasks);
   const groups = groupRebalancingTasks(session.tasks, leavingIds);
+  // 평가액 = 지금 보유 수량 × 시작 시점 기준 가격 (가격이 고정된 체크리스트라 같은 기준을 쓴다).
+  const holdingQuantity = (task: RebalancingTask) =>
+    (account?.holdings ?? [])
+      .filter((h) => stockPriceKey(h.market, h.ticker) === stockPriceKey(task.market, task.ticker))
+      .reduce((sum, h) => sum + h.quantity, 0);
+  const remainingTasks = sortRebalancingTasks(groups.remaining, sort, holdingQuantity);
+  const doneTasks = sortRebalancingTasks(groups.done, sort, holdingQuantity);
   const { done, total } = rebalancingProgress(session);
   const remaining = total - done;
   const canComplete = canCompleteRebalancing(session);
@@ -126,16 +157,22 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
       <Divider />
 
       <section className="py-x4">
-        <h2 className="t5-bold px-x4">
-          {stopped ? "하지 않은 매매" : "남은 매매"}{" "}
-          <span className="text-fg-neutral-subtle tabular-nums">{remaining}건</span>
-        </h2>
-        {/* "남은 n건" 만으로는 전체 중 어디쯤인지 안 보여 진행 막대로 함께 보여준다. */}
-        {!completed && (
-          <div className="px-x4 pb-x2">
-            <RebalancingProgressBar done={done} total={total} />
-          </div>
-        )}
+        <div className="flex items-center px-x4">
+          <h2 className="t5-bold flex-1">
+            {stopped ? "하지 않은 매매" : "남은 매매"}{" "}
+            <span className="text-fg-neutral-subtle tabular-nums">{remaining}건</span>
+          </h2>
+          {/* 어떤 정렬이든 매도가 매수보다 먼저 나온다. */}
+          <ActionButton
+            variant="ghost"
+            size="small"
+            bleedX="asPadding"
+            onClick={() => setSortOpen(true)}
+          >
+            {sortOptionLabel(TASK_SORT_OPTIONS, sort)}
+            <Icon svg={<IconChevronDownSmallLine />} />
+          </ActionButton>
+        </div>
         {groups.remaining.length === 0 && (
           <div className="flex flex-col items-center gap-x2 px-x4 py-x6">
             <p className="t4-regular text-fg-neutral-subtle">모든 매매를 마쳤어요.</p>
@@ -147,7 +184,7 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
           </div>
         )}
         <List>
-          {groups.remaining.map((task) => (
+          {remainingTasks.map((task) => (
             <TaskRow
               key={task.id}
               task={task}
@@ -166,7 +203,7 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
               완료 <span className="tabular-nums">{groups.done.length}건</span>
             </h3>
             <List>
-              {groups.done.map((task) => (
+              {doneTasks.map((task) => (
                 <TaskRow
                   key={task.id}
                   task={task}
@@ -214,6 +251,14 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
           }}
         />
       )}
+      <SortSheet
+        open={sortOpen}
+        onOpenChange={setSortOpen}
+        title="매매 정렬"
+        options={TASK_SORT_OPTIONS}
+        value={sort}
+        onChange={setSort}
+      />
       <CompleteRebalancingSheet session={session} open={completing} onOpenChange={setCompleting} />
 
       <HeaderAction>
@@ -299,6 +344,13 @@ function TaskRow({
     />
   );
 }
+
+const TASK_SORT_OPTIONS: SortOptionList<RebalancingTaskSort> = [
+  { value: "nameDesc", label: "이름 내림차순" },
+  { value: "nameAsc", label: "이름 오름차순" },
+  { value: "evalDesc", label: "평가액 높은 순" },
+  { value: "evalAsc", label: "평가액 낮은 순" },
+];
 
 /**
  * 방금 체크한 할 일을 `TASK_LEAVE_MS` 동안 "사라지는 중" 으로 들고 있는다.
