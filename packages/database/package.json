@@ -12,6 +12,7 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts",
     "db:seed:capture": "tsx scripts/capture-seed.ts",
+    "db:backfill:account-portfolio": "tsx scripts/backfill-account-portfolio-links.ts",
     "db:sanitize:user-export": "tsx scripts/sanitize-user-export.ts",
     "etl:etf:prices": "tsx ./scripts/fetch-etf-prices.ts",
     "etl:etf:holdings": "tsx ./scripts/fetch-etf-holdings.ts"

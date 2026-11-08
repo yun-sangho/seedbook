@@ -1,4 +1,4 @@
-import { schema } from "@seedbook/database";
+import { schema, syncAccountPortfolioLinks } from "@seedbook/database";
 import { and, eq, notInArray } from "drizzle-orm";
 import {
   bigIntToNumber,
@@ -279,6 +279,9 @@ export const investmentTranslator: DomainTranslator = {
             });
         }
       }
+
+      // 새 계좌가 포트폴리오 연결보다 늦게 도착했을 수 있다 — 연결을 여기서도 맞춘다.
+      await syncAccountPortfolioLinks(tx, userId);
     });
   },
 };

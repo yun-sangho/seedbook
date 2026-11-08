@@ -1,4 +1,4 @@
-import { schema } from "@seedbook/database";
+import { schema, syncAccountPortfolioLinks } from "@seedbook/database";
 import { dedupePortfolioLinks } from "@web/features/portfolio/utils/portfolio-links";
 import { and, eq, notInArray } from "drizzle-orm";
 import type { DomainTranslator, Envelope } from "./types";
@@ -85,9 +85,17 @@ export const portfolioTranslator: DomainTranslator = {
 
   async write(db, userId, envelope) {
     const state = envelope.state ?? {};
-    const portfolios = Array.isArray(state.portfolios)
-      ? (state.portfolios as PortfolioItemPayload[])
-      : [];
+    // v3 이전 클라이언트가 중복 연결을 보낼 수 있어 저장 전에도 정리한다.
+    const portfolios = dedupePortfolioLinks(
+      (Array.isArray(state.portfolios) ? (state.portfolios as PortfolioItemPayload[]) : []).map(
+        (p) => ({
+          ...p,
+          accountIds: Array.isArray(p.accountIds)
+            ? p.accountIds.filter((id) => typeof id === "string")
+            : [],
+        })
+      )
+    );
 
     await db.transaction(async (tx) => {
       const order = portfolios.map((p) => p.id);
@@ -113,9 +121,7 @@ export const portfolioTranslator: DomainTranslator = {
       for (const p of portfolios) {
         const createdAt = p.createdAt ? new Date(p.createdAt) : new Date();
         const updatedAt = p.updatedAt ? new Date(p.updatedAt) : new Date();
-        const accountIds = Array.isArray(p.accountIds)
-          ? Array.from(new Set(p.accountIds.filter((id) => typeof id === "string")))
-          : [];
+        const accountIds = p.accountIds;
         const driftThresholdPercent =
           typeof p.driftThresholdPercent === "number" && Number.isFinite(p.driftThresholdPercent)
             ? Math.max(0, p.driftThresholdPercent)
@@ -163,6 +169,8 @@ export const portfolioTranslator: DomainTranslator = {
           await tx.insert(schema.portfolioAllocation).values(rows).onConflictDoNothing();
         }
       }
+
+      await syncAccountPortfolioLinks(tx, userId);
     });
   },
 };

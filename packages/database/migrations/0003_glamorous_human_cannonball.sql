@@ -1,0 +1,3 @@
+ALTER TABLE "seedbook"."investment_account" ADD COLUMN "portfolioId" uuid;--> statement-breakpoint
+ALTER TABLE "seedbook"."investment_account" ADD CONSTRAINT "investment_account_portfolioId_portfolio_id_fk" FOREIGN KEY ("portfolioId") REFERENCES "seedbook"."portfolio"("id") ON DELETE set null ON UPDATE cascade;--> statement-breakpoint
+CREATE INDEX "investment_account_portfolioId_idx" ON "seedbook"."investment_account" USING btree ("portfolioId");

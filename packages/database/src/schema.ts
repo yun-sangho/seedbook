@@ -20,6 +20,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 export const seedbook = pgSchema("seedbook");
@@ -143,12 +144,22 @@ export const investmentAccount = seedbook.table(
     currentValue: bigint("currentValue", { mode: "bigint" }).notNull(),
     note: text("note").notNull().default(""),
     color: text("color").notNull(),
+    // 이 계좌가 연결된 포트폴리오. 한 계좌는 최대 하나의 포트폴리오에만 연결된다.
+    // 전환 기간에는 `portfolio.accountIds` 가 클라이언트 envelope 의 원본이고, 이 컬럼은
+    // translator 가 `syncAccountPortfolioLinks` 로 맞춰 둔다.
+    portfolioId: uuid("portfolioId").references((): AnyPgColumn => portfolio.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })
       .notNull()
       .$onUpdate(() => new Date()),
   },
-  (t) => [index("investment_account_userId_idx").on(t.userId)]
+  (t) => [
+    index("investment_account_userId_idx").on(t.userId),
+    index("investment_account_portfolioId_idx").on(t.portfolioId),
+  ]
 );
 
 export const investmentRecord = seedbook.table(
@@ -507,6 +518,10 @@ export const accountRelations = relations(account, ({ one }) => ({
 
 export const investmentAccountRelations = relations(investmentAccount, ({ one, many }) => ({
   user: one(user, { fields: [investmentAccount.userId], references: [user.id] }),
+  portfolio: one(portfolio, {
+    fields: [investmentAccount.portfolioId],
+    references: [portfolio.id],
+  }),
   records: many(investmentRecord),
   holdings: many(stockHolding),
   cashItems: many(cashItem),
@@ -565,6 +580,7 @@ export const assetPlanAccountItemRelations = relations(assetPlanAccountItem, ({ 
 export const portfolioRelations = relations(portfolio, ({ one, many }) => ({
   user: one(user, { fields: [portfolio.userId], references: [user.id] }),
   allocations: many(portfolioAllocation),
+  accounts: many(investmentAccount),
 }));
 
 export const portfolioAllocationRelations = relations(portfolioAllocation, ({ one }) => ({
