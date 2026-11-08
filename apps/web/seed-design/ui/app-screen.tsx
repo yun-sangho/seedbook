@@ -8,16 +8,8 @@
 import { forwardRef, useCallback, useRef } from "react";
 import { AppScreen as SeedAppScreen } from "@seed-design/stackflow";
 import { useActivity, useFlow } from "@stackflow/react";
-import { isIOSUserAgent } from "@web/lib/pwa-install";
 import { OverlayContainerContext } from "./overlay-container";
 import { PullToRefreshContent, PullToRefreshIndicator, PullToRefreshRoot } from "./pull-to-refresh";
-
-function hasNativeSwipeBack(): boolean {
-  return (
-    typeof navigator !== "undefined" &&
-    isIOSUserAgent(navigator.userAgent, navigator.maxTouchPoints)
-  );
-}
 
 export interface AppScreenProps extends Omit<SeedAppScreen.RootProps, "asChild"> {
   preventSwipeBack?: boolean;
@@ -27,10 +19,9 @@ export const AppScreen = forwardRef<HTMLDivElement, AppScreenProps>(
   ({ children, onSwipeBackEnd, preventSwipeBack, ...otherProps }, ref) => {
     const { pop } = useFlow();
     const { isRoot } = useActivity();
-    // iOS (Safari·PWA) 는 OS 가 가장자리 스와이프로 뒤로가기를 한다. 앱 스와이프까지 켜 두면
-    // 한 제스처에 두 경로가 동시에 반응해 스택이 두 번 pop 되거나(touchend) 화면이 되돌아왔다가
-    // 다시 나간다(touchcancel). OS 제스처 하나로 통일한다 (native-back-gesture-plugin.ts).
-    const shouldSwipeBack = !isRoot && !preventSwipeBack && !hasNativeSwipeBack();
+    // 뒤로 스와이프는 이 SEED 스와이프 하나뿐이다. 모바일 스택은 브라우저 history 를 쌓지
+    // 않아 OS(iOS) 스와이프 제스처가 동작하지 않는다 (app/m/_stack/next-aware-history.ts).
+    const shouldSwipeBack = !isRoot && !preventSwipeBack;
 
     // 화면 안 바텀시트·다이얼로그를 이 루트로 portal 한다 (overlay-container.tsx).
     const rootRef = useRef<HTMLDivElement | null>(null);

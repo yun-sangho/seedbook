@@ -3,7 +3,6 @@ import { defineConfig } from "@stackflow/config";
 import { historySyncPlugin } from "@stackflow/plugin-history-sync";
 import { basicRendererPlugin } from "@stackflow/plugin-renderer-basic";
 import { stackflow } from "@stackflow/react";
-import { isIOSUserAgent } from "@web/lib/pwa-install";
 import {
   AccountDetailActivity,
   AccountsTabActivity,
@@ -13,7 +12,6 @@ import {
   RebalancingDetailActivity,
   RebalancingTabActivity,
 } from "./activities";
-import { nativeBackGesturePlugin } from "./native-back-gesture-plugin";
 import { createNextAwareHistory } from "./next-aware-history";
 
 /**
@@ -21,8 +19,8 @@ import { createNextAwareHistory } from "./next-aware-history";
  * `replace` (애니메이션 없음), 상세 화면은 `push` 로 쌓는다.
  *
  * URL 은 데스크탑과 같은 `/assets/...` 를 그대로 쓴다 (middleware 가 `/m` 으로 rewrite).
- * history sync 의 pushState 는 Next App Router 가 패치해 자신의 history state(`__NA`) 를
- * 복사해 주므로, 뒤로가기(popstate) 시 Next 가 페이지를 새로고침하지 않는다.
+ * 스택은 브라우저 history 를 쌓지 않는 단일 페이지로 동작하고, 뒤로가기는 앱바 뒤로 버튼과
+ * SEED 스와이프만 쓴다 (next-aware-history.ts).
  * 이 모듈은 `window` 를 쓰므로 클라이언트 전용으로만 불러온다 (`mobile-stack.tsx`).
  */
 declare module "@stackflow/config" {
@@ -86,12 +84,8 @@ export const { Stack } = stackflow({
     historySyncPlugin({
       config,
       fallbackActivity: () => "HomeTab",
-      // 첫 렌더 중 history 기록이 Next 라우터를 setState 하지 않도록 (next-aware-history.ts).
+      // 브라우저 history 를 쌓지 않는 메모리 history. URL 은 주소창에만 반영 (next-aware-history.ts).
       history: createNextAwareHistory(),
-    }),
-    // iOS 는 OS 스와이프 제스처가 전환 애니메이션을 이미 보여준다 (native-back-gesture-plugin.ts).
-    nativeBackGesturePlugin({
-      enabled: () => isIOSUserAgent(navigator.userAgent, navigator.maxTouchPoints),
     }),
   ],
 });
