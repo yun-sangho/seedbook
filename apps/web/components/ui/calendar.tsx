@@ -4,7 +4,13 @@ import * as React from "react";
 import { Button, buttonVariants } from "@web/components/ui/button";
 import { cn } from "@web/lib/utils";
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { DayButton, DayPicker, getDefaultClassNames } from "react-day-picker";
+import {
+  DayButton,
+  DayPicker,
+  getDefaultClassNames,
+  type ChevronProps,
+  type RootProps,
+} from "react-day-picker";
 
 function Calendar({
   className,
@@ -104,20 +110,8 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        Root: ({ className, rootRef, ...props }) => {
-          return <div data-slot="calendar" ref={rootRef} className={cn(className)} {...props} />;
-        },
-        Chevron: ({ className, orientation, ...props }) => {
-          if (orientation === "left") {
-            return <ChevronLeftIcon className={cn("size-4", className)} {...props} />;
-          }
-
-          if (orientation === "right") {
-            return <ChevronRightIcon className={cn("size-4", className)} {...props} />;
-          }
-
-          return <ChevronDownIcon className={cn("size-4", className)} {...props} />;
-        },
+        Root: CalendarRoot,
+        Chevron: CalendarChevron,
         DayButton: CalendarDayButton,
         WeekNumber: ({ children, ...props }) => {
           return (
@@ -133,6 +127,22 @@ function Calendar({
       {...props}
     />
   );
+}
+
+function CalendarRoot({ className, rootRef, ...props }: RootProps) {
+  return <div data-slot="calendar" ref={rootRef} className={cn(className)} {...props} />;
+}
+
+function CalendarChevron({ className, orientation, ...props }: ChevronProps) {
+  if (orientation === "left") {
+    return <ChevronLeftIcon className={cn("size-4", className)} {...props} />;
+  }
+
+  if (orientation === "right") {
+    return <ChevronRightIcon className={cn("size-4", className)} {...props} />;
+  }
+
+  return <ChevronDownIcon className={cn("size-4", className)} {...props} />;
 }
 
 function CalendarDayButton({
