@@ -1,5 +1,6 @@
 import { schema, syncAccountPortfolioLinks } from "@seedbook/database";
 import { and, eq, notInArray } from "drizzle-orm";
+import { assertNoForeignRows } from "./ownership";
 import {
   bigIntToNumber,
   formatDate,
@@ -120,6 +121,14 @@ export const investmentTranslator: DomainTranslator = {
       : [];
 
     await db.transaction(async (tx) => {
+      // 다른 사용자의 id 를 재사용한 envelope 는 아무것도 쓰기 전에 거부한다.
+      await assertNoForeignRows(
+        tx,
+        schema.investmentAccount,
+        investments.map((inv) => inv.id),
+        userId
+      );
+
       const holdingsSortOption =
         typeof state.holdingsSortOption === "string" ? state.holdingsSortOption : "default";
 
@@ -178,6 +187,8 @@ export const investmentTranslator: DomainTranslator = {
           })
           .onConflictDoUpdate({
             target: schema.investmentAccount.id,
+            // 방어적: 남의 행이면 갱신하지 않는다 (assertNoForeignRows 가 먼저 막음).
+            where: eq(schema.investmentAccount.userId, userId),
             set: {
               accountName: inv.accountName,
               accountType: inv.accountType,
@@ -239,6 +250,8 @@ export const investmentTranslator: DomainTranslator = {
             })
             .onConflictDoUpdate({
               target: schema.stockHolding.id,
+              // 같은 id 의 남의 행(다른 계좌 소속)은 갱신하지 않는다.
+              where: eq(schema.stockHolding.accountId, inv.id),
               set: {
                 market: h.market,
                 ticker: h.ticker,
@@ -275,6 +288,8 @@ export const investmentTranslator: DomainTranslator = {
             })
             .onConflictDoUpdate({
               target: schema.cashItem.id,
+              // 같은 id 의 남의 행(다른 계좌 소속)은 갱신하지 않는다.
+              where: eq(schema.cashItem.accountId, inv.id),
               set: { label: c.label, amount: toBigInt(c.amount) },
             });
         }

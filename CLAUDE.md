@@ -12,6 +12,7 @@ pnpm check-types                      # TypeScript type checking
 pnpm format                           # Prettier + import sort + tailwind class sort
 pnpm --filter @seedbook/web test      # Run Vitest tests
 pnpm --filter @seedbook/web test:watch
+pnpm --filter @seedbook/web test:db   # DB integration tests (*.db.test.ts) — needs `pnpm db:dev:up`
 pnpm docker:dev                       # Dev infra in Docker (postgres + stock-crawler)
 pnpm docker:dev:down                  # Stop dev stack
 pnpm docker:dev:logs                  # Tail dev stack logs
@@ -78,6 +79,8 @@ File: `components/investment-plan-comparison-chart.tsx`
 ## Testing
 
 Vitest with jsdom and globals. Tests live alongside source as `*.test.ts`. Focus on calculation correctness — edge cases: 0 contribution, high returns, mixed frequencies, long periods.
+
+DB integration tests (`*.db.test.ts`, e.g. storage translators) run against real Postgres via `test:db` (`vitest.db.config.ts`), and are excluded from the default `test` run. They use a separate `seedbook_test` database on the local dev postgres (override with `TEST_DATABASE_URL`; the name must end in `_test`). Global setup applies the drizzle migrations; each test creates its own user via `openTestDb().createTestUser()` and rows are cleaned up by cascade.
 
 ## Conventions
 

@@ -1,5 +1,6 @@
 import { db } from "@seedbook/database";
 import { TRANSLATORS, type Envelope } from "@web/app/api/storage/_translators";
+import { ForeignRowError } from "@web/app/api/storage/_translators/ownership";
 import { resolveUserId } from "@web/lib/auth-server";
 import { isCloudStoreKey } from "@web/lib/storage-mode";
 
@@ -18,6 +19,7 @@ import { isCloudStoreKey } from "@web/lib/storage-mode";
  *   - 세션 없으면 401 → 클라이언트가 로그인 화면으로 redirect.
  *   - `key` 는 `CLOUD_STORE_KEYS` 화이트리스트 안에 있어야 한다.
  *   - body 가 2MB 를 넘으면 413.
+ *   - envelope 가 다른 사용자 소유의 행 id 를 담고 있으면 403 (아무것도 쓰지 않음).
  */
 
 // 2MB 상한. envelope 번역에서 정규화해 저장하지만 입력 blob 은 여전히 이 크기를 기준으로 거절.
@@ -99,6 +101,10 @@ export async function PUT(request: Request, context: RouteContext): Promise<Resp
   try {
     await translator.write(db, userId, envelope);
   } catch (err) {
+    // 다른 사용자의 행 id 를 재사용한 envelope — 트랜잭션은 롤백됐고 아무것도 쓰지 않았다.
+    if (err instanceof ForeignRowError) {
+      return Response.json({ error: "forbidden" }, { status: 403 });
+    }
     // DB 실패는 500 으로 돌려주고 디버그용 로그.
     console.error(`[api/storage/${key}] write failed`, err);
     return Response.json({ error: "write failed" }, { status: 500 });

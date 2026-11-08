@@ -1,5 +1,6 @@
 import { schema } from "@seedbook/database";
 import { and, eq, notInArray } from "drizzle-orm";
+import { assertNoForeignRows } from "./ownership";
 import {
   bigIntToNumber,
   formatDate,
@@ -67,6 +68,14 @@ export const debtsTranslator: DomainTranslator = {
     const debts = Array.isArray(state.debts) ? (state.debts as DebtPayload[]) : [];
 
     await db.transaction(async (tx) => {
+      // 다른 사용자의 id 를 재사용한 envelope 는 아무것도 쓰기 전에 거부한다.
+      await assertNoForeignRows(
+        tx,
+        schema.debt,
+        debts.map((d) => d.id),
+        userId
+      );
+
       const order = debts.map((d) => d.id);
       await tx
         .insert(schema.userListOrder)
@@ -105,6 +114,8 @@ export const debtsTranslator: DomainTranslator = {
           })
           .onConflictDoUpdate({
             target: schema.debt.id,
+            // 방어적: 남의 행이면 갱신하지 않는다 (assertNoForeignRows 가 먼저 막음).
+            where: eq(schema.debt.userId, userId),
             set: {
               loanName: d.loanName,
               loanType: d.loanType,

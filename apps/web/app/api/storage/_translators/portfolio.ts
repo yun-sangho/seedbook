@@ -1,6 +1,7 @@
 import { schema, syncAccountPortfolioLinks } from "@seedbook/database";
 import { dedupePortfolioLinks } from "@web/features/portfolio/utils/portfolio-links";
 import { and, eq, notInArray } from "drizzle-orm";
+import { assertNoForeignRows } from "./ownership";
 import type { DomainTranslator, Envelope } from "./types";
 
 const DOMAIN = "portfolios";
@@ -98,6 +99,14 @@ export const portfolioTranslator: DomainTranslator = {
     );
 
     await db.transaction(async (tx) => {
+      // 다른 사용자의 id 를 재사용한 envelope 는 아무것도 쓰기 전에 거부한다.
+      await assertNoForeignRows(
+        tx,
+        schema.portfolio,
+        portfolios.map((p) => p.id),
+        userId
+      );
+
       const order = portfolios.map((p) => p.id);
       await tx
         .insert(schema.userListOrder)
@@ -142,6 +151,8 @@ export const portfolioTranslator: DomainTranslator = {
           })
           .onConflictDoUpdate({
             target: schema.portfolio.id,
+            // 방어적: 남의 행이면 갱신하지 않는다 (assertNoForeignRows 가 먼저 막음).
+            where: eq(schema.portfolio.userId, userId),
             set: {
               name: p.name,
               description: p.description ?? "",
