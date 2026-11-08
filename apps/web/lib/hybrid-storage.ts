@@ -7,6 +7,7 @@ import { useSyncStatusStore } from "@web/features/settings/stores/sync-status-st
 import type { StateStorage } from "zustand/middleware";
 import { getStorageMode } from "./storage-mode";
 import { loadManagedStoreFromServer } from "./sync/initial-load";
+import { recordPersistedChange } from "./sync/local-change-recorder";
 import { getManagedStoreConfig } from "./sync/managed-stores";
 
 /**
@@ -220,17 +221,24 @@ export function createHybridStorage(key: string): StateStorage {
   // cloud 모드 + 엔티티 동기화로 옮긴 store: persist storage 는 로컬 캐시만 맡는다.
   // 하이드레이션 때 서버 전체 pull 로 상태를 만들고, 이후 변경은 EntitySyncRunner 가
   // `/api/sync/mutations` 로 보낸다.
+  // 저장될 때마다 직전 저장본과 비교해 바뀐 항목을 동기화 대기열에 기록한다 — 엔진이
+  // 돌고 있지 않아도(로그인 확인 전, 세션 조회 실패) 수정이 사라지지 않게.
   const managed = getManagedStoreConfig(key);
   if (managed) {
+    let lastPersisted: string | null = null;
     return {
       getItem: async (name) => {
         const cached = readCache(name || key);
         const fromServer = await loadManagedStoreFromServer(managed, cached);
-        if (fromServer === null) return cached;
-        writeCache(name || key, fromServer);
-        return fromServer;
+        lastPersisted = fromServer ?? cached;
+        if (fromServer !== null) writeCache(name || key, fromServer);
+        return lastPersisted;
       },
-      setItem: (name, value) => writeCache(name || key, value),
+      setItem: (name, value) => {
+        recordPersistedChange(managed, lastPersisted ?? readCache(name || key), value);
+        lastPersisted = value;
+        writeCache(name || key, value);
+      },
       removeItem: (name) => removeCache(name || key),
     };
   }

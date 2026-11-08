@@ -8,6 +8,4 @@ import type { RebalancingSession } from "../types/types";
 export const rebalancingSyncBinding: SyncedStoreBinding<RebalancingSession> = {
   get: () => useRebalancingStore.getState().sessions,
   set: (sessions) => useRebalancingStore.setState({ sessions }),
-  subscribe: (listener) =>
-    useRebalancingStore.subscribe((state, prev) => listener(state.sessions, prev.sessions)),
 };

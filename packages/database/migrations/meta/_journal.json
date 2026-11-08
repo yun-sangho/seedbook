@@ -57,6 +57,13 @@
       "when": 1794125692974,
       "tag": "0007_public_diamondback",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794126746724,
+      "tag": "0008_omniscient_multiple_man",
+      "breakpoints": true
     }
   ]
 }

@@ -102,12 +102,54 @@ describe("hybrid storage for sync-managed stores in cloud mode", () => {
     }
   });
 
+  it("queues a local change as soon as the store persists it, even with no sync engine running", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          cursor: "c1",
+          changes: { debt: [debtRow], listOrder: [{ domain: "debts", order: [debtRow.id] }] },
+        })
+      )
+    );
+    const storage = (await loadCloudStorage())("debts-storage");
+    const hydrated = JSON.parse((await storage.getItem("debts-storage")) as string);
+
+    const edited = {
+      ...hydrated,
+      state: { debts: [{ ...hydrated.state.debts[0], loanName: "오프라인 수정" }] },
+    };
+    await storage.setItem("debts-storage", JSON.stringify(edited));
+
+    const meta = JSON.parse(localStorage.getItem("seedbook.sync.debt") as string).meta;
+    expect(meta.outbox[debtRow.id]).toMatchObject({
+      op: "upsert",
+      data: { loanName: "오프라인 수정" },
+    });
+  });
+
+  it("shares one full pull between the stores hydrating on the same page load", async () => {
+    fetchMock.mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({ cursor: "c1", changes: { debt: [], savings: [], listOrder: [] } })
+        )
+    );
+    const create = await loadCloudStorage();
+
+    await Promise.all([
+      create("debts-storage").getItem("debts-storage"),
+      create("savings-storage").getItem("savings-storage"),
+    ]);
+
+    expect(fetchMock.mock.calls.filter(([url]) => url === "/api/sync/pull")).toHaveLength(1);
+  });
+
   it("still uses the envelope API for stores that are not sync-managed", async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ data: null })));
-    const storage = (await loadCloudStorage())("savings-storage");
+    const storage = (await loadCloudStorage())("progress-storage");
 
-    await storage.getItem("savings-storage");
+    await storage.getItem("progress-storage");
 
-    expect(fetchMock).toHaveBeenCalledWith("/api/storage/savings-storage", expect.anything());
+    expect(fetchMock).toHaveBeenCalledWith("/api/storage/progress-storage", expect.anything());
   });
 });

@@ -4,22 +4,25 @@ import {
   buildMutations,
   emptySyncMeta,
   mergePull,
-  recordLocalChange,
   type MutationResult,
   type SyncedEntity,
   type SyncMeta,
 } from "./entity-sync-core";
+import { onLocalChange, withoutRecording } from "./local-change-recorder";
 import type { ManagedStoreConfig } from "./managed-store-config";
+import { readSyncMeta, writeSyncMeta } from "./sync-meta-storage";
 
 /** 서버 `MAX_MUTATIONS` 와 같은 값. 더 많으면 나눠 보낸다. */
 const MAX_MUTATIONS_PER_REQUEST = 100;
 const DEFAULT_DEBOUNCE_MS = 1_000;
 
-/** store 와 엔진 사이의 최소 접점 — Zustand store 를 감싸 넘긴다. */
+/**
+ * store 와 엔진 사이의 최소 접점 — Zustand store 를 감싸 넘긴다. 로컬 변경 기록은 저장
+ * 어댑터가 맡으므로(`local-change-recorder`) 엔진은 읽고 쓰기만 한다.
+ */
 export type SyncedStoreBinding<T> = {
   get: () => T[];
   set: (items: T[]) => void;
-  subscribe: (listener: (next: T[], prev: T[]) => void) => () => void;
 };
 
 export type EntitySyncHandle = {
@@ -28,29 +31,10 @@ export type EntitySyncHandle = {
   stop: () => void;
 };
 
-type StoredMeta = { userId: string; meta: SyncMeta };
-
 type PullResponse = {
   cursor: string | null;
   changes: Record<string, unknown> & { listOrder?: Array<{ domain: string; order: string[] }> };
 };
-
-export function readSyncMeta(metaKey: string): StoredMeta | null {
-  try {
-    const raw = window.localStorage.getItem(metaKey);
-    return raw ? (JSON.parse(raw) as StoredMeta) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function writeSyncMeta(metaKey: string, stored: StoredMeta): void {
-  try {
-    window.localStorage.setItem(metaKey, JSON.stringify(stored));
-  } catch {
-    // quota / private mode — 다음 pull 이 서버 기준으로 다시 맞춘다.
-  }
-}
 
 /**
  * 첫 pull (`cursor` 가 없을 때) 은 서버를 기준으로 목록을 새로 만든다. 로컬에서 아직
@@ -96,28 +80,23 @@ export function startEntitySync<T extends { id: string }>(
   const statusKey = `sync:${config.entity}`;
   const status = () => useSyncStatusStore.getState();
 
-  // 다른 사용자의 큐/커서는 버리고 서버에서 다시 받는다.
+  // 다른 사용자의 큐/커서는 버리고 서버에서 다시 받는다. 사용자를 모르던 때(빈 문자열)
+  // 기록된 큐는 지금 로그인한 사용자의 것으로 이어받는다.
   const loadMeta = (): SyncMeta => {
     const stored = readSyncMeta(config.metaKey);
-    return stored && stored.userId === options.userId ? stored.meta : emptySyncMeta();
+    if (!stored) return emptySyncMeta();
+    return stored.userId === options.userId || stored.userId === "" ? stored.meta : emptySyncMeta();
   };
   const saveMeta = (meta: SyncMeta) =>
     writeSyncMeta(config.metaKey, { userId: options.userId, meta });
   saveMeta(loadMeta());
 
   let stopped = false;
-  let applyingRemote = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let inFlight: Promise<void> | null = null;
 
-  const setItemsFromRemote = (items: T[]) => {
-    applyingRemote = true;
-    try {
-      store.set(items);
-    } finally {
-      applyingRemote = false;
-    }
-  };
+  const setItemsFromRemote = (items: T[]) =>
+    withoutRecording(config.metaKey, () => store.set(items));
 
   const scheduleFlush = () => {
     if (stopped) return;
@@ -128,11 +107,7 @@ export function startEntitySync<T extends { id: string }>(
     }, debounceMs);
   };
 
-  const unsubscribe = store.subscribe((next, prev) => {
-    if (applyingRemote || next === prev) return;
-    saveMeta(recordLocalChange(loadMeta(), prev, next, config.toData));
-    scheduleFlush();
-  });
+  const unsubscribe = onLocalChange(config.metaKey, scheduleFlush);
 
   async function sendOnce(keepalive: boolean): Promise<boolean> {
     const { mutations, sent } = buildMutations(loadMeta(), config.entity, config.listOrderDomain);

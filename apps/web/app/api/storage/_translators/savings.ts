@@ -1,35 +1,25 @@
-import { schema } from "@seedbook/database";
-import { and, eq, notInArray } from "drizzle-orm";
+import { schema, type Database } from "@seedbook/database";
+import { parseSavingsFields, savingsRowToFields } from "@web/server/savings/savings-record";
+import { savingsSyncEntity } from "@web/server/savings/savings-sync";
+import { and, eq, isNull, notInArray, sql } from "drizzle-orm";
 import { assertNoForeignRows } from "./ownership";
-import { bigIntToNumber, formatDate, parseDate, toBigInt, type DomainTranslator } from "./types";
+import type { DomainTranslator } from "./types";
 
 /**
- * `savings-storage` 번역기.
- * 구조는 investment 와 거의 동일하지만 nested entity 가 `records` 하나뿐이라
- * 코드가 훨씬 단순하다.
+ * `savings-storage` 번역기. cloud 모드의 일상 저장은 엔티티 동기화(`/api/sync`)가 맡고,
+ * 이 envelope 경로는 저장소 모드 전환(업로드/다운로드)에서 쓴다. 계좌 저장 규칙은 동기화와
+ * 같은 저장소(`savingsSyncEntity`)를 쓴다.
  */
 
 const DOMAIN = "savings-accounts";
 const VERSION = 2;
 
-type SavingsItemPayload = {
-  id: string;
-  accountName: string;
-  accountType: string;
-  currency: string;
-  balance: number;
-  interestRate?: number;
-  note?: string;
-  color: string;
-  records?: Array<{ date: string; balance: number }>;
-};
-
 export const savingsTranslator: DomainTranslator = {
   async read(db, userId) {
     const [accounts, listOrder] = await Promise.all([
       db.query.savingsAccount.findMany({
-        where: (t, { eq }) => eq(t.userId, userId),
-        with: { records: { orderBy: (t, { desc }) => [desc(t.date)] } },
+        where: (t, { and, eq, isNull }) => and(eq(t.userId, userId), isNull(t.deletedAt)),
+        with: { records: true },
       }),
       db.query.userListOrder.findFirst({
         where: (t, { and, eq }) => and(eq(t.userId, userId), eq(t.domain, DOMAIN)),
@@ -48,30 +38,24 @@ export const savingsTranslator: DomainTranslator = {
       return ai - bi;
     });
 
-    const savings = sorted.map((acc) => ({
-      id: acc.id,
-      accountName: acc.accountName,
-      accountType: acc.accountType,
-      currency: acc.currency,
-      balance: bigIntToNumber(acc.balance),
-      interestRate: acc.interestRate ?? undefined,
-      note: acc.note,
-      color: acc.color,
-      records: acc.records.map((r) => ({
-        date: formatDate(r.date),
-        balance: bigIntToNumber(r.balance),
-      })),
-    }));
+    const savings = sorted.map((acc) => {
+      const fields = savingsRowToFields(acc, acc.records);
+      // 클라이언트 `SavingsItem.interestRate` 는 없으면 필드 자체가 없다.
+      return { id: acc.id, ...fields, interestRate: fields.interestRate ?? undefined };
+    });
 
-    return {
-      state: { savings },
-      version: VERSION,
-    };
+    return { state: { savings }, version: VERSION };
   },
 
+  /**
+   * envelope 는 "현재 목록 전체" 다. 목록에 없는 계좌는 톰스톤으로 남겨 엔티티 동기화
+   * pull 이 삭제를 다른 기기에 전할 수 있게 한다.
+   */
   async write(db, userId, envelope) {
     const state = envelope.state ?? {};
-    const savings = Array.isArray(state.savings) ? (state.savings as SavingsItemPayload[]) : [];
+    const savings = Array.isArray(state.savings)
+      ? (state.savings as Array<{ id: string } & Record<string, unknown>>)
+      : [];
 
     await db.transaction(async (tx) => {
       // 다른 사용자의 id 를 재사용한 envelope 는 아무것도 쓰기 전에 거부한다.
@@ -82,72 +66,32 @@ export const savingsTranslator: DomainTranslator = {
         userId
       );
 
+      const now = new Date();
       const order = savings.map((s) => s.id);
       await tx
         .insert(schema.userListOrder)
-        .values({ userId, domain: DOMAIN, order })
+        .values({ userId, domain: DOMAIN, order, updatedAt: now })
         .onConflictDoUpdate({
           target: [schema.userListOrder.userId, schema.userListOrder.domain],
-          set: { order },
+          set: { order, updatedAt: now },
         });
 
-      const incomingIds = savings.map((s) => s.id);
-      if (incomingIds.length > 0) {
-        await tx
-          .delete(schema.savingsAccount)
-          .where(
-            and(
-              eq(schema.savingsAccount.userId, userId),
-              notInArray(schema.savingsAccount.id, incomingIds)
-            )
-          );
-      } else {
-        await tx.delete(schema.savingsAccount).where(eq(schema.savingsAccount.userId, userId));
-      }
+      // 목록에서 빠진 계좌 → 톰스톤. 이미 삭제된 행은 건드리지 않는다.
+      await tx
+        .update(schema.savingsAccount)
+        .set({ deletedAt: now, updatedAt: now, version: sql`${schema.savingsAccount.version} + 1` })
+        .where(
+          and(
+            eq(schema.savingsAccount.userId, userId),
+            isNull(schema.savingsAccount.deletedAt),
+            order.length > 0 ? notInArray(schema.savingsAccount.id, order) : undefined
+          )
+        );
 
-      const now = new Date();
       for (const s of savings) {
-        await tx
-          .insert(schema.savingsAccount)
-          .values({
-            id: s.id,
-            userId,
-            accountName: s.accountName,
-            accountType: s.accountType,
-            currency: s.currency,
-            balance: toBigInt(s.balance),
-            interestRate: s.interestRate ?? null,
-            note: s.note ?? "",
-            color: s.color,
-            updatedAt: now,
-          })
-          .onConflictDoUpdate({
-            target: schema.savingsAccount.id,
-            // 방어적: 남의 행이면 갱신하지 않는다 (assertNoForeignRows 가 먼저 막음).
-            where: eq(schema.savingsAccount.userId, userId),
-            set: {
-              accountName: s.accountName,
-              accountType: s.accountType,
-              currency: s.currency,
-              balance: toBigInt(s.balance),
-              interestRate: s.interestRate ?? null,
-              note: s.note ?? "",
-              color: s.color,
-              updatedAt: now,
-            },
-          });
-
-        await tx.delete(schema.savingsRecord).where(eq(schema.savingsRecord.accountId, s.id));
-        const recordRows = (s.records ?? [])
-          .map((r) => {
-            const date = parseDate(r.date);
-            if (!date) return null;
-            return { accountId: s.id, date, balance: toBigInt(r.balance) };
-          })
-          .filter((r): r is NonNullable<typeof r> => r !== null);
-        if (recordRows.length > 0) {
-          await tx.insert(schema.savingsRecord).values(recordRows).onConflictDoNothing();
-        }
+        const fields = parseSavingsFields(s);
+        if (!fields) continue; // 깨진 항목은 건너뛴다 (톰스톤으로 만들지도 않는다).
+        await savingsSyncEntity.upsert(tx as unknown as Database, userId, s.id, fields as never);
       }
     });
   },

@@ -1,6 +1,7 @@
 import { emptySyncMeta } from "./entity-sync-core";
-import { mergePullResponse, readSyncMeta, writeSyncMeta } from "./entity-sync-engine";
+import { mergePullResponse } from "./entity-sync-engine";
 import type { ManagedStoreConfig } from "./managed-store-config";
+import { readSyncMeta, writeSyncMeta } from "./sync-meta-storage";
 
 /**
  * persist 하이드레이션 때 서버 전체 pull 로 store 상태를 만든다 (기존 envelope GET 과
@@ -11,14 +12,8 @@ export async function loadManagedStoreFromServer(
   config: ManagedStoreConfig<{ id: string }>,
   cachedRaw: string | null
 ): Promise<string | null> {
-  let res: Response;
-  try {
-    res = await fetch("/api/sync/pull", { credentials: "include" });
-  } catch {
-    return null;
-  }
-  if (!res.ok) return null;
-  const body = await res.json();
+  const body = await fetchFullPull();
+  if (body === null) return null;
 
   const cached = parseCachedState(cachedRaw);
   const cachedItems = Array.isArray(cached[config.itemsField])
@@ -34,6 +29,22 @@ export async function loadManagedStoreFromServer(
     state: { ...cached, [config.itemsField]: merged.items },
     version: config.persistVersion,
   });
+}
+
+// 한 번의 전체 pull 이 모든 엔티티를 담으므로, 같은 페이지 로드에서 하이드레이션하는
+// store 들이 한 요청을 나눠 쓴다. 실패하면 다음 하이드레이션(새 페이지 로드)이 다시 시도한다.
+let fullPull: Promise<Parameters<typeof mergePullResponse>[3] | null> | null = null;
+
+function fetchFullPull() {
+  fullPull ??= (async () => {
+    try {
+      const res = await fetch("/api/sync/pull", { credentials: "include" });
+      return res.ok ? await res.json() : null;
+    } catch {
+      return null;
+    }
+  })();
+  return fullPull;
 }
 
 function parseCachedState(raw: string | null): Record<string, unknown> {

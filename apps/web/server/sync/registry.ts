@@ -1,6 +1,7 @@
 import type { Database } from "@seedbook/database";
 import { debtSyncEntity } from "@web/server/debts/debt-sync";
 import { rebalancingSyncEntity } from "@web/server/rebalancing/rebalancing-sync";
+import { savingsSyncEntity } from "@web/server/savings/savings-sync";
 import type { MutationResult, SyncedEntity } from "./types";
 
 /**
@@ -23,7 +24,11 @@ export type SyncEntity = {
   ) => Promise<{ rows: SyncedEntity<unknown>[]; latest: Date | null }>;
 };
 
-export const SYNC_ENTITIES: SyncEntity[] = [debtSyncEntity, rebalancingSyncEntity];
+export const SYNC_ENTITIES: SyncEntity[] = [
+  debtSyncEntity,
+  rebalancingSyncEntity,
+  savingsSyncEntity,
+];
 
 export function findSyncEntity(entity: unknown): SyncEntity | null {
   return SYNC_ENTITIES.find((e) => e.entity === entity) ?? null;

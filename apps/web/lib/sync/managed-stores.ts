@@ -1,5 +1,6 @@
 import { debtsSyncConfig } from "@web/features/debts/sync/debts-sync-config";
 import { rebalancingSyncConfig } from "@web/features/rebalancing/sync/rebalancing-sync-config";
+import { savingsSyncConfig } from "@web/features/savings/sync/savings-sync-config";
 import type { ManagedStoreConfig } from "./managed-store-config";
 
 /**
@@ -9,6 +10,9 @@ import type { ManagedStoreConfig } from "./managed-store-config";
 export const SYNC_MANAGED_STORES: Record<string, ManagedStoreConfig<{ id: string }>> = {
   [debtsSyncConfig.storageKey]: debtsSyncConfig as unknown as ManagedStoreConfig<{ id: string }>,
   [rebalancingSyncConfig.storageKey]: rebalancingSyncConfig as unknown as ManagedStoreConfig<{
+    id: string;
+  }>,
+  [savingsSyncConfig.storageKey]: savingsSyncConfig as unknown as ManagedStoreConfig<{
     id: string;
   }>,
 };

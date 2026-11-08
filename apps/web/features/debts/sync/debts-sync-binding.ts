@@ -8,6 +8,4 @@ import type { DebtsItem } from "../types/types";
 export const debtsSyncBinding: SyncedStoreBinding<DebtsItem> = {
   get: () => useDebtsStore.getState().debts,
   set: (debts) => useDebtsStore.setState({ debts }),
-  subscribe: (listener) =>
-    useDebtsStore.subscribe((state, prev) => listener(state.debts, prev.debts)),
 };

@@ -260,12 +260,16 @@ export const savingsAccount = seedbook.table(
     interestRate: doublePrecision("interestRate"),
     note: text("note").notNull().default(""),
     color: text("color").notNull(),
+    ...syncColumns(),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })
       .notNull()
       .$onUpdate(() => new Date()),
   },
-  (t) => [index("savings_account_userId_idx").on(t.userId)]
+  (t) => [
+    index("savings_account_userId_idx").on(t.userId),
+    index("savings_account_userId_updatedAt_idx").on(t.userId, t.updatedAt),
+  ]
 );
 
 export const savingsRecord = seedbook.table(

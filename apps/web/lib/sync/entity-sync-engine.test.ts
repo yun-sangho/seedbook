@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startEntitySync, type EntitySyncHandle } from "./entity-sync-engine";
+import { recordPersistedChange } from "./local-change-recorder";
 import type { ManagedStoreConfig } from "./managed-store-config";
 
 type Item = { id: string; name: string };
@@ -31,6 +32,14 @@ function fakeStore(initial: Item[]) {
       return () => listeners.delete(l);
     },
   };
+}
+
+/** 사용자가 store 를 고친 상황 — 저장 어댑터가 하듯 바뀐 내용을 대기열에 기록한다. */
+function editLocally(store: ReturnType<typeof fakeStore>, next: Item[]) {
+  const envelope = (items: Item[]) => JSON.stringify({ state: { items }, version: 1 });
+  const prev = store.get();
+  store.set(next);
+  recordPersistedChange(config, envelope(prev), envelope(next));
 }
 
 type Call = { url: string; body: unknown };
@@ -105,7 +114,7 @@ describe("startEntitySync", () => {
     handle = startEntitySync(config, store, { userId: "u1", fetchFn: server.fetchFn });
     await handle.pull();
 
-    store.set([
+    editLocally(store, [
       { id: "a", name: "edited" },
       { id: "b", name: "y" },
     ]);
@@ -134,7 +143,7 @@ describe("startEntitySync", () => {
     handle = startEntitySync(config, store, { userId: "u1", fetchFn: server.fetchFn });
     await handle.pull();
 
-    store.set([{ id: "a", name: "not accepted" }]);
+    editLocally(store, [{ id: "a", name: "not accepted" }]);
     await handle.flush();
 
     expect(store.get()).toEqual([{ id: "a", name: "server" }]);
@@ -148,7 +157,7 @@ describe("startEntitySync", () => {
       throw new TypeError("network down");
     });
     handle = startEntitySync(config, store, { userId: "u1", fetchFn: offline });
-    store.set([{ id: "a", name: "made offline" }]);
+    editLocally(store, [{ id: "a", name: "made offline" }]);
     await handle.flush();
     handle.stop();
 
@@ -164,13 +173,38 @@ describe("startEntitySync", () => {
     );
   });
 
+  it("keeps a queue recorded before the user was known and sends it for the signed-in user", async () => {
+    localStorage.setItem(
+      config.metaKey,
+      JSON.stringify({
+        userId: "",
+        meta: {
+          cursor: null,
+          versions: {},
+          outbox: { a: { op: "upsert", data: { name: "before login" }, seq: 1 } },
+          pendingOrder: null,
+          seq: 1,
+        },
+      })
+    );
+    const server = fakeServer({ mutations: (ms) => ms.map(() => ({ status: "ok", version: 1 })) });
+    handle = startEntitySync(config, fakeStore([]), { userId: "u1", fetchFn: server.fetchFn });
+
+    await handle.flush();
+
+    const sent = server.calls.find((c) => c.url === "/api/sync/mutations")?.body as {
+      mutations: Array<{ id: string }>;
+    };
+    expect(sent.mutations).toContainEqual(expect.objectContaining({ id: "a" }));
+  });
+
   it("drops another user's pending queue and reloads everything from the server", async () => {
     const store = fakeStore([]);
     const offline = vi.fn(async () => {
       throw new TypeError("network down");
     });
     handle = startEntitySync(config, store, { userId: "u1", fetchFn: offline });
-    store.set([{ id: "a", name: "u1 data" }]);
+    editLocally(store, [{ id: "a", name: "u1 data" }]);
     await handle.flush();
     handle.stop();
 
