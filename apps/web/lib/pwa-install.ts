@@ -1,3 +1,5 @@
+import type { StorageMode } from "@web/lib/storage-mode";
+
 /**
  * PWA 설치 방법 판단.
  *
@@ -21,4 +23,17 @@ export function resolveInstallMode(input: {
   if (input.hasPrompt) return "prompt";
   if (input.isIOS) return "ios-manual";
   return "unavailable";
+}
+
+/**
+ * iOS 홈 화면 앱은 Safari 와 localStorage·쿠키가 분리된 별도 저장공간을 쓴다.
+ * "이 기기에만 저장"(local) 모드라면 Safari 에서 쓰던 데이터가 홈 화면 앱에서
+ * 보이지 않으므로(반대도 마찬가지) 클라우드 저장을 안내해야 한다.
+ * Android 설치 앱은 Chrome 과 저장공간을 공유해 해당 없음.
+ */
+export function needsSeparateStorageNotice(input: {
+  isIOS: boolean;
+  storageMode: StorageMode;
+}): boolean {
+  return input.isIOS && input.storageMode === "local";
 }

@@ -84,7 +84,7 @@ export function MobileShell({ children }: { children: ReactNode }) {
   const [actionSlot, setActionSlot] = useState<HTMLElement | null>(null);
   // 계좌 상세는 앱바 오른쪽에 계좌 설정 버튼을 둔다.
   const hasHeaderAction = ACCOUNT_DETAIL.test(pathname);
-  const { mode: installMode, install } = usePwaInstall();
+  const { mode: installMode, install, isIOS } = usePwaInstall();
 
   return (
     <HeaderActionSlotContext.Provider value={actionSlot}>
@@ -183,6 +183,7 @@ export function MobileShell({ children }: { children: ReactNode }) {
           onOpenChange={setMoreOpen}
           installMode={installMode}
           onInstall={install}
+          isIOS={isIOS}
         />
       </div>
     </HeaderActionSlotContext.Provider>

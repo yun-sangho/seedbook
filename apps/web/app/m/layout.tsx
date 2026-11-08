@@ -5,6 +5,7 @@ import { AutoProgressTracker } from "@web/components/auto-progress-tracker";
 import { HydrationGate } from "@web/components/hydration-gate";
 import { MobileShell } from "@web/components/mobile/mobile-shell";
 import { SeedColorScheme } from "@web/components/mobile/seed-color-scheme";
+import { iosStartupImages } from "@web/lib/ios-splash";
 
 /**
  * 모바일 전용 트리. middleware 가 모바일 UA 요청을 URL 유지한 채 `/m/...` 로
@@ -22,12 +23,16 @@ export const viewport: Viewport = {
   ],
 };
 
-/** iOS 홈 화면 앱 (Safari "홈 화면에 추가") 설정. 아이콘은 app/apple-icon.png. */
+/**
+ * iOS 홈 화면 앱 (Safari "홈 화면에 추가") 설정. 아이콘은 app/apple-icon.png,
+ * 스플래시는 lib/ios-splash.ts (이미지는 scripts/generate-pwa-images.mjs 로 생성).
+ */
 export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "Seedbook",
     statusBarStyle: "default",
+    startupImage: iosStartupImages(),
   },
 };
 

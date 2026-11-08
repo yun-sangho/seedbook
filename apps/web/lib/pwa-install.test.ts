@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isIOSUserAgent, resolveInstallMode } from "./pwa-install";
+import { isIOSUserAgent, needsSeparateStorageNotice, resolveInstallMode } from "./pwa-install";
 
 const IPHONE_SAFARI =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
@@ -39,5 +39,19 @@ describe("resolveInstallMode", () => {
     expect(resolveInstallMode({ isStandalone: false, isIOS: false, hasPrompt: false })).toBe(
       "unavailable"
     );
+  });
+});
+
+describe("needsSeparateStorageNotice", () => {
+  it("warns iOS users on browser-only storage, since the home screen app has its own storage", () => {
+    expect(needsSeparateStorageNotice({ isIOS: true, storageMode: "local" })).toBe(true);
+  });
+
+  it("stays quiet for iOS users on cloud storage (data follows the account)", () => {
+    expect(needsSeparateStorageNotice({ isIOS: true, storageMode: "cloud" })).toBe(false);
+  });
+
+  it("stays quiet on Android, where the installed app shares Chrome storage", () => {
+    expect(needsSeparateStorageNotice({ isIOS: false, storageMode: "local" })).toBe(false);
   });
 });

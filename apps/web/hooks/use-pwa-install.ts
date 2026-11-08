@@ -21,7 +21,11 @@ function isStandaloneDisplay(): boolean {
  * 홈 화면 설치 상태와 설치 실행 함수.
  * `beforeinstallprompt` 는 페이지 로드 직후 한 번 오므로 항상 마운트된 곳(모바일 셸)에서 호출한다.
  */
-export function usePwaInstall(): { mode: InstallMode; install: () => Promise<void> } {
+export function usePwaInstall(): {
+  mode: InstallMode;
+  install: () => Promise<void>;
+  isIOS: boolean;
+} {
   const [promptEvent, setPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [standalone, setStandalone] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
@@ -58,5 +62,6 @@ export function usePwaInstall(): { mode: InstallMode; install: () => Promise<voi
   return {
     mode: resolveInstallMode({ isStandalone: standalone, isIOS, hasPrompt: promptEvent !== null }),
     install,
+    isIOS,
   };
 }

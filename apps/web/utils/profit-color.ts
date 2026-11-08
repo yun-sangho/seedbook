@@ -4,13 +4,13 @@ import { numberToKorean } from "./number-format";
  * 수익금/수익률 값에 따른 색상 클래스를 반환합니다.
  * @param value - 수익금 또는 수익률 값
  * @returns Tailwind CSS 색상 클래스 문자열
- * - 양수: 파란색 (text-blue-600)
+ * - 양수: 빨간색 (text-red-600) — 국내 증권 관례 (상승 빨강)
  * - 0: 기본 색상 (빈 문자열)
- * - 음수: 빨간색 (text-red-600)
+ * - 음수: 파란색 (text-blue-600) — 국내 증권 관례 (하락 파랑)
  */
 export function getProfitColorClass(value: number): string {
-  if (value > 0) return "text-blue-600";
-  if (value < 0) return "text-red-600";
+  if (value > 0) return "text-red-600";
+  if (value < 0) return "text-blue-600";
   return "";
 }
 

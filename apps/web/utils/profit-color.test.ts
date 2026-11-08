@@ -2,20 +2,20 @@ import { describe, expect, it } from "vitest";
 import { formatProfitKorean, getProfitColorClass, getProfitPrefix } from "./profit-color";
 
 describe("getProfitColorClass", () => {
-  it("should return blue color class for positive values", () => {
-    expect(getProfitColorClass(100)).toBe("text-blue-600");
-    expect(getProfitColorClass(0.01)).toBe("text-blue-600");
-    expect(getProfitColorClass(999999)).toBe("text-blue-600");
+  it("should return red color class for positive values (국내 관례: 상승 빨강)", () => {
+    expect(getProfitColorClass(100)).toBe("text-red-600");
+    expect(getProfitColorClass(0.01)).toBe("text-red-600");
+    expect(getProfitColorClass(999999)).toBe("text-red-600");
   });
 
   it("should return empty string for zero", () => {
     expect(getProfitColorClass(0)).toBe("");
   });
 
-  it("should return red color class for negative values", () => {
-    expect(getProfitColorClass(-100)).toBe("text-red-600");
-    expect(getProfitColorClass(-0.01)).toBe("text-red-600");
-    expect(getProfitColorClass(-999999)).toBe("text-red-600");
+  it("should return blue color class for negative values (국내 관례: 하락 파랑)", () => {
+    expect(getProfitColorClass(-100)).toBe("text-blue-600");
+    expect(getProfitColorClass(-0.01)).toBe("text-blue-600");
+    expect(getProfitColorClass(-999999)).toBe("text-blue-600");
   });
 });
 
