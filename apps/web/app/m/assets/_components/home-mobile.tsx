@@ -22,18 +22,18 @@ import { calculateReturnRate, formatReturnRate, numberToKorean } from "@web/util
 import { formatProfitKorean } from "@web/utils/profit-color";
 import { InvestmentTrend, MonthlySummaryList } from "./investment-stats";
 
-type Tab = "trend" | "monthly";
+type Tab = "monthly" | "trend";
 
 /**
  * 모바일 홈 (`/assets`). 위에는 핵심만 (총 평가금액·수익, 리밸런싱 알림), 그 아래 통계는
- * 칩 탭(투자 추이 / 월별 내역)으로 나눠 한 번에 하나만 보여준다. 계좌 목록은 "계좌" 탭.
+ * 칩 탭(월별 내역 / 투자 추이, 기본은 월별 내역)으로 나눠 한 번에 하나만 보여준다. 계좌 목록은 "계좌" 탭.
  */
 export function HomeMobile() {
   const investments = useInvestmentStore((s) => s.investments);
   const statusesFor = useLinkedPortfolioStatuses();
   const { push } = useFlow();
   const switchTab = useSwitchTab();
-  const [tab, setTab] = useState<Tab>("trend");
+  const [tab, setTab] = useState<Tab>("monthly");
 
   const totals = useMemo(() => {
     const initial = investments.reduce((sum, inv) => sum + (inv.initialInvestment || 0), 0);
@@ -110,8 +110,8 @@ export function HomeMobile() {
         size="medium"
       >
         <ChipTabsList>
-          <ChipTabsTrigger value="trend">투자 추이</ChipTabsTrigger>
           <ChipTabsTrigger value="monthly">월별 내역</ChipTabsTrigger>
+          <ChipTabsTrigger value="trend">투자 추이</ChipTabsTrigger>
         </ChipTabsList>
         <ChipTabsContent value="trend">
           <InvestmentTrend investments={investments} />

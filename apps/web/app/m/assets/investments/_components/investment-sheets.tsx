@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { IconCheckmarkFatFill } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
 import { formatMoneyDraft } from "@web/components/mobile/input-format";
@@ -100,10 +100,15 @@ export function AddHoldingFlow({
   onAdd: (stock: Stock, quantity: number) => void;
 }) {
   const [stock, setStock] = useState<Stock | null>(null);
+  // 종목을 고르면 수량 시트가 열리며 포커스가 넘어가고, 검색 시트는 "바깥 포커스"로 닫히며
+  // onOpenChange(false) 를 부른다. 그 콜백은 선택 전 렌더의 클로저(stock=null)일 수 있어
+  // 흐름 전체를 닫아버리므로, 선택 여부는 ref 로 바로 확인한다.
+  const selectedRef = useRef(false);
   const [quantity, setQuantity] = useState("");
   const [error, setError] = useState<string>();
 
   const close = () => {
+    selectedRef.current = false;
     setStock(null);
     setQuantity("");
     setError(undefined);
@@ -126,9 +131,12 @@ export function AddHoldingFlow({
       <StockSearchSheet
         open={open && !stock}
         onOpenChange={(next) => {
-          if (!next && !stock) close();
+          if (!next && !selectedRef.current) close();
         }}
-        onSelect={setStock}
+        onSelect={(selected) => {
+          selectedRef.current = true;
+          setStock(selected);
+        }}
         disabledKeys={existingHoldingKeys}
         title="종목 추가"
       />

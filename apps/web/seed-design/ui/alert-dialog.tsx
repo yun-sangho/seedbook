@@ -9,6 +9,7 @@ import { forwardRef } from "react";
 import type * as React from "react";
 import { AlertDialog, Portal } from "@seed-design/react";
 import { ActionButton, type ActionButtonProps } from "./action-button";
+import { useOverlayContainer } from "./overlay-container";
 
 export interface AlertDialogRootProps extends AlertDialog.RootProps {}
 
@@ -23,9 +24,10 @@ export interface AlertDialogContentProps extends AlertDialog.ContentProps {
 
 export const AlertDialogContent = forwardRef<HTMLDivElement, AlertDialogContentProps>(
   ({ children, layerIndex, ...otherProps }, ref) => {
-    // bottom-sheet 와 같은 이유로 body 로 portal (Stackflow 레이어 안 position:fixed 문제).
+    // 현재 AppScreen 루트로 portal (이유는 overlay-container.tsx).
+    const overlayContainer = useOverlayContainer();
     return (
-      <Portal>
+      <Portal container={overlayContainer}>
         <AlertDialog.Positioner style={{ "--layer-index": layerIndex } as React.CSSProperties}>
           <AlertDialog.Backdrop />
           <AlertDialog.Content ref={ref} {...otherProps}>

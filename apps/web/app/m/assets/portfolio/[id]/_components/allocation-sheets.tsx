@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { sanitizePercentDraft } from "@web/components/mobile/input-format";
 import { StockSearchSheet } from "@web/features/investments/components/stock-search-sheet";
 import type { Stock } from "@web/features/investments/types/stock";
@@ -55,8 +55,12 @@ export function AddAllocationFlow({
 }) {
   const [stock, setStock] = useState<Stock | null>(null);
   const [percent, setPercent] = useState("");
+  // 선택 직후 검색 시트가 이전 클로저(stock=null)로 onOpenChange(false) 를 불러 흐름 전체가
+  // 닫히지 않도록 선택 여부는 ref 로 확인한다 (investment-sheets.tsx AddHoldingFlow 와 같은 이유).
+  const selectedRef = useRef(false);
 
   const close = () => {
+    selectedRef.current = false;
     setStock(null);
     setPercent("");
     onOpenChange(false);
@@ -74,9 +78,12 @@ export function AddAllocationFlow({
       <StockSearchSheet
         open={open && !stock}
         onOpenChange={(next) => {
-          if (!next && !stock) close();
+          if (!next && !selectedRef.current) close();
         }}
-        onSelect={setStock}
+        onSelect={(selected) => {
+          selectedRef.current = true;
+          setStock(selected);
+        }}
         disabledKeys={disabledKeys}
         title="종목 추가"
       />

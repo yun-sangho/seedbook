@@ -5,9 +5,10 @@
 
 "use client";
 
-import { forwardRef } from "react";
+import { forwardRef, useCallback, useRef } from "react";
 import { AppScreen as SeedAppScreen } from "@seed-design/stackflow";
 import { useActivity, useFlow } from "@stackflow/react";
+import { OverlayContainerContext } from "./overlay-container";
 import { PullToRefreshContent, PullToRefreshIndicator, PullToRefreshRoot } from "./pull-to-refresh";
 
 export interface AppScreenProps extends Omit<SeedAppScreen.RootProps, "asChild"> {
@@ -20,9 +21,20 @@ export const AppScreen = forwardRef<HTMLDivElement, AppScreenProps>(
     const { isRoot } = useActivity();
     const shouldSwipeBack = !isRoot && !preventSwipeBack;
 
+    // 화면 안 바텀시트·다이얼로그를 이 루트로 portal 한다 (overlay-container.tsx).
+    const rootRef = useRef<HTMLDivElement | null>(null);
+    const setRootRef = useCallback(
+      (node: HTMLDivElement | null) => {
+        rootRef.current = node;
+        if (typeof ref === "function") ref(node);
+        else if (ref) ref.current = node;
+      },
+      [ref]
+    );
+
     return (
       <SeedAppScreen.Root
-        ref={ref}
+        ref={setRootRef}
         onSwipeBackEnd={({ swiped }) => {
           if (swiped) {
             pop();
@@ -30,9 +42,18 @@ export const AppScreen = forwardRef<HTMLDivElement, AppScreenProps>(
           onSwipeBackEnd?.({ swiped });
         }}
         {...otherProps}
+        style={{
+          // portal 된 시트·다이얼로그(z-index = 2 + --layer-index)가 이 화면의 앱바
+          // (--z-index-base + 7)와 하단 탭바 위에 오도록 기본 layer-index 를 올린다.
+          // layerIndex 를 직접 준 시트는 자기 값으로 덮어쓴다.
+          ["--layer-index" as string]: "calc(var(--z-index-base) + 8)",
+          ...otherProps.style,
+        }}
       >
         <SeedAppScreen.Dim />
-        {children}
+        <OverlayContainerContext.Provider value={rootRef}>
+          {children}
+        </OverlayContainerContext.Provider>
         {shouldSwipeBack && <SeedAppScreen.Edge />}
       </SeedAppScreen.Root>
     );
