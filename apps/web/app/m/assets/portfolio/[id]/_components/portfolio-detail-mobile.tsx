@@ -16,6 +16,7 @@ import { HoldingsPriceAsOfBanner } from "@web/components/mobile/price-as-of-bann
 import { profitToneClass } from "@web/components/mobile/profit-tone";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { summarizeAccounts } from "@web/features/investments/utils/summarize-accounts";
+import { useLiveAccounts } from "@web/features/investments/utils/use-live-accounts";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import type { PortfolioItem } from "@web/features/portfolio/types/types";
 import {
@@ -39,8 +40,8 @@ import {
 import { List, ListButtonItem, ListCheckItem, ListDivider } from "@web/seed-design/ui/list";
 import { ResultSection } from "@web/seed-design/ui/result-section";
 import { TextField, TextFieldTextarea } from "@web/seed-design/ui/text-field";
-import { formatReturnRate, numberToKorean } from "@web/utils/number-format";
-import { formatProfitKorean } from "@web/utils/profit-color";
+import { formatReturnRate, formatWithCommas, numberToKorean } from "@web/utils/number-format";
+import { formatProfitWon } from "@web/utils/profit-color";
 import { AddAllocationFlow, EditAllocationSheet } from "./allocation-sheets";
 import { ImportAllocationsSheet } from "./import-allocations-sheet";
 import { MoveAccountSheet, type AccountMove } from "./move-account-sheet";
@@ -134,10 +135,12 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
   );
   const linkedIds = useMemo(() => new Set(portfolio.accountIds), [portfolio.accountIds]);
   // 삭제된 계좌는 연결 목록에 남아 있어도 빠진다.
-  const linkedAccounts = useMemo(
+  const storedLinkedAccounts = useMemo(
     () => resolvePortfolioAccounts(portfolio, investments),
     [portfolio, investments]
   );
+  // 저장된 평가금액이 아니라 지금 시세로 다시 계산한 금액을 보여준다 (계좌 상세와 같은 값).
+  const linkedAccounts = useLiveAccounts(storedLinkedAccounts);
   const linkedCount = linkedAccounts.length;
   const linkedTotals = useMemo(() => summarizeAccounts(linkedAccounts), [linkedAccounts]);
 
@@ -159,16 +162,22 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
       {/* 평가금액은 연결 계좌 보유 종목의 시세 기준 — 그 기준 시각을 알린다. */}
       <HoldingsPriceAsOfBanner investments={linkedAccounts} />
       <section className="px-x4 pt-x4 pb-x3">
-        {/* 홈의 총 평가금액과 같은 모양 — 이 포트폴리오에 연결된 계좌만 합친다. */}
-        <p className="t10-bold tabular-nums">{numberToKorean(linkedTotals.current) || "0원"}</p>
+        {/* 계좌 상세와 같은 모양 (1원 단위 + 만원 단위 보조) — 이 포트폴리오에 연결된 계좌만 합친다. */}
+        <p className="flex flex-wrap items-baseline gap-x-x2">
+          <span className="t9-bold tabular-nums">
+            {formatWithCommas(Math.round(linkedTotals.current))}원
+          </span>
+          <span className="t4-regular text-fg-neutral-subtle tabular-nums">
+            {numberToKorean(linkedTotals.current) || "0원"}
+          </span>
+        </p>
         {linkedCount > 0 ? (
           <>
-            <p className={`t5-medium mt-x1 tabular-nums ${profitToneClass(linkedTotals.profit)}`}>
-              {formatProfitKorean(linkedTotals.profit)} ({formatReturnRate(linkedTotals.returnRate)}
-              )
+            <p className={`t4-medium mt-x1 tabular-nums ${profitToneClass(linkedTotals.profit)}`}>
+              {formatProfitWon(linkedTotals.profit)} ({formatReturnRate(linkedTotals.returnRate)})
             </p>
             <p className="t3-regular text-fg-neutral-subtle mt-x2">
-              투자원금 {numberToKorean(linkedTotals.initial) || "0원"} · 계좌 {linkedCount}개
+              투자원금 {formatWithCommas(linkedTotals.initial)}원 · 계좌 {linkedCount}개
             </p>
           </>
         ) : (

@@ -1,6 +1,10 @@
+/** 1만원 = 10,000원, 1억 = 10,000만, 1조 = 10,000억 */
+const MAN_PER_EOK = 10000;
+const MAN_PER_JO = 100000000;
+
 /**
  * 숫자(원 단위)를 한글 금액 단위(만원, 억원, 조원)로 변환하는 함수
- * 만원 미만은 절삭하여 표시
+ * 만원 미만은 절삭하고, 각 단위 안의 숫자에는 천 단위 콤마를 붙인다 (예: 1억2,345만원).
  */
 export function numberToKorean(num: string | number): string {
   if ((!num && num !== 0) || (typeof num === "string" && isNaN(Number(num)))) return "";
@@ -12,42 +16,21 @@ export function numberToKorean(num: string | number): string {
   const manwon = Math.floor(Math.abs(rawWon) / 10000);
   if (manwon === 0) return "0원";
 
-  // 조 단위 (1조 = 100,000억 = 1,00000000만)
-  if (manwon >= 100000000) {
-    const jo = Math.floor(manwon / 100000000); // 조 단위
-    const remainder = manwon % 100000000; // 조 단위 이하
+  const jo = Math.floor(manwon / MAN_PER_JO);
+  const eok = Math.floor((manwon % MAN_PER_JO) / MAN_PER_EOK);
+  const man = manwon % MAN_PER_EOK;
 
-    if (remainder === 0) {
-      return `${sign}${jo}조원`;
-    }
+  const parts = [
+    jo > 0 ? `${formatGroupedInteger(jo)}조` : "",
+    eok > 0 ? `${formatGroupedInteger(eok)}억` : "",
+    man > 0 ? `${formatGroupedInteger(man)}만` : "",
+  ];
+  return `${sign}${parts.join("")}원`;
+}
 
-    // 억 단위 처리
-    const eok = Math.floor(remainder / 10000); // 억 단위
-    const man = remainder % 10000; // 만 단위
-
-    if (eok === 0) {
-      return `${sign}${jo}조${man.toFixed()}만원`;
-    } else if (man === 0) {
-      return `${sign}${jo}조${eok}억원`;
-    } else {
-      return `${sign}${jo}조${eok}억${man.toFixed()}만원`;
-    }
-  }
-  // 억 단위 (1억 = 10,000만)
-  else if (manwon >= 10000) {
-    const eok = Math.floor(manwon / 10000); // 억 단위
-    const man = manwon % 10000; // 만 단위
-
-    if (man === 0) {
-      return `${sign}${eok}억원`;
-    } else {
-      return `${sign}${eok}억${man.toFixed()}만원`;
-    }
-  }
-  // 만 단위만 있는 경우
-  else {
-    return `${sign}${manwon.toFixed()}만원`;
-  }
+/** 정수에 천 단위 콤마를 붙인다 (로케일과 무관하게 항상 "1,234"). */
+function formatGroupedInteger(value: number): string {
+  return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 /**

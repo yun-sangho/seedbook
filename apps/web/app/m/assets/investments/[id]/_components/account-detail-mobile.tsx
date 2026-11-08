@@ -38,10 +38,11 @@ import { ResultSection } from "@web/seed-design/ui/result-section";
 import {
   calculateReturnRate,
   formatReturnRate,
+  formatWithCommas,
   numberToKorean,
   parseNumericString,
 } from "@web/utils/number-format";
-import { formatProfitKorean } from "@web/utils/profit-color";
+import { formatProfitWon } from "@web/utils/profit-color";
 import {
   AddHistorySheet,
   AddHoldingFlow,
@@ -139,7 +140,8 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
   const [deposit, ...otherCash] = cashItems;
   const otherCashTotal = cashTotal - (deposit?.amount ?? 0);
 
-  // 데스크탑 카드와 같이 현재 시세 기반 합계를 보여준다. 보유/현금이 없으면 저장값.
+  // 데스크탑 카드와 같이 현재 시세 기반 합계를 보여준다. 보유/현금이 없으면 저장값
+  // (`liveAccountValue` 와 같은 규칙 — 목록·합계도 이 값을 쓴다).
   const displayValue = totalValue > 0 ? totalValue : item.currentValue;
   const profit = displayValue - item.initialInvestment;
   const returnRate = calculateReturnRate(displayValue, item.initialInvestment);
@@ -188,29 +190,39 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
   return (
     <div className="pb-x4">
       <PriceAsOfBanner prices={prices} />
-      {/* 평가금액 → 수익 → 투자원금·예수금 순서. */}
+      {/* 평가금액 → 수익 → 투자원금·예수금 순서. 상세라서 만원 단위로 줄이지 않고 1원까지 보여준다. */}
       <div>
         <section className="px-x4 pt-x4 pb-x3">
-          <p className="t9-bold tabular-nums">{numberToKorean(displayValue) || "0원"}</p>
+          <p className="flex flex-wrap items-baseline gap-x-x2">
+            <span className="t9-bold tabular-nums">
+              {formatWithCommas(Math.round(displayValue))}원
+            </span>
+            {/* 큰 금액을 한눈에 읽도록 만원 단위 한글 금액을 작게 덧붙인다. */}
+            <span className="t4-regular text-fg-neutral-subtle tabular-nums">
+              {numberToKorean(displayValue) || "0원"}
+            </span>
+          </p>
           <p className={`t4-medium mt-x1 tabular-nums ${profitToneClass(profit)}`}>
-            {formatProfitKorean(profit)} ({formatReturnRate(returnRate)})
+            {formatProfitWon(profit)} ({formatReturnRate(returnRate)})
           </p>
           {/* 투자원금·예수금은 수익 아래 테두리 박스 안에 한 줄씩. 각 줄 오른쪽 [수정] 버튼으로 편집한다. */}
           <div className="border-stroke-neutral-muted rounded-r3 mt-x3 border-2 flex flex-col gap-y-x3 px-x4 py-x3">
             <InlineAmount
               label="투자원금"
-              value={numberToKorean(item.initialInvestment) || "입력"}
+              value={
+                item.initialInvestment ? `${formatWithCommas(item.initialInvestment)}원` : "입력"
+              }
               onEdit={() => setEditing({ kind: "initial" })}
             />
             <InlineAmount
               label={DEFAULT_CASH_LABEL}
-              value={numberToKorean(deposit?.amount ?? 0) || "0원"}
+              value={`${formatWithCommas(deposit?.amount ?? 0)}원`}
               onEdit={() => setEditing({ kind: "deposit" })}
             />
           </div>
           {otherCash.length > 0 && (
             <p className="t2-regular text-fg-neutral-subtle mt-[2px]">
-              PC에서 추가한 현금 {numberToKorean(otherCashTotal) || "0원"} 별도
+              PC에서 추가한 현금 {formatWithCommas(otherCashTotal)}원 별도
             </p>
           )}
         </section>

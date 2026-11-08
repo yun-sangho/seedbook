@@ -9,6 +9,7 @@ import {
   sortAccounts,
   type AccountSortOption,
 } from "@web/features/investments/utils/sort-accounts";
+import { useLiveAccounts } from "@web/features/investments/utils/use-live-accounts";
 import { useLinkedPortfolioStatus } from "@web/features/portfolio/utils/use-linked-portfolio-status";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { ResultSection } from "@web/seed-design/ui/result-section";
@@ -48,7 +49,9 @@ function useAccountSort(): [AccountSortOption, (value: AccountSortOption) => voi
  * 계좌 순서 변경(drag)과 여러 사용자 합산(aggregate) 보기는 데스크탑에서만 지원한다.
  */
 export function InvestmentMobile() {
-  const investments = useInvestmentStore((s) => s.investments);
+  const storedInvestments = useInvestmentStore((s) => s.investments);
+  // 저장된 평가금액이 아니라 지금 시세로 다시 계산한 금액을 보여준다 (계좌 상세와 같은 값).
+  const investments = useLiveAccounts(storedInvestments);
   const statusFor = useLinkedPortfolioStatus();
 
   const [addOpen, setAddOpen] = useState(false);

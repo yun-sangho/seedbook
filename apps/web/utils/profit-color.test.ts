@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { formatProfitKorean, getProfitColorClass, getProfitPrefix } from "./profit-color";
+import {
+  formatProfitKorean,
+  formatProfitWon,
+  getProfitColorClass,
+  getProfitPrefix,
+} from "./profit-color";
 
 describe("getProfitColorClass", () => {
   it("should return red color class for positive values (국내 관례: 상승 빨강)", () => {
@@ -40,12 +45,12 @@ describe("getProfitPrefix", () => {
 describe("formatProfitKorean", () => {
   it("prefixes + for positive values", () => {
     expect(formatProfitKorean(10000)).toBe("+1만원");
-    expect(formatProfitKorean(166500000)).toBe("+1억6650만원");
+    expect(formatProfitKorean(166500000)).toBe("+1억6,650만원");
   });
 
   it("prefixes - for negative values", () => {
     expect(formatProfitKorean(-10000)).toBe("-1만원");
-    expect(formatProfitKorean(-166500000)).toBe("-1억6650만원");
+    expect(formatProfitKorean(-166500000)).toBe("-1억6,650만원");
   });
 
   it("returns 0원 without a sign for zero", () => {
@@ -56,5 +61,23 @@ describe("formatProfitKorean", () => {
     const result = formatProfitKorean(-12345678);
     expect(result.startsWith("--")).toBe(false);
     expect(result.startsWith("-")).toBe(true);
+  });
+});
+
+describe("formatProfitWon", () => {
+  it("shows the full amount with commas and a + sign", () => {
+    expect(formatProfitWon(3_721_234)).toBe("+3,721,234원");
+  });
+
+  it("shows a - sign for losses", () => {
+    expect(formatProfitWon(-1_500)).toBe("-1,500원");
+  });
+
+  it("rounds to whole won", () => {
+    expect(formatProfitWon(1_234.6)).toBe("+1,235원");
+  });
+
+  it("returns 0원 without a sign for zero", () => {
+    expect(formatProfitWon(0)).toBe("0원");
   });
 });

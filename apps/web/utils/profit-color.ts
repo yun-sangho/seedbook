@@ -1,4 +1,4 @@
-import { numberToKorean } from "./number-format";
+import { formatWithCommas, numberToKorean } from "./number-format";
 
 /**
  * 수익금/수익률 값에 따른 색상 클래스를 반환합니다.
@@ -37,4 +37,13 @@ export function getProfitPrefix(value: number): string {
  */
 export function formatProfitKorean(value: number): string {
   return `${getProfitPrefix(value)}${numberToKorean(Math.abs(value))}`;
+}
+
+/**
+ * 수익금을 줄이지 않고 1원 단위까지 `±1,234,567원` 으로 포맷합니다 (원 단위 반올림).
+ * 0 은 부호 없이 `"0원"`.
+ */
+export function formatProfitWon(value: number): string {
+  const rounded = Math.round(value);
+  return `${getProfitPrefix(rounded)}${formatWithCommas(Math.abs(rounded))}원`;
 }

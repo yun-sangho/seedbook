@@ -14,7 +14,7 @@ import type { Stock } from "@web/features/investments/types/stock";
 import { CashItem, InvestmentItem, StockHolding } from "@web/features/investments/types/types";
 import { useAccountValuation } from "@web/features/investments/utils/use-account-valuation";
 import { stockPriceKey } from "@web/features/investments/utils/use-stock-prices";
-import { numberToKorean } from "@web/utils/number-format";
+import { formatWithCommas, numberToKorean } from "@web/utils/number-format";
 import { AddCashItemModal } from "./add-cash-item-modal";
 import { AddHistoryModal } from "./add-history-modal";
 import { AddStockHoldingModal } from "./add-stock-holding-modal";
@@ -431,7 +431,8 @@ export function InvestmentItemComponent({
                   </span>
                   {cashItems.length > 0 && (
                     <span className="text-sm text-muted-foreground">
-                      {numberToKorean(cashTotal)}
+                      {/* 예수금은 만원 단위로 줄이지 않고 1원 단위까지 보여준다. */}
+                      {formatWithCommas(cashTotal)}원
                     </span>
                   )}
                 </div>

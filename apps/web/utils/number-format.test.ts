@@ -25,31 +25,36 @@ describe("numberToKorean", () => {
 
   it("should format man (만원) unit correctly", () => {
     expect(numberToKorean(10000)).toBe("1만원");
-    expect(numberToKorean(50000000)).toBe("5000만원");
-    expect(numberToKorean(99990000)).toBe("9999만원");
+    expect(numberToKorean(50000000)).toBe("5,000만원");
+    expect(numberToKorean(99990000)).toBe("9,999만원");
   });
 
   it("should format eok (억원) unit correctly", () => {
     expect(numberToKorean(100000000)).toBe("1억원");
-    expect(numberToKorean(123450000)).toBe("1억2345만원");
-    expect(numberToKorean(1123450000)).toBe("11억2345만원");
-    expect(numberToKorean(11123450000)).toBe("111억2345만원");
+    expect(numberToKorean(123450000)).toBe("1억2,345만원");
+    expect(numberToKorean(1123450000)).toBe("11억2,345만원");
+    expect(numberToKorean(11123450000)).toBe("111억2,345만원");
   });
 
   it("should format jo (조원) unit correctly", () => {
     expect(numberToKorean(1000000000000)).toBe("1조원");
     expect(numberToKorean(1000200000000)).toBe("1조2억원");
-    expect(numberToKorean(1000020000000)).toBe("1조2000만원");
+    expect(numberToKorean(1000020000000)).toBe("1조2,000만원");
     expect(numberToKorean(1000203000000)).toBe("1조2억300만원");
   });
 
+  it("puts thousands separators within each unit", () => {
+    expect(numberToKorean(1_234_567_890_000_000)).toBe("1,234조5,678억9,000만원");
+    expect(numberToKorean(-56_780_000)).toBe("-5,678만원");
+  });
+
   it("should truncate sub-만원 fractions", () => {
-    expect(numberToKorean(10005000)).toBe("1000만원");
+    expect(numberToKorean(10005000)).toBe("1,000만원");
     expect(numberToKorean(100009999)).toBe("1억원");
   });
 
   it("should handle string input as 원 unit", () => {
-    expect(numberToKorean("50000000")).toBe("5000만원");
+    expect(numberToKorean("50000000")).toBe("5,000만원");
     expect(numberToKorean("100000000")).toBe("1억원");
   });
 });

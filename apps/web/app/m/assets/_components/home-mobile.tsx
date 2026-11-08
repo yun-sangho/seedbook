@@ -12,6 +12,7 @@ import { HoldingsPriceAsOfBanner } from "@web/components/mobile/price-as-of-bann
 import { profitToneClass } from "@web/components/mobile/profit-tone";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { summarizeAccounts } from "@web/features/investments/utils/summarize-accounts";
+import { useLiveAccounts } from "@web/features/investments/utils/use-live-accounts";
 import { useLinkedPortfolioStatus } from "@web/features/portfolio/utils/use-linked-portfolio-status";
 import {
   ChipTabsContent,
@@ -37,7 +38,9 @@ export function HomeMobile() {
   const switchTab = useSwitchTab();
   const [tab, setTab] = useState<Tab>("monthly");
 
-  const totals = useMemo(() => summarizeAccounts(investments), [investments]);
+  // 저장된 평가금액이 아니라 지금 시세로 다시 계산한 금액을 보여준다 (계좌 상세와 같은 값).
+  const liveInvestments = useLiveAccounts(investments);
+  const totals = useMemo(() => summarizeAccounts(liveInvestments), [liveInvestments]);
 
   // 연결된 포트폴리오 기준으로 리밸런싱이 필요한 계좌 (계좌 목록 순서대로).
   const accountsNeedingRebalance = useMemo(

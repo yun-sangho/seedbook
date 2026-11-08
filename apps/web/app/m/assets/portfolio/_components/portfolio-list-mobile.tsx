@@ -8,6 +8,7 @@ import { HoldingsPriceAsOfBanner } from "@web/components/mobile/price-as-of-bann
 import { profitToneClass } from "@web/components/mobile/profit-tone";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { summarizeAccounts } from "@web/features/investments/utils/summarize-accounts";
+import { useLiveAccounts } from "@web/features/investments/utils/use-live-accounts";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import { resolvePortfolioAccounts } from "@web/features/portfolio/utils/resolve-portfolio-accounts";
 import { ActionButton } from "@web/seed-design/ui/action-button";
@@ -19,7 +20,9 @@ import { formatProfitKorean } from "@web/utils/profit-color";
 export function PortfolioListMobile() {
   const portfolios = usePortfolioStore((s) => s.portfolios);
   const addPortfolio = usePortfolioStore((s) => s.addPortfolio);
-  const investments = useInvestmentStore((s) => s.investments);
+  const storedInvestments = useInvestmentStore((s) => s.investments);
+  // 저장된 평가금액이 아니라 지금 시세로 다시 계산한 금액을 보여준다 (계좌 상세와 같은 값).
+  const investments = useLiveAccounts(storedInvestments);
   const { push } = useFlow();
   // 목록의 금액은 포트폴리오에 연결된 계좌로 계산하므로, 가격 기준도 그 계좌들로 알린다.
   const linkedAccounts = useMemo(() => {

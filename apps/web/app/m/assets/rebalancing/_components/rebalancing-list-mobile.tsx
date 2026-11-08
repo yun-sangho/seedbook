@@ -6,6 +6,7 @@ import { Divider, Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 import { useSwitchTab } from "@web/app/m/_stack/use-switch-tab";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
+import { useLiveAccounts } from "@web/features/investments/utils/use-live-accounts";
 import {
   groupAccountsByRebalancingState,
   type AccountRebalancingState,
@@ -31,7 +32,9 @@ const GROUP_TITLE: Record<AccountRebalancingState, string> = {
  * 판단 불가 → 연결 없음)로 묶어 보여주고, 탭하면 계좌 리밸런싱 상세로 들어간다.
  */
 export function RebalancingListMobile() {
-  const investments = useInvestmentStore((s) => s.investments);
+  const storedInvestments = useInvestmentStore((s) => s.investments);
+  // 저장된 평가금액이 아니라 지금 시세로 다시 계산한 금액을 보여준다 (계좌 상세와 같은 값).
+  const investments = useLiveAccounts(storedInvestments);
   const sessions = useRebalancingStore((s) => s.sessions);
   // 한 계좌에는 리밸런싱을 하나만 진행한다 — 진행 중인 계좌는 고를 수 없다.
   const busyAccountIds = useMemo(() => inProgressAccountIds(sessions), [sessions]);
