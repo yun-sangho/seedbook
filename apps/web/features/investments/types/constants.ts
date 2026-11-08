@@ -10,9 +10,13 @@ export enum AccountType {
 }
 
 /**
- * 계좌 유형 목록
+ * 새 계좌 추가 시 고를 수 있는 계좌 유형 목록.
+ * 해외 투자 계좌는 지금은 선택지에서 뺀다 — 이미 이 유형으로 만든 계좌가 있을 수 있어
+ * enum 값(`AccountType.FOREIGN`)은 남겨 둔다.
  */
-export const ACCOUNT_TYPES = Object.values(AccountType);
+export const ACCOUNT_TYPES = Object.values(AccountType).filter(
+  (type) => type !== AccountType.FOREIGN
+);
 
 /**
  * 투자 계좌별 차트 색상 팔레트 (30가지)
