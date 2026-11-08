@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { IconChevronRightLine } from "@karrotmarket/react-monochrome-icon";
 import { Divider, Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
@@ -14,17 +14,31 @@ import {
   rebalancingProgress,
 } from "@web/features/rebalancing/utils/rebalancing-session";
 import { ActionButton } from "@web/seed-design/ui/action-button";
+import {
+  ChipTabsContent,
+  ChipTabsList,
+  ChipTabsRoot,
+  ChipTabsTrigger,
+} from "@web/seed-design/ui/chip-tabs";
 import { ResultSection } from "@web/seed-design/ui/result-section";
 
 const FALLBACK_DOT_COLOR = "#cbd5e1";
 
+type Tab = "in-progress" | "completed";
+
+/** 하단 탭바 높이 (`_stack/screens.tsx` 의 TAB_BAR_HEIGHT 와 같다). */
+const TAB_BAR_HEIGHT = "56px";
+/** 하단 고정 버튼 영역 높이 — 목록 끝이 버튼에 가리지 않도록 그만큼 비워 둔다. */
+const BOTTOM_CTA_SPACE = "88px";
+
 /**
- * 하단 탭 "리밸런싱": 진행 중인 리밸런싱(할 일 목록)과 완료 기록을 보여준다.
+ * 하단 탭 "리밸런싱": 진행 중인 리밸런싱(할 일 목록)과 완료 기록을 탭으로 나눠 보여준다.
  * "새 리밸런싱" 으로 들어가면 계좌를 골라 권장 매매를 계산하고 시작할 수 있다.
  */
 export function RebalancingHomeMobile() {
   const sessions = useRebalancingStore((s) => s.sessions);
   const { push } = useFlow();
+  const [tab, setTab] = useState<Tab>("in-progress");
 
   const { inProgress, completed } = useMemo(() => {
     const active: RebalancingSession[] = [];
@@ -37,65 +51,85 @@ export function RebalancingHomeMobile() {
 
   const startNew = () => push("RebalancingNew", {});
 
+  const startButton = (
+    // 하단 탭바 바로 위에 고정한다.
+    <div
+      className="bg-bg-layer-default fixed inset-x-0 px-x4 pt-x3 pb-x3"
+      style={{ bottom: `calc(${TAB_BAR_HEIGHT} + var(--seed-safe-area-bottom))` }}
+    >
+      <ActionButton size="large" className="w-full" onClick={startNew}>
+        새 리밸런싱
+      </ActionButton>
+    </div>
+  );
+
   if (sessions.length === 0) {
     return (
       <div className="flex min-h-[60dvh] flex-col">
         <ResultSection
           title="진행 중인 리밸런싱이 없어요"
           description="계좌를 골라 목표 비중과의 차이를 계산하고, 사고팔 종목을 할 일로 만들어 하나씩 처리하세요."
-          primaryActionProps={{ children: "새 리밸런싱", onClick: startNew }}
         />
+        {startButton}
       </div>
     );
   }
 
   return (
-    <div className="pb-x4">
-      <div className="px-x4 pt-x4">
-        <ActionButton size="large" className="w-full" onClick={startNew}>
-          새 리밸런싱
-        </ActionButton>
-      </div>
-
-      <SectionTitle title="진행 중" count={inProgress.length} />
-      {inProgress.length === 0 ? (
-        <p className="t4-regular text-fg-neutral-subtle px-x4 pb-x4">
-          진행 중인 리밸런싱이 없어요.
-        </p>
-      ) : (
-        inProgress.map((session, index) => (
-          <SessionRow
-            key={session.id}
-            session={session}
-            withDivider={index > 0}
-            onClick={() => push("RebalancingSession", { id: session.id })}
+    <div style={{ paddingBottom: BOTTOM_CTA_SPACE }}>
+      <ChipTabsRoot
+        value={tab}
+        onValueChange={(value) => setTab(value as Tab)}
+        variant="neutralSolid"
+        size="medium"
+        className="pt-x4"
+      >
+        <ChipTabsList>
+          <ChipTabsTrigger value="in-progress">진행 중 {inProgress.length}</ChipTabsTrigger>
+          <ChipTabsTrigger value="completed">완료 기록 {completed.length}</ChipTabsTrigger>
+        </ChipTabsList>
+        <ChipTabsContent value="in-progress">
+          <SessionList
+            sessions={inProgress}
+            emptyText="진행 중인 리밸런싱이 없어요."
+            onOpen={(id) => push("RebalancingSession", { id })}
           />
-        ))
-      )}
-
-      {completed.length > 0 && (
-        <>
-          <Divider />
-          <SectionTitle title="완료 기록" count={completed.length} />
-          {completed.map((session, index) => (
-            <SessionRow
-              key={session.id}
-              session={session}
-              withDivider={index > 0}
-              onClick={() => push("RebalancingSession", { id: session.id })}
-            />
-          ))}
-        </>
-      )}
+        </ChipTabsContent>
+        <ChipTabsContent value="completed">
+          <SessionList
+            sessions={completed}
+            emptyText="아직 완료한 리밸런싱이 없어요. 할 일을 모두 체크하면 여기에 기록돼요."
+            onOpen={(id) => push("RebalancingSession", { id })}
+          />
+        </ChipTabsContent>
+      </ChipTabsRoot>
+      {startButton}
     </div>
   );
 }
 
-function SectionTitle({ title, count }: { title: string; count: number }) {
+function SessionList({
+  sessions,
+  emptyText,
+  onOpen,
+}: {
+  sessions: RebalancingSession[];
+  emptyText: string;
+  onOpen: (id: string) => void;
+}) {
+  if (sessions.length === 0) {
+    return <p className="t4-regular text-fg-neutral-subtle px-x4 py-x6 text-center">{emptyText}</p>;
+  }
   return (
-    <div className="flex items-baseline gap-x2 px-x4 pt-x5 pb-x2">
-      <h2 className="t5-bold">{title}</h2>
-      <span className="t3-regular text-fg-neutral-subtle tabular-nums">{count}</span>
+    <div className="pt-x2">
+      {sessions.map((session, index) => (
+        <SessionRow
+          key={session.id}
+          session={session}
+          withDivider={index > 0}
+          onClick={() => onOpen(session.id)}
+        />
+      ))}
     </div>
   );
 }
