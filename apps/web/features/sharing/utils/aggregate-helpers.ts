@@ -1,5 +1,5 @@
-import type { SharedOwner } from "@web/features/sharing/stores/view-context-store";
 import type { SharedEnvelope } from "@web/features/sharing/hooks/use-shared-envelopes";
+import type { SharedOwner } from "@web/features/sharing/stores/view-context-store";
 
 /**
  * envelope.state[stateKey] 가 배열이면 배열을, 아니면 빈 배열을 돌려준다.
@@ -7,10 +7,7 @@ import type { SharedEnvelope } from "@web/features/sharing/hooks/use-shared-enve
  * 도메인 store envelope 의 state 모양이 일관성 없을 수 있어서 (특히 마이그레이션
  * 도중 owner 라면 v3 상태일 수도 있음) 안전하게 빈 배열로 떨어뜨린다.
  */
-export function extractStateArray<T>(
-  envelope: SharedEnvelope["envelope"],
-  stateKey: string,
-): T[] {
+export function extractStateArray<T>(envelope: SharedEnvelope["envelope"], stateKey: string): T[] {
   if (!envelope?.state) return [];
   const v = (envelope.state as Record<string, unknown>)[stateKey];
   return Array.isArray(v) ? (v as T[]) : [];
@@ -32,7 +29,7 @@ export type AggregatedGroup<T> = {
 export function buildSharedGroups<T>(
   owners: SharedOwner[],
   envelopes: Map<string, SharedEnvelope>,
-  stateKey: string,
+  stateKey: string
 ): AggregatedGroup<T>[] {
   return owners.map((owner) => {
     const env = envelopes.get(owner.ownerId)?.envelope ?? null;
@@ -48,9 +45,7 @@ export function buildSharedGroups<T>(
 /**
  * 필터 ID 배열을 boolean 판별 함수로 만든다. 빈 배열 = 모두 표시.
  */
-export function makeFilterPredicate(
-  filter: readonly string[],
-): (id: string) => boolean {
+export function makeFilterPredicate(filter: readonly string[]): (id: string) => boolean {
   if (filter.length === 0) return () => true;
   const set = new Set(filter);
   return (id) => set.has(id);

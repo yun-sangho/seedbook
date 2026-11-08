@@ -29,8 +29,8 @@ export function AggregateSettingsCard() {
           <div className="space-y-1">
             <p className="text-sm font-medium">공유분 묶어 보기</p>
             <p className="text-xs text-muted-foreground">
-              켜면 각 페이지에서 owner 별로 섹션을 나눠 따로 정렬합니다. 끄면 내 항목과
-              섞어 한 정렬 기준으로 정렬합니다. 사용자별 필터는 양쪽 모두에서 동작합니다.
+              켜면 각 페이지에서 owner 별로 섹션을 나눠 따로 정렬합니다. 끄면 내 항목과 섞어 한 정렬
+              기준으로 정렬합니다. 사용자별 필터는 양쪽 모두에서 동작합니다.
             </p>
           </div>
           <Button

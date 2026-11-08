@@ -245,8 +245,7 @@ describe("Savings Store", () => {
 
   describe("Store Reset", () => {
     it("should reset store to initial state", () => {
-      const { addSavingsWithType, setExpandedFormId, resetStore } =
-        useSavingsStore.getState();
+      const { addSavingsWithType, setExpandedFormId, resetStore } = useSavingsStore.getState();
 
       // Add some data
       addSavingsWithType("정기예금");
@@ -269,8 +268,7 @@ describe("Savings Store", () => {
 
   describe("Reorder Savings", () => {
     it("should reorder savings array", () => {
-      const { addSavingsWithType, updateSavings, reorderSavings } =
-        useSavingsStore.getState();
+      const { addSavingsWithType, updateSavings, reorderSavings } = useSavingsStore.getState();
 
       // Add three savings accounts
       addSavingsWithType("정기예금");
@@ -298,8 +296,7 @@ describe("Savings Store", () => {
     });
 
     it("should maintain savings data when reordering", () => {
-      const { addSavingsWithType, addHistoryRecord, reorderSavings } =
-        useSavingsStore.getState();
+      const { addSavingsWithType, addHistoryRecord, reorderSavings } = useSavingsStore.getState();
 
       // Add savings with history
       addSavingsWithType("정기예금");
@@ -398,8 +395,7 @@ describe("Savings Store", () => {
     });
 
     it("should handle balance updates creating multiple records on different dates", () => {
-      const { addSavingsWithType, updateSavings, addHistoryRecord } =
-        useSavingsStore.getState();
+      const { addSavingsWithType, updateSavings, addHistoryRecord } = useSavingsStore.getState();
 
       addSavingsWithType("정기예금");
       const id = useSavingsStore.getState().savings[0]!.id;
@@ -496,8 +492,7 @@ describe("Savings Store", () => {
     });
 
     it("should maintain records integrity after multiple operations", () => {
-      const { addSavingsWithType, updateSavings, addHistoryRecord } =
-        useSavingsStore.getState();
+      const { addSavingsWithType, updateSavings, addHistoryRecord } = useSavingsStore.getState();
 
       addSavingsWithType("정기예금");
       const id = useSavingsStore.getState().savings[0]!.id;

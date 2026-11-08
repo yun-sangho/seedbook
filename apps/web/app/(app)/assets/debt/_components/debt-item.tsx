@@ -117,8 +117,7 @@ export function DebtItemComponent({
                 onChange={
                   readOnly
                     ? undefined
-                    : (e) =>
-                        onUpdateDebt(item.id, "interestRate", parseFloat(e.target.value) || 0)
+                    : (e) => onUpdateDebt(item.id, "interestRate", parseFloat(e.target.value) || 0)
                 }
                 readOnly={readOnly}
                 tabIndex={readOnly ? -1 : 0}

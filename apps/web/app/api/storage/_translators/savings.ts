@@ -1,12 +1,6 @@
 import { schema } from "@seedbook/database";
 import { and, eq, notInArray } from "drizzle-orm";
-import {
-  bigIntToNumber,
-  formatDate,
-  parseDate,
-  toBigInt,
-  type DomainTranslator,
-} from "./types";
+import { bigIntToNumber, formatDate, parseDate, toBigInt, type DomainTranslator } from "./types";
 
 /**
  * `savings-storage` 번역기.
@@ -95,8 +89,8 @@ export const savingsTranslator: DomainTranslator = {
           .where(
             and(
               eq(schema.savingsAccount.userId, userId),
-              notInArray(schema.savingsAccount.id, incomingIds),
-            ),
+              notInArray(schema.savingsAccount.id, incomingIds)
+            )
           );
       } else {
         await tx.delete(schema.savingsAccount).where(eq(schema.savingsAccount.userId, userId));

@@ -1,7 +1,7 @@
 import { existsSync } from "fs";
 import { dirname, resolve } from "path";
-import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import { config as loadEnv } from "dotenv";
+import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres, { type Sql } from "postgres";
 import * as schema from "./schema";
 
@@ -46,9 +46,7 @@ const globalForDb = globalThis as unknown as {
 function createClient(): Sql {
   const url = process.env.DATABASE_URL;
   if (!url) {
-    throw new Error(
-      "DATABASE_URL is not set. Set it in the environment before running queries.",
-    );
+    throw new Error("DATABASE_URL is not set. Set it in the environment before running queries.");
   }
   // `prepare: false` 는 Supabase Transaction pooler (port 6543) 호환용. Direct
   // connection / Session pooler 에서도 안전하게 동작.

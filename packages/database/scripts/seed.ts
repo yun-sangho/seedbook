@@ -76,7 +76,7 @@ async function seedStocks(stocks: StockFixture[]): Promise<void> {
     inserted += result.length;
   }
   console.log(
-    `[seed] stocks: ${inserted} inserted, ${stocks.length - inserted} skipped (existing) in ${Date.now() - started}ms`,
+    `[seed] stocks: ${inserted} inserted, ${stocks.length - inserted} skipped (existing) in ${Date.now() - started}ms`
   );
 }
 
@@ -105,7 +105,7 @@ async function seedStockPrices(prices: StockPriceFixture[]): Promise<void> {
     inserted += result.length;
   }
   console.log(
-    `[seed] stock prices: ${inserted} inserted, ${prices.length - inserted} skipped (existing) in ${Date.now() - started}ms`,
+    `[seed] stock prices: ${inserted} inserted, ${prices.length - inserted} skipped (existing) in ${Date.now() - started}ms`
   );
 }
 
@@ -218,7 +218,7 @@ async function seedUserData(userId: string): Promise<void> {
           note: inv.note ?? "",
           color: inv.color,
           updatedAt: now,
-        })),
+        }))
       )
       .onConflictDoNothing();
 
@@ -235,7 +235,7 @@ async function seedUserData(userId: string): Promise<void> {
               }
             : null;
         })
-        .filter((r): r is NonNullable<typeof r> => r !== null),
+        .filter((r): r is NonNullable<typeof r> => r !== null)
     );
     if (recordRows.length > 0) {
       await db.insert(schema.investmentRecord).values(recordRows).onConflictDoNothing();
@@ -251,7 +251,7 @@ async function seedUserData(userId: string): Promise<void> {
         currency: h.currency,
         quantity: h.quantity,
         memo: h.memo ?? "",
-      })),
+      }))
     );
     if (holdingRows.length > 0) {
       await db.insert(schema.stockHolding).values(holdingRows).onConflictDoNothing();
@@ -263,7 +263,7 @@ async function seedUserData(userId: string): Promise<void> {
         accountId: inv.id,
         label: c.label,
         amount: BigInt(c.amount),
-      })),
+      }))
     );
     if (cashRows.length > 0) {
       await db.insert(schema.cashItem).values(cashRows).onConflictDoNothing();
@@ -286,7 +286,7 @@ async function seedUserData(userId: string): Promise<void> {
           note: s.note ?? "",
           color: s.color,
           updatedAt: now,
-        })),
+        }))
       )
       .onConflictDoNothing();
 
@@ -296,7 +296,7 @@ async function seedUserData(userId: string): Promise<void> {
           const date = parseDate(r.date);
           return date ? { accountId: s.id, date, balance: BigInt(r.balance) } : null;
         })
-        .filter((r): r is NonNullable<typeof r> => r !== null),
+        .filter((r): r is NonNullable<typeof r> => r !== null)
     );
     if (savingsRecordRows.length > 0) {
       await db.insert(schema.savingsRecord).values(savingsRecordRows).onConflictDoNothing();
@@ -320,7 +320,7 @@ async function seedUserData(userId: string): Promise<void> {
           monthlyPayment: BigInt(d.monthlyPayment),
           note: d.note ?? "",
           updatedAt: now,
-        })),
+        }))
       )
       .onConflictDoNothing();
   }
@@ -341,7 +341,7 @@ async function seedUserData(userId: string): Promise<void> {
           note: a.note ?? "",
           color: a.color,
           updatedAt: now,
-        })),
+        }))
       )
       .onConflictDoNothing();
   }
@@ -384,7 +384,7 @@ async function seedUserData(userId: string): Promise<void> {
   }
 
   console.log(
-    `[seed] user-data: investments=${investments.length}, savings=${savings.length}, debts=${debts.length}, realAssets=${realAssets.length}, progressPoints=${progressPoints.length}, listOrders=${orderRows.length} in ${Date.now() - started}ms`,
+    `[seed] user-data: investments=${investments.length}, savings=${savings.length}, debts=${debts.length}, realAssets=${realAssets.length}, progressPoints=${progressPoints.length}, listOrders=${orderRows.length} in ${Date.now() - started}ms`
   );
 }
 

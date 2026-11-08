@@ -150,8 +150,8 @@ export const investmentTranslator: DomainTranslator = {
           .where(
             and(
               eq(schema.investmentAccount.userId, userId),
-              notInArray(schema.investmentAccount.id, incomingIds),
-            ),
+              notInArray(schema.investmentAccount.id, incomingIds)
+            )
           );
       } else {
         await tx
@@ -218,8 +218,8 @@ export const investmentTranslator: DomainTranslator = {
             .where(
               and(
                 eq(schema.stockHolding.accountId, inv.id),
-                notInArray(schema.stockHolding.id, incomingHoldingIds),
-              ),
+                notInArray(schema.stockHolding.id, incomingHoldingIds)
+              )
             );
         } else {
           await tx.delete(schema.stockHolding).where(eq(schema.stockHolding.accountId, inv.id));
@@ -258,8 +258,8 @@ export const investmentTranslator: DomainTranslator = {
             .where(
               and(
                 eq(schema.cashItem.accountId, inv.id),
-                notInArray(schema.cashItem.id, incomingCashIds),
-              ),
+                notInArray(schema.cashItem.id, incomingCashIds)
+              )
             );
         } else {
           await tx.delete(schema.cashItem).where(eq(schema.cashItem.accountId, inv.id));

@@ -38,13 +38,10 @@ function cacheKey(ownerId: string, key: CloudStoreKey): string {
   return `${ownerId}::${key}`;
 }
 
-async function fetchOwnerEnvelope(
-  ownerId: string,
-  key: CloudStoreKey,
-): Promise<EnvelopeShape> {
+async function fetchOwnerEnvelope(ownerId: string, key: CloudStoreKey): Promise<EnvelopeShape> {
   const res = await fetch(
     `/api/sharing/view/${encodeURIComponent(ownerId)}/storage/${encodeURIComponent(key)}`,
-    { credentials: "include" },
+    { credentials: "include" }
   );
   if (!res.ok) return null;
   const body = (await res.json()) as { data: EnvelopeShape };
@@ -129,7 +126,7 @@ export function useSharedEnvelopes(key: CloudStoreKey): UseSharedEnvelopesResult
             return updated;
           });
         }
-      }),
+      })
     ).finally(() => {
       if (!cancelled) setLoading(false);
     });

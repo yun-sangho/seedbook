@@ -7,20 +7,17 @@ const features = [
   {
     icon: Sprout,
     title: "전체 자산 한눈에",
-    description:
-      "투자, 저축, 실물 자산, 대출까지 흩어진 자산을 한 곳에 모아 순자산을 추적해요.",
+    description: "투자, 저축, 실물 자산, 대출까지 흩어진 자산을 한 곳에 모아 순자산을 추적해요.",
   },
   {
     icon: Target,
     title: "장기 자산 계획",
-    description:
-      "월·분기·반기·년 단위 적립과 목표 수익률을 입력해 30년 뒤 자산을 시뮬레이션해요.",
+    description: "월·분기·반기·년 단위 적립과 목표 수익률을 입력해 30년 뒤 자산을 시뮬레이션해요.",
   },
   {
     icon: LineChart,
     title: "기록 기반 진행",
-    description:
-      "자동으로 쌓이는 자산 스냅샷으로 계획 대비 실제 진행 상황을 비교해요.",
+    description: "자동으로 쌓이는 자산 스냅샷으로 계획 대비 실제 진행 상황을 비교해요.",
   },
   {
     icon: PieChart,
@@ -95,10 +92,7 @@ export default function HomePage() {
               <Sprout className="w-4 h-4 text-primary" />
               <span>Seedbook</span>
             </div>
-            <a
-              href={`mailto:${COMPANY.email}`}
-              className="hover:text-foreground transition-colors"
-            >
+            <a href={`mailto:${COMPANY.email}`} className="hover:text-foreground transition-colors">
               {COMPANY.email}
             </a>
           </div>

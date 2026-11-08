@@ -74,7 +74,7 @@ export function RealAssetsManager() {
 
   const sharedGroups = useMemo(
     () => buildSharedGroups<RealAssetItem>(aggregateOwners, sharedEnvelopes, "realAssets"),
-    [aggregateOwners, sharedEnvelopes],
+    [aggregateOwners, sharedEnvelopes]
   );
   const isVisible = useMemo(() => makeFilterPredicate(aggregateFilter), [aggregateFilter]);
 

@@ -154,8 +154,6 @@ describe("AuthGate", () => {
       </AuthGate>
     );
 
-    expect(
-      screen.queryByRole("button", { name: /개발용 빠른 로그인/ })
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /개발용 빠른 로그인/ })).not.toBeInTheDocument();
   });
 });

@@ -1,10 +1,6 @@
-import { describe, expect, it } from "vitest";
 import type { SharedEnvelope } from "@web/features/sharing/hooks/use-shared-envelopes";
-import {
-  buildSharedGroups,
-  extractStateArray,
-  makeFilterPredicate,
-} from "./aggregate-helpers";
+import { describe, expect, it } from "vitest";
+import { buildSharedGroups, extractStateArray, makeFilterPredicate } from "./aggregate-helpers";
 
 describe("extractStateArray", () => {
   it("envelope 이 null 이면 빈 배열", () => {
@@ -12,7 +8,10 @@ describe("extractStateArray", () => {
   });
 
   it("state 가 없으면 빈 배열", () => {
-    const env: SharedEnvelope["envelope"] = { state: undefined as unknown as Record<string, unknown>, version: 1 };
+    const env: SharedEnvelope["envelope"] = {
+      state: undefined as unknown as Record<string, unknown>,
+      version: 1,
+    };
     expect(extractStateArray(env, "investments")).toEqual([]);
   });
 

@@ -1,14 +1,13 @@
 import { render, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { STORAGE_MODE_KEY } from "@web/lib/storage-mode";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { StorageModeSync } from "./storage-mode-sync";
 
 const mockUseSession = vi.fn();
 
 vi.mock("@web/lib/auth-client", () => ({
   useSession: () => mockUseSession(),
 }));
-
-import { StorageModeSync } from "./storage-mode-sync";
 
 /**
  * StorageModeSync 는 로그인된 사용자 한 명에 대해 한 번만 서버 preference 를
@@ -53,9 +52,7 @@ describe("StorageModeSync", () => {
     const reload = stubLocationReload();
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        new Response(JSON.stringify({ storageMode: "cloud" }), { status: 200 }),
-      );
+      .mockResolvedValue(new Response(JSON.stringify({ storageMode: "cloud" }), { status: 200 }));
 
     render(<StorageModeSync />);
     await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
@@ -68,7 +65,7 @@ describe("StorageModeSync", () => {
     mockUseSession.mockReturnValue({ data: { user: { id: "u-1" } }, isPending: false });
     const reload = stubLocationReload();
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ storageMode: "cloud" }), { status: 200 }),
+      new Response(JSON.stringify({ storageMode: "cloud" }), { status: 200 })
     );
 
     render(<StorageModeSync />);
@@ -84,9 +81,7 @@ describe("StorageModeSync", () => {
     stubLocationReload();
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        new Response(JSON.stringify({ storageMode: "cloud" }), { status: 200 }),
-      );
+      .mockResolvedValue(new Response(JSON.stringify({ storageMode: "cloud" }), { status: 200 }));
 
     const { rerender } = render(<StorageModeSync />);
     await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
@@ -114,7 +109,7 @@ describe("StorageModeSync", () => {
     mockUseSession.mockReturnValue({ data: { user: { id: "u-1" } }, isPending: false });
     const reload = stubLocationReload();
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ storageMode: "weird" }), { status: 200 }),
+      new Response(JSON.stringify({ storageMode: "weird" }), { status: 200 })
     );
 
     render(<StorageModeSync />);

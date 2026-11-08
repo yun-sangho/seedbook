@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@web/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@web/components/ui/tabs";
 import { PortfolioComparison } from "@web/features/portfolio/components/portfolio-comparison";
@@ -8,7 +9,6 @@ import { PortfolioEditor } from "@web/features/portfolio/components/portfolio-ed
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import { useIsReadOnly } from "@web/features/sharing/hooks/use-is-read-only";
 import { ArrowLeft, Trash2 } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 interface PortfolioDetailProps {
   id: string;

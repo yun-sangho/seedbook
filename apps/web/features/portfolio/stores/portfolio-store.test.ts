@@ -126,7 +126,6 @@ describe("Portfolio Store", () => {
       expect(remaining).toHaveLength(1);
       expect(remaining[0]!.name).toBe("B");
     });
-
   });
 
   describe("updatePortfolio", () => {

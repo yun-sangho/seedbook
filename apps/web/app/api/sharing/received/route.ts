@@ -1,6 +1,6 @@
 import { db, schema } from "@seedbook/database";
-import { and, desc, eq, isNull } from "drizzle-orm";
 import { resolveUserId } from "@web/lib/auth-server";
+import { and, desc, eq, isNull } from "drizzle-orm";
 
 /**
  * 내가 수락한 공유 목록 (= 내가 다른 사람 데이터를 볼 수 있는 권한) 반환.
@@ -27,8 +27,8 @@ export async function GET(request: Request): Promise<Response> {
     .where(
       and(
         eq(schema.dataShareAcceptance.recipientUserId, userId),
-        isNull(schema.dataShare.revokedAt),
-      ),
+        isNull(schema.dataShare.revokedAt)
+      )
     )
     .orderBy(desc(schema.dataShareAcceptance.acceptedAt));
 

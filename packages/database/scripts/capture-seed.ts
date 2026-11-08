@@ -29,7 +29,7 @@ function replacer(_key: string, value: unknown): unknown {
 async function main(): Promise<void> {
   if (!Number.isFinite(SEED_PRICE_DAYS) || SEED_PRICE_DAYS < 0) {
     throw new Error(
-      `SEED_PRICE_DAYS must be a non-negative integer, got ${process.env.SEED_PRICE_DAYS}`,
+      `SEED_PRICE_DAYS must be a non-negative integer, got ${process.env.SEED_PRICE_DAYS}`
     );
   }
 
@@ -81,7 +81,7 @@ async function main(): Promise<void> {
         .orderBy(
           asc(schema.stockPrice.date),
           asc(schema.stockPrice.stockMarket),
-          asc(schema.stockPrice.stockTicker),
+          asc(schema.stockPrice.stockTicker)
         )
     : [];
   console.log(`[capture] ${prices.length} prices over ${dateGroups.length} trading days`);
@@ -96,7 +96,7 @@ async function main(): Promise<void> {
   writeFileSync(resolve(SEED_DATA_DIR, "stocks.json"), JSON.stringify(stocks, replacer, 2) + "\n");
   writeFileSync(
     resolve(SEED_DATA_DIR, "stock-prices.json"),
-    JSON.stringify(prices, replacer, 2) + "\n",
+    JSON.stringify(prices, replacer, 2) + "\n"
   );
   writeFileSync(resolve(SEED_DATA_DIR, "meta.json"), JSON.stringify(meta, null, 2) + "\n");
 

@@ -93,7 +93,7 @@ export const assetPlanTranslator: DomainTranslator = {
         await tx
           .delete(schema.assetPlan)
           .where(
-            and(eq(schema.assetPlan.userId, userId), notInArray(schema.assetPlan.id, incomingIds)),
+            and(eq(schema.assetPlan.userId, userId), notInArray(schema.assetPlan.id, incomingIds))
           );
       } else {
         await tx.delete(schema.assetPlan).where(eq(schema.assetPlan.userId, userId));
@@ -134,7 +134,7 @@ export const assetPlanTranslator: DomainTranslator = {
           accountId,
           accountKind: item.accountKind ?? "investment",
           contributionAmount: toBigInt(
-            parseFloat((item.contributionAmount ?? "0").replace(/,/g, "")),
+            parseFloat((item.contributionAmount ?? "0").replace(/,/g, ""))
           ),
           contributionFrequency: item.contributionFrequency,
           targetAnnualReturn: parseFloat(item.targetAnnualReturn ?? "0"),

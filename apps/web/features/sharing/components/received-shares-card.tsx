@@ -169,7 +169,8 @@ export function ReceivedSharesCard() {
                       onClick={() => viewFullSwitch(r)}
                       title="이 계정만 단독으로 보기"
                     >
-                      <Eye className="w-4 h-4 mr-1" />단독 보기
+                      <Eye className="w-4 h-4 mr-1" />
+                      단독 보기
                     </Button>
                     <Button
                       size="sm"

@@ -52,7 +52,7 @@ export function SavingsManager() {
 
   const sharedGroups = useMemo(
     () => buildSharedGroups<SavingsItem>(aggregateOwners, sharedEnvelopes, "savings"),
-    [aggregateOwners, sharedEnvelopes],
+    [aggregateOwners, sharedEnvelopes]
   );
   const isVisible = useMemo(() => makeFilterPredicate(aggregateFilter), [aggregateFilter]);
 

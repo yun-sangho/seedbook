@@ -135,7 +135,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
         setPhase({ kind: "error", title: "네트워크 오류가 발생했어요." });
       }
     },
-    [token, addAggregateOwner],
+    [token, addAggregateOwner]
   );
 
   useEffect(() => {

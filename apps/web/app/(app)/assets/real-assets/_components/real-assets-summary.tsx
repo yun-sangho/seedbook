@@ -116,7 +116,6 @@ export function RealAssetsSummary({ realAssets }: RealAssetsSummaryProps) {
           </div>
         </CardContent>
       </Card>
-
     </div>
   );
 }

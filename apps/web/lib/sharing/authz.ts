@@ -26,8 +26,8 @@ export async function canViewData(viewerUserId: string, ownerUserId: string): Pr
       and(
         eq(schema.dataShareAcceptance.recipientUserId, viewerUserId),
         eq(schema.dataShare.ownerUserId, ownerUserId),
-        isNull(schema.dataShare.revokedAt),
-      ),
+        isNull(schema.dataShare.revokedAt)
+      )
     )
     .limit(1);
 

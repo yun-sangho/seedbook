@@ -1,6 +1,6 @@
 import { db, schema } from "@seedbook/database";
-import { eq } from "drizzle-orm";
 import { resolveUserId } from "@web/lib/auth-server";
+import { eq } from "drizzle-orm";
 
 /**
  * 수신자가 자신의 수락을 스스로 해제(=나가기) 한다.

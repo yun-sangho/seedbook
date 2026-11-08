@@ -74,7 +74,7 @@ export function DebtManager() {
 
   const sharedGroups = useMemo(
     () => buildSharedGroups<DebtsItem>(aggregateOwners, sharedEnvelopes, "debts"),
-    [aggregateOwners, sharedEnvelopes],
+    [aggregateOwners, sharedEnvelopes]
   );
   const isVisible = useMemo(() => makeFilterPredicate(aggregateFilter), [aggregateFilter]);
 

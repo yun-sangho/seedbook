@@ -1,6 +1,6 @@
 import { db, schema } from "@seedbook/database";
-import { and, eq, isNull } from "drizzle-orm";
 import { resolveUserId } from "@web/lib/auth-server";
+import { and, eq, isNull } from "drizzle-orm";
 
 /**
  * 인증된 사용자가 초대 토큰을 소비해 공유를 수락한다.
@@ -65,9 +65,7 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
   const claimed = await db
     .update(schema.dataShareInvite)
     .set({ consumedAt: new Date(), consumedByUserId: userId })
-    .where(
-      and(eq(schema.dataShareInvite.id, invite.id), isNull(schema.dataShareInvite.consumedAt)),
-    )
+    .where(and(eq(schema.dataShareInvite.id, invite.id), isNull(schema.dataShareInvite.consumedAt)))
     .returning({ id: schema.dataShareInvite.id });
 
   if (claimed.length === 0) {
@@ -79,7 +77,7 @@ export async function POST(request: Request, context: RouteContext): Promise<Res
 
 async function finalize(
   invite: NonNullable<Awaited<ReturnType<typeof fetchInvite>>>,
-  userId: string,
+  userId: string
 ): Promise<Response> {
   const [acceptance] = await db
     .insert(schema.dataShareAcceptance)

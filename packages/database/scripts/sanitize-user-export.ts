@@ -22,10 +22,7 @@ const SEED_DATA_DIR = resolve(__dirname, "../seed-data");
 const OUTPUT_PATH = resolve(SEED_DATA_DIR, "user-data.json");
 // 데모 데이터 버튼이 fetch 로 읽을 정적 파일. fixture 단일 출처를 유지하기 위해
 // sanitize 가 두 곳을 동시에 갱신한다.
-const PUBLIC_OUTPUT_PATH = resolve(
-  __dirname,
-  "../../../apps/web/public/seed-data/user-data.json"
-);
+const PUBLIC_OUTPUT_PATH = resolve(__dirname, "../../../apps/web/public/seed-data/user-data.json");
 
 type Bag = Record<string, unknown>;
 
@@ -61,7 +58,8 @@ function renameByType<T extends Bag>(items: T[], typeKey: string, suffix = ""): 
     const type = String(item[typeKey] ?? "").trim() || "계좌";
     const next = (counters.get(type) ?? 0) + 1;
     counters.set(type, next);
-    const nameKey = typeKey === "loanType" ? "loanName" : typeKey === "assetType" ? "assetName" : "accountName";
+    const nameKey =
+      typeKey === "loanType" ? "loanName" : typeKey === "assetType" ? "assetName" : "accountName";
     return { ...item, [nameKey]: `${type}${suffix} ${next}` };
   });
 }

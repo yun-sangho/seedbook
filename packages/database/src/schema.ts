@@ -45,7 +45,7 @@ export const stock = seedbook.table(
     index("Stock_market_idx").on(t.market),
     index("Stock_isActive_idx").on(t.isActive),
     index("Stock_name_idx").on(t.name),
-  ],
+  ]
 );
 
 export const stockPrice = seedbook.table(
@@ -68,11 +68,11 @@ export const stockPrice = seedbook.table(
     uniqueIndex("StockPrice_stockMarket_stockTicker_date_key").on(
       t.stockMarket,
       t.stockTicker,
-      t.date,
+      t.date
     ),
     index("StockPrice_date_idx").on(t.date),
     index("StockPrice_stockMarket_stockTicker_idx").on(t.stockMarket, t.stockTicker),
-  ],
+  ]
 );
 
 // ─── Better Auth (Kakao login) ──────────────────────────────────────────────
@@ -148,7 +148,7 @@ export const investmentAccount = seedbook.table(
       .notNull()
       .$onUpdate(() => new Date()),
   },
-  (t) => [index("investment_account_userId_idx").on(t.userId)],
+  (t) => [index("investment_account_userId_idx").on(t.userId)]
 );
 
 export const investmentRecord = seedbook.table(
@@ -164,7 +164,7 @@ export const investmentRecord = seedbook.table(
   (t) => [
     primaryKey({ columns: [t.accountId, t.date], name: "investment_record_pkey" }),
     index("investment_record_accountId_date_idx").on(t.accountId, t.date),
-  ],
+  ]
 );
 
 export const stockHolding = seedbook.table(
@@ -181,7 +181,7 @@ export const stockHolding = seedbook.table(
     quantity: doublePrecision("quantity").notNull(),
     memo: text("memo").notNull().default(""),
   },
-  (t) => [index("stock_holding_accountId_idx").on(t.accountId)],
+  (t) => [index("stock_holding_accountId_idx").on(t.accountId)]
 );
 
 export const cashItem = seedbook.table(
@@ -194,7 +194,7 @@ export const cashItem = seedbook.table(
     label: text("label").notNull(),
     amount: bigint("amount", { mode: "bigint" }).notNull(),
   },
-  (t) => [index("cash_item_accountId_idx").on(t.accountId)],
+  (t) => [index("cash_item_accountId_idx").on(t.accountId)]
 );
 
 // ─── Savings ────────────────────────────────────────────────────────────────
@@ -218,7 +218,7 @@ export const savingsAccount = seedbook.table(
       .notNull()
       .$onUpdate(() => new Date()),
   },
-  (t) => [index("savings_account_userId_idx").on(t.userId)],
+  (t) => [index("savings_account_userId_idx").on(t.userId)]
 );
 
 export const savingsRecord = seedbook.table(
@@ -233,7 +233,7 @@ export const savingsRecord = seedbook.table(
   (t) => [
     primaryKey({ columns: [t.accountId, t.date], name: "savings_record_pkey" }),
     index("savings_record_accountId_date_idx").on(t.accountId, t.date),
-  ],
+  ]
 );
 
 // ─── Debts ──────────────────────────────────────────────────────────────────
@@ -258,7 +258,7 @@ export const debt = seedbook.table(
       .notNull()
       .$onUpdate(() => new Date()),
   },
-  (t) => [index("debt_userId_idx").on(t.userId)],
+  (t) => [index("debt_userId_idx").on(t.userId)]
 );
 
 // ─── Real Assets ────────────────────────────────────────────────────────────
@@ -282,7 +282,7 @@ export const realAsset = seedbook.table(
       .notNull()
       .$onUpdate(() => new Date()),
   },
-  (t) => [index("real_asset_userId_idx").on(t.userId)],
+  (t) => [index("real_asset_userId_idx").on(t.userId)]
 );
 
 // ─── Asset Plans ────────────────────────────────────────────────────────────
@@ -303,7 +303,7 @@ export const assetPlan = seedbook.table(
       .notNull()
       .$onUpdate(() => new Date()),
   },
-  (t) => [index("asset_plan_userId_idx").on(t.userId)],
+  (t) => [index("asset_plan_userId_idx").on(t.userId)]
 );
 
 export const assetPlanAccountItem = seedbook.table(
@@ -321,7 +321,7 @@ export const assetPlanAccountItem = seedbook.table(
   (t) => [
     primaryKey({ columns: [t.planId, t.accountId], name: "asset_plan_account_item_pkey" }),
     index("asset_plan_account_item_planId_idx").on(t.planId),
-  ],
+  ]
 );
 
 // ─── Portfolios ─────────────────────────────────────────────────────────────
@@ -337,14 +337,17 @@ export const portfolio = seedbook.table(
     description: text("description").notNull().default(""),
     color: text("color").notNull(),
     note: text("note").notNull().default(""),
-    accountIds: uuid("accountIds").array().notNull().default(sql`ARRAY[]::uuid[]`),
+    accountIds: uuid("accountIds")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::uuid[]`),
     driftThresholdPercent: doublePrecision("driftThresholdPercent").notNull().default(5),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })
       .notNull()
       .$onUpdate(() => new Date()),
   },
-  (t) => [index("portfolio_userId_idx").on(t.userId)],
+  (t) => [index("portfolio_userId_idx").on(t.userId)]
 );
 
 export const portfolioAllocation = seedbook.table(
@@ -360,7 +363,7 @@ export const portfolioAllocation = seedbook.table(
     currency: text("currency").notNull(),
     targetPercent: doublePrecision("targetPercent").notNull(),
   },
-  (t) => [index("portfolio_allocation_portfolioId_idx").on(t.portfolioId)],
+  (t) => [index("portfolio_allocation_portfolioId_idx").on(t.portfolioId)]
 );
 
 // ─── Progress ───────────────────────────────────────────────────────────────
@@ -382,7 +385,7 @@ export const assetProgressPoint = seedbook.table(
   (t) => [
     primaryKey({ columns: [t.userId, t.date], name: "asset_progress_point_pkey" }),
     index("asset_progress_point_userId_date_idx").on(t.userId, t.date),
-  ],
+  ]
 );
 
 // ─── User preferences / list orders ─────────────────────────────────────────
@@ -409,7 +412,7 @@ export const userListOrder = seedbook.table(
   (t) => [
     primaryKey({ columns: [t.userId, t.domain], name: "user_list_order_pkey" }),
     index("user_list_order_userId_idx").on(t.userId),
-  ],
+  ]
 );
 
 // ─── Data sharing ───────────────────────────────────────────────────────────
@@ -428,7 +431,7 @@ export const dataShare = seedbook.table(
     revokedAt: timestamp("revokedAt", { precision: 3, mode: "date" }),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
   },
-  (t) => [index("data_share_ownerUserId_idx").on(t.ownerUserId)],
+  (t) => [index("data_share_ownerUserId_idx").on(t.ownerUserId)]
 );
 
 export const dataShareAcceptance = seedbook.table(
@@ -448,10 +451,10 @@ export const dataShareAcceptance = seedbook.table(
   (t) => [
     uniqueIndex("data_share_acceptance_shareId_recipientUserId_key").on(
       t.shareId,
-      t.recipientUserId,
+      t.recipientUserId
     ),
     index("data_share_acceptance_recipientUserId_idx").on(t.recipientUserId),
-  ],
+  ]
 );
 
 export const dataShareInvite = seedbook.table(
@@ -473,7 +476,7 @@ export const dataShareInvite = seedbook.table(
     }),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
   },
-  (t) => [index("data_share_invite_shareId_idx").on(t.shareId)],
+  (t) => [index("data_share_invite_shareId_idx").on(t.shareId)]
 );
 
 // ─── Relations (for Drizzle relational query API) ───────────────────────────

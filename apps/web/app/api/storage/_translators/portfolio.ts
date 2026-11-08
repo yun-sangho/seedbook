@@ -100,7 +100,7 @@ export const portfolioTranslator: DomainTranslator = {
         await tx
           .delete(schema.portfolio)
           .where(
-            and(eq(schema.portfolio.userId, userId), notInArray(schema.portfolio.id, incomingIds)),
+            and(eq(schema.portfolio.userId, userId), notInArray(schema.portfolio.id, incomingIds))
           );
       } else {
         await tx.delete(schema.portfolio).where(eq(schema.portfolio.userId, userId));

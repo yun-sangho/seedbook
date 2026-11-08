@@ -1,6 +1,6 @@
 import { db, kstDateString, schema } from "@seedbook/database";
-import { and, desc, eq } from "drizzle-orm";
 import { resolveUserId } from "@web/lib/auth-server";
+import { and, desc, eq } from "drizzle-orm";
 
 interface PriceQueryItem {
   market: string;
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
           typeof (it as PriceQueryItem).market === "string" &&
           typeof (it as PriceQueryItem).ticker === "string" &&
           (it as PriceQueryItem).market.length > 0 &&
-          (it as PriceQueryItem).ticker.length > 0,
+          (it as PriceQueryItem).ticker.length > 0
       )
     : [];
 
@@ -51,10 +51,7 @@ export async function POST(request: Request) {
         .select({ date: schema.stockPrice.date, close: schema.stockPrice.close })
         .from(schema.stockPrice)
         .where(
-          and(
-            eq(schema.stockPrice.stockMarket, market),
-            eq(schema.stockPrice.stockTicker, ticker),
-          ),
+          and(eq(schema.stockPrice.stockMarket, market), eq(schema.stockPrice.stockTicker, ticker))
         )
         .orderBy(desc(schema.stockPrice.date))
         .limit(1);
@@ -68,7 +65,7 @@ export async function POST(request: Request) {
         date: kstDateString(row.date),
         close: Number(row.close),
       });
-    }),
+    })
   );
 
   return Response.json({ prices });

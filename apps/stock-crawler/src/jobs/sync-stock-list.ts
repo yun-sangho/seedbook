@@ -57,7 +57,7 @@ export async function syncStockList(): Promise<void> {
   for (const [market, tickers] of crawledByMarket) {
     if (tickers.length < MIN_STOCKS_PER_MARKET_FOR_DEACTIVATION) {
       logger.warn(
-        `${market} 크롤 결과가 ${tickers.length}개로 비정상 (임계치 ${MIN_STOCKS_PER_MARKET_FOR_DEACTIVATION}), 비활성화 스킵`,
+        `${market} 크롤 결과가 ${tickers.length}개로 비정상 (임계치 ${MIN_STOCKS_PER_MARKET_FOR_DEACTIVATION}), 비활성화 스킵`
       );
       continue;
     }
@@ -69,8 +69,8 @@ export async function syncStockList(): Promise<void> {
         and(
           eq(schema.stock.market, market),
           notInArray(schema.stock.ticker, tickers),
-          eq(schema.stock.isActive, true),
-        ),
+          eq(schema.stock.isActive, true)
+        )
       )
       .returning({ ticker: schema.stock.ticker });
     deactivated += result.length;

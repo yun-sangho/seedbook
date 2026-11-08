@@ -107,7 +107,7 @@ export function InvestmentManager() {
 
   const sharedGroups = useMemo(
     () => buildSharedGroups<InvestmentItem>(aggregateOwners, sharedEnvelopes, "investments"),
-    [aggregateOwners, sharedEnvelopes],
+    [aggregateOwners, sharedEnvelopes]
   );
 
   const isVisible = useMemo(() => makeFilterPredicate(aggregateFilter), [aggregateFilter]);
@@ -157,8 +157,7 @@ export function InvestmentManager() {
   }, [aggregateActive, investments, sharedGroups, showSelf, isVisible]);
 
   // Show empty state when no investments AND no shared groups
-  const totalCount =
-    investments.length + sharedGroups.reduce((acc, g) => acc + g.items.length, 0);
+  const totalCount = investments.length + sharedGroups.reduce((acc, g) => acc + g.items.length, 0);
   if (totalCount === 0) {
     return (
       <>

@@ -81,7 +81,7 @@ export const realAssetsTranslator: DomainTranslator = {
         await tx
           .delete(schema.realAsset)
           .where(
-            and(eq(schema.realAsset.userId, userId), notInArray(schema.realAsset.id, incomingIds)),
+            and(eq(schema.realAsset.userId, userId), notInArray(schema.realAsset.id, incomingIds))
           );
       } else {
         await tx.delete(schema.realAsset).where(eq(schema.realAsset.userId, userId));

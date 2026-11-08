@@ -1,13 +1,10 @@
 import { renderHook, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   useViewContextStore,
   VIEW_CONTEXT_SESSION_KEY,
 } from "@web/features/sharing/stores/view-context-store";
-import {
-  __resetSharedEnvelopeCacheForTests,
-  useSharedEnvelopes,
-} from "./use-shared-envelopes";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { __resetSharedEnvelopeCacheForTests, useSharedEnvelopes } from "./use-shared-envelopes";
 
 /**
  * `useSharedEnvelopes` 는 active aggregate owner 들의 envelope 을 fetch 한다.
@@ -70,7 +67,7 @@ describe("useSharedEnvelopes", () => {
         JSON.stringify({
           data: { state: { investments: [{ id: `${ownerId}-acc` }] }, version: 5 },
         }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
+        { status: 200, headers: { "Content-Type": "application/json" } }
       );
     });
 
@@ -113,7 +110,7 @@ describe("useSharedEnvelopes", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ data: { state: { investments: [] }, version: 1 } }), {
         status: 200,
-      }),
+      })
     );
 
     const { result, rerender } = renderHook(() => useSharedEnvelopes("investment-storage"));

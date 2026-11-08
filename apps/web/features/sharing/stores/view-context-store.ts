@@ -92,11 +92,7 @@ function readSession(): ViewContextState {
     const p = parsed as Record<string, unknown>;
 
     // 기존 v1 envelope (단일 ownerId/ownerName/label) 호환 — full-switch 로 해석.
-    if (
-      typeof p.ownerId === "string" &&
-      typeof p.ownerName === "string" &&
-      !("mode" in p)
-    ) {
+    if (typeof p.ownerId === "string" && typeof p.ownerName === "string" && !("mode" in p)) {
       return {
         ...DEFAULT_STATE,
         mode: "full-switch",
@@ -114,7 +110,8 @@ function readSession(): ViewContextState {
       ? p.aggregateOwners.filter(isSharedOwner)
       : [];
     const aggregateFilter = isStringArray(p.aggregateFilter) ? p.aggregateFilter : [];
-    const aggregateGrouping = typeof p.aggregateGrouping === "boolean" ? p.aggregateGrouping : false;
+    const aggregateGrouping =
+      typeof p.aggregateGrouping === "boolean" ? p.aggregateGrouping : false;
 
     return { mode, fullSwitch, aggregateOwners, aggregateFilter, aggregateGrouping };
   } catch {
