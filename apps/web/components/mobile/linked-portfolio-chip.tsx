@@ -41,7 +41,7 @@ export function LinkedPortfolioChip({
         className={cn(
           "t3-medium inline-flex max-w-full items-center gap-x1 rounded-full py-x1 pr-[6px] pl-x2.5",
           alert
-            ? "bg-bg-critical-weak text-fg-critical active:bg-bg-critical-weak-pressed"
+            ? "bg-bg-warning-weak text-fg-warning active:bg-bg-warning-weak-pressed"
             : "bg-bg-neutral-weak text-fg-neutral-muted active:bg-bg-neutral-weak-pressed"
         )}
       >

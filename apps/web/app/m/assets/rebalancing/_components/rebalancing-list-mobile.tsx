@@ -64,7 +64,7 @@ export function RebalancingListMobile() {
           <div className="flex items-baseline gap-x2 px-x4 pt-x5 pb-x2">
             <h2
               className={
-                group.state === "needs-rebalancing" ? "t5-bold text-fg-critical" : "t5-bold"
+                group.state === "needs-rebalancing" ? "t5-bold text-fg-warning" : "t5-bold"
               }
             >
               {GROUP_TITLE[group.state]}
@@ -85,7 +85,7 @@ export function RebalancingListMobile() {
                 >
                   {needsRebalancing && (
                     <span
-                      className="bg-bg-critical-solid absolute inset-y-x3 left-0 w-x1 rounded-r-full"
+                      className="bg-bg-warning-solid absolute inset-y-x3 left-0 w-x1 rounded-r-full"
                       aria-hidden
                     />
                   )}
@@ -123,7 +123,7 @@ export function RebalancingListMobile() {
 function PortfolioStatusBadge({ status }: { status: LinkedPortfolioStatus }) {
   if (status.state === "needs-rebalancing") {
     return (
-      <Badge tone="critical" variant="weak">
+      <Badge tone="warning" variant="weak">
         {status.name} · 이격 초과 {status.breachedCount}건
       </Badge>
     );

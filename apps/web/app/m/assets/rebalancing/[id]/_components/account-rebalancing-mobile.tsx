@@ -303,7 +303,7 @@ function SummaryGrid({
 
 function DriftBadge({ drift }: { drift: DriftAlert }) {
   return (
-    <Badge tone={drift.hasBreach ? "critical" : "positive"} variant="weak">
+    <Badge tone={drift.hasBreach ? "warning" : "positive"} variant="weak">
       {drift.hasBreach
         ? `이격 초과 ${drift.breachedRows.length}건 · 최대 ${drift.maxAbsGapPercent.toFixed(1)}%`
         : `이격 정상 · 최대 ${drift.maxAbsGapPercent.toFixed(1)}%`}

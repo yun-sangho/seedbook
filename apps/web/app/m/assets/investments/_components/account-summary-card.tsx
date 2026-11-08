@@ -30,7 +30,7 @@ export function AccountSummaryCard({ item, linkedPortfolio }: AccountSummaryCard
     <section className="relative">
       {needsRebalancing && (
         <span
-          className="bg-bg-critical-solid absolute inset-y-x3 left-0 w-x1 rounded-r-full"
+          className="bg-bg-warning-solid absolute inset-y-x3 left-0 w-x1 rounded-r-full"
           aria-hidden
         />
       )}

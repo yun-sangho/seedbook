@@ -95,7 +95,7 @@ export function HomeMobile() {
                 ? push("RebalancingDetail", { id: firstNeeding.id })
                 : push("RebalancingNew", {})
             }
-            className="bg-bg-critical-weak text-fg-critical active:bg-bg-critical-weak-pressed rounded-r3 flex w-full items-center gap-x2 px-x4 py-x3 text-left"
+            className="bg-bg-warning-weak text-fg-warning active:bg-bg-warning-weak-pressed rounded-r3 flex w-full items-center gap-x2 px-x4 py-x3 text-left"
           >
             <Icon svg={<IconExclamationmarkCircleFill />} size="x5" />
             <span className="t4-bold min-w-0 flex-1">{bannerText}</span>
