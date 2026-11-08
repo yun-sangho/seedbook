@@ -249,4 +249,81 @@ describe("computeRebalancingGap", () => {
       expect(result.rows.map((r) => r.ticker)).toEqual(["C", "A", "B"]);
     });
   });
+
+  describe("cashBalance (계좌 예수금, 목표 0원)", () => {
+    it("adds the cash to the base so every won is allocated by target weights", () => {
+      // 주식 A 500k + 예수금 500k, 목표 A 100% → A 를 1,000k 까지 매수.
+      const a = makeAllocation({ ticker: "A", targetPercent: 100 });
+      const perStock = actualMap([["KOSPI:A", 500_000]], 500_000);
+
+      const result = computeRebalancingGap([a], perStock, 500_000, 0, { cashBalance: 500_000 });
+
+      expect(result.newBaseValue).toBe(1_000_000);
+      expect(result.rows[0]).toMatchObject({
+        targetValue: 1_000_000,
+        gapValue: 500_000,
+        action: "매수",
+      });
+      expect(result.rows[0]?.actualPercent).toBeCloseTo(50);
+    });
+
+    it("reports cash as its own row targeting 0원", () => {
+      const a = makeAllocation({ ticker: "A", targetPercent: 100 });
+      const perStock = actualMap([["KOSPI:A", 750_000]], 750_000);
+
+      const result = computeRebalancingGap([a], perStock, 750_000, 0, { cashBalance: 250_000 });
+
+      expect(result.cashRow).toMatchObject({
+        name: "예수금",
+        targetPercent: 0,
+        targetValue: 0,
+        actualValue: 250_000,
+        gapValue: -250_000,
+      });
+      expect(result.cashRow?.actualPercent).toBeCloseTo(25);
+      expect(result.cashRow?.gapPercent).toBeCloseTo(-25);
+    });
+
+    it("keeps cash out of the buy/sell totals (buys are funded by the cash)", () => {
+      const a = makeAllocation({ ticker: "A", targetPercent: 100 });
+      const perStock = actualMap([["KOSPI:A", 500_000]], 500_000);
+
+      const result = computeRebalancingGap([a], perStock, 500_000, 0, { cashBalance: 500_000 });
+
+      expect(result.totalBuyValue).toBe(500_000);
+      expect(result.totalSellValue).toBe(0);
+    });
+
+    it("stacks a simulated deposit on top of the existing cash", () => {
+      const a = makeAllocation({ ticker: "A", targetPercent: 100 });
+      const perStock = actualMap([["KOSPI:A", 500_000]], 500_000);
+
+      const result = computeRebalancingGap([a], perStock, 500_000, 100_000, {
+        cashBalance: 400_000,
+      });
+
+      expect(result.newBaseValue).toBe(1_000_000);
+      expect(result.cashRow?.actualValue).toBe(500_000);
+      expect(result.rows[0]?.gapValue).toBe(500_000);
+    });
+
+    it("allocates cash even when the account holds no stock yet", () => {
+      const a = makeAllocation({ ticker: "A", targetPercent: 100 });
+
+      const result = computeRebalancingGap([a], new Map(), 0, 0, { cashBalance: 1_000_000 });
+
+      expect(result.rows[0]).toMatchObject({ gapValue: 1_000_000, action: "매수" });
+      expect(result.cashRow?.gapPercent).toBeCloseTo(-100);
+    });
+
+    it("has no cash row when no cash balance option is given (desktop behaviour unchanged)", () => {
+      const a = makeAllocation({ ticker: "A", targetPercent: 100 });
+      const perStock = actualMap([["KOSPI:A", 500_000]], 500_000);
+
+      const result = computeRebalancingGap([a], perStock, 500_000, 0);
+
+      expect(result.cashRow).toBeUndefined();
+      expect(result.newBaseValue).toBe(500_000);
+    });
+  });
 });

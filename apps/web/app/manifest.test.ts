@@ -27,6 +27,16 @@ describe("web app manifest", () => {
     expect(missing).toEqual([]);
   });
 
+  it("starts the installed app on the mobile home", () => {
+    const startUrl = manifest().start_url ?? "";
+
+    expect(startUrl).toBe("/assets");
+    expect(decideMobileRoute(startUrl, "mobile")).toEqual({
+      type: "rewrite",
+      pathname: "/m/assets",
+    });
+  });
+
   it("only offers shortcuts that render on mobile without redirecting away", () => {
     const shortcuts = manifest().shortcuts ?? [];
 

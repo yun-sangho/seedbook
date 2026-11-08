@@ -11,7 +11,7 @@ function holding(ticker: string, quantity: number): StockHolding {
   return { id: ticker, market: "KOSPI", ticker, name: ticker, currency: "KRW", quantity, memo: "" };
 }
 
-function account(id: string, holdings: StockHolding[]): InvestmentItem {
+function account(id: string, holdings: StockHolding[], cash = 0): InvestmentItem {
   return {
     id,
     accountName: id,
@@ -21,7 +21,7 @@ function account(id: string, holdings: StockHolding[]): InvestmentItem {
     currentValue: 0,
     records: [],
     holdings,
-    cashItems: [],
+    cashItems: cash > 0 ? [{ id: `${id}-cash`, label: "예수금", amount: cash }] : [],
     note: "",
     color: "#000",
   };
@@ -86,8 +86,8 @@ describe("linkedPortfolioStatuses", () => {
     expect(status?.maxAbsGapPercent).toBeCloseTo(30);
   });
 
-  it("judges drift on the sum of all linked accounts, like the portfolio list badge", () => {
-    // 각 계좌만 보면 크게 어긋나지만 합산하면 50:50 으로 정상.
+  it("judges drift on the account's own holdings, not the sum of all linked accounts", () => {
+    // 합산하면 50:50 으로 정상이지만, 리밸런싱 대상은 계좌라 acc-a 만 보면 A 100%.
     const accA = account("acc-a", [holding("A", 50)]);
     const accB = account("acc-b", [holding("B", 50)]);
     const p = portfolio({
@@ -98,7 +98,22 @@ describe("linkedPortfolioStatuses", () => {
 
     const [status] = linkedPortfolioStatuses("acc-a", [p], [accA, accB], prices);
 
-    expect(status?.state).toBe("ok");
+    expect(status).toMatchObject({ state: "needs-rebalancing", breachedCount: 2 });
+    expect(status?.maxAbsGapPercent).toBeCloseTo(50);
+  });
+
+  it("reports unknown when the account holds nothing priced, even if another linked account does", () => {
+    const accA = account("acc-a", []);
+    const accB = account("acc-b", [holding("A", 50)]);
+    const p = portfolio({
+      id: "p",
+      accountIds: ["acc-a", "acc-b"],
+      allocations: [allocation("A", 100)],
+    });
+
+    const [status] = linkedPortfolioStatuses("acc-a", [p], [accA, accB], prices);
+
+    expect(status?.state).toBe("unknown");
   });
 
   it("reports unknown when the portfolio has no allocations yet", () => {
@@ -135,5 +150,29 @@ describe("linkedPortfolioStatuses", () => {
     const statuses = linkedPortfolioStatuses("acc-1", [ok, bad], [acc], prices);
 
     expect(statuses.map((s) => s.portfolioId)).toEqual(["bad", "ok"]);
+  });
+
+  it("counts the account's cash, which targets 0원, when judging drift", () => {
+    // 주식만 보면 50:50 정상이지만 예수금이 전체의 50% 라 이격 초과.
+    const acc = account("acc-1", [holding("A", 50), holding("B", 50)], 100_000);
+    const p = portfolio({
+      id: "p",
+      accountIds: ["acc-1"],
+      allocations: [allocation("A", 50), allocation("B", 50)],
+    });
+
+    const [status] = linkedPortfolioStatuses("acc-1", [p], [acc], prices);
+
+    expect(status?.state).toBe("needs-rebalancing");
+    expect(status?.maxAbsGapPercent).toBeCloseTo(50);
+  });
+
+  it("flags a cash-only account with target weights as needing rebalancing", () => {
+    const acc = account("acc-1", [], 1_000_000);
+    const p = portfolio({ id: "p", accountIds: ["acc-1"], allocations: [allocation("A", 100)] });
+
+    const [status] = linkedPortfolioStatuses("acc-1", [p], [acc], prices);
+
+    expect(status?.state).toBe("needs-rebalancing");
   });
 });

@@ -67,21 +67,54 @@ describe("decideMobileRoute", () => {
     });
   });
 
-  it("redirects unsupported app pages to investments on mobile", () => {
+  it("rewrites the rebalancing list into the mobile tree", () => {
+    expect(decideMobileRoute("/assets/rebalancing", "mobile")).toEqual({
+      type: "rewrite",
+      pathname: "/m/assets/rebalancing",
+    });
+  });
+
+  it("rewrites a rebalancing detail page into the mobile tree", () => {
+    expect(decideMobileRoute("/assets/rebalancing/abc-123", "mobile")).toEqual({
+      type: "rewrite",
+      pathname: "/m/assets/rebalancing/abc-123",
+    });
+  });
+
+  it("sends desktop users of the rebalancing list to the portfolio list", () => {
+    expect(decideMobileRoute("/assets/rebalancing", "desktop")).toEqual({
+      type: "redirect",
+      pathname: "/assets/portfolio",
+    });
+  });
+
+  it("sends desktop users of an account rebalancing detail to the portfolio list", () => {
+    // 상세 id 는 계좌 id 라 데스크탑 포트폴리오 상세로 매핑할 수 없다.
+    expect(decideMobileRoute("/assets/rebalancing/acc-1", "desktop")).toEqual({
+      type: "redirect",
+      pathname: "/assets/portfolio",
+    });
+  });
+
+  it("redirects unsupported app pages to the mobile home on mobile", () => {
     expect(decideMobileRoute("/assets/savings", "mobile")).toEqual({
       type: "redirect",
-      pathname: "/assets/investments",
+      pathname: "/assets",
     });
   });
 
-  it("redirects the asset overview root to investments on mobile", () => {
+  it("rewrites the asset overview root into the mobile home", () => {
     expect(decideMobileRoute("/assets", "mobile")).toEqual({
-      type: "redirect",
-      pathname: "/assets/investments",
+      type: "rewrite",
+      pathname: "/m/assets",
     });
   });
 
-  it("redirects asset-plan-list and admin to investments on mobile", () => {
+  it("keeps the asset overview root as the desktop page on desktop", () => {
+    expect(decideMobileRoute("/assets", "desktop")).toEqual({ type: "pass" });
+  });
+
+  it("redirects asset-plan-list and admin to the mobile home on mobile", () => {
     expect(decideMobileRoute("/asset-plan-list", "mobile").type).toBe("redirect");
     expect(decideMobileRoute("/admin", "mobile").type).toBe("redirect");
   });

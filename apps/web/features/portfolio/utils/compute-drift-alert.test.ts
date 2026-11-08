@@ -56,4 +56,15 @@ describe("computeDriftAlert", () => {
     const alert = computeDriftAlert(summary, 0);
     expect(alert.breachedRows).toHaveLength(1);
   });
+
+  it("flags idle cash over the threshold as a breach", () => {
+    const summary = {
+      rows: [row({ gapPercent: 1 })],
+      cashRow: row({ allocationId: "cash", name: "예수금", gapPercent: -20 }),
+    };
+    const alert = computeDriftAlert(summary, 5);
+    expect(alert.hasBreach).toBe(true);
+    expect(alert.breachedRows.map((r) => r.allocationId)).toEqual(["cash"]);
+    expect(alert.maxAbsGapPercent).toBe(20);
+  });
 });

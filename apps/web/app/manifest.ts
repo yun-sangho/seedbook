@@ -36,10 +36,10 @@ export default function manifest(): MetadataRoute.Manifest {
       },
     ],
     // 홈 화면 아이콘 길게 누르기 메뉴. 모바일 SEED 트리가 지원하는 경로만 둔다
-    // (그 외 경로는 모바일에서 투자로 redirect 됨 — lib/device.ts).
+    // (그 외 경로는 모바일에서 홈으로 redirect 됨 — lib/device.ts).
     shortcuts: [
       {
-        name: "투자",
+        name: "계좌",
         url: "/assets/investments",
         icons: [{ src: "/maskable-192x192.png", sizes: "192x192", type: "image/png" }],
       },
@@ -54,7 +54,8 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: "#ffffff",
     display: "standalone",
     scope: "/",
-    // 설치한 앱은 랜딩 대신 바로 투자 화면으로 연다 (모바일이면 middleware 가 SEED 화면으로 보냄).
-    start_url: "/assets/investments",
+    // 설치한 앱은 랜딩 대신 바로 홈(총 평가금액·통계)으로 연다. 모바일이면 middleware 가
+    // SEED 홈으로 rewrite 하고, 데스크탑에서는 같은 URL 이 자산 개요 화면이다.
+    start_url: "/assets",
   };
 }

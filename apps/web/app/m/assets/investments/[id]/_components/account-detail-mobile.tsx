@@ -1,21 +1,17 @@
 "use client";
 
-import {
-  Fragment,
-  useCallback,
-  useMemo,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-} from "react";
+import { Fragment, useCallback, useMemo, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
-import {
-  IconChevronDownSmallLine,
-  IconGearLine,
-  IconPlusLine,
-} from "@karrotmarket/react-monochrome-icon";
+import { IconChevronDownSmallLine, IconPlusLine } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
 import { ConfirmDialog } from "@web/components/mobile/confirm-dialog";
+import {
+  AddButton,
+  EditHint,
+  EmptyLine,
+  InlineAmount,
+  TabToolbar,
+} from "@web/components/mobile/detail-layout";
 import { HeaderAction } from "@web/components/mobile/header-action";
 import { LinkedPortfolioChips } from "@web/components/mobile/linked-portfolio-chips";
 import { profitToneClass } from "@web/components/mobile/profit-tone";
@@ -77,92 +73,6 @@ const HOLDING_DIVIDER_STYLE: CSSProperties = {
   marginLeft: "var(--seed-dimension-x4)",
   marginRight: "var(--seed-dimension-x4)",
 };
-
-const DETAIL_VIEWPORT_HEIGHT =
-  "calc(100dvh - 109px - var(--seed-safe-area-top) - var(--seed-safe-area-bottom))";
-const TABS_ROOT_STYLE: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  flex: 1,
-  minHeight: 0,
-};
-// display 는 건드리지 않는다 — 비활성 탭의 hidden 처리를 덮어쓰지 않도록.
-const TAB_SCROLL_STYLE: CSSProperties = {
-  flex: 1,
-  minHeight: 0,
-  overflowY: "auto",
-  overscrollBehavior: "contain",
-  paddingBottom: "var(--seed-dimension-x4)",
-};
-
-function TabToolbar({ meta, children }: { meta?: string; children?: ReactNode }) {
-  return (
-    // 탭 내용이 스크롤돼도 개수·정렬·추가 줄은 위에 붙어 있게 한다.
-    <div className="bg-bg-layer-default sticky top-0 z-[1] flex h-x12 items-center gap-x1 px-x4">
-      {meta && (
-        <span className="t3-regular text-fg-neutral-subtle min-w-0 flex-1 truncate whitespace-nowrap">
-          {meta}
-        </span>
-      )}
-      <div className="ml-auto flex items-center">{children}</div>
-    </div>
-  );
-}
-
-function AddButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
-  return (
-    <ActionButton variant="ghost" size="small" bleedX="asPadding" onClick={onClick}>
-      <Icon svg={<IconPlusLine />} />
-      {children}
-    </ActionButton>
-  );
-}
-
-/**
- * 박스 안의 "라벨 금액 · [수정]" 한 줄. 보조 정보라 옅은 색·보통 굵기로 두고,
- * 편집은 오른쪽의 xsmall 버튼으로 연다 (행 전체가 아니라 버튼만 눌림).
- */
-function InlineAmount({
-  label,
-  value,
-  onEdit,
-}: {
-  label: string;
-  value: string;
-  onEdit?: () => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-x2">
-      <span className="t5-regular text-fg-neutral-muted flex min-w-0 items-center gap-x1">
-        <span>{label}</span>
-        <span className="truncate tabular-nums">{value}</span>
-      </span>
-      {onEdit && (
-        <ActionButton
-          variant="neutralWeak"
-          size="xsmall"
-          onClick={onEdit}
-          aria-label={`${label} 수정`}
-        >
-          수정
-        </ActionButton>
-      )}
-    </div>
-  );
-}
-
-/** 편집 가능함을 알리는 밑줄 "수정" 표시. 실제 동작은 감싼 버튼/행이 맡는다. */
-function EditHint() {
-  return (
-    <span className="t3-medium text-fg-neutral-muted underline underline-offset-2" aria-hidden>
-      수정
-    </span>
-  );
-}
-
-function EmptyLine({ children }: { children: ReactNode }) {
-  return <p className="t4-regular text-fg-neutral-subtle px-x4 py-x6 text-center">{children}</p>;
-}
 
 /** 모바일 계좌 상세 (`/assets/investments/[id]`). */
 export function AccountDetailMobile({ id }: { id: string }) {
@@ -277,11 +187,9 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
   };
 
   return (
-    // 요약·금액·탭 칩은 고정하고, 탭 아래(보유 종목·기록)만 스크롤한다.
-    // 높이 = 화면 - 앱바(52 + 테두리 1) - 하단 탭바(56) - safe area.
-    <div className="flex flex-col overflow-hidden" style={{ height: DETAIL_VIEWPORT_HEIGHT }}>
-      {/* 평가금액 → 수익 → 투자원금·예수금 순서. 탭 아래 영역이 화면을 더 쓰도록 작게 유지한다. */}
-      <div className="shrink-0">
+    <div className="pb-x4">
+      {/* 평가금액 → 수익 → 투자원금·예수금 순서. */}
+      <div>
         <section className="px-x4 pt-x4 pb-x3">
           <p className="t9-bold tabular-nums">{numberToKorean(displayValue) || "0원"}</p>
           <p className={`t4-medium mt-x1 tabular-nums ${profitToneClass(profit)}`}>
@@ -307,7 +215,9 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
           )}
         </section>
 
-        {linkedPortfolios.length > 0 && <LinkedPortfolioChips statuses={linkedPortfolios} />}
+        {linkedPortfolios.length > 0 && (
+          <LinkedPortfolioChips accountId={item.id} statuses={linkedPortfolios} />
+        )}
       </div>
 
       <ChipTabsRoot
@@ -315,17 +225,15 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
         onValueChange={(value) => setTab(value as Tab)}
         variant="neutralSolid"
         size="medium"
-        // SEED 루트 클래스보다 우선하도록 인라인으로 세로 flex 를 준다.
-        style={TABS_ROOT_STYLE}
       >
-        <div className="shrink-0 pt-x3">
+        <div className="pt-x3">
           <ChipTabsList>
             <ChipTabsTrigger value="holdings">보유 종목</ChipTabsTrigger>
             <ChipTabsTrigger value="records">기록</ChipTabsTrigger>
           </ChipTabsList>
         </div>
 
-        <ChipTabsContent value="holdings" style={TAB_SCROLL_STYLE}>
+        <ChipTabsContent value="holdings">
           <TabToolbar
             meta={
               [
@@ -411,7 +319,7 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
           )}
         </ChipTabsContent>
 
-        <ChipTabsContent value="records" style={TAB_SCROLL_STYLE}>
+        <ChipTabsContent value="records">
           <TabToolbar meta={sortedRecords.length > 0 ? `${sortedRecords.length}건` : undefined}>
             {!readOnly && (
               <AddButton onClick={() => setEditing({ kind: "add-history" })}>추가</AddButton>
@@ -460,14 +368,14 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
 
       {!readOnly && (
         <HeaderAction>
-          <button
-            type="button"
-            aria-label="계좌 설정"
+          <ActionButton
+            variant="ghost"
+            size="small"
+            aria-label="계좌 수정"
             onClick={() => setEditing({ kind: "settings" })}
-            className="text-fg-neutral flex size-x10 items-center justify-center"
           >
-            <Icon svg={<IconGearLine />} size="x6" />
-          </button>
+            수정
+          </ActionButton>
         </HeaderAction>
       )}
 

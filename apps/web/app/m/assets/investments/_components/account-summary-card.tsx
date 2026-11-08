@@ -54,7 +54,7 @@ export function AccountSummaryCard({ item, linkedPortfolios }: AccountSummaryCar
         </div>
         <Icon svg={<IconChevronRightLine />} size="x4" color="fg.neutralSubtle" />
       </Link>
-      <LinkedPortfolioChips statuses={linkedPortfolios} showEmpty />
+      <LinkedPortfolioChips accountId={item.id} statuses={linkedPortfolios} showEmpty />
     </section>
   );
 }

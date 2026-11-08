@@ -16,12 +16,14 @@ export interface DriftAlert {
  * 여기서는 더 큰 사용자 정의 임계(기본 5%)로 "주의가 필요한가?" 를 구분한다.
  */
 export function computeDriftAlert(
-  summary: Pick<RebalancingSummary, "rows">,
+  summary: Pick<RebalancingSummary, "rows" | "cashRow">,
   thresholdPercent: number
 ): DriftAlert {
   let maxAbsGap = 0;
   const breached: RebalancingGapRow[] = [];
-  for (const row of summary.rows) {
+  // 예수금(목표 0원)도 쌓여 있으면 이격으로 본다.
+  const rows = summary.cashRow ? [...summary.rows, summary.cashRow] : summary.rows;
+  for (const row of rows) {
     const abs = Math.abs(row.gapPercent);
     if (abs > maxAbsGap) maxAbsGap = abs;
     if (abs > thresholdPercent) breached.push(row);

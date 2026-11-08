@@ -8,7 +8,7 @@ import { linkedPortfolioStatuses, type LinkedPortfolioStatus } from "./linked-po
 
 /**
  * 계좌 id → 연결된 포트폴리오 상태 조회 함수를 돌려준다.
- * 포트폴리오 판정은 연결된 모든 계좌 합산이 기준이라 전체 보유의 시세를 한 번에 받는다.
+ * 여러 계좌를 한 화면에서 판정하므로 전체 보유의 시세를 한 번에 받는다.
  */
 export function useLinkedPortfolioStatuses(): (accountId: string) => LinkedPortfolioStatus[] {
   const investments = useInvestmentStore((s) => s.investments);

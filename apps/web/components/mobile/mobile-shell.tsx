@@ -4,15 +4,18 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  IconArrowUpArrowDownFill,
+  IconArrowUpArrowDownLine,
   IconBarchartSquareFill,
   IconBarchartSquareLine,
   IconChevronLeftLine,
   IconDot3HorizontalLine,
+  IconHouseFill,
+  IconHouseLine,
   IconLinechartUpXaxisFill,
   IconLinechartUpXaxisLine,
 } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
-import { SyncIndicator } from "@web/components/sync-indicator";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import { SharedViewBanner } from "@web/features/sharing/components/shared-view-banner";
@@ -20,13 +23,28 @@ import { usePwaInstall } from "@web/hooks/use-pwa-install";
 import { cn } from "@web/lib/utils";
 import { HeaderActionSlotContext } from "./header-action";
 import { MobileMoreSheet } from "./mobile-more-sheet";
+import { ProfileButton, ProfileSheet } from "./profile-menu";
 
 const TABS = [
   {
+    href: "/assets",
+    label: "홈",
+    icon: <IconHouseLine />,
+    activeIcon: <IconHouseFill />,
+    // "/assets" 는 모든 화면의 prefix 라 정확히 일치할 때만 활성.
+    exact: true,
+  },
+  {
     href: "/assets/investments",
-    label: "투자",
+    label: "계좌",
     icon: <IconLinechartUpXaxisLine />,
     activeIcon: <IconLinechartUpXaxisFill />,
+  },
+  {
+    href: "/assets/rebalancing",
+    label: "리밸런싱",
+    icon: <IconArrowUpArrowDownLine />,
+    activeIcon: <IconArrowUpArrowDownFill />,
   },
   {
     href: "/assets/portfolio",
@@ -37,6 +55,7 @@ const TABS = [
 ] as const;
 
 const PORTFOLIO_DETAIL = /^\/assets\/portfolio\/([^/]+)$/;
+const REBALANCING_DETAIL = /^\/assets\/rebalancing\/([^/]+)$/;
 const ACCOUNT_DETAIL = /^\/assets\/investments\/([^/]+)$/;
 
 interface ScreenTitle {
@@ -51,20 +70,23 @@ interface ScreenTitle {
 function useScreenTitle(pathname: string): ScreenTitle {
   const portfolioId = pathname.match(PORTFOLIO_DETAIL)?.[1];
   const accountId = pathname.match(ACCOUNT_DETAIL)?.[1];
+  // 리밸런싱 상세는 계좌 단위라 계좌 상세와 같은 제목(계좌명·색·유형)을 쓴다.
+  const rebalancingAccountId = pathname.match(REBALANCING_DETAIL)?.[1];
+  const titledAccountId = accountId ?? rebalancingAccountId;
   const portfolioName = usePortfolioStore((s) =>
     portfolioId ? s.portfolios.find((p) => p.id === portfolioId)?.name : undefined
   );
   // 계좌 객체 자체를 고른다 (새 객체를 만들지 않아 리렌더가 안정적).
   const account = useInvestmentStore((s) =>
-    accountId ? s.investments.find((inv) => inv.id === accountId) : undefined
+    titledAccountId ? s.investments.find((inv) => inv.id === titledAccountId) : undefined
   );
   if (portfolioId) {
     return { title: portfolioName || "포트폴리오", backHref: "/assets/portfolio" };
   }
-  if (accountId) {
+  if (titledAccountId) {
     return {
       title: account?.accountName || "계좌",
-      backHref: "/assets/investments",
+      backHref: accountId ? "/assets/investments" : "/assets/rebalancing",
       dotColor: account?.color,
       subtitle: account?.accountType,
     };
@@ -74,16 +96,15 @@ function useScreenTitle(pathname: string): ScreenTitle {
 }
 
 /**
- * 모바일 앱 셸: 상단 앱바 + 하단 탭바. 투자·포트폴리오만 노출한다.
+ * 모바일 앱 셸: 상단 앱바 + 하단 탭바. 홈·계좌·리밸런싱·포트폴리오만 노출한다.
  * 노치/홈 인디케이터 영역은 SEED safe-area 변수로 비워둔다.
  */
 export function MobileShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { title, backHref, dotColor, subtitle } = useScreenTitle(pathname);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [actionSlot, setActionSlot] = useState<HTMLElement | null>(null);
-  // 계좌 상세는 앱바 오른쪽에 계좌 설정 버튼을 둔다.
-  const hasHeaderAction = ACCOUNT_DETAIL.test(pathname);
   const { mode: installMode, install, isIOS } = usePwaInstall();
 
   return (
@@ -121,11 +142,11 @@ export function MobileShell({ children }: { children: ReactNode }) {
                 <span className="t3-medium text-fg-neutral-subtle shrink-0">{subtitle}</span>
               )}
             </div>
-            {/* 오른쪽 슬롯: 화면이 HeaderAction 으로 버튼을 넣으면 동기화 표시 대신 그 버튼을 보여준다. */}
-            <div ref={setActionSlot} className="flex items-center empty:hidden" />
-            {!hasHeaderAction && (
-              <div className="pr-x2">
-                <SyncIndicator />
+            {/* 오른쪽: 상세 화면은 HeaderAction 슬롯("수정" 등), 하단 탭 최상위 화면은 계정 프로필. */}
+            <div ref={setActionSlot} className="flex items-center pr-x2 empty:hidden" />
+            {!backHref && (
+              <div className="pr-x1">
+                <ProfileButton onClick={() => setProfileOpen(true)} />
               </div>
             )}
           </div>
@@ -148,7 +169,9 @@ export function MobileShell({ children }: { children: ReactNode }) {
         >
           <ul className="flex h-[56px]">
             {TABS.map((tab) => {
-              const active = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+              const active =
+                pathname === tab.href ||
+                (!("exact" in tab && tab.exact) && pathname.startsWith(`${tab.href}/`));
               return (
                 <li key={tab.href} className="flex-1">
                   <Link
@@ -178,6 +201,8 @@ export function MobileShell({ children }: { children: ReactNode }) {
           </ul>
         </nav>
 
+        {/* 시트는 앱바/탭바 밖(셸 최상단)에 둬야 탭바에 가려지지 않는다. */}
+        <ProfileSheet open={profileOpen} onOpenChange={setProfileOpen} />
         <MobileMoreSheet
           open={moreOpen}
           onOpenChange={setMoreOpen}

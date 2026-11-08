@@ -11,12 +11,15 @@ import { cn } from "@web/lib/utils";
 
 /**
  * 계좌 카드 안의 "연결된 포트폴리오" 줄. 리밸런싱이 필요한 포트폴리오는
- * 빨간 강조로, 나머지는 중립 톤으로 보여주고 탭하면 해당 포트폴리오로 이동한다.
+ * 빨간 강조로, 나머지는 중립 톤으로 보여주고 탭하면 이 계좌의 리밸런싱 화면으로 이동한다.
  */
 export function LinkedPortfolioChips({
+  accountId,
   statuses,
   showEmpty = false,
 }: {
+  /** 칩을 누르면 이 계좌의 리밸런싱 상세로 이동한다. */
+  accountId: string;
   statuses: LinkedPortfolioStatus[];
   /** 연결된 포트폴리오가 없을 때도 "없음" 안내를 보여줄지. */
   showEmpty?: boolean;
@@ -34,7 +37,7 @@ export function LinkedPortfolioChips({
         return (
           <Link
             key={s.portfolioId}
-            href={`/assets/portfolio/${s.portfolioId}`}
+            href={`/assets/rebalancing/${accountId}`}
             className={cn(
               "t3-medium inline-flex max-w-full items-center gap-x1 rounded-full py-x1 pr-[6px] pl-x2.5",
               alert

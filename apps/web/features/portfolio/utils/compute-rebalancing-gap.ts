@@ -27,11 +27,11 @@ export interface RebalancingGapRow {
 
 export interface RebalancingSummary {
   rows: RebalancingGapRow[];
-  /** 입력된 현재 포트폴리오(주식) 평가액 */
+  /** 입력된 현재 포트폴리오(주식) 평가액. 예수금은 포함하지 않는다. */
   currentBaseValue: number;
   /** 사용자 입력 cashDelta. 양수=투입, 음수=인출, 0=순수 리밸런싱 */
   cashDelta: number;
-  /** max(0, currentBaseValue + cashDelta) — 음수 가지 못하게 clamp */
+  /** max(0, currentBaseValue + cashBalance + cashDelta) — 음수 가지 못하게 clamp */
   newBaseValue: number;
   /** 총 매수 금액 (모든 양수 gapValue 의 합) */
   totalBuyValue: number;
@@ -41,11 +41,23 @@ export interface RebalancingSummary {
   netCashChange: number;
   /** 100 - sum(targetPercent), 음수면 0 으로 clamp */
   unallocatedPercent: number;
+  /**
+   * `cashBalance` 옵션을 준 경우의 예수금 행 (목표 0원). 매수 재원이라
+   * totalBuy/totalSell 에는 넣지 않지만 이격 판정(`computeDriftAlert`)에는 포함된다.
+   */
+  cashRow?: RebalancingGapRow;
 }
+
+export const CASH_ROW_ID = "cash";
 
 interface Options {
   /** |gapPercent| 가 이 값보다 작으면 "유지" 로 판정. 기본 1% */
   actionThresholdPercent?: number;
+  /**
+   * 리밸런싱 범위(계좌)의 현재 예수금 (원). 주면 예수금도 기준 금액에 넣고 목표 0원으로
+   * 본다 — 즉 예수금까지 목표 비중대로 모두 투자하는 계산이 된다. 생략하면 주식만.
+   */
+  cashBalance?: number;
 }
 
 /**
@@ -67,7 +79,8 @@ export function computeRebalancingGap(
   options: Options = {}
 ): RebalancingSummary {
   const threshold = options.actionThresholdPercent ?? DEFAULT_REBALANCE_THRESHOLD_PERCENT;
-  const newBaseValue = Math.max(0, currentBaseValue + cashDelta);
+  const cashBalance = options.cashBalance;
+  const newBaseValue = Math.max(0, currentBaseValue + (cashBalance ?? 0) + cashDelta);
 
   let totalBuyValue = 0;
   let totalSellValue = 0;
@@ -110,8 +123,15 @@ export function computeRebalancingGap(
   const targetSum = allocations.reduce((acc, a) => acc + (a.targetPercent || 0), 0);
   const unallocatedPercent = Math.max(0, MAX_TOTAL_PERCENT - targetSum);
 
+  // 투입/인출을 반영한 뒤의 예수금. 인출이 예수금보다 크면 0 (나머지는 매도로 충당).
+  const cashRow =
+    cashBalance === undefined
+      ? undefined
+      : buildCashRow(Math.max(0, cashBalance + cashDelta), newBaseValue);
+
   return {
     rows,
+    cashRow,
     currentBaseValue,
     cashDelta,
     newBaseValue,
@@ -119,5 +139,23 @@ export function computeRebalancingGap(
     totalSellValue,
     netCashChange: totalBuyValue - totalSellValue,
     unallocatedPercent,
+  };
+}
+
+function buildCashRow(cashValue: number, baseValue: number): RebalancingGapRow {
+  const actualPercent = baseValue > 0 ? (cashValue / baseValue) * 100 : 0;
+  return {
+    allocationId: CASH_ROW_ID,
+    market: "",
+    ticker: "",
+    name: "예수금",
+    targetPercent: 0,
+    actualPercent,
+    gapPercent: -actualPercent,
+    targetValue: 0,
+    actualValue: cashValue,
+    gapValue: -cashValue,
+    // 예수금은 사고파는 대상이 아니라 매수 재원이다.
+    action: "유지",
   };
 }

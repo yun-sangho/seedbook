@@ -158,7 +158,7 @@ export function AccountSettingsSheet({
   return (
     <>
       <BottomSheetRoot open={open} onOpenChange={onOpenChange}>
-        <BottomSheetContent title="계좌 설정" showHandle>
+        <BottomSheetContent title="계좌 수정" showHandle>
           <BottomSheetBody>
             <div className="flex flex-col gap-x5">
               <TextField

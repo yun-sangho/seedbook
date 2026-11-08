@@ -3,7 +3,7 @@
  *
  * 모바일 UA 는 `middleware.ts` 에서 `/m/...` 트리로 rewrite 되어 SEED Design 기반
  * 화면을 받는다 (URL 은 그대로). 데스크탑은 기존 shadcn 화면을 그대로 쓴다.
- * 모바일은 현재 투자·포트폴리오만 지원하므로 나머지 앱 경로는 투자로 보낸다.
+ * 모바일은 현재 홈·계좌·리밸런싱·포트폴리오만 지원하므로 나머지 앱 경로는 모바일 홈으로 보낸다.
  *
  * 이 파일은 순수 함수만 둔다 — middleware(edge) 와 테스트에서 함께 쓰기 위함.
  */
@@ -15,14 +15,30 @@ export const VIEW_OVERRIDE_COOKIE = "seedbook.view";
 
 export const MOBILE_TREE_PREFIX = "/m";
 
-const MOBILE_HOME = "/assets/investments";
+/** 모바일 홈 (총 평가금액·통계). 데스크탑에서는 같은 URL 이 자산 개요 화면이다. */
+const MOBILE_HOME = "/assets";
 
-/** 모바일 SEED 트리가 구현된 경로. */
-/** 모바일에만 있는 화면. 데스크탑에서 열리면 MOBILE_HOME 으로 보낸다. */
+/** 모바일에만 있는 화면 (계좌 상세). 데스크탑에서 열리면 투자 목록으로 보낸다. */
 const MOBILE_ONLY_PATTERNS = [/^\/assets\/investments\/[^/]+$/];
+const DESKTOP_ACCOUNT_HOME = "/assets/investments";
+
+/**
+ * 모바일 전용 리밸런싱 화면 (계좌 단위). 데스크탑은 포트폴리오 화면 안에서
+ * 리밸런싱을 보여주므로 포트폴리오 목록으로 보낸다.
+ */
+const REBALANCING_LIST = /^\/assets\/rebalancing$/;
+const REBALANCING_DETAIL = /^\/assets\/rebalancing\/[^/]+$/;
+const DESKTOP_REBALANCING_HOME = "/assets/portfolio";
+
+function isRebalancingPath(pathname: string): boolean {
+  return REBALANCING_LIST.test(pathname) || REBALANCING_DETAIL.test(pathname);
+}
 
 const MOBILE_SUPPORTED_PATTERNS = [
   ...MOBILE_ONLY_PATTERNS,
+  REBALANCING_LIST,
+  REBALANCING_DETAIL,
+  /^\/assets$/,
   /^\/assets\/investments$/,
   /^\/assets\/portfolio$/,
   /^\/assets\/portfolio\/[^/]+$/,
@@ -57,8 +73,11 @@ export function decideMobileRoute(pathname: string, kind: DeviceKind): MobileRou
   }
 
   if (kind === "desktop") {
+    if (isRebalancingPath(pathname)) {
+      return { type: "redirect", pathname: DESKTOP_REBALANCING_HOME };
+    }
     return MOBILE_ONLY_PATTERNS.some((pattern) => pattern.test(pathname))
-      ? { type: "redirect", pathname: MOBILE_HOME }
+      ? { type: "redirect", pathname: DESKTOP_ACCOUNT_HOME }
       : { type: "pass" };
   }
 
