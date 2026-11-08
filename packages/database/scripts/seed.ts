@@ -14,13 +14,8 @@ import { existsSync, readFileSync } from "fs";
 import { fileURLToPath } from "node:url";
 import path, { resolve } from "path";
 import { db, schema } from "../src/client";
-import {
-  DEV_SESSION_ID,
-  DEV_SESSION_TOKEN,
-  DEV_USER_EMAIL,
-  DEV_USER_ID,
-  DEV_USER_NAME,
-} from "../src/dev-auth";
+import { DEV_SESSION_ID, DEV_USER_EMAIL, DEV_USER_ID } from "../src/dev-auth";
+import { ensureDevAuth } from "../src/ensure-dev-auth";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SEED_DATA_DIR = resolve(__dirname, "../seed-data");
@@ -389,36 +384,7 @@ async function seedUserData(userId: string): Promise<void> {
 }
 
 async function seedDevAuth(): Promise<void> {
-  const now = new Date();
-  const farFuture = new Date("2100-01-01T00:00:00Z");
-
-  await db
-    .insert(schema.user)
-    .values({
-      id: DEV_USER_ID,
-      email: DEV_USER_EMAIL,
-      name: DEV_USER_NAME,
-      emailVerified: true,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .onConflictDoNothing();
-
-  await db
-    .insert(schema.session)
-    .values({
-      id: DEV_SESSION_ID,
-      userId: DEV_USER_ID,
-      token: DEV_SESSION_TOKEN,
-      expiresAt: farFuture,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: schema.session.id,
-      set: { expiresAt: farFuture, updatedAt: now },
-    });
-
+  await ensureDevAuth();
   console.log(`[seed] dev auth ensured: user=${DEV_USER_EMAIL}, session=${DEV_SESSION_ID}`);
 }
 

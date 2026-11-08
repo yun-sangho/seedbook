@@ -1,12 +1,12 @@
 import { createHmac } from "crypto";
-import { DEV_SESSION_COOKIE_NAME, DEV_SESSION_TOKEN } from "@seedbook/database";
+import { DEV_SESSION_COOKIE_NAME, DEV_SESSION_TOKEN, ensureDevAuth } from "@seedbook/database";
 
 /**
  * 개발 환경 전용 카카오 우회 로그인 엔드포인트.
  *
- * Better Auth API 는 타지 않는다. seed 가 dev@seedbook.local 유저와 고정 토큰
- * 세션을 미리 만들어 두므로, 이 라우트는 Better Auth 가 검증 가능한 포맷
- * (token.hmacBase64) 으로 서명해 쿠키만 내려주면 된다.
+ * Better Auth API 는 타지 않는다. dev@seedbook.local 유저와 고정 토큰 세션을
+ * DB 에 보장한 뒤 (로그아웃하면 세션 행이 지워지므로 매번 되살린다), Better Auth 가
+ * 검증 가능한 포맷 (token.hmacBase64) 으로 서명한 쿠키를 내려준다.
  *
  * 프로덕션 빌드에선 404 만 내려준다.
  */
@@ -33,6 +33,16 @@ export async function POST(): Promise<Response> {
   const secret = process.env.BETTER_AUTH_SECRET;
   if (!secret) {
     return new Response("BETTER_AUTH_SECRET is not set", { status: 500 });
+  }
+
+  try {
+    await ensureDevAuth();
+  } catch (error) {
+    // 세션이 없으면 쿠키를 받아도 이후 요청이 401 이 되므로 쿠키를 내리지 않는다.
+    console.error("[dev-login] failed to ensure dev session", error);
+    return new Response("Failed to create dev session. Is the dev database running?", {
+      status: 500,
+    });
   }
 
   const cookieValue = signToken(DEV_SESSION_TOKEN, secret);
