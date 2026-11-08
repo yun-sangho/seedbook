@@ -3,7 +3,7 @@ name: ${COMPOSE_PROJECT_NAME:-seedbook}
 # Production stack.
 # - Postgres는 Supabase(managed)를 쓰므로 컴포즈에 포함하지 않는다.
 # - 이미지는 GitHub Actions 가 GHCR 에 푸시하고, 서버는 pull 만 한다.
-# - 런타임 env(DATABASE_URL, BETTER_AUTH_*, KAKAO_*, IMAGE_TAG, WEB_PORT 등)는
+# - 런타임 env(DATABASE_URL, BETTER_AUTH_*, KAKAO_*, WEB_IMAGE_TAG/CRAWLER_IMAGE_TAG, WEB_PORT 등)는
 #   GitHub Secrets/Vars 에 보관해 워크플로 deploy job 이 SSH 세션에 export 한다.
 #   docker compose 는 shell env 를 우선 사용하므로 .env.local 없이 동작한다.
 # - 서버에서 수동 디버깅이 필요하면 `set -a; source <(echo "$ENV_DUMP"); set +a`
@@ -12,7 +12,7 @@ name: ${COMPOSE_PROJECT_NAME:-seedbook}
 
 services:
   stock-crawler:
-    image: ${CRAWLER_IMAGE:-ghcr.io/yun-sangho/seedbook/stock-crawler}:${IMAGE_TAG:-latest}
+    image: ${CRAWLER_IMAGE:-ghcr.io/yun-sangho/seedbook/stock-crawler}:${CRAWLER_IMAGE_TAG:-latest}
     pull_policy: always
     restart: unless-stopped
     environment:
@@ -22,7 +22,7 @@ services:
       NODE_ENV: production
 
   web:
-    image: ${WEB_IMAGE:-ghcr.io/yun-sangho/seedbook/web}:${IMAGE_TAG:-latest}
+    image: ${WEB_IMAGE:-ghcr.io/yun-sangho/seedbook/web}:${WEB_IMAGE_TAG:-latest}
     pull_policy: always
     restart: unless-stopped
     environment:

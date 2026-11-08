@@ -95,7 +95,7 @@ Self-hosted Docker Compose + Caddy 리버스 프록시 + Supabase managed Postgr
   - **Variables**: `BETTER_AUTH_URL` (필수, 예: `https://seedbook.boogie.ing`), `DEPLOY_PATH` (기본 `~/seedbook` — deployer 홈 아래라 sudo 없이 생성됨), `DEPLOY_PORT` (기본 22), `WEB_PORT` (기본 `127.0.0.1:3001`), `CRON_MORNING`/`CRON_AFTERNOON` (선택).
 - 이미지는 GitHub Actions (`.github/workflows/deploy.yml`) 가 main push 마다 GHCR (`ghcr.io/<owner>/<repo>/{web,stock-crawler}`) 에 `latest` + `<sha>` 두 태그로 푸시한다. 서버는 빌드하지 않고 pull 만 한다.
 - CI (`.github/workflows/ci.yml`): PR 마다, 그리고 main push 때 배포 워크플로의 첫 단계로 깨끗한 checkout 에서 format · lint · 타입 · 단위 테스트 · DB 통합 테스트(postgres 서비스) · `next build` 를 돌린다. 실패하면 이미지 빌드/배포로 넘어가지 않는다.
-- 배포 흐름: CI 통과 → 워크플로 `build` matrix 가 web/crawler 병렬 빌드 → push. `deploy` 가 SSH → `git fetch && reset --hard origin/main` → `IMAGE_TAG=<sha>` 와 다른 env 들을 export → `docker compose pull && up -d`. 롤백은 워크플로 재실행 (이전 커밋 sha 로 `Run workflow`) 또는 서버에서 임시로 `IMAGE_TAG=<이전 sha> docker compose pull && up -d`.
+- 배포 흐름: `changes` job 이 바뀐 경로로 빌드 대상을 고른다 — `apps/web/**` → web, `apps/stock-crawler/**` → crawler, 공통 (`packages/database`, `typescript-config`, 루트 `package.json`/lockfile, `deploy.yml`) → 둘 다, `docker-compose.yml` 만 → 빌드 없이 재배포, 그 외 (문서 등) → 아무것도 안 함. 수동 실행(`Run workflow`)은 항상 둘 다. CI 통과 → 고른 이미지만 빌드·push → `deploy` 가 빌드한 서비스의 `WEB_IMAGE_TAG`/`CRAWLER_IMAGE_TAG` 만 새 sha 로 바꾸고 나머지는 서버 `.env` 의 이전 태그를 유지 → `docker compose pull && up -d` (태그가 그대로인 서비스는 재시작되지 않음). 롤백은 워크플로 재실행 (이전 커밋 sha 로 `Run workflow`) 또는 서버에서 임시로 `WEB_IMAGE_TAG=<이전 sha> docker compose up -d web`.
 - 수동 재배포: `gh workflow run "Build & Deploy"` 또는 Actions 탭 `Run workflow`.
 
 ```bash

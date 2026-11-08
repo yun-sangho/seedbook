@@ -18,15 +18,77 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
+  # 바뀐 경로를 보고 어떤 이미지를 빌드할지 정한다. push 는 이전 push 의 head
+  # (github.event.before) 와 비교한다. 수동 실행(workflow_dispatch) 은 롤백·재배포
+  # 용도라 항상 둘 다 빌드한다.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      services: ${{ steps.plan.outputs.services }}
+      deploy: ${{ steps.plan.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: filter
+        if: github.event_name == 'push'
+        uses: dorny/paths-filter@v3
+        with:
+          # 각 Dockerfile 이 COPY 하는 경로 + 의존성 설치에 영향을 주는 루트 파일.
+          # packages/database 는 양쪽 공통 (마이그레이션은 crawler entrypoint 가 돌린다).
+          # 워크플로 자체가 바뀌면 빌드 설정이 바뀐 것일 수 있으니 둘 다 다시 빌드.
+          filters: |
+            shared: &shared
+              - packages/database/**
+              - packages/typescript-config/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
+              - .npmrc
+              - .dockerignore
+              - .github/workflows/deploy.yml
+            web:
+              - *shared
+              - apps/web/**
+              - packages/tailwind-config/**
+              - packages/eslint-config/**
+            stock-crawler:
+              - *shared
+              - apps/stock-crawler/**
+            compose:
+              - docker-compose.yml
+
+      - id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          WEB: ${{ steps.filter.outputs.web }}
+          CRAWLER: ${{ steps.filter.outputs.stock-crawler }}
+          COMPOSE: ${{ steps.filter.outputs.compose }}
+        run: |
+          if [ "$EVENT" = workflow_dispatch ]; then WEB=true; CRAWLER=true; fi
+          services=()
+          if [ "$WEB" = true ]; then services+=('"web"'); fi
+          if [ "$CRAWLER" = true ]; then services+=('"stock-crawler"'); fi
+          json="[$(IFS=,; echo "${services[*]}")]"
+          deploy=false
+          if [ "$json" != "[]" ] || [ "$COMPOSE" = true ]; then deploy=true; fi
+          echo "services=$json" >> "$GITHUB_OUTPUT"
+          echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
+          echo "build: $json / deploy: $deploy" >> "$GITHUB_STEP_SUMMARY"
+
   # 깨끗한 checkout 에서 포맷 · lint · 타입 · 테스트 · 빌드 확인 (ci.yml). 통과해야 이미지를
-  # 빌드하고 배포한다.
+  # 빌드하고 배포한다. 빌드할 이미지가 없으면 (문서·compose 만 바뀐 경우) 건너뛴다.
   checks:
+    needs: changes
+    if: needs.changes.outputs.services != '[]'
     uses: ./.github/workflows/ci.yml
     permissions:
       contents: read
 
   build:
-    needs: checks
+    needs: [changes, checks]
+    if: needs.changes.outputs.services != '[]'
     # 서버가 ARM64 (OCI Ampere). public repo 는 ubuntu-*-arm runner 를 무료로
     # 쓸 수 있어 native arm64 빌드로 진행 — QEMU emulation 단계 불필요.
     runs-on: ubuntu-24.04-arm
@@ -36,11 +98,8 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        include:
-          - name: web
-            dockerfile: apps/web/Dockerfile
-          - name: stock-crawler
-            dockerfile: apps/stock-crawler/Dockerfile
+        # 서비스 이름 = 이미지 이름 = apps/<name>/Dockerfile
+        name: ${{ fromJSON(needs.changes.outputs.services) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -63,7 +122,7 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          file: ${{ matrix.dockerfile }}
+          file: apps/${{ matrix.name }}/Dockerfile
           target: production
           platforms: linux/arm64
           push: true
@@ -73,7 +132,10 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
 
   deploy:
-    needs: build
+    needs: [changes, build]
+    # build 가 건너뛰어져도 (compose 만 바뀐 경우) 배포는 해야 하므로 기본 조건
+    # (success()) 대신 "앞 단계 실패·취소 없음" 으로 판단한다.
+    if: ${{ !cancelled() && !failure() && needs.changes.outputs.deploy == 'true' }}
     # build 와 동일한 arm runner. SSH 액션들만 돌리는 단계라 arch 의존성은
     # 없지만 일관성 + 큐 분리 회피 차원에서 같이 맞춘다.
     runs-on: ubuntu-24.04-arm
@@ -109,7 +171,9 @@ jobs:
         # (logs/ps/exec) 도 env 검증 없이 그대로 동작한다. .env 는 매 배포마다
         # 덮어쓰므로 GitHub Secrets 가 여전히 단일 소스.
         env:
-          IMAGE_TAG: ${{ github.sha }}
+          # 이번에 빌드한 서비스만 새 sha, 나머지는 빈 값 → 서버의 기존 태그 유지.
+          WEB_IMAGE_TAG: ${{ contains(needs.changes.outputs.services, '"web"') && github.sha || '' }}
+          CRAWLER_IMAGE_TAG: ${{ contains(needs.changes.outputs.services, '"stock-crawler"') && github.sha || '' }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
           BETTER_AUTH_URL: ${{ vars.BETTER_AUTH_URL }}
@@ -123,7 +187,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ env.DEPLOY_PORT }}
-          envs: IMAGE_TAG,DATABASE_URL,BETTER_AUTH_SECRET,BETTER_AUTH_URL,KAKAO_CLIENT_ID,KAKAO_CLIENT_SECRET,WEB_PORT,CRON_MORNING,CRON_AFTERNOON
+          envs: WEB_IMAGE_TAG,CRAWLER_IMAGE_TAG,DATABASE_URL,BETTER_AUTH_SECRET,BETTER_AUTH_URL,KAKAO_CLIENT_ID,KAKAO_CLIENT_SECRET,WEB_PORT,CRON_MORNING,CRON_AFTERNOON
           command_timeout: 8m
           script_stop: true
           # ${{ env.DEPLOY_PATH }} 가 ~ 로 시작할 수 있으므로 따옴표를 두르지
@@ -141,7 +205,20 @@ jobs:
             strip() {
               printf '%s' "$1" | sed -e 's/[[:space:]]*$//' -e 's/^[[:space:]]*//'
             }
-            IMAGE_TAG=$(strip "$IMAGE_TAG")
+            # 이번에 빌드하지 않은 서비스는 지난 배포의 .env 에 적힌 태그를 그대로 쓴다.
+            # (IMAGE_TAG 는 서비스별 태그로 나뉘기 전의 공용 키 — 전환 후 첫 배포 때만 쓰인다.)
+            prev() {
+              if [ -f .env ]; then sed -n "s/^$1=//p" .env | tail -n 1; fi
+            }
+            WEB_IMAGE_TAG=$(strip "$WEB_IMAGE_TAG")
+            CRAWLER_IMAGE_TAG=$(strip "$CRAWLER_IMAGE_TAG")
+            WEB_IMAGE_TAG=${WEB_IMAGE_TAG:-$(prev WEB_IMAGE_TAG)}
+            WEB_IMAGE_TAG=${WEB_IMAGE_TAG:-$(prev IMAGE_TAG)}
+            WEB_IMAGE_TAG=${WEB_IMAGE_TAG:-latest}
+            CRAWLER_IMAGE_TAG=${CRAWLER_IMAGE_TAG:-$(prev CRAWLER_IMAGE_TAG)}
+            CRAWLER_IMAGE_TAG=${CRAWLER_IMAGE_TAG:-$(prev IMAGE_TAG)}
+            CRAWLER_IMAGE_TAG=${CRAWLER_IMAGE_TAG:-latest}
+            echo "web: $WEB_IMAGE_TAG / stock-crawler: $CRAWLER_IMAGE_TAG"
             DATABASE_URL=$(strip "$DATABASE_URL")
             BETTER_AUTH_SECRET=$(strip "$BETTER_AUTH_SECRET")
             BETTER_AUTH_URL=$(strip "$BETTER_AUTH_URL")
@@ -150,7 +227,7 @@ jobs:
             WEB_PORT=$(strip "$WEB_PORT")
             CRON_MORNING=$(strip "$CRON_MORNING")
             CRON_AFTERNOON=$(strip "$CRON_AFTERNOON")
-            export IMAGE_TAG DATABASE_URL BETTER_AUTH_SECRET BETTER_AUTH_URL \
+            export WEB_IMAGE_TAG CRAWLER_IMAGE_TAG DATABASE_URL BETTER_AUTH_SECRET BETTER_AUTH_URL \
               KAKAO_CLIENT_ID KAKAO_CLIENT_SECRET WEB_PORT CRON_MORNING CRON_AFTERNOON
 
             # 추가로 .env 파일에도 동일 값을 0600 권한으로 저장 — 이후 사용자가
@@ -158,7 +235,8 @@ jobs:
             # compose interpolation 이 실패하는 일을 방지.
             umask 077
             {
-              printf 'IMAGE_TAG=%s\n' "$IMAGE_TAG"
+              printf 'WEB_IMAGE_TAG=%s\n' "$WEB_IMAGE_TAG"
+              printf 'CRAWLER_IMAGE_TAG=%s\n' "$CRAWLER_IMAGE_TAG"
               printf 'DATABASE_URL=%s\n' "$DATABASE_URL"
               printf 'BETTER_AUTH_SECRET=%s\n' "$BETTER_AUTH_SECRET"
               printf 'BETTER_AUTH_URL=%s\n' "$BETTER_AUTH_URL"
