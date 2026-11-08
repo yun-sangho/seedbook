@@ -12,7 +12,6 @@
 
 ### Understand First (Chesterton's Fence)
 Before removing or changing code, understand WHY it exists. Check git history, read tests, identify edge cases. This is especially important for:
-- Chart interaction handlers in `investment-plan-comparison-chart.tsx` (complex event handling exists for specific UX reasons)
 - Monetary conversion logic (만원/원 migration history)
 - Zustand persist migrations
 
@@ -44,4 +43,3 @@ One change -> run tests -> commit. Never batch multiple simplifications into an 
 - Code you haven't fully understood yet
 - Performance-critical sections (chart rendering, large array projections) where simpler version would be measurably slower
 - Code about to be rewritten entirely
-- Chart interaction policy code (DO NOT regress — see CLAUDE.md)

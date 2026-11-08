@@ -3,13 +3,8 @@ import { schema } from "@seedbook/database";
 import { openTestDb } from "@web/test/db/test-db";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
-import { assetPlanTranslator } from "./asset-plan";
-import { debtsTranslator } from "./debts";
 import { investmentTranslator } from "./investment";
 import { portfolioTranslator } from "./portfolio";
-import { progressTranslator } from "./progress";
-import { realAssetsTranslator } from "./real-assets";
-import { savingsTranslator } from "./savings";
 
 const { db, createTestUser, close } = openTestDb();
 afterAll(close);
@@ -101,124 +96,6 @@ describe("translator round-trip (Drizzle, real Postgres)", () => {
       expect.objectContaining({ id: p.id, accountIds: [accountId], allocations: p.allocations }),
     ]);
   });
-
-  it("savings: write then read returns accounts with records", async () => {
-    const userId = await createTestUser();
-    const saving = {
-      id: randomUUID(),
-      accountName: "적금",
-      accountType: "적금",
-      currency: "KRW",
-      balance: 3_000_000,
-      interestRate: 3.5,
-      note: "",
-      color: "#10b981",
-      records: [{ date: "2026-11-01", balance: 3_000_000 }],
-    };
-
-    await savingsTranslator.write(db, userId, { state: { savings: [saving] }, version: 2 });
-    const envelope = await savingsTranslator.read(db, userId);
-
-    expect(envelope?.state.savings).toEqual([
-      expect.objectContaining({ id: saving.id, balance: 3_000_000, records: saving.records }),
-    ]);
-  });
-
-  it("debts: write then read returns debts", async () => {
-    const userId = await createTestUser();
-    const debt = {
-      id: randomUUID(),
-      loanName: "전세대출",
-      loanType: "전세",
-      lender: "은행",
-      amount: 100_000_000,
-      interestRate: 4.1,
-      maturityDate: "2028-01-01",
-      monthlyPayment: 350_000,
-      note: "",
-    };
-
-    await debtsTranslator.write(db, userId, { state: { debts: [debt] }, version: 2 });
-    const envelope = await debtsTranslator.read(db, userId);
-
-    expect(envelope?.state.debts).toEqual([
-      expect.objectContaining({ id: debt.id, amount: 100_000_000, maturityDate: "2028-01-01" }),
-    ]);
-  });
-
-  it("real-assets: write then read returns assets", async () => {
-    const userId = await createTestUser();
-    const asset = {
-      id: randomUUID(),
-      assetName: "아파트",
-      assetType: "부동산",
-      currentValue: 500_000_000,
-      purchaseValue: 400_000_000,
-      purchaseDate: "2020-05-01",
-      note: "",
-      color: "#f59e0b",
-    };
-
-    await realAssetsTranslator.write(db, userId, { state: { realAssets: [asset] }, version: 2 });
-    const envelope = await realAssetsTranslator.read(db, userId);
-
-    expect(envelope?.state.realAssets).toEqual([
-      expect.objectContaining({ id: asset.id, currentValue: 500_000_000 }),
-    ]);
-  });
-
-  it("asset-plan: write then read returns plans with per-account items", async () => {
-    const userId = await createTestUser();
-    const accountId = randomUUID();
-    const plan = {
-      id: randomUUID(),
-      planName: "기본 계획",
-      planPeriod: 10,
-      createdAt: "2026-10-01T00:00:00.000Z",
-      updatedAt: "2026-10-02T00:00:00.000Z",
-      accountPlans: {
-        [accountId]: {
-          contributionAmount: "500000",
-          contributionFrequency: "월",
-          targetAnnualReturn: "7",
-          accountKind: "investment" as const,
-        },
-      },
-      totalMonthlyContribution: 500_000,
-      averageTargetReturn: 7,
-    };
-
-    await assetPlanTranslator.write(db, userId, { state: { plans: [plan] }, version: 2 });
-    const envelope = await assetPlanTranslator.read(db, userId);
-
-    expect(envelope?.state.plans).toEqual([
-      expect.objectContaining({ id: plan.id, accountPlans: plan.accountPlans }),
-    ]);
-  });
-
-  it("progress: write then read returns points in date order", async () => {
-    const userId = await createTestUser();
-    const point = (date: string, totalAssets: number) => ({
-      date,
-      totalAssets,
-      netAssets: totalAssets,
-      investments: totalAssets,
-      savings: 0,
-      realAssets: 0,
-      loans: 0,
-    });
-
-    await progressTranslator.write(db, userId, {
-      state: { progressPoints: [point("2026-11-02", 2), point("2026-11-01", 1)] },
-      version: 1,
-    });
-    const envelope = await progressTranslator.read(db, userId);
-
-    expect(envelope?.state.progressPoints).toEqual([
-      point("2026-11-01", 1),
-      point("2026-11-02", 2),
-    ]);
-  });
 });
 
 describe("investment_account.portfolioId sync", () => {
@@ -295,77 +172,5 @@ describe("investment_account.portfolioId sync", () => {
     const envelope = await portfolioTranslator.read(db, userId);
     const portfolios = envelope?.state.portfolios as Array<{ id: string; accountIds: string[] }>;
     expect(portfolios.find((x) => x.id === older.id)?.accountIds).toEqual([]);
-  });
-});
-
-describe("debts translator sync columns", () => {
-  function debt(id: string, loanName = "대출") {
-    return {
-      id,
-      loanName,
-      loanType: "신용",
-      lender: "은행",
-      amount: 1_000,
-      interestRate: 5,
-      monthlyPayment: 100,
-      note: "",
-    };
-  }
-
-  async function debtRow(id: string) {
-    const [row] = await db
-      .select({ version: schema.debt.version, deletedAt: schema.debt.deletedAt })
-      .from(schema.debt)
-      .where(eq(schema.debt.id, id));
-    return row;
-  }
-
-  it("keeps a debt removed from the envelope as a tombstone instead of deleting it", async () => {
-    const userId = await createTestUser();
-    const kept = randomUUID();
-    const removed = randomUUID();
-    await debtsTranslator.write(db, userId, {
-      state: { debts: [debt(kept), debt(removed)] },
-      version: 2,
-    });
-
-    await debtsTranslator.write(db, userId, { state: { debts: [debt(kept)] }, version: 2 });
-
-    expect((await debtRow(removed))?.deletedAt).toBeInstanceOf(Date);
-    const envelope = await debtsTranslator.read(db, userId);
-    expect((envelope?.state.debts as Array<{ id: string }>).map((d) => d.id)).toEqual([kept]);
-  });
-
-  it("bumps version when an existing debt is written again", async () => {
-    const userId = await createTestUser();
-    const id = randomUUID();
-    await debtsTranslator.write(db, userId, { state: { debts: [debt(id, "a")] }, version: 2 });
-
-    await debtsTranslator.write(db, userId, { state: { debts: [debt(id, "b")] }, version: 2 });
-
-    expect((await debtRow(id))?.version).toBe(2);
-  });
-
-  it("revives a tombstoned debt that an envelope sends again", async () => {
-    const userId = await createTestUser();
-    const id = randomUUID();
-    await debtsTranslator.write(db, userId, { state: { debts: [debt(id)] }, version: 2 });
-    await debtsTranslator.write(db, userId, { state: { debts: [] }, version: 2 });
-
-    await debtsTranslator.write(db, userId, { state: { debts: [debt(id)] }, version: 2 });
-
-    expect((await debtRow(id))?.deletedAt).toBeNull();
-  });
-
-  it("does not bump the version of a debt that stays deleted", async () => {
-    const userId = await createTestUser();
-    const id = randomUUID();
-    await debtsTranslator.write(db, userId, { state: { debts: [debt(id)] }, version: 2 });
-    await debtsTranslator.write(db, userId, { state: { debts: [] }, version: 2 });
-    const afterDelete = await debtRow(id);
-
-    await debtsTranslator.write(db, userId, { state: { debts: [] }, version: 2 });
-
-    expect((await debtRow(id))?.version).toBe(afterDelete?.version);
   });
 });

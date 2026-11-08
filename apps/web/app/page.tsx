@@ -1,28 +1,23 @@
 import Link from "next/link";
 import { LandingCta } from "@web/components/landing-cta";
 import { Card, CardDescription, CardHeader, CardTitle } from "@web/components/ui/card";
-import { LineChart, PieChart, Sprout, Target } from "lucide-react";
+import { PieChart, Sprout, Target } from "lucide-react";
 
 const features = [
   {
     icon: Sprout,
-    title: "전체 자산 한눈에",
-    description: "투자, 저축, 실물 자산, 대출까지 흩어진 자산을 한 곳에 모아 순자산을 추적해요.",
-  },
-  {
-    icon: Target,
-    title: "장기 자산 계획",
-    description: "월·분기·반기·년 단위 적립과 목표 수익률을 입력해 30년 뒤 자산을 시뮬레이션해요.",
-  },
-  {
-    icon: LineChart,
-    title: "기록 기반 진행",
-    description: "자동으로 쌓이는 자산 스냅샷으로 계획 대비 실제 진행 상황을 비교해요.",
+    title: "투자 계좌 한눈에",
+    description: "증권 계좌별 보유 종목과 평가금액, 수익률을 한 곳에서 확인해요.",
   },
   {
     icon: PieChart,
-    title: "포트폴리오 관리",
-    description: "보유 종목과 비중을 정리해 분산이 잘 되어 있는지 빠르게 확인해요.",
+    title: "포트폴리오 목표 비중",
+    description: "종목별 목표 비중을 정하고 계좌를 연결해 실제 보유와 비교해요.",
+  },
+  {
+    icon: Target,
+    title: "리밸런싱 할 일",
+    description: "목표에서 벗어난 종목을 사고팔 금액으로 정리하고, 진행 상황을 체크해요.",
   },
 ];
 

@@ -46,39 +46,34 @@ Web 은 **호스트에서** `pnpm dev` 로 직접 띄운다 (Next.js + turbopack
 - `apps/web` — Next.js 15 (App Router), React 19, main application
 - `packages/` — shared configs (eslint, tailwind, tsconfig), database (Drizzle ORM)
 
+**Service scope**: 투자 (계좌·보유 종목), 포트폴리오 (목표 비중), 리밸런싱 세 가지만 다룬다. 이 셋을 먼저 확실히 만든 뒤 도메인을 하나씩 넓힌다. (저축·대출·실물자산·자산 계획·자산 기록은 2026-11 제거됨 — DB 테이블은 아직 남아 있고 별도로 삭제 예정.)
+
 **Feature organization** (`apps/web/features/<domain>/`):
 
 - `types/` — interfaces and constants
-- `stores/` — Zustand store (one per domain: investments, asset-plan, savings, debts, real-assets, progress)
+- `stores/` — Zustand store (one per domain: investments, portfolio, rebalancing)
 - `utils/` — calculation logic and helpers (kept out of components for testability)
 - `components/` — domain-specific UI
 
-**Cross-feature code** lives in `apps/web/utils/` (plan-comparison-utils, number-format) and `apps/web/components/` (shared UI, chart wrappers).
+**Cross-feature code** lives in `apps/web/utils/` (number-format, monthly-summary-utils) and `apps/web/components/` (shared UI, chart wrappers).
 
 **State management**: Zustand with localStorage persistence. No immer — use object spreads/shallow copies. Keep derived heavy logic in utils or memoized selectors, not in components.
 
-**All data is client-side** (localStorage). No auth. Drizzle/Supabase package exists but is not used in main flows.
+**Storage & sync**: 로그인(카카오) 필수. 저장소 모드는 사용자가 고른다 — `local` (이 브라우저에만) / `cloud` (서버 동기화). 모드 전환은 덮어쓰지 않고 양쪽을 합친다 (`lib/storage-merge.ts`, 같은 항목은 로컬 우선). cloud 모드에서는:
+
+- 엔티티 동기화로 옮긴 store (`lib/sync/managed-stores.ts`, 현재 리밸런싱) 는 `/api/sync/mutations` · `/api/sync/pull` 로 바뀐 항목만 주고받는다. 자산은 본인만 수정하므로 **마지막 저장이 이긴다** (version 은 pull 중복 제거용). 삭제는 톰스톤(`deletedAt`). 로컬 변경은 저장 어댑터(`lib/hybrid-storage.ts` → `lib/sync/local-change-recorder.ts`)가 저장될 때마다 대기열에 기록하고, `EntitySyncRunner` 가 전송한다.
+- 나머지 store 는 도메인 단위 envelope (`/api/storage/[key]` → `_translators/`) 로 저장한다.
+- 도메인을 엔티티 동기화로 옮길 때: 서버 `server/<domain>/` (record + `createEntityRepo`) 를 만들고 `server/sync/registry.ts` 의 `SYNC_ENTITIES`, 클라이언트 `features/<domain>/sync/` 설정을 `managed-stores.ts` · `synced-stores.ts` 에 등록한다. 테이블엔 `syncColumns()` 추가 (마이그레이션은 drizzle-kit 생성만).
 
 ## Domain Rules
 
 **Monetary unit**: All amounts are in 원 (KRW) internally. `numberToKorean()` converts 원 → 만원 display (만원 미만 절삭). Stores use Zustand persist `version: 1` with migration from legacy 만원 format.
 
-**Frequency conversion**: 월=x, 분기÷3, 반기÷6, 년÷12.
-
-**Core data flow**: Plan form → derived values (totalMonthlyContribution, averageTargetReturn) → temporary AssetPlan → `preparePlanComparisonChartData()` → chart with historic + future projection.
-
-## Chart Interaction Policy (DO NOT regress)
-
-File: `components/investment-plan-comparison-chart.tsx`
-
-- Zoom: buttons only (전체/30년/10년/5년). **No wheel/pinch zoom.**
-- Wheel (zoom > 1) = horizontal pan. Touch single-finger drag = horizontal pan.
-- All events stopped via `passive:false` + `preventDefault` + `stopPropagation`.
-- CSS: `overscrollBehavior: none; touchAction: none`.
+**Portfolio links**: 한 계좌는 최대 하나의 포트폴리오에만 연결된다 (`features/portfolio/utils/portfolio-links.ts`, 서버 `investment_account.portfolioId`).
 
 ## Testing
 
-Vitest with jsdom and globals. Tests live alongside source as `*.test.ts`. Focus on calculation correctness — edge cases: 0 contribution, high returns, mixed frequencies, long periods.
+Vitest with jsdom and globals. Tests live alongside source as `*.test.ts`. Focus on calculation correctness (valuation, rebalancing gaps, sync state transitions) and edge cases (empty holdings, missing prices, cash-only accounts).
 
 DB integration tests (`*.db.test.ts`, e.g. storage translators) run against real Postgres via `test:db` (`vitest.db.config.ts`), and are excluded from the default `test` run. They use a separate `seedbook_test` database on the local dev postgres (override with `TEST_DATABASE_URL`; the name must end in `_test`). Global setup applies the drizzle migrations; each test creates its own user via `openTestDb().createTestUser()` and rows are cleaned up by cascade.
 
@@ -127,7 +122,8 @@ Local dev: `pnpm docker:dev` 로 인프라(postgres + stock-crawler) 를 띄우�
 
 ## Key Files
 
-- Projection logic: `apps/web/utils/plan-comparison-utils.ts`
-- Chart component: `apps/web/components/investment-plan-comparison-chart.tsx`
 - Number formatting: `apps/web/utils/number-format.ts`
-- Plan form + live preview: `apps/web/app/asset-plan/page.tsx`
+- Rebalancing math: `apps/web/features/portfolio/utils/compute-rebalancing-gap.ts`, `linked-portfolio-status.ts`
+- Sync client: `apps/web/lib/sync/` (core state transitions, engine, change recorder, managed/synced store registries)
+- Sync server: `apps/web/server/sync/` (registry, shared entity repo, mutations/pull)
+- Envelope storage + mode switching: `apps/web/lib/hybrid-storage.ts`, `apps/web/lib/storage-migration.ts`, `apps/web/app/api/storage/`

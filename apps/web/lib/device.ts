@@ -52,7 +52,7 @@ const MOBILE_SUPPORTED_PATTERNS = [
 ];
 
 /** `(app)` 그룹 아래의 앱 경로 prefix. 모바일 미지원 시 MOBILE_HOME 으로 보낸다. */
-const APP_PATH_PREFIXES = ["/assets", "/asset-plan", "/asset-plan-list", "/admin"];
+const APP_PATH_PREFIXES = ["/assets", "/admin"];
 
 export function resolveDeviceKind(input: {
   deviceType: string | undefined;

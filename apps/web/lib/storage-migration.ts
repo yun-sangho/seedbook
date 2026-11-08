@@ -139,11 +139,6 @@ function writeLocalEnvelope(key: CloudStoreKey, value: string): void {
  */
 export const CLOUD_STORE_LABELS: Record<CloudStoreKey, string> = {
   "investment-storage": "투자",
-  "savings-storage": "저축",
-  "asset-plan-storage": "자산 계획",
-  "real-assets-storage": "실물 자산",
-  "debts-storage": "대출",
-  "progress-storage": "자산 기록",
   "portfolio-storage": "포트폴리오",
   "rebalancing-storage": "리밸런싱",
 };

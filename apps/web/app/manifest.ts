@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: "/",
     name: "Seedbook - 자산 관리",
     short_name: "Seedbook",
-    description: "개인 자산 계획 및 투자 관리 도구",
+    description: "투자 계좌 · 포트폴리오 · 리밸런싱 관리 도구",
     lang: "ko",
     icons: [
       {

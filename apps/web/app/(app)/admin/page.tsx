@@ -3,11 +3,7 @@
 import { useRef } from "react";
 import { Button } from "@web/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@web/components/ui/card";
-import { useProgressStore } from "@web/features/assets/stores/progress-store";
-import { useDebtsStore } from "@web/features/debts/stores/debts-store";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
-import { useRealAssetsStore } from "@web/features/real-assets/stores/real-assets-store";
-import { useSavingsStore } from "@web/features/savings/stores/savings-store";
 import { useAllStoresHydrated } from "@web/lib/zustand-hydration";
 import { Database, Download, Upload } from "lucide-react";
 import { StorageModeCard } from "./_components/storage-mode-card";
@@ -20,18 +16,10 @@ export default function AdminPage() {
   const storesHydrated = useAllStoresHydrated();
 
   const investments = useInvestmentStore((state) => state.investments);
-  const savings = useSavingsStore((state) => state.savings);
-  const realAssets = useRealAssetsStore((state) => state.realAssets);
-  const debts = useDebtsStore((state) => state.debts);
-  const progressPoints = useProgressStore((state) => state.progressPoints);
 
   const exportData = () => {
     const data = {
       investments,
-      savings,
-      realAssets,
-      debts,
-      progressPoints,
       exportedAt: new Date().toISOString(),
       version: "1.0",
     };
@@ -64,18 +52,6 @@ export default function AdminPage() {
     // auto-increment 카운터가 없어 그대로 주입하면 된다.
     if (Array.isArray(envelope.investments)) {
       useInvestmentStore.setState({ investments: envelope.investments });
-    }
-    if (Array.isArray(envelope.savings)) {
-      useSavingsStore.setState({ savings: envelope.savings });
-    }
-    if (Array.isArray(envelope.realAssets)) {
-      useRealAssetsStore.setState({ realAssets: envelope.realAssets });
-    }
-    if (Array.isArray(envelope.debts)) {
-      useDebtsStore.setState({ debts: envelope.debts });
-    }
-    if (Array.isArray(envelope.progressPoints)) {
-      useProgressStore.getState().setProgressPoints(envelope.progressPoints);
     }
     alert("데이터가 성공적으로 복원되었습니다. 페이지를 새로고침해주세요.");
     return true;
@@ -113,18 +89,6 @@ export default function AdminPage() {
     }
   };
 
-  const getDataSummary = () => {
-    return {
-      investments: investments.length,
-      savings: savings.length,
-      realAssets: realAssets.length,
-      loans: debts.length,
-      progressPoints: progressPoints.length,
-    };
-  };
-
-  const summary = getDataSummary();
-
   return (
     <div className="w-full h-full max-w-4xl p-4 space-y-6">
       <div className="flex items-center justify-between gap-4">
@@ -134,35 +98,15 @@ export default function AdminPage() {
       {/* 저장소 설정 */}
       <StorageModeCard />
 
-      {/* 데이터 공유 */}
-
       {/* 데이터 요약 */}
       <Card>
         <CardHeader>
           <CardTitle>현재 데이터 상태</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{summary.investments}</div>
-              <div className="text-sm text-gray-600">투자</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{summary.savings}</div>
-              <div className="text-sm text-gray-600">저축</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">{summary.realAssets}</div>
-              <div className="text-sm text-gray-600">실물자산</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">{summary.loans}</div>
-              <div className="text-sm text-gray-600">대출</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{summary.progressPoints}</div>
-              <div className="text-sm text-gray-600">진행기록</div>
-            </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-blue-600">{investments.length}</div>
+            <div className="text-sm text-gray-600">투자 계좌</div>
           </div>
         </CardContent>
       </Card>
@@ -219,8 +163,7 @@ export default function AdminPage() {
             <p>• 가져온 데이터는 기존 데이터를 완전히 덮어씁니다.</p>
             <p>• 백업을 위해 정기적으로 데이터를 내보내는 것을 권장합니다.</p>
             <p>
-              • &ldquo;데모 데이터 불러오기&rdquo; 는 번들된 샘플 자산 데이터로 모든 도메인을
-              채웁니다.
+              • &ldquo;데모 데이터 불러오기&rdquo; 는 번들된 샘플 데이터로 투자 계좌를 채웁니다.
             </p>
           </div>
         </CardContent>

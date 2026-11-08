@@ -1,12 +1,7 @@
 import type { CloudStoreKey } from "@web/lib/storage-mode";
-import { assetPlanTranslator } from "./asset-plan";
-import { debtsTranslator } from "./debts";
 import { investmentTranslator } from "./investment";
 import { portfolioTranslator } from "./portfolio";
-import { progressTranslator } from "./progress";
-import { realAssetsTranslator } from "./real-assets";
 import { rebalancingTranslator } from "./rebalancing";
-import { savingsTranslator } from "./savings";
 import type { DomainTranslator } from "./types";
 
 /**
@@ -15,11 +10,6 @@ import type { DomainTranslator } from "./types";
  */
 export const TRANSLATORS: Record<CloudStoreKey, DomainTranslator> = {
   "investment-storage": investmentTranslator,
-  "savings-storage": savingsTranslator,
-  "debts-storage": debtsTranslator,
-  "real-assets-storage": realAssetsTranslator,
-  "asset-plan-storage": assetPlanTranslator,
-  "progress-storage": progressTranslator,
   "portfolio-storage": portfolioTranslator,
   "rebalancing-storage": rebalancingTranslator,
 };

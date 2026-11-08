@@ -128,8 +128,7 @@ describe("decideMobileRoute", () => {
     expect(decideMobileRoute("/assets", "desktop")).toEqual({ type: "pass" });
   });
 
-  it("redirects asset-plan-list and admin to the mobile home on mobile", () => {
-    expect(decideMobileRoute("/asset-plan-list", "mobile").type).toBe("redirect");
+  it("redirects admin to the mobile home on mobile", () => {
     expect(decideMobileRoute("/admin", "mobile").type).toBe("redirect");
   });
 

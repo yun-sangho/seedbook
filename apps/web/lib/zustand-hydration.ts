@@ -1,12 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAssetPlanStore } from "@web/features/asset-plan/stores/asset-plan-store";
-import { useProgressStore } from "@web/features/assets/stores/progress-store";
-import { useDebtsStore } from "@web/features/debts/stores/debts-store";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
-import { useRealAssetsStore } from "@web/features/real-assets/stores/real-assets-store";
-import { useSavingsStore } from "@web/features/savings/stores/savings-store";
+import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
+import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 
 /**
  * Zustand `persist` 미들웨어가 부착한 최소 API.
@@ -47,7 +44,7 @@ export function useStoreHydrated(store: PersistedStore): boolean {
 }
 
 /**
- * 6 개 주요 persist store 가 모두 하이드레이션을 마쳤는지 반환한다.
+ * 주요 persist store (투자 · 포트폴리오 · 리밸런싱) 가 모두 하이드레이션을 마쳤는지 반환한다.
  *
  * 클라우드 저장(async storage) 까지 포함한 비동기 하이드레이션 경로에서도
  * 개별 컴포넌트가 `length === 0` 같은 동기 전제로 UI 분기를 하지 못하도록
@@ -55,11 +52,8 @@ export function useStoreHydrated(store: PersistedStore): boolean {
  */
 export function useAllStoresHydrated(): boolean {
   const invHydrated = useStoreHydrated(useInvestmentStore);
-  const savHydrated = useStoreHydrated(useSavingsStore);
-  const debHydrated = useStoreHydrated(useDebtsStore);
-  const realHydrated = useStoreHydrated(useRealAssetsStore);
-  const planHydrated = useStoreHydrated(useAssetPlanStore);
-  const progHydrated = useStoreHydrated(useProgressStore);
+  const portfolioHydrated = useStoreHydrated(usePortfolioStore);
+  const rebalancingHydrated = useStoreHydrated(useRebalancingStore);
 
-  return invHydrated && savHydrated && debHydrated && realHydrated && planHydrated && progHydrated;
+  return invHydrated && portfolioHydrated && rebalancingHydrated;
 }

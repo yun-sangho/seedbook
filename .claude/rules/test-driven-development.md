@@ -70,8 +70,8 @@ describe('calculateMonthlyContribution', () => {
 
 - Test files live alongside source as `*.test.ts`
 - Run tests: `pnpm --filter @seedbook/web test`
-- Focus on calculation correctness in `utils/` (plan-comparison, number-format)
-- Edge cases to always cover: 0 contribution, high returns, mixed frequencies, long periods
+- Focus on calculation correctness in `utils/` (number-format, valuation, rebalancing gaps)
+- Edge cases to always cover: empty holdings, missing prices, cash-only accounts, accounts not linked to a portfolio
 - Zustand stores: test state transitions and derived values, not React rendering
 
 ## Verification Checklist

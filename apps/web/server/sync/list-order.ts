@@ -6,15 +6,7 @@ import type { ListOrderChange, MutationResult } from "./types";
  * 목록 순서를 저장하는 도메인. envelope translator 들이 `user_list_order.domain` 에
  * 쓰는 값과 같다. 순서는 엔티티와 따로 last-write-wins 로 동기화한다.
  */
-export const LIST_ORDER_DOMAINS = [
-  "investment-accounts",
-  "savings-accounts",
-  "debts",
-  "real-assets",
-  "asset-plans",
-  "portfolios",
-  "rebalancings",
-] as const;
+export const LIST_ORDER_DOMAINS = ["investment-accounts", "portfolios", "rebalancings"] as const;
 
 export function isListOrderDomain(value: unknown): value is (typeof LIST_ORDER_DOMAINS)[number] {
   return (LIST_ORDER_DOMAINS as readonly unknown[]).includes(value);

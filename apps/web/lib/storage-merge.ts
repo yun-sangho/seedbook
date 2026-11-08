@@ -16,11 +16,6 @@ export type PersistEnvelope = { state: Record<string, unknown>; version: number 
 /** store 별로 합칠 목록 필드와 항목을 구분하는 키. */
 const LIST_FIELDS: Record<CloudStoreKey, { field: string; key: string }> = {
   "investment-storage": { field: "investments", key: "id" },
-  "savings-storage": { field: "savings", key: "id" },
-  "debts-storage": { field: "debts", key: "id" },
-  "real-assets-storage": { field: "realAssets", key: "id" },
-  "asset-plan-storage": { field: "plans", key: "id" },
-  "progress-storage": { field: "progressPoints", key: "date" },
   "portfolio-storage": { field: "portfolios", key: "id" },
   "rebalancing-storage": { field: "sessions", key: "id" },
 };

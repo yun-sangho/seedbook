@@ -1,5 +1,4 @@
 import { randomUUID } from "crypto";
-import { debtsTranslator } from "@web/app/api/storage/_translators/debts";
 import { openTestDb } from "@web/test/db/test-db";
 import { afterAll, describe, expect, it } from "vitest";
 import { applyMutation } from "./apply-mutation";
@@ -8,55 +7,60 @@ import { pullChanges } from "./pull";
 const { db, createTestUser, close } = openTestDb();
 afterAll(close);
 
-function debtData(loanName = "전세대출") {
+/** 엔티티 저장소의 공통 규칙을 확인하는 데 쓰는 리밸런싱 한 건. */
+function entityData(accountName = "연금저축") {
   return {
-    loanName,
-    loanType: "전세",
-    lender: "은행",
-    amount: 100_000_000,
-    interestRate: 4.1,
-    maturityDate: "2028-01-01",
-    monthlyPayment: 350_000,
-    note: "",
+    accountId: "acc-1",
+    accountName,
+    portfolioId: "pf-1",
+    portfolioName: "안정형",
+    cashDelta: 0,
+    tasks: [],
+    startedAt: "2026-11-01T00:00:00.000Z",
+    completedAt: null,
   };
 }
 
-describe("applyMutation: debt upsert", () => {
-  it("creates a new debt at version 1", async () => {
+describe("applyMutation: upsert (shared entity rules, via rebalancing)", () => {
+  it("creates a new entity at version 1", async () => {
     const userId = await createTestUser();
     const id = randomUUID();
 
     const result = await applyMutation(db, userId, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "upsert",
       id,
-      data: debtData(),
+      data: entityData(),
     });
 
     expect(result).toEqual({ status: "ok", version: 1 });
   });
 
-  it("updates a debt and bumps the version", async () => {
+  it("updates a entity and bumps the version", async () => {
     const userId = await createTestUser();
     const id = randomUUID();
     await applyMutation(db, userId, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "upsert",
       id,
-      data: debtData("a"),
+      data: entityData("a"),
     });
 
     const result = await applyMutation(db, userId, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "upsert",
       id,
-      data: debtData("b"),
+      data: entityData("b"),
     });
 
     expect(result).toEqual({ status: "ok", version: 2 });
     const { changes } = await pullChanges(db, userId, null);
-    expect(changes.debt!).toEqual([
-      expect.objectContaining({ id, version: 2, data: expect.objectContaining({ loanName: "b" }) }),
+    expect(changes.rebalancing!).toEqual([
+      expect.objectContaining({
+        id,
+        version: 2,
+        data: expect.objectContaining({ accountName: "b" }),
+      }),
     ]);
   });
 
@@ -64,106 +68,108 @@ describe("applyMutation: debt upsert", () => {
     const userId = await createTestUser();
     const id = randomUUID();
     await applyMutation(db, userId, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "upsert",
       id,
       baseVersion: 0,
-      data: debtData("first"),
+      data: entityData("first"),
     });
     await applyMutation(db, userId, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "upsert",
       id,
       baseVersion: 1,
-      data: debtData("other device"),
+      data: entityData("other device"),
     });
 
     const result = await applyMutation(db, userId, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "upsert",
       id,
       baseVersion: 1,
-      data: debtData("stale device, saved last"),
+      data: entityData("stale device, saved last"),
     });
 
     expect(result).toEqual({ status: "ok", version: 3 });
     const { changes } = await pullChanges(db, userId, null);
-    expect(changes.debt![0]?.data).toMatchObject({ loanName: "stale device, saved last" });
+    expect(changes.rebalancing![0]?.data).toMatchObject({
+      accountName: "stale device, saved last",
+    });
   });
 
-  it("rejects writing another user's debt and leaves it unchanged", async () => {
+  it("rejects writing another user's entity and leaves it unchanged", async () => {
     const owner = await createTestUser();
     const attacker = await createTestUser();
     const id = randomUUID();
     await applyMutation(db, owner, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "upsert",
       id,
-      data: debtData("owner"),
+      data: entityData("owner"),
     });
 
     const result = await applyMutation(db, attacker, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "upsert",
       id,
-      data: debtData("hijacked"),
+      data: entityData("hijacked"),
     });
 
     expect(result).toEqual({ status: "rejected", reason: "forbidden" });
     const { changes } = await pullChanges(db, owner, null);
-    expect(changes.debt![0]?.data).toMatchObject({ loanName: "owner" });
+    expect(changes.rebalancing![0]?.data).toMatchObject({ accountName: "owner" });
   });
 
   it("rejects malformed data", async () => {
     const userId = await createTestUser();
 
     const result = await applyMutation(db, userId, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "upsert",
       id: randomUUID(),
-      data: { ...debtData(), amount: "lots" },
+      data: { ...entityData(), cashDelta: "lots" },
     });
 
     expect(result).toEqual({ status: "rejected", reason: "invalid" });
   });
 
-  it("revives a deleted debt when it is saved again", async () => {
+  it("revives a deleted entity when it is saved again", async () => {
     const userId = await createTestUser();
     const id = randomUUID();
     await applyMutation(db, userId, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "upsert",
       id,
-      data: debtData(),
+      data: entityData(),
     });
-    await applyMutation(db, userId, { entity: "debt", op: "delete", id });
+    await applyMutation(db, userId, { entity: "rebalancing", op: "delete", id });
 
     const result = await applyMutation(db, userId, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "upsert",
       id,
-      data: debtData("back"),
+      data: entityData("back"),
     });
 
     expect(result).toEqual({ status: "ok", version: 3 });
     const { changes } = await pullChanges(db, userId, null);
-    expect(changes.debt!).toEqual([expect.objectContaining({ id, deletedAt: null })]);
+    expect(changes.rebalancing!).toEqual([expect.objectContaining({ id, deletedAt: null })]);
   });
 });
 
-describe("applyMutation: debt delete", () => {
-  it("tombstones the debt and bumps the version", async () => {
+describe("applyMutation: delete (shared entity rules, via rebalancing)", () => {
+  it("tombstones the entity and bumps the version", async () => {
     const userId = await createTestUser();
     const id = randomUUID();
     await applyMutation(db, userId, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "upsert",
       id,
-      data: debtData(),
+      data: entityData(),
     });
 
     const result = await applyMutation(db, userId, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "delete",
       id,
     });
@@ -171,24 +177,24 @@ describe("applyMutation: debt delete", () => {
     expect(result).toEqual({ status: "ok", version: 2 });
   });
 
-  it("is idempotent for an already deleted or unknown debt", async () => {
+  it("is idempotent for an already deleted or unknown entity", async () => {
     const userId = await createTestUser();
     const id = randomUUID();
     await applyMutation(db, userId, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "upsert",
       id,
-      data: debtData(),
+      data: entityData(),
     });
-    await applyMutation(db, userId, { entity: "debt", op: "delete", id });
+    await applyMutation(db, userId, { entity: "rebalancing", op: "delete", id });
 
     const again = await applyMutation(db, userId, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "delete",
       id,
     });
     const unknown = await applyMutation(db, userId, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "delete",
       id: randomUUID(),
     });
@@ -197,24 +203,24 @@ describe("applyMutation: debt delete", () => {
     expect(unknown).toEqual({ status: "ok" });
   });
 
-  it("deletes even when the debt changed since the client saw it (last write wins)", async () => {
+  it("deletes even when the entity changed since the client saw it (last write wins)", async () => {
     const userId = await createTestUser();
     const id = randomUUID();
     await applyMutation(db, userId, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "upsert",
       id,
-      data: debtData(),
+      data: entityData(),
     });
     await applyMutation(db, userId, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "upsert",
       id,
-      data: debtData("edited elsewhere"),
+      data: entityData("edited elsewhere"),
     });
 
     const result = await applyMutation(db, userId, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "delete",
       id,
     });
@@ -222,19 +228,19 @@ describe("applyMutation: debt delete", () => {
     expect(result).toEqual({ status: "ok", version: 3 });
   });
 
-  it("rejects deleting another user's debt", async () => {
+  it("rejects deleting another user's entity", async () => {
     const owner = await createTestUser();
     const attacker = await createTestUser();
     const id = randomUUID();
     await applyMutation(db, owner, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "upsert",
       id,
-      data: debtData(),
+      data: entityData(),
     });
 
     const result = await applyMutation(db, attacker, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "delete",
       id,
     });
@@ -251,13 +257,13 @@ describe("applyMutation: list order", () => {
     const result = await applyMutation(db, userId, {
       entity: "listOrder",
       op: "set",
-      domain: "debts",
+      domain: "portfolios",
       order,
     });
 
     expect(result).toEqual({ status: "ok" });
     const { changes } = await pullChanges(db, userId, null);
-    expect(changes.listOrder).toEqual([{ domain: "debts", order }]);
+    expect(changes.listOrder).toEqual([{ domain: "portfolios", order }]);
   });
 
   it("rejects an unknown domain", async () => {
@@ -291,17 +297,17 @@ describe("pullChanges", () => {
     const gone = randomUUID();
     for (const id of [live, gone]) {
       await applyMutation(db, userId, {
-        entity: "debt",
+        entity: "rebalancing",
         op: "upsert",
         id,
-        data: debtData(),
+        data: entityData(),
       });
     }
-    await applyMutation(db, userId, { entity: "debt", op: "delete", id: gone });
+    await applyMutation(db, userId, { entity: "rebalancing", op: "delete", id: gone });
 
     const { changes, cursor } = await pullChanges(db, userId, null);
 
-    expect(changes.debt!.map((d) => d.id)).toEqual([live]);
+    expect(changes.rebalancing!.map((d) => d.id)).toEqual([live]);
     expect(cursor).toEqual(expect.any(String));
   });
 
@@ -309,17 +315,17 @@ describe("pullChanges", () => {
     const userId = await createTestUser();
     const id = randomUUID();
     await applyMutation(db, userId, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "upsert",
       id,
-      data: debtData(),
+      data: entityData(),
     });
     const { cursor } = await pullChanges(db, userId, null);
 
-    await applyMutation(db, userId, { entity: "debt", op: "delete", id });
+    await applyMutation(db, userId, { entity: "rebalancing", op: "delete", id });
     const { changes } = await pullChanges(db, userId, cursor);
 
-    expect(changes.debt!).toEqual([
+    expect(changes.rebalancing!).toEqual([
       expect.objectContaining({ id, version: 2, deletedAt: expect.any(String), data: null }),
     ]);
   });
@@ -328,30 +334,14 @@ describe("pullChanges", () => {
     const userId = await createTestUser();
     const other = await createTestUser();
     await applyMutation(db, other, {
-      entity: "debt",
+      entity: "rebalancing",
       op: "upsert",
       id: randomUUID(),
-      data: debtData(),
+      data: entityData(),
     });
 
     const { changes } = await pullChanges(db, userId, null);
 
-    expect(changes.debt!).toEqual([]);
-  });
-
-  it("sees debts written through the legacy envelope translator", async () => {
-    const userId = await createTestUser();
-    const id = randomUUID();
-    await debtsTranslator.write(db, userId, {
-      state: { debts: [{ id, ...debtData("from envelope") }] },
-      version: 2,
-    });
-
-    const { changes } = await pullChanges(db, userId, null);
-
-    expect(changes.debt!).toEqual([
-      expect.objectContaining({ id, data: expect.objectContaining({ loanName: "from envelope" }) }),
-    ]);
-    expect(changes.listOrder).toEqual([{ domain: "debts", order: [id] }]);
+    expect(changes.rebalancing!).toEqual([]);
   });
 });

@@ -8,7 +8,7 @@ const geist = Geist({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Seedbook - 자산 관리",
-  description: "개인 자산 계획 및 투자 관리 도구",
+  description: "투자 계좌 · 포트폴리오 · 리밸런싱 관리 도구",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

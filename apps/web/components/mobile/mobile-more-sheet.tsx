@@ -76,7 +76,7 @@ export function MobileMoreSheet({
             <ListButtonItem
               prefix={<Icon svg={<IconLaptopLine />} />}
               title="PC 화면으로 보기"
-              detail="자산 계획·저축 등 전체 기능"
+              detail="계좌 순서 변경 등 PC 전용 기능"
               onClick={() => {
                 setViewOverride("desktop");
                 window.location.reload();

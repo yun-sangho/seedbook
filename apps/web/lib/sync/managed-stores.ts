@@ -1,6 +1,4 @@
-import { debtsSyncConfig } from "@web/features/debts/sync/debts-sync-config";
 import { rebalancingSyncConfig } from "@web/features/rebalancing/sync/rebalancing-sync-config";
-import { savingsSyncConfig } from "@web/features/savings/sync/savings-sync-config";
 import type { ManagedStoreConfig } from "./managed-store-config";
 
 /**
@@ -8,11 +6,7 @@ import type { ManagedStoreConfig } from "./managed-store-config";
  * 도메인을 하나씩 옮길 때마다 여기에 추가한다.
  */
 export const SYNC_MANAGED_STORES: Record<string, ManagedStoreConfig<{ id: string }>> = {
-  [debtsSyncConfig.storageKey]: debtsSyncConfig as unknown as ManagedStoreConfig<{ id: string }>,
   [rebalancingSyncConfig.storageKey]: rebalancingSyncConfig as unknown as ManagedStoreConfig<{
-    id: string;
-  }>,
-  [savingsSyncConfig.storageKey]: savingsSyncConfig as unknown as ManagedStoreConfig<{
     id: string;
   }>,
 };

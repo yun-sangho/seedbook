@@ -3,13 +3,9 @@ import { schema } from "@seedbook/database";
 import { openTestDb } from "@web/test/db/test-db";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
-import { assetPlanTranslator } from "./asset-plan";
-import { debtsTranslator } from "./debts";
 import { investmentTranslator } from "./investment";
 import { ForeignRowError } from "./ownership";
 import { portfolioTranslator } from "./portfolio";
-import { realAssetsTranslator } from "./real-assets";
-import { savingsTranslator } from "./savings";
 
 /**
  * 다른 사용자의 행 id 를 envelope 에 실어 보내도 그 행을 덮어쓰거나, 그 행에 딸린
@@ -138,131 +134,7 @@ describe("investment translator ownership", () => {
   });
 });
 
-describe("other translators reject another user's row id", () => {
-  it("savings", async () => {
-    const victim = await createTestUser();
-    const attacker = await createTestUser();
-    const saving = (name: string) => ({
-      id,
-      accountName: name,
-      accountType: "적금",
-      currency: "KRW",
-      balance: 1,
-      note: "",
-      color: "#000",
-      records: [{ date: "2026-11-01", balance: 1 }],
-    });
-    const id = randomUUID();
-    await savingsTranslator.write(db, victim, {
-      state: { savings: [saving("victim")] },
-      version: 2,
-    });
-
-    const attack = savingsTranslator.write(db, attacker, {
-      state: { savings: [{ ...saving("hijacked"), records: [] }] },
-      version: 2,
-    });
-
-    await expect(attack).rejects.toBeInstanceOf(ForeignRowError);
-    const envelope = await savingsTranslator.read(db, victim);
-    expect(envelope?.state.savings).toEqual([
-      expect.objectContaining({ accountName: "victim", records: [expect.anything()] }),
-    ]);
-  });
-
-  it("debts", async () => {
-    const victim = await createTestUser();
-    const attacker = await createTestUser();
-    const id = randomUUID();
-    const debt = (loanName: string) => ({
-      id,
-      loanName,
-      loanType: "신용",
-      lender: "은행",
-      amount: 1,
-      interestRate: 1,
-      monthlyPayment: 1,
-      note: "",
-    });
-    await debtsTranslator.write(db, victim, { state: { debts: [debt("victim")] }, version: 2 });
-
-    const attack = debtsTranslator.write(db, attacker, {
-      state: { debts: [debt("hijacked")] },
-      version: 2,
-    });
-
-    await expect(attack).rejects.toBeInstanceOf(ForeignRowError);
-    const envelope = await debtsTranslator.read(db, victim);
-    expect(envelope?.state.debts).toEqual([expect.objectContaining({ loanName: "victim" })]);
-  });
-
-  it("real-assets", async () => {
-    const victim = await createTestUser();
-    const attacker = await createTestUser();
-    const id = randomUUID();
-    const asset = (assetName: string) => ({
-      id,
-      assetName,
-      assetType: "부동산",
-      currentValue: 1,
-      purchaseValue: 1,
-      note: "",
-      color: "#000",
-    });
-    await realAssetsTranslator.write(db, victim, {
-      state: { realAssets: [asset("victim")] },
-      version: 2,
-    });
-
-    const attack = realAssetsTranslator.write(db, attacker, {
-      state: { realAssets: [asset("hijacked")] },
-      version: 2,
-    });
-
-    await expect(attack).rejects.toBeInstanceOf(ForeignRowError);
-    const envelope = await realAssetsTranslator.read(db, victim);
-    expect(envelope?.state.realAssets).toEqual([expect.objectContaining({ assetName: "victim" })]);
-  });
-
-  it("asset-plan", async () => {
-    const victim = await createTestUser();
-    const attacker = await createTestUser();
-    const id = randomUUID();
-    const plan = (planName: string, accountPlans: Record<string, unknown>) => ({
-      id,
-      planName,
-      planPeriod: 10,
-      createdAt: "2026-10-01T00:00:00.000Z",
-      updatedAt: "2026-10-01T00:00:00.000Z",
-      accountPlans,
-      totalMonthlyContribution: 1,
-      averageTargetReturn: 1,
-    });
-    const items = {
-      [randomUUID()]: {
-        contributionAmount: "1",
-        contributionFrequency: "월",
-        targetAnnualReturn: "1",
-        accountKind: "investment",
-      },
-    };
-    await assetPlanTranslator.write(db, victim, {
-      state: { plans: [plan("victim", items)] },
-      version: 2,
-    });
-
-    const attack = assetPlanTranslator.write(db, attacker, {
-      state: { plans: [plan("hijacked", {})] },
-      version: 2,
-    });
-
-    await expect(attack).rejects.toBeInstanceOf(ForeignRowError);
-    const envelope = await assetPlanTranslator.read(db, victim);
-    expect(envelope?.state.plans).toEqual([
-      expect.objectContaining({ planName: "victim", accountPlans: items }),
-    ]);
-  });
-
+describe("portfolio translator ownership", () => {
   it("portfolio", async () => {
     const victim = await createTestUser();
     const attacker = await createTestUser();

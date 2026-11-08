@@ -18,11 +18,6 @@ export type StorageMode = "local" | "cloud";
  */
 export const CLOUD_STORE_KEYS = [
   "investment-storage",
-  "savings-storage",
-  "asset-plan-storage",
-  "real-assets-storage",
-  "debts-storage",
-  "progress-storage",
   "portfolio-storage",
   "rebalancing-storage",
 ] as const;

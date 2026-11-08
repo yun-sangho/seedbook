@@ -1,11 +1,7 @@
 "use client";
 
-import { debtsSyncBinding } from "@web/features/debts/sync/debts-sync-binding";
-import { debtsSyncConfig } from "@web/features/debts/sync/debts-sync-config";
 import { rebalancingSyncBinding } from "@web/features/rebalancing/sync/rebalancing-sync-binding";
 import { rebalancingSyncConfig } from "@web/features/rebalancing/sync/rebalancing-sync-config";
-import { savingsSyncBinding } from "@web/features/savings/sync/savings-sync-binding";
-import { savingsSyncConfig } from "@web/features/savings/sync/savings-sync-config";
 import type { SyncedStoreBinding } from "./entity-sync-engine";
 import type { ManagedStoreConfig } from "./managed-store-config";
 
@@ -25,7 +21,5 @@ const entry = <T extends { id: string }>(
  * (hybrid-storage 가 store 보다 먼저 읽는다) 설정만 따로 둔다.
  */
 export const SYNCED_STORES: SyncedStore<{ id: string }>[] = [
-  entry(debtsSyncConfig, debtsSyncBinding),
   entry(rebalancingSyncConfig, rebalancingSyncBinding),
-  entry(savingsSyncConfig, savingsSyncBinding),
 ];

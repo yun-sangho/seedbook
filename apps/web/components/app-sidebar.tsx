@@ -20,16 +20,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@web/components/ui/tooltip";
-import {
-  Building2,
-  CreditCard,
-  LineChart,
-  PieChart,
-  PiggyBank,
-  Settings,
-  TrendingUp,
-  Wallet,
-} from "lucide-react";
+import { PieChart, Settings, TrendingUp } from "lucide-react";
 
 const investmentItems = [
   {
@@ -41,34 +32,6 @@ const investmentItems = [
     title: "포트폴리오",
     url: "/assets/portfolio",
     icon: PieChart,
-  },
-];
-
-const assetItems = [
-  {
-    title: "전체 자산",
-    url: "/assets",
-    icon: Wallet,
-  },
-  {
-    title: "자산 기록",
-    url: "/assets/progress",
-    icon: LineChart,
-  },
-  {
-    title: "저축",
-    url: "/assets/savings",
-    icon: PiggyBank,
-  },
-  {
-    title: "실물 자산",
-    url: "/assets/real-assets",
-    icon: Building2,
-  },
-  {
-    title: "대출",
-    url: "/assets/debt",
-    icon: CreditCard,
   },
 ];
 
@@ -99,33 +62,6 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {investmentItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <TooltipProvider delayDuration={0}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <SidebarMenuButton asChild isActive={pathname === item.url}>
-                          <Link href={item.url}>
-                            <item.icon />
-                            <span>{item.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        <p>{item.title}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>자산 관리</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {assetItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <TooltipProvider delayDuration={0}>
                     <Tooltip>
