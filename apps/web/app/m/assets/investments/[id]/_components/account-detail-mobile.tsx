@@ -132,10 +132,7 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
     cashTotal,
     totalValue,
     markHistoryDirty,
-  } = useAccountValuation(item, {
-    readOnly: false,
-    onSyncCurrentValue: syncCurrentValue,
-  });
+  } = useAccountValuation(item, { onSyncCurrentValue: syncCurrentValue });
 
   // 모바일은 예수금을 하나로 다룬다: 첫 현금 항목(기본 예수금)을 고친다. PC 에서 만든
   // 추가 현금 항목이 있으면 합계에는 포함하되 여기서는 건드리지 않는다.

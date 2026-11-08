@@ -18,10 +18,7 @@ import { useStockPrices } from "./use-stock-prices";
  */
 export function useAccountValuation(
   item: InvestmentItem,
-  {
-    readOnly,
-    onSyncCurrentValue,
-  }: { readOnly: boolean; onSyncCurrentValue: (totalValue: number) => void }
+  { onSyncCurrentValue }: { onSyncCurrentValue: (totalValue: number) => void }
 ) {
   const [pendingHistorySync, setPendingHistorySync] = useState(false);
   const holdingsSortOption = useInvestmentStore((state) => state.holdingsSortOption);
@@ -45,21 +42,13 @@ export function useAccountValuation(
   const { totalValue, allHoldingsHavePrices } = valuation;
 
   useEffect(() => {
-    if (readOnly) return;
     if (!pendingHistorySync) return;
     // 만료된 캐시를 갱신 중이면 새 시세가 온 뒤에 동기화한다.
     if (pricesFetching) return;
     if (!allHoldingsHavePrices) return;
     onSyncCurrentValue(totalValue);
     setPendingHistorySync(false);
-  }, [
-    readOnly,
-    pendingHistorySync,
-    pricesFetching,
-    allHoldingsHavePrices,
-    totalValue,
-    onSyncCurrentValue,
-  ]);
+  }, [pendingHistorySync, pricesFetching, allHoldingsHavePrices, totalValue, onSyncCurrentValue]);
 
   const markHistoryDirty = useCallback(() => setPendingHistorySync(true), []);
 

@@ -56,19 +56,14 @@ interface InvestmentItemComponentProps {
     value: string | number
   ) => void;
   onRemoveCashItem: (investmentId: string, cashItemId: string) => void;
-  /** 공유받은 사용자의 데이터를 읽기 전용으로 표시할 때 true. */
-  readOnly?: boolean;
-  /** 공유 출처 라벨 (예: "공유대상 데이터 · 홍길동"). readOnly 일 때만 표시. */
 }
 
 function HoldingQuantityInput({
   quantity,
   onCommit,
-  readOnly = false,
 }: {
   quantity: number;
   onCommit: (value: string) => void;
-  readOnly?: boolean;
 }) {
   const [draft, setDraft] = useState(() => (quantity > 0 ? quantity.toLocaleString() : ""));
   const isFocusedRef = useRef(false);
@@ -86,26 +81,16 @@ function HoldingQuantityInput({
       <Input
         type="text"
         value={draft}
-        onChange={readOnly ? undefined : (e) => setDraft(e.target.value)}
-        onFocus={
-          readOnly
-            ? undefined
-            : () => {
-                isFocusedRef.current = true;
-              }
-        }
-        onBlur={
-          readOnly
-            ? undefined
-            : () => {
-                isFocusedRef.current = false;
-                onCommit(draft);
-              }
-        }
+        onChange={(e) => setDraft(e.target.value)}
+        onFocus={() => {
+          isFocusedRef.current = true;
+        }}
+        onBlur={() => {
+          isFocusedRef.current = false;
+          onCommit(draft);
+        }}
         placeholder="수량"
-        readOnly={readOnly}
-        tabIndex={readOnly ? -1 : 0}
-        className={`text-sm pr-7 ${readOnly ? "bg-muted/30 cursor-default" : ""}`}
+        className="text-sm pr-7"
       />
       {draft && (
         <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
@@ -129,7 +114,6 @@ export function InvestmentItemComponent({
   onAddCashItem,
   onUpdateCashItem,
   onRemoveCashItem,
-  readOnly = false,
 }: InvestmentItemComponentProps) {
   const [isRecordsExpanded, setIsRecordsExpanded] = useState(false);
   const [isAddHistoryModalOpen, setIsAddHistoryModalOpen] = useState(false);
@@ -158,7 +142,7 @@ export function InvestmentItemComponent({
     cashTotal,
     totalValue,
     markHistoryDirty,
-  } = useAccountValuation(item, { readOnly, onSyncCurrentValue: syncCurrentValue });
+  } = useAccountValuation(item, { onSyncCurrentValue: syncCurrentValue });
 
   const handleColorChange = (color: string) => {
     onUpdateItem(item.id, "color", color);
@@ -238,67 +222,50 @@ export function InvestmentItemComponent({
   }, [holdings]);
 
   return (
-    <Card
-      key={item.id}
-      className={`gap-4 ${readOnly ? "border-amber-300 dark:border-amber-700" : ""}`}
-    >
+    <Card key={item.id} className="gap-4">
       <CardHeader>
         <div className="flex gap-2 flex-wrap sm:items-center max-sm:flex-col ">
           <div className="flex items-center gap-2">
-            {readOnly ? (
-              <div
-                className="w-6 h-6 rounded"
-                style={{ backgroundColor: item.color }}
-                aria-label="계좌 색상"
-              />
-            ) : (
-              <Popover open={isColorPickerOpen} onOpenChange={setIsColorPickerOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    className="w-6 h-6 rounded"
-                    style={{ backgroundColor: item.color }}
-                    title="색상 변경"
-                  />
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-3" align="start">
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">계좌 색상 선택</p>
-                    <div className="grid grid-cols-5 gap-2">
-                      {ACCOUNT_COLORS.map((color) => (
-                        <button
-                          key={color}
-                          onClick={() => handleColorChange(color)}
-                          className="w-8 h-8 rounded border-2 hover:scale-110 transition-transform"
-                          style={{
-                            backgroundColor: color,
-                            borderColor:
-                              color === item.color ? "hsl(var(--foreground))" : "transparent",
-                          }}
-                          title={color}
-                        />
-                      ))}
-                    </div>
+            <Popover open={isColorPickerOpen} onOpenChange={setIsColorPickerOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  className="w-6 h-6 rounded"
+                  style={{ backgroundColor: item.color }}
+                  title="색상 변경"
+                />
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-3" align="start">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">계좌 색상 선택</p>
+                  <div className="grid grid-cols-5 gap-2">
+                    {ACCOUNT_COLORS.map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => handleColorChange(color)}
+                        className="w-8 h-8 rounded border-2 hover:scale-110 transition-transform"
+                        style={{
+                          backgroundColor: color,
+                          borderColor:
+                            color === item.color ? "hsl(var(--foreground))" : "transparent",
+                        }}
+                        title={color}
+                      />
+                    ))}
                   </div>
-                </PopoverContent>
-              </Popover>
-            )}
+                </div>
+              </PopoverContent>
+            </Popover>
             <Badge variant={"secondary"}>{item.accountType}</Badge>
           </div>
           <div
             className="flex justify-between items-center flex-grow-1 flex-wrap"
             onClick={() => setIsRecordsExpanded(!isRecordsExpanded)}
           >
-            {readOnly ? (
-              <span className="text-md font-bold text-gray-900 dark:text-white">
-                {item.accountName}
-              </span>
-            ) : (
-              <AssetNameInput
-                id={item.id}
-                value={item.accountName}
-                onChange={(value) => onUpdateItem(item.id, "accountName", value)}
-              />
-            )}
+            <AssetNameInput
+              id={item.id}
+              value={item.accountName}
+              onChange={(value) => onUpdateItem(item.id, "accountName", value)}
+            />
             <Button size={"sm"} variant={"ghost"}>
               {isRecordsExpanded ? "접기" : "상세 보기"}
             </Button>
@@ -319,15 +286,9 @@ export function InvestmentItemComponent({
                   ? item.initialInvestment.toLocaleString()
                   : ""
               }
-              onChange={
-                readOnly
-                  ? undefined
-                  : (e) => onUpdateItem(item.id, "initialInvestment", e.target.value)
-              }
+              onChange={(e) => onUpdateItem(item.id, "initialInvestment", e.target.value)}
               placeholder="투자원금 입력"
-              readOnly={readOnly}
-              tabIndex={readOnly ? -1 : 0}
-              className={`text-sm flex-1 ${readOnly ? "bg-muted/30 cursor-default" : ""}`}
+              className="text-sm flex-1"
             />
             {!!item.initialInvestment && item.initialInvestment > 0 && (
               <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs   px-1 z-10 pointer-events-none">
@@ -409,32 +370,21 @@ export function InvestmentItemComponent({
                         className="flex flex-wrap gap-2 items-center p-2 rounded-lg border"
                       >
                         <div className="flex items-center gap-1">
-                          {readOnly ? (
-                            <span className="min-w-[140px] text-sm font-medium">
-                              {holding.name || holding.ticker || "(미지정)"}
-                              {holding.market && holding.ticker && (
-                                <span className="ml-1 text-xs text-muted-foreground">
-                                  {holding.market} · {holding.ticker}
-                                </span>
-                              )}
+                          <>
+                            <StockCombobox
+                              value={selectedStock}
+                              onSelect={(stock) =>
+                                handleSetStockHoldingFromSearch(item.id, holding.id, stock)
+                              }
+                              className="min-w-[140px]"
+                            />
+                            <span
+                              className="ml-1 text-xs cursor-pointer underline"
+                              onClick={() => handleRemoveStockHolding(item.id, holding.id)}
+                            >
+                              삭제
                             </span>
-                          ) : (
-                            <>
-                              <StockCombobox
-                                value={selectedStock}
-                                onSelect={(stock) =>
-                                  handleSetStockHoldingFromSearch(item.id, holding.id, stock)
-                                }
-                                className="min-w-[140px]"
-                              />
-                              <span
-                                className="ml-1 text-xs cursor-pointer underline"
-                                onClick={() => handleRemoveStockHolding(item.id, holding.id)}
-                              >
-                                삭제
-                              </span>
-                            </>
-                          )}
+                          </>
                         </div>
                         <div className="flex flex-1 flex-wrap justify-end items-center gap-2">
                           <HoldingQuantityInput
@@ -442,7 +392,6 @@ export function InvestmentItemComponent({
                             onCommit={(value) =>
                               handleUpdateStockHolding(item.id, holding.id, "quantity", value)
                             }
-                            readOnly={readOnly}
                           />
                           {pricePoint ? (
                             <div className="flex gap-2 text-sm flex-wrap justify-end">
@@ -462,18 +411,16 @@ export function InvestmentItemComponent({
                   })}
                 </div>
               )}
-              {!readOnly && (
-                <div className="flex">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsAddHoldingModalOpen(true)}
-                    className="h-7 text-xs ml-auto"
-                  >
-                    + 종목 추가
-                  </Button>
-                </div>
-              )}
+              <div className="flex">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsAddHoldingModalOpen(true)}
+                  className="h-7 text-xs ml-auto"
+                >
+                  + 종목 추가
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -488,16 +435,14 @@ export function InvestmentItemComponent({
                     </span>
                   )}
                 </div>
-                {!readOnly && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsAddCashModalOpen(true)}
-                    className="h-7 text-xs"
-                  >
-                    + 항목 추가
-                  </Button>
-                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsAddCashModalOpen(true)}
+                  className="h-7 text-xs"
+                >
+                  + 항목 추가
+                </Button>
               </div>
 
               {cashItems.length > 0 && (
@@ -514,40 +459,28 @@ export function InvestmentItemComponent({
                         <Input
                           type="text"
                           value={cash.label}
-                          onChange={
-                            readOnly
-                              ? undefined
-                              : (e) =>
-                                  handleUpdateCashItem(item.id, cash.id, "label", e.target.value)
+                          onChange={(e) =>
+                            handleUpdateCashItem(item.id, cash.id, "label", e.target.value)
                           }
                           placeholder="항목명"
-                          readOnly={readOnly}
-                          tabIndex={readOnly ? -1 : 0}
-                          className={`text-sm w-32 ${readOnly ? "bg-muted/30 cursor-default" : ""}`}
+                          className="text-sm w-32"
                         />
-                        {!readOnly && (
-                          <span
-                            className="ml-1 text-xs cursor-pointer underline"
-                            onClick={() => handleRemoveCashItem(item.id, cash.id)}
-                          >
-                            삭제
-                          </span>
-                        )}
+                        <span
+                          className="ml-1 text-xs cursor-pointer underline"
+                          onClick={() => handleRemoveCashItem(item.id, cash.id)}
+                        >
+                          삭제
+                        </span>
                       </div>
                       <div className="relative flex-1 min-w-[140px]">
                         <Input
                           type="text"
                           value={cash.amount > 0 ? cash.amount.toLocaleString() : ""}
-                          onChange={
-                            readOnly
-                              ? undefined
-                              : (e) =>
-                                  handleUpdateCashItem(item.id, cash.id, "amount", e.target.value)
+                          onChange={(e) =>
+                            handleUpdateCashItem(item.id, cash.id, "amount", e.target.value)
                           }
                           placeholder="금액"
-                          readOnly={readOnly}
-                          tabIndex={readOnly ? -1 : 0}
-                          className={`text-sm text-right pr-14 ${readOnly ? "bg-muted/30 cursor-default" : ""}`}
+                          className="text-sm text-right pr-14"
                         />
                         {cash.amount > 0 && (
                           <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
@@ -566,16 +499,14 @@ export function InvestmentItemComponent({
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   히스토리
                 </span>
-                {!readOnly && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsAddHistoryModalOpen(true)}
-                    className="h-7 text-xs"
-                  >
-                    + 기록 추가
-                  </Button>
-                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsAddHistoryModalOpen(true)}
+                  className="h-7 text-xs"
+                >
+                  + 기록 추가
+                </Button>
               </div>
 
               {item.records.length > 0 && (
@@ -591,7 +522,7 @@ export function InvestmentItemComponent({
                         >
                           <div className="text-sm">
                             {new Date(record.date).toLocaleDateString("ko-KR")}
-                            {!readOnly && !isLatest && (
+                            {!isLatest && (
                               <span
                                 className="ml-1 text-xs cursor-pointer underline"
                                 onClick={() => onRemoveHistoryRecord(item.id, record.date)}
@@ -613,49 +544,41 @@ export function InvestmentItemComponent({
               )}
             </div>
 
-            {!readOnly && (
-              <div className="flex">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => onRemoveInvestment(item.id)}
-                  className="text-xs ml-auto underline"
-                >
-                  계좌 삭제
-                </Button>
-              </div>
-            )}
+            <div className="flex">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => onRemoveInvestment(item.id)}
+                className="text-xs ml-auto underline"
+              >
+                계좌 삭제
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>
 
-      {!readOnly && (
-        <AddHistoryModal
-          isOpen={isAddHistoryModalOpen}
-          onClose={() => setIsAddHistoryModalOpen(false)}
-          item={item}
-          onAddHistory={onAddHistory}
-        />
-      )}
+      <AddHistoryModal
+        isOpen={isAddHistoryModalOpen}
+        onClose={() => setIsAddHistoryModalOpen(false)}
+        item={item}
+        onAddHistory={onAddHistory}
+      />
 
-      {!readOnly && (
-        <AddStockHoldingModal
-          isOpen={isAddHoldingModalOpen}
-          onClose={() => setIsAddHoldingModalOpen(false)}
-          accountName={item.accountName}
-          existingHoldingKeys={existingHoldingKeys}
-          onAdd={handleAddHoldingFromModal}
-        />
-      )}
+      <AddStockHoldingModal
+        isOpen={isAddHoldingModalOpen}
+        onClose={() => setIsAddHoldingModalOpen(false)}
+        accountName={item.accountName}
+        existingHoldingKeys={existingHoldingKeys}
+        onAdd={handleAddHoldingFromModal}
+      />
 
-      {!readOnly && (
-        <AddCashItemModal
-          isOpen={isAddCashModalOpen}
-          onClose={() => setIsAddCashModalOpen(false)}
-          accountName={item.accountName}
-          onAdd={handleAddCashFromModal}
-        />
-      )}
+      <AddCashItemModal
+        isOpen={isAddCashModalOpen}
+        onClose={() => setIsAddCashModalOpen(false)}
+        accountName={item.accountName}
+        onAdd={handleAddCashFromModal}
+      />
     </Card>
   );
 }
