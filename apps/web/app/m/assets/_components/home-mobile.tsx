@@ -23,20 +23,20 @@ import {
 import { ResultSection } from "@web/seed-design/ui/result-section";
 import { formatReturnRate, numberToKorean } from "@web/utils/number-format";
 import { formatProfitKorean } from "@web/utils/profit-color";
-import { InvestmentTrend, MonthlySummaryList } from "./investment-stats";
+import { HoldingsSummaryList, InvestmentTrend, MonthlySummaryList } from "./investment-stats";
 
-type Tab = "monthly" | "trend";
+type Tab = "holdings" | "monthly" | "trend";
 
 /**
  * 모바일 홈 (`/assets`). 위에는 핵심만 (총 평가금액·수익, 리밸런싱 알림), 그 아래 통계는
- * 칩 탭(월별 내역 / 투자 추이, 기본은 월별 내역)으로 나눠 한 번에 하나만 보여준다. 계좌 목록은 "계좌" 탭.
+ * 칩 탭(종목 / 월별 내역 / 투자 추이, 기본은 종목)으로 나눠 한 번에 하나만 보여준다. 계좌 목록은 "계좌" 탭.
  */
 export function HomeMobile() {
   const investments = useInvestmentStore((s) => s.investments);
   const statusFor = useLinkedPortfolioStatus();
   const { push } = useFlow();
   const switchTab = useSwitchTab();
-  const [tab, setTab] = useState<Tab>("monthly");
+  const [tab, setTab] = useState<Tab>("holdings");
 
   // 저장된 평가금액이 아니라 지금 시세로 다시 계산한 금액을 보여준다 (계좌 상세와 같은 값).
   const liveInvestments = useLiveAccounts(investments);
@@ -106,6 +106,7 @@ export function HomeMobile() {
         size="medium"
       >
         <ChipTabsList>
+          <ChipTabsTrigger value="holdings">종목</ChipTabsTrigger>
           <ChipTabsTrigger value="monthly">월별 내역</ChipTabsTrigger>
           <ChipTabsTrigger value="trend">투자 추이</ChipTabsTrigger>
         </ChipTabsList>
@@ -115,6 +116,11 @@ export function HomeMobile() {
         <ChipTabsContent value="monthly">
           <div className="pt-x2">
             <MonthlySummaryList investments={investments} />
+          </div>
+        </ChipTabsContent>
+        <ChipTabsContent value="holdings">
+          <div className="pt-x2">
+            <HoldingsSummaryList investments={investments} />
           </div>
         </ChipTabsContent>
       </ChipTabsRoot>
