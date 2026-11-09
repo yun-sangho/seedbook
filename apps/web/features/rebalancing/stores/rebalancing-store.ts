@@ -3,7 +3,7 @@
 import { createHybridStorage } from "@web/lib/hybrid-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import type { RebalancingSession } from "../types/types";
+import type { RebalancingResult, RebalancingSession } from "../types/types";
 import {
   completeRebalancing,
   completeRebalancingTaskWith,
@@ -21,8 +21,8 @@ interface RebalancingState {
   toggleTask: (sessionId: string, taskId: string) => void;
   /** 실제로 사고판 수량과 함께 완료로 기록한다 (이미 완료했으면 수량을 바꾼다). */
   completeTaskWith: (sessionId: string, taskId: string, executedQuantity: number) => void;
-  /** 할 일을 모두 마쳤으면 완료 기록으로 넘긴다. */
-  completeRebalancing: (sessionId: string) => void;
+  /** 완료 기록으로 넘긴다. 계좌에 반영했으면 반영 후 구성을 함께 남긴다. */
+  completeRebalancing: (sessionId: string, result?: RebalancingResult | null) => void;
   removeRebalancing: (sessionId: string) => void;
 }
 
@@ -59,11 +59,11 @@ export const useRebalancingStore = create<RebalancingState>()(
         }));
       },
 
-      completeRebalancing: (sessionId) => {
+      completeRebalancing: (sessionId, result = null) => {
         const now = new Date().toISOString();
         set((state) => ({
           sessions: state.sessions.map((s) =>
-            s.id === sessionId ? completeRebalancing(s, now) : s
+            s.id === sessionId ? completeRebalancing(s, now, result) : s
           ),
         }));
       },

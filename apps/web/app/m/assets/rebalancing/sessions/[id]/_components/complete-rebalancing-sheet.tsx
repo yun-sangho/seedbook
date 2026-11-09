@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
+import { stockPriceKey, useStockPrices } from "@web/features/investments/utils/use-stock-prices";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import type { RebalancingSession, RebalancingTask } from "@web/features/rebalancing/types/types";
 import { applyRebalancingToAccount } from "@web/features/rebalancing/utils/apply-rebalancing-to-account";
+import { computeRebalancingResult } from "@web/features/rebalancing/utils/rebalancing-result";
 import { ActionButton } from "@web/seed-design/ui/action-button";
-import { Badge } from "@web/seed-design/ui/badge";
 import {
   BottomSheetBody,
   BottomSheetContent,
@@ -22,8 +23,10 @@ import { formatWithCommas } from "@web/utils/number-format";
 const FALLBACK_CURRENCY = "KRW";
 
 /**
- * 할 일을 모두 마친 리밸런싱을 완료하는 시트. "계좌에 반영하기"(기본 체크)를 켜 두면
- * 매매한 수량과 예수금 변화를 계좌에 함께 반영한다.
+ * 리밸런싱을 완료하는 확인 시트. 무엇이 반영되는지 한두 줄로만 요약한다 — 종목별 결과는
+ * 완료한 뒤 리밸런싱 화면의 "리밸런싱 결과" 에서 본다.
+ * "계좌에 반영하기"(기본 체크)를 켜 두면 매매한 수량과 예수금 변화를 계좌에 반영하고,
+ * 반영 후 포트폴리오 구성을 기록에 남긴다.
  */
 export function CompleteRebalancingSheet({
   session,
@@ -52,6 +55,9 @@ export function CompleteRebalancingSheet({
     return applyRebalancingToAccount(account, session, currencyFor);
   }, [account, portfolio, session]);
 
+  // 결과 비중의 가격: 이번에 매매한 종목은 리밸런싱 기준 가격, 나머지는 지금 시세.
+  const { prices: livePrices } = useStockPrices(preview?.account.holdings ?? []);
+
   const canApply = preview !== null;
   const uncheckedCount = session.tasks.filter((t) => !t.done).length;
   // 남은 매매가 있으면 "완료"가 아니라 "중지"다.
@@ -59,8 +65,25 @@ export function CompleteRebalancingSheet({
   const willApply = canApply && applyToAccount;
 
   const submit = () => {
-    if (willApply && preview) replaceInvestment(preview.account);
-    completeRebalancing(session.id);
+    if (willApply && preview) {
+      replaceInvestment(preview.account);
+      const prices = new Map<string, number>();
+      for (const [key, point] of livePrices) prices.set(key, point.close);
+      for (const task of session.tasks) {
+        if (task.price !== null) prices.set(stockPriceKey(task.market, task.ticker), task.price);
+      }
+      const result = portfolio
+        ? computeRebalancingResult(
+            preview.account,
+            portfolio.allocations,
+            prices,
+            preview.holdingChanges
+          )
+        : null;
+      completeRebalancing(session.id, result);
+    } else {
+      completeRebalancing(session.id);
+    }
     onOpenChange(false);
   };
 
@@ -74,12 +97,11 @@ export function CompleteRebalancingSheet({
           {stopping && (
             <Callout
               tone="warning"
-              title="아직 모든 매매가 완료되지 않았어요"
               description={`남은 매매 ${uncheckedCount}건은 하지 않은 것으로 기록되고, 계좌에도 반영되지 않아요.`}
               className="mb-x4"
             />
           )}
-          {canApply ? (
+          {preview ? (
             <>
               <Checkbox
                 label="계좌에 반영하기"
@@ -88,35 +110,17 @@ export function CompleteRebalancingSheet({
                 size="large"
                 tone="neutral"
               />
-              {applyToAccount ? (
-                <ul className="mt-x3 max-h-[45dvh] overflow-y-auto">
-                  {preview.holdingChanges.map((change) => (
-                    <ChangeRow
-                      key={change.task.id}
-                      label={
-                        <>
-                          <Badge
-                            tone={change.task.action === "매수" ? "positive" : "critical"}
-                            variant="weak"
-                          >
-                            {change.task.action}
-                          </Badge>
-                          <span className="truncate">{change.task.name || change.task.ticker}</span>
-                        </>
-                      }
-                      before={`${formatWithCommas(change.before)}주`}
-                      after={`${formatWithCommas(change.after)}주`}
-                    />
-                  ))}
-                  <ChangeRow
-                    label={<span className="truncate">{preview.cash.label}</span>}
-                    before={`${formatWithCommas(preview.cash.before)}원`}
-                    after={`${formatWithCommas(preview.cash.after)}원`}
-                  />
-                </ul>
-              ) : (
-                <p className="t3-regular text-fg-neutral-subtle mt-x2">
-                  계좌는 그대로 두고 기록만 남겨요.
+              <p className="t4-regular text-fg-neutral-muted mt-x2">
+                {applyToAccount
+                  ? applySummary(preview.holdingChanges.map((c) => c.task))
+                  : "계좌는 그대로 두고 기록만 남겨요."}
+              </p>
+              {applyToAccount && preview.cash.before !== preview.cash.after && (
+                <p className="t4-regular text-fg-neutral-muted mt-x1 tabular-nums">
+                  {preview.cash.label} {formatWithCommas(preview.cash.before)}원 →{" "}
+                  <span className="text-fg-neutral font-bold">
+                    {formatWithCommas(preview.cash.after)}원
+                  </span>
                 </p>
               )}
               {applyToAccount && preview.skipped.length > 0 && (
@@ -127,7 +131,7 @@ export function CompleteRebalancingSheet({
               )}
             </>
           ) : (
-            <p className="t3-regular text-fg-neutral-subtle">
+            <p className="t4-regular text-fg-neutral-muted">
               계좌가 삭제되어 반영할 수 없어요. 기록만 남겨요.
             </p>
           )}
@@ -142,23 +146,11 @@ export function CompleteRebalancingSheet({
   );
 }
 
-/** 반영 전 → 후 한 줄. 바뀌는 값(후)을 굵게 보여 준다. */
-function ChangeRow({
-  label,
-  before,
-  after,
-}: {
-  label: React.ReactNode;
-  before: string;
-  after: string;
-}) {
-  return (
-    <li className="flex items-center gap-x3 py-x2">
-      <span className="t4-regular flex min-w-0 flex-1 items-center gap-x2">{label}</span>
-      <span className="t4-regular shrink-0 tabular-nums">
-        <span className="text-fg-neutral-subtle">{before} → </span>
-        <span className="font-bold">{after}</span>
-      </span>
-    </li>
-  );
+/** "매도 2건 · 매수 3건을 계좌에 반영해요" — 반영할 매매가 없으면 그렇다고 알린다. */
+function applySummary(tasks: RebalancingTask[]): string {
+  const sells = tasks.filter((t) => t.action === "매도").length;
+  const buys = tasks.length - sells;
+  const parts = [sells > 0 ? `매도 ${sells}건` : null, buys > 0 ? `매수 ${buys}건` : null];
+  const label = parts.filter(Boolean).join(" · ");
+  return label ? `${label}을 계좌에 반영해요.` : "계좌에 반영할 매매가 없어요.";
 }

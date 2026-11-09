@@ -1,0 +1,1 @@
+ALTER TABLE "seedbook"."rebalancing" ADD COLUMN "result" jsonb;

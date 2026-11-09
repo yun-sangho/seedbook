@@ -450,6 +450,8 @@ export const rebalancing = seedbook.table(
     tasks: jsonb("tasks").notNull(),
     startedAt: timestamp("startedAt", { precision: 3, mode: "date" }).notNull(),
     completedAt: timestamp("completedAt", { precision: 3, mode: "date" }),
+    // 완료하며 계좌에 반영한 뒤의 포트폴리오 구성 스냅샷. 반영하지 않았으면 null.
+    result: jsonb("result"),
     ...syncColumns(),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })

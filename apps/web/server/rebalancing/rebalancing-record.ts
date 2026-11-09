@@ -1,6 +1,11 @@
 import type { schema } from "@seedbook/database";
 import { bigIntToNumber, toBigInt } from "@web/app/api/storage/_translators/types";
-import type { RebalancingSession, RebalancingTask } from "@web/features/rebalancing/types/types";
+import type {
+  RebalancingResult,
+  RebalancingResultHolding,
+  RebalancingSession,
+  RebalancingTask,
+} from "@web/features/rebalancing/types/types";
 
 /**
  * 리밸런싱 한 건의 클라이언트 표현 (`features/rebalancing` 의 `RebalancingSession`).
@@ -12,6 +17,9 @@ type RebalancingRow = typeof schema.rebalancing.$inferSelect;
 
 /** 한 리밸런싱에 담을 수 있는 할 일 수. 포트폴리오 종목 수보다 넉넉하게. */
 export const MAX_REBALANCING_TASKS = 200;
+
+/** 결과 스냅샷에 담을 수 있는 종목 수. 할 일 수와 같은 한도. */
+const MAX_RESULT_HOLDINGS = MAX_REBALANCING_TASKS;
 
 /** DB 행 → 클라이언트 표현. */
 export function rebalancingRowToPayload(row: RebalancingRow): RebalancingPayload {
@@ -26,6 +34,8 @@ export function rebalancingRowToPayload(row: RebalancingRow): RebalancingPayload
     tasks: Array.isArray(row.tasks) ? (row.tasks as RebalancingTask[]) : [],
     startedAt: row.startedAt.toISOString(),
     completedAt: row.completedAt ? row.completedAt.toISOString() : null,
+    // 저장 전에 parseRebalancingFields 로 검증한 값만 들어간다.
+    result: (row.result as RebalancingResult | null) ?? null,
   };
 }
 
@@ -40,6 +50,7 @@ export function rebalancingPayloadToColumns(payload: Omit<RebalancingPayload, "i
     tasks: payload.tasks,
     startedAt: new Date(payload.startedAt),
     completedAt: payload.completedAt ? new Date(payload.completedAt) : null,
+    result: payload.result ?? null,
   };
 }
 
@@ -89,6 +100,55 @@ function parseTask(value: unknown): RebalancingTask | null {
   };
 }
 
+function parseResultHolding(value: unknown): RebalancingResultHolding | null {
+  if (!value || typeof value !== "object") return null;
+  const v = value as Record<string, unknown>;
+  if (
+    !isText(v.market) ||
+    !isText(v.ticker) ||
+    !isText(v.name) ||
+    !isNumber(v.quantity) ||
+    !isNumber(v.change) ||
+    !isNullableNumber(v.percent) ||
+    !isNumber(v.targetPercent)
+  ) {
+    return null;
+  }
+  return {
+    market: v.market,
+    ticker: v.ticker,
+    name: v.name,
+    quantity: v.quantity,
+    change: v.change,
+    percent: v.percent,
+    targetPercent: v.targetPercent,
+  };
+}
+
+/** `undefined` = 잘못된 모양, `null` = 결과 없음. */
+function parseResult(value: unknown): RebalancingResult | null | undefined {
+  // 결과는 나중에 추가된 필드라 없으면 null (그 전에 완료했거나 계좌에 반영하지 않음).
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "object") return undefined;
+  const v = value as Record<string, unknown>;
+  if (
+    !Array.isArray(v.holdings) ||
+    v.holdings.length > MAX_RESULT_HOLDINGS ||
+    !isNumber(v.cash) ||
+    !isNullableNumber(v.cashPercent)
+  ) {
+    return undefined;
+  }
+  const holdings: RebalancingResultHolding[] = [];
+  for (const raw of v.holdings) {
+    const holding = parseResultHolding(raw);
+    if (!holding) return undefined;
+    holdings.push(holding);
+  }
+  // 알려진 필드만 남긴다 — jsonb 컬럼에 임의 데이터가 쌓이지 않게.
+  return { holdings, cash: v.cash, cashPercent: v.cashPercent };
+}
+
 /**
  * 외부 입력을 리밸런싱 필드로 검증한다. 잘못된 모양이면 `null`.
  */
@@ -117,6 +177,9 @@ export function parseRebalancingFields(value: unknown): Omit<RebalancingPayload,
     tasks.push(task);
   }
 
+  const result = parseResult(v.result);
+  if (result === undefined) return null;
+
   return {
     accountId: v.accountId,
     accountName: v.accountName,
@@ -126,5 +189,6 @@ export function parseRebalancingFields(value: unknown): Omit<RebalancingPayload,
     tasks,
     startedAt: v.startedAt,
     completedAt,
+    result,
   };
 }

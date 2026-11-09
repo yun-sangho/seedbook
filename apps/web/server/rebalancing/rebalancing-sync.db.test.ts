@@ -48,6 +48,7 @@ function rebalancingData(overrides: Record<string, unknown> = {}) {
     ],
     startedAt: "2026-11-08T00:00:00.000Z",
     completedAt: null,
+    result: null,
     ...overrides,
   };
 }
@@ -68,6 +69,34 @@ describe("applyMutation: rebalancing", () => {
     expect(result).toEqual({ status: "ok", version: 1 });
     const { changes } = await pullChanges(db, userId, null);
     expect(changes.rebalancing!).toEqual([{ id, version: 1, deletedAt: null, data }]);
+  });
+
+  it("keeps the result snapshot of a rebalancing completed into the account", async () => {
+    const userId = await createTestUser();
+    const id = randomUUID();
+    const data = rebalancingData({
+      completedAt: "2026-11-09T00:00:00.000Z",
+      result: {
+        holdings: [
+          {
+            market: "KOSPI",
+            ticker: "005930",
+            name: "삼성전자",
+            quantity: 3,
+            change: -7,
+            percent: 24.8,
+            targetPercent: 25,
+          },
+        ],
+        cash: 8_300,
+        cashPercent: null,
+      },
+    });
+
+    await applyMutation(db, userId, { entity: "rebalancing", op: "upsert", id, data });
+
+    const { changes } = await pullChanges(db, userId, null);
+    expect(changes.rebalancing![0]?.data).toEqual(data);
   });
 
   it("records completion when the last task is checked", async () => {

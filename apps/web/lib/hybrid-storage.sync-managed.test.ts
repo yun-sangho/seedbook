@@ -59,7 +59,8 @@ describe("hybrid storage for sync-managed stores in cloud mode", () => {
 
     expect(fetchMock).toHaveBeenCalledWith("/api/sync/pull", expect.anything());
     expect(JSON.parse(raw as string)).toEqual({
-      state: { sessions: [{ id: sessionRow.id, ...sessionRow.data }] },
+      // 결과가 없는 행은 result: null 로 채운다.
+      state: { sessions: [{ id: sessionRow.id, ...sessionRow.data, result: null }] },
       version: 1,
     });
     const meta = JSON.parse(localStorage.getItem("seedbook.sync.rebalancing") as string);

@@ -45,6 +45,7 @@ import { List, ListCheckItem } from "@web/seed-design/ui/list";
 import { ResultSection } from "@web/seed-design/ui/result-section";
 import { formatWithCommas, numberToKorean } from "@web/utils/number-format";
 import { CompleteRebalancingSheet } from "./complete-rebalancing-sheet";
+import { RebalancingResultSection } from "./rebalancing-result-section";
 import { TradeQuantitySheet } from "./trade-quantity-sheet";
 
 /** 체크된 할 일이 남은 목록에 머무는 시간. globals.css 의 task-leave (지연 500 + 300ms) 와 맞춘다. */
@@ -153,6 +154,8 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
           )}
         </div>
       )}
+      {/* 계좌에 반영하며 완료했으면 반영 후 구성을 보여준다. */}
+      {completed && session.result && <RebalancingResultSection result={session.result} />}
 
       <Divider />
 

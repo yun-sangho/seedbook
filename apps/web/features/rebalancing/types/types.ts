@@ -49,4 +49,30 @@ export interface RebalancingSession {
   tasks: RebalancingTask[];
   startedAt: string; // ISO timestamp
   completedAt: string | null; // ISO timestamp
+  /**
+   * 완료하며 계좌에 반영한 뒤의 포트폴리오 구성 스냅샷. 계좌에 반영하지 않았거나
+   * 이 필드가 생기기 전에 완료한 기록이면 null (없을 수도 있다).
+   */
+  result?: RebalancingResult | null;
+}
+
+/** 리밸런싱 결과의 포트폴리오 종목 한 줄 (목표 순서). */
+export interface RebalancingResultHolding {
+  market: string;
+  ticker: string;
+  name: string;
+  /** 반영 후 보유 수량 (주) */
+  quantity: number;
+  /** 이번 리밸런싱으로 바뀐 수량 (주). 매수 +, 매도 - */
+  change: number;
+  /** 포트폴리오 종목 + 예수금 중 비중 (%). 가격을 몰랐으면 null */
+  percent: number | null;
+  targetPercent: number;
+}
+
+export interface RebalancingResult {
+  holdings: RebalancingResultHolding[];
+  /** 반영 후 예수금 합 (원) */
+  cash: number;
+  cashPercent: number | null;
 }

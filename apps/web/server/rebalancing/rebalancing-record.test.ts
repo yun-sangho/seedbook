@@ -35,7 +35,7 @@ function validFields(overrides: Record<string, unknown> = {}) {
 
 describe("parseRebalancingFields", () => {
   it("accepts a well-formed in-progress rebalancing", () => {
-    expect(parseRebalancingFields(validFields())).toEqual(validFields());
+    expect(parseRebalancingFields(validFields())).toEqual({ ...validFields(), result: null });
   });
 
   it("treats a missing completedAt as in progress", () => {
@@ -113,5 +113,59 @@ describe("parseRebalancingFields", () => {
     );
 
     expect(parseRebalancingFields(validFields({ tasks }))).toBeNull();
+  });
+});
+
+describe("parseRebalancingFields result", () => {
+  function validResult(overrides: Record<string, unknown> = {}) {
+    return {
+      holdings: [
+        {
+          market: "KOSPI",
+          ticker: "005930",
+          name: "삼성전자",
+          quantity: 13,
+          change: 3,
+          percent: 24.8,
+          targetPercent: 25,
+        },
+      ],
+      cash: 8_300,
+      cashPercent: 0.3,
+      ...overrides,
+    };
+  }
+
+  it("keeps the result snapshot of a completed rebalancing", () => {
+    const fields = validFields({ completedAt: "2026-11-09T00:00:00.000Z", result: validResult() });
+
+    expect(parseRebalancingFields(fields)?.result).toEqual(validResult());
+  });
+
+  it("treats a missing result as none for rebalancings completed before it was recorded", () => {
+    expect(parseRebalancingFields(validFields())?.result).toBeNull();
+  });
+
+  it("accepts null shares when a price was unknown", () => {
+    const result = validResult({ cashPercent: null });
+    (result.holdings[0] as Record<string, unknown>).percent = null;
+
+    expect(parseRebalancingFields(validFields({ result }))?.result).toEqual(result);
+  });
+
+  it("rejects a malformed result holding", () => {
+    const result = validResult({ holdings: [{ name: "삼성전자" }] });
+
+    expect(parseRebalancingFields(validFields({ result }))).toBeNull();
+  });
+
+  it("drops unknown result fields before they reach the jsonb column", () => {
+    const result = validResult({ extra: "x" });
+    (result.holdings[0] as Record<string, unknown>).extra = "y";
+
+    const parsed = parseRebalancingFields(validFields({ result }))?.result;
+
+    expect(parsed).not.toHaveProperty("extra");
+    expect(parsed?.holdings[0]).not.toHaveProperty("extra");
   });
 });

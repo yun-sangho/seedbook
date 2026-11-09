@@ -1,4 +1,4 @@
-import type { RebalancingSession, RebalancingTask } from "../types/types";
+import type { RebalancingResult, RebalancingSession, RebalancingTask } from "../types/types";
 
 /**
  * 할 일 하나의 완료 여부를 뒤집는다. 모두 체크해도 바로 완료되지 않는다 —
@@ -26,13 +26,17 @@ export function canCompleteRebalancing(session: RebalancingSession): boolean {
   return !isRebalancingCompleted(session);
 }
 
-/** 진행 중인 리밸런싱을 완료 기록으로 넘긴다. 이미 완료됐으면 그대로 돌려준다. */
+/**
+ * 진행 중인 리밸런싱을 완료 기록으로 넘긴다. 이미 완료됐으면 그대로 돌려준다.
+ * 계좌에 반영했으면 반영 후 구성(`result`)을 함께 남긴다.
+ */
 export function completeRebalancing(
   session: RebalancingSession,
-  nowIso: string
+  nowIso: string,
+  result: RebalancingResult | null = null
 ): RebalancingSession {
   if (!canCompleteRebalancing(session)) return session;
-  return { ...session, completedAt: nowIso };
+  return { ...session, completedAt: nowIso, result };
 }
 
 export function isRebalancingCompleted(session: RebalancingSession): boolean {

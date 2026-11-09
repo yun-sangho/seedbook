@@ -169,6 +169,16 @@ describe("completeRebalancing", () => {
 
     expect(completeRebalancing(completed, NOW)).toBe(completed);
   });
+
+  it("keeps the result snapshot taken when it was applied to the account", () => {
+    const snapshot = { holdings: [], cash: 1_000, cashPercent: 100 };
+
+    expect(completeRebalancing(session(), NOW, snapshot).result).toEqual(snapshot);
+  });
+
+  it("records no result when it was not applied to the account", () => {
+    expect(completeRebalancing(session(), NOW).result).toBeNull();
+  });
 });
 
 describe("inProgressAccountIds", () => {
