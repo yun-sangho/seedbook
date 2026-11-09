@@ -62,6 +62,11 @@ export function isQuoteStale(quote: { fetchedAt: Date } | null, now: Date): bool
   return now.getTime() - quote.fetchedAt.getTime() >= ttl;
 }
 
+/** 그 체결이 해당 거래일 정규장 마감 (15:30 KST) 이후인지. 개장 전 체결은 false. */
+function hasClosed(tradedAt: Date): boolean {
+  return tradedAt.toISOString() >= closeInstant(kstDateString(tradedAt));
+}
+
 function closeInstant(date: string): string {
   return new Date(`${date}T15:30:00+09:00`).toISOString();
 }
@@ -75,8 +80,10 @@ function closePoint(date: string, close: number): PricePoint {
  *
  * - 일봉이 더 최근 거래일이면 일봉 (멈춘 현재가 캐시보다 확정값이 낫다).
  * - 현재가가 장중 (OPEN) 이면 실시간 가격, 기준 시각 = 마지막 체결 시각.
- * - 장 마감 현재가가 일봉보다 새 거래일이면 그날 종가 (15:30 ~ 16:30 수집 전 공백).
- *   네이버는 마감 뒤에도 시간외 체결 시각을 주므로 기준 시각은 15:30 으로 고정한다.
+ * - 장 마감 현재가가 일봉보다 새 거래일이고 그날 15:30 이후 체결이면 그날 종가
+ *   (15:30 ~ 16:30 수집 전 공백). 네이버는 마감 뒤에도 시간외 체결 시각을 주므로
+ *   기준 시각은 15:30 으로 고정한다.
+ * - 개장 전 (NXT 프리마켓 등) 체결은 장 마감 상태여도 오늘 종가가 아니다 — 일봉을 쓴다.
  * - 같은 거래일이면 확정된 일봉을 쓴다.
  */
 export function pickPricePoint(
@@ -97,6 +104,8 @@ export function pickPricePoint(
     };
   }
 
-  if (!daily || quoteDate > daily.date) return closePoint(quoteDate, quote.price);
+  if (!daily) return closePoint(quoteDate, quote.price);
+  if (quoteDate > daily.date && hasClosed(quote.tradedAt))
+    return closePoint(quoteDate, quote.price);
   return closePoint(daily.date, daily.close);
 }

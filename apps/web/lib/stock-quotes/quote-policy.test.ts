@@ -108,6 +108,21 @@ describe("pickPricePoint", () => {
     expect(result?.asOf).toBe("2026-11-09T06:30:00.000Z");
   });
 
+  it("keeps the previous daily close before the market opens even if a pre-market trade is newer", () => {
+    // 09:00 개장 전: 네이버는 NXT 프리마켓 체결 시각 (예: 08:30) 을 tradedAt 으로 준다.
+    // 오늘 정규장은 아직 열리지 않았으므로 오늘 종가는 존재하지 않는다.
+    const result = pickPricePoint(
+      { date: "2026-11-06", close: 70000 },
+      { price: 70300, marketStatus: "CLOSE", tradedAt: kst("08:30:00") }
+    );
+    expect(result).toEqual({
+      close: 70000,
+      date: "2026-11-06",
+      asOf: "2026-11-06T06:30:00.000Z",
+      kind: "close",
+    });
+  });
+
   it("prefers the confirmed daily close when a closed quote is from the same day", () => {
     const result = pickPricePoint(
       { date: "2026-11-09", close: 71400 },
