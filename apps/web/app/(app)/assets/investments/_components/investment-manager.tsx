@@ -137,11 +137,12 @@ export function InvestmentManager() {
               <SelectValue placeholder="보유 주식 정렬" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="default">기본 순서</SelectItem>
-              <SelectItem value="priceDesc">주당가 높은 순</SelectItem>
-              <SelectItem value="priceAsc">주당가 낮은 순</SelectItem>
               <SelectItem value="evalDesc">평가액 높은 순</SelectItem>
               <SelectItem value="evalAsc">평가액 낮은 순</SelectItem>
+              <SelectItem value="priceDesc">주당가 높은 순</SelectItem>
+              <SelectItem value="priceAsc">주당가 낮은 순</SelectItem>
+              <SelectItem value="nameAsc">이름 오름차순</SelectItem>
+              <SelectItem value="nameDesc">이름 내림차순</SelectItem>
             </SelectContent>
           </Select>
         </div>

@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { StockHolding } from "../types/types";
-import { sortHoldings, type SortPricePoint } from "./sort-holdings";
+import {
+  DEFAULT_HOLDINGS_SORT_OPTION,
+  normalizeHoldingsSortOption,
+  sortByHoldingsOption,
+  sortHoldings,
+  type SortPricePoint,
+} from "./sort-holdings";
 import { stockPriceKey } from "./use-stock-prices";
 
 // 테스트 편의상 숫자 id 를 받아 내부에서 문자열로 변환한다. 실제 StockHolding.id
@@ -27,17 +33,37 @@ function makePrices(entries: Array<[StockHolding, number]>): Map<string, SortPri
 }
 
 describe("sortHoldings", () => {
-  describe("default option", () => {
-    it("returns the original array reference without copying", () => {
-      const holdings = [makeHolding({ id: 1, quantity: 10 }), makeHolding({ id: 2, quantity: 20 })];
-      const prices = makePrices([
-        [holdings[0]!, 1000],
-        [holdings[1]!, 2000],
-      ]);
+  describe("name sort", () => {
+    const holdings = [
+      makeHolding({ id: 1, name: "카카오" }),
+      makeHolding({ id: 2, name: "삼성전자" }),
+      makeHolding({ id: 3, name: "KODEX 200" }),
+      makeHolding({ id: 4, name: "NAVER" }),
+    ];
 
-      const result = sortHoldings(holdings, prices, "default");
+    it("nameAsc orders by name in Korean order, Hangul (가나다) before Latin", () => {
+      const result = sortHoldings(holdings, new Map(), "nameAsc");
+      expect(result.map((h) => h.name)).toEqual(["삼성전자", "카카오", "KODEX 200", "NAVER"]);
+    });
 
-      expect(result).toBe(holdings);
+    it("nameDesc orders by name in reverse", () => {
+      const result = sortHoldings(holdings, new Map(), "nameDesc");
+      expect(result.map((h) => h.name)).toEqual(["NAVER", "KODEX 200", "카카오", "삼성전자"]);
+    });
+
+    it("sorts by name even when prices are missing", () => {
+      const result = sortHoldings(holdings.slice(0, 2), new Map(), "nameAsc");
+      expect(result.map((h) => h.name)).toEqual(["삼성전자", "카카오"]);
+    });
+
+    it("falls back to the ticker for a holding without a name", () => {
+      const unnamed = makeHolding({ id: 5, name: "", ticker: "A00001" });
+      const result = sortHoldings(
+        [unnamed, makeHolding({ id: 6, name: "B" })],
+        new Map(),
+        "nameAsc"
+      );
+      expect(result.map((h) => h.id)).toEqual(["5", "6"]);
     });
   });
 
@@ -160,5 +186,43 @@ describe("sortHoldings", () => {
       const result = sortHoldings([only], prices, "evalDesc");
       expect(result).toEqual([only]);
     });
+  });
+});
+
+describe("sortByHoldingsOption", () => {
+  // 홈 "종목" 탭의 합산 종목처럼 가격·평가액을 이미 계산한 목록.
+  const rows = [
+    { name: "카카오", price: 40_000, value: 400_000 },
+    { name: "삼성전자", price: 70_000, value: 700_000 },
+    { name: "시세없음", price: null, value: null },
+  ];
+
+  it("sorts precomputed rows by value with unpriced rows last", () => {
+    const result = sortByHoldingsOption(rows, "evalDesc", (r) => r);
+    expect(result.map((r) => r.name)).toEqual(["삼성전자", "카카오", "시세없음"]);
+  });
+
+  it("sorts precomputed rows by name", () => {
+    const result = sortByHoldingsOption(rows, "nameAsc", (r) => r);
+    expect(result.map((r) => r.name)).toEqual(["삼성전자", "시세없음", "카카오"]);
+  });
+});
+
+describe("normalizeHoldingsSortOption", () => {
+  it("keeps a known option", () => {
+    expect(normalizeHoldingsSortOption("nameDesc")).toBe("nameDesc");
+  });
+
+  it("replaces the removed 'default' option with the default sort", () => {
+    expect(normalizeHoldingsSortOption("default")).toBe(DEFAULT_HOLDINGS_SORT_OPTION);
+  });
+
+  it("replaces a missing or unknown value with the default sort", () => {
+    expect(normalizeHoldingsSortOption(undefined)).toBe(DEFAULT_HOLDINGS_SORT_OPTION);
+    expect(normalizeHoldingsSortOption("value")).toBe(DEFAULT_HOLDINGS_SORT_OPTION);
+  });
+
+  it("defaults to the highest evaluated value first", () => {
+    expect(DEFAULT_HOLDINGS_SORT_OPTION).toBe("evalDesc");
   });
 });

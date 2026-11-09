@@ -492,7 +492,7 @@ export const userPreference = seedbook.table("user_preference", {
   userId: text("userId")
     .primaryKey()
     .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
-  holdingsSortOption: text("holdingsSortOption").notNull().default("default"),
+  holdingsSortOption: text("holdingsSortOption").notNull().default("evalDesc"),
   // 진행 중 리밸런싱의 매매 정렬 ("nameDesc" | "nameAsc" | "evalDesc" | "evalAsc").
   rebalancingTaskSort: text("rebalancingTaskSort").notNull().default("nameDesc"),
   // 사용자가 선택한 저장소 모드 ("local" | "cloud"). 로그인 시 클라이언트가 이 값을

@@ -1,4 +1,5 @@
 import { schema, type Database } from "@seedbook/database";
+import { normalizeHoldingsSortOption } from "@web/features/investments/types/holdings-sort";
 import {
   investmentRowToFields,
   parseInvestmentFields,
@@ -53,7 +54,7 @@ export const investmentTranslator: DomainTranslator = {
     const envelope: Envelope = {
       state: {
         investments,
-        holdingsSortOption: preference?.holdingsSortOption ?? "default",
+        holdingsSortOption: normalizeHoldingsSortOption(preference?.holdingsSortOption),
       },
       version: VERSION,
     };
@@ -79,8 +80,7 @@ export const investmentTranslator: DomainTranslator = {
         userId
       );
 
-      const holdingsSortOption =
-        typeof state.holdingsSortOption === "string" ? state.holdingsSortOption : "default";
+      const holdingsSortOption = normalizeHoldingsSortOption(state.holdingsSortOption);
       await tx
         .insert(schema.userPreference)
         .values({ userId, holdingsSortOption })

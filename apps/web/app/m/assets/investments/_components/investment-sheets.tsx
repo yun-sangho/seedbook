@@ -27,13 +27,14 @@ interface SheetProps {
 
 export type SortOptionList<T extends string> = ReadonlyArray<{ value: T; label: string }>;
 
-/** 계좌 안의 보유 종목 정렬 (store 에 저장, 데스크탑과 공유). */
+/** 보유 종목 정렬 (store 에 저장). 계좌 상세·홈 "종목" 탭·데스크탑이 같은 설정을 쓴다. */
 export const HOLDINGS_SORT_OPTIONS: SortOptionList<HoldingsSortOption> = [
-  { value: "default", label: "기본 순서" },
-  { value: "priceDesc", label: "주당가 높은 순" },
-  { value: "priceAsc", label: "주당가 낮은 순" },
   { value: "evalDesc", label: "평가액 높은 순" },
   { value: "evalAsc", label: "평가액 낮은 순" },
+  { value: "priceDesc", label: "주당가 높은 순" },
+  { value: "priceAsc", label: "주당가 낮은 순" },
+  { value: "nameAsc", label: "이름 오름차순" },
+  { value: "nameDesc", label: "이름 내림차순" },
 ];
 
 /** 투자 홈의 계좌 목록 정렬. */

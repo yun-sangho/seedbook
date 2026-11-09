@@ -1,0 +1,1 @@
+ALTER TABLE "seedbook"."user_preference" ALTER COLUMN "holdingsSortOption" SET DEFAULT 'evalDesc';

@@ -7,10 +7,15 @@ import { parseNumericString } from "@web/utils/number-format";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { ACCOUNT_COLORS, COLOR_FAMILIES } from "../types/constants";
+import {
+  DEFAULT_HOLDINGS_SORT_OPTION,
+  normalizeHoldingsSortOption,
+  type HoldingsSortOption,
+} from "../types/holdings-sort";
 import { CashItem, InvestmentItem, InvestmentRecord, StockHolding } from "../types/types";
 import type { HoldingSeed } from "../utils/holding-seeds";
 
-export type HoldingsSortOption = "default" | "priceDesc" | "priceAsc" | "evalDesc" | "evalAsc";
+export type { HoldingsSortOption } from "../types/holdings-sort";
 
 // 현재 날짜를 YYYY-MM-DD 형식으로 반환하는 헬퍼 함수
 const getCurrentDate = (): string => {
@@ -106,7 +111,7 @@ export const useInvestmentStore = create<InvestmentState>()(
     (set, get) => ({
       investments: [],
       expandedFormId: "",
-      holdingsSortOption: "default",
+      holdingsSortOption: DEFAULT_HOLDINGS_SORT_OPTION,
 
       setHoldingsSortOption: (option) => set({ holdingsSortOption: option }),
 
@@ -487,7 +492,7 @@ export const useInvestmentStore = create<InvestmentState>()(
         set({
           investments: [],
           expandedFormId: "",
-          holdingsSortOption: "default",
+          holdingsSortOption: DEFAULT_HOLDINGS_SORT_OPTION,
         });
       },
     }),
@@ -542,6 +547,15 @@ export const useInvestmentStore = create<InvestmentState>()(
           );
         }
         return state;
+      },
+      // 없앤 "기본 순서" 처럼 지금은 없는 정렬값이 저장돼 있으면 기본값으로 바꾼다.
+      merge: (persisted, current) => {
+        const saved = (persisted ?? {}) as Partial<InvestmentState>;
+        return {
+          ...current,
+          ...saved,
+          holdingsSortOption: normalizeHoldingsSortOption(saved.holdingsSortOption),
+        };
       },
       onRehydrateStorage: () => (state) => {
         // color 누락 방어 — 이전 버전에서 추가되지 않은 투자 계좌가 있을 수 있음

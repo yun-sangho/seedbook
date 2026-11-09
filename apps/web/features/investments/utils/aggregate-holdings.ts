@@ -14,8 +14,8 @@ export interface AggregatedHolding {
 }
 
 /**
- * 모든 계좌의 보유 종목을 종목(시장·티커) 단위로 합친다. 평가금액 큰 순,
- * 시세가 없는 종목은 맨 뒤 (그 사이에선 처음 나온 순서).
+ * 모든 계좌의 보유 종목을 종목(시장·티커) 단위로 합친다 (처음 나온 순서). 정렬은
+ * 보유 종목 정렬 설정(`sortByHoldingsOption`)으로 화면에서 한다.
  * 시장·티커가 없는 레거시 항목은 같은 종목인지 알 수 없어 합치지 않는다.
  */
 export function aggregateHoldings(
@@ -40,14 +40,8 @@ export function aggregateHoldings(
     }
   }
 
-  const rows = [...byKey.values()].map((row) => ({
+  return [...byKey.values()].map((row) => ({
     ...row,
     value: row.price === null ? null : row.price * row.quantity,
   }));
-  return rows.sort((a, b) => {
-    if (a.value === null && b.value === null) return 0;
-    if (a.value === null) return 1;
-    if (b.value === null) return -1;
-    return b.value - a.value;
-  });
 }

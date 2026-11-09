@@ -119,9 +119,7 @@ export function HomeMobile() {
           </div>
         </ChipTabsContent>
         <ChipTabsContent value="holdings">
-          <div className="pt-x2">
-            <HoldingsSummaryList investments={investments} />
-          </div>
+          <HoldingsSummaryList investments={investments} />
         </ChipTabsContent>
       </ChipTabsRoot>
     </div>

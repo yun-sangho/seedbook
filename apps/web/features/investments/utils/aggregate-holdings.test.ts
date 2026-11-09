@@ -53,22 +53,7 @@ describe("aggregateHoldings", () => {
     expect(row).toMatchObject({ name: "삼성전자", quantity: 15, price: 70_000, value: 1_050_000 });
   });
 
-  it("sorts by evaluated value, largest first", () => {
-    const accounts = [
-      account("a", [
-        holding({ id: "1", ticker: "A", name: "에이", quantity: 1 }),
-        holding({ id: "2", ticker: "B", name: "비", quantity: 1 }),
-      ]),
-    ];
-    const prices = new Map([
-      ["KOSPI:A", price(1_000)],
-      ["KOSPI:B", price(5_000)],
-    ]);
-
-    expect(aggregateHoldings(accounts, prices).map((r) => r.name)).toEqual(["비", "에이"]);
-  });
-
-  it("puts stocks without a price last with a null price and value", () => {
+  it("gives a stock without a price a null price and value", () => {
     const accounts = [
       account("a", [
         holding({ id: "1", ticker: "NOPRICE", name: "시세없음", quantity: 1 }),
@@ -79,8 +64,7 @@ describe("aggregateHoldings", () => {
 
     const rows = aggregateHoldings(accounts, prices);
 
-    expect(rows.map((r) => r.name)).toEqual(["에이", "시세없음"]);
-    expect(rows[1]).toMatchObject({ price: null, value: null });
+    expect(rows[0]).toMatchObject({ name: "시세없음", price: null, value: null });
   });
 
   it("keeps legacy holdings without a ticker as separate rows with no price", () => {

@@ -32,9 +32,9 @@ describe("Investment Store", () => {
       expect(state.expandedFormId).toBe("");
     });
 
-    it("holdingsSortOption defaults to 'default'", () => {
+    it("holdingsSortOption defaults to the highest evaluated value first", () => {
       const state = useInvestmentStore.getState();
-      expect(state.holdingsSortOption).toBe("default");
+      expect(state.holdingsSortOption).toBe("evalDesc");
     });
   });
 
@@ -59,8 +59,24 @@ describe("Investment Store", () => {
       setHoldingsSortOption("evalAsc");
       expect(useInvestmentStore.getState().holdingsSortOption).toBe("evalAsc");
 
-      setHoldingsSortOption("default");
-      expect(useInvestmentStore.getState().holdingsSortOption).toBe("default");
+      setHoldingsSortOption("nameAsc");
+      expect(useInvestmentStore.getState().holdingsSortOption).toBe("nameAsc");
+
+      setHoldingsSortOption("nameDesc");
+      expect(useInvestmentStore.getState().holdingsSortOption).toBe("nameDesc");
+    });
+
+    it("replaces a saved 'default' sort, which no longer exists, when loading", () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const persistApi = (useInvestmentStore as any).persist;
+      const merge = persistApi.getOptions().merge;
+
+      const merged = merge(
+        { investments: [], holdingsSortOption: "default" },
+        useInvestmentStore.getState()
+      );
+
+      expect(merged.holdingsSortOption).toBe("evalDesc");
     });
 
     it("holdingsSortOption is included in persisted state via partialize", () => {
