@@ -53,20 +53,6 @@ describe("aggregateHoldings", () => {
     expect(row).toMatchObject({ name: "삼성전자", quantity: 15, price: 70_000, value: 1_050_000 });
   });
 
-  it("lists the accounts holding the stock with each account's quantity", () => {
-    const accounts = [
-      account("a", [holding({ id: "1", quantity: 10 })]),
-      account("b", [holding({ id: "2", quantity: 5 })]),
-    ];
-
-    const [row] = aggregateHoldings(accounts, new Map());
-
-    expect(row?.accounts).toEqual([
-      { id: "a", name: "계좌 a", color: "#000", quantity: 10 },
-      { id: "b", name: "계좌 b", color: "#000", quantity: 5 },
-    ]);
-  });
-
   it("sorts by evaluated value, largest first", () => {
     const accounts = [
       account("a", [

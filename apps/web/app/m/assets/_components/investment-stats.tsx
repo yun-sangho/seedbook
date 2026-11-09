@@ -80,24 +80,14 @@ export function HoldingsSummaryList({ investments }: { investments: InvestmentIt
             : isLoading
               ? "..."
               : "시세 없음";
-        // 여러 계좌에 나눠 가진 종목은 계좌별 수량도 보여준다.
-        const accountsText =
-          row.accounts.length > 1
-            ? row.accounts.map((a) => `${a.name} ${a.quantity.toLocaleString()}주`).join(" · ")
-            : row.accounts[0]?.name;
         return (
           <ListItem
             key={row.key}
             title={row.name}
             detail={
-              <>
-                <span className="block tabular-nums">
-                  {row.quantity.toLocaleString()}주 · {priceText}
-                </span>
-                {accountsText && (
-                  <span className="t2-regular text-fg-neutral-subtle block">{accountsText}</span>
-                )}
-              </>
+              <span className="tabular-nums">
+                {row.quantity.toLocaleString()}주 · {priceText}
+              </span>
             }
             suffix={
               <span className="t4-bold tabular-nums">

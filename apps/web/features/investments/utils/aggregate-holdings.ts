@@ -1,13 +1,6 @@
 import type { InvestmentItem } from "../types/types";
 import { stockPriceKey } from "./use-stock-prices";
 
-export interface HoldingAccountShare {
-  id: string;
-  name: string;
-  color: string;
-  quantity: number;
-}
-
 /** 여러 계좌에 흩어진 같은 종목을 합친 한 줄. */
 export interface AggregatedHolding {
   /** 목록 key. 시장·티커가 있으면 `market:ticker`, 레거시(이름만)는 보유 항목 id. */
@@ -18,8 +11,6 @@ export interface AggregatedHolding {
   price: number | null;
   /** 평가금액 (원). 시세가 없으면 null */
   value: number | null;
-  /** 이 종목을 가진 계좌 (계좌 목록 순서) */
-  accounts: HoldingAccountShare[];
 }
 
 /**
@@ -43,18 +34,8 @@ export function aggregateHoldings(
         quantity: 0,
         price: priceKey ? (prices.get(priceKey)?.close ?? null) : null,
         value: null,
-        accounts: [],
       };
       row.quantity += h.quantity;
-      const share = row.accounts.find((a) => a.id === account.id);
-      if (share) share.quantity += h.quantity;
-      else
-        row.accounts.push({
-          id: account.id,
-          name: account.accountName,
-          color: account.color,
-          quantity: h.quantity,
-        });
       byKey.set(key, row);
     }
   }
