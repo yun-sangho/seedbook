@@ -69,6 +69,9 @@ function parseTask(value: unknown): RebalancingTask | null {
   const priceKind = v.priceKind ?? null;
   if (priceAsOf !== null && !isTimestamp(priceAsOf)) return null;
   if (priceKind !== null && priceKind !== "realtime" && priceKind !== "close") return null;
+  // 실제로 사고판 수량도 나중에 추가된 필드라 없으면 null (권장 수량대로 거래한 것으로 본다).
+  const executedQuantity = v.executedQuantity ?? null;
+  if (!isNullableNumber(executedQuantity)) return null;
   // 알려진 필드만 남긴다 — jsonb 컬럼에 임의 데이터가 쌓이지 않게.
   return {
     id: v.id,
@@ -81,6 +84,7 @@ function parseTask(value: unknown): RebalancingTask | null {
     quantity: v.quantity,
     priceAsOf,
     priceKind,
+    executedQuantity,
     done: v.done,
   };
 }

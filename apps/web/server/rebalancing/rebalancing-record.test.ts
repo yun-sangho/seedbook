@@ -13,6 +13,7 @@ function validTask(overrides: Record<string, unknown> = {}) {
     quantity: 14,
     priceAsOf: "2026-11-06T06:30:00.000Z",
     priceKind: "close",
+    executedQuantity: null,
     done: false,
     ...overrides,
   };
@@ -67,6 +68,27 @@ describe("parseRebalancingFields", () => {
     });
 
     expect(parseRebalancingFields(fields)?.tasks[0]).toMatchObject({ price: null, quantity: null });
+  });
+
+  it("keeps the quantity actually traded for a checked task", () => {
+    const fields = validFields({ tasks: [validTask({ done: true, executedQuantity: 12 })] });
+
+    expect(parseRebalancingFields(fields)?.tasks[0]?.executedQuantity).toBe(12);
+  });
+
+  it("treats a missing traded quantity as unknown for tasks checked before it was recorded", () => {
+    const legacy: Record<string, unknown> = validTask({ done: true });
+    delete legacy.executedQuantity;
+
+    expect(parseRebalancingFields(validFields({ tasks: [legacy] }))?.tasks[0]).toMatchObject({
+      executedQuantity: null,
+    });
+  });
+
+  it("rejects a traded quantity that is not a number", () => {
+    const fields = validFields({ tasks: [validTask({ executedQuantity: "12" })] });
+
+    expect(parseRebalancingFields(fields)).toBeNull();
   });
 
   it("drops unknown task fields before they reach the jsonb column", () => {
