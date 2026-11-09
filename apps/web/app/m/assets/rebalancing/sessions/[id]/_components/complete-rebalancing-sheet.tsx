@@ -6,7 +6,12 @@ import { stockPriceKey, useStockPrices } from "@web/features/investments/utils/u
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import type { RebalancingSession, RebalancingTask } from "@web/features/rebalancing/types/types";
-import { applyRebalancingToAccount } from "@web/features/rebalancing/utils/apply-rebalancing-to-account";
+import {
+  applyRebalancingToAccount,
+  type CashChange,
+  type HoldingChange,
+} from "@web/features/rebalancing/utils/apply-rebalancing-to-account";
+import { formatQuantityChange } from "@web/features/rebalancing/utils/format-quantity-change";
 import { computeRebalancingResult } from "@web/features/rebalancing/utils/rebalancing-result";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
@@ -23,8 +28,8 @@ import { formatWithCommas } from "@web/utils/number-format";
 const FALLBACK_CURRENCY = "KRW";
 
 /**
- * 리밸런싱을 완료하는 확인 시트. 무엇이 반영되는지 한두 줄로만 요약한다 — 종목별 결과는
- * 완료한 뒤 리밸런싱 화면의 "리밸런싱 결과" 에서 본다.
+ * 리밸런싱을 완료하는 확인 시트. 반영되는 종목별 수량 변화(전 → 후, 증감)와 예수금 변화만
+ * 보여준다 — 최종 비중은 완료한 뒤 리밸런싱 화면의 "리밸런싱 결과" 에서 본다.
  * "계좌에 반영하기"(기본 체크)를 켜 두면 매매한 수량과 예수금 변화를 계좌에 반영하고,
  * 반영 후 포트폴리오 구성을 기록에 남긴다.
  */
@@ -110,17 +115,11 @@ export function CompleteRebalancingSheet({
                 size="large"
                 tone="neutral"
               />
-              <p className="t4-regular text-fg-neutral-muted mt-x2">
-                {applyToAccount
-                  ? applySummary(preview.holdingChanges.map((c) => c.task))
-                  : "계좌는 그대로 두고 기록만 남겨요."}
-              </p>
-              {applyToAccount && preview.cash.before !== preview.cash.after && (
-                <p className="t4-regular text-fg-neutral-muted mt-x1 tabular-nums">
-                  {preview.cash.label} {formatWithCommas(preview.cash.before)}원 →{" "}
-                  <span className="text-fg-neutral font-bold">
-                    {formatWithCommas(preview.cash.after)}원
-                  </span>
+              {applyToAccount ? (
+                <ApplyPreview holdingChanges={preview.holdingChanges} cash={preview.cash} />
+              ) : (
+                <p className="t4-regular text-fg-neutral-muted mt-x2">
+                  계좌는 그대로 두고 기록만 남겨요.
                 </p>
               )}
               {applyToAccount && preview.skipped.length > 0 && (
@@ -146,11 +145,70 @@ export function CompleteRebalancingSheet({
   );
 }
 
-/** "매도 2건 · 매수 3건을 계좌에 반영해요" — 반영할 매매가 없으면 그렇다고 알린다. */
-function applySummary(tasks: RebalancingTask[]): string {
-  const sells = tasks.filter((t) => t.action === "매도").length;
-  const buys = tasks.length - sells;
-  const parts = [sells > 0 ? `매도 ${sells}건` : null, buys > 0 ? `매수 ${buys}건` : null];
-  const label = parts.filter(Boolean).join(" · ");
-  return label ? `${label}을 계좌에 반영해요.` : "계좌에 반영할 매매가 없어요.";
+/**
+ * 계좌에 반영될 종목별 수량 변화와 예수금 변화. 반영되는 종목은 모두 보여주고, 길어지면
+ * 이 목록만 스크롤된다. 종목명이 잘리지 않게 두 줄 (위: 이름 · 증감, 아래: 전 → 후).
+ */
+function ApplyPreview({
+  holdingChanges,
+  cash,
+}: {
+  holdingChanges: HoldingChange[];
+  cash: CashChange;
+}) {
+  const cashChanged = cash.before !== cash.after;
+  if (holdingChanges.length === 0 && !cashChanged) {
+    return <p className="t4-regular text-fg-neutral-muted mt-x2">계좌에 반영할 매매가 없어요.</p>;
+  }
+  return (
+    <ul className="divide-stroke-neutral-subtle mt-x2 max-h-[45dvh] divide-y overflow-y-auto">
+      {holdingChanges.map((change) => {
+        const delta = change.after - change.before;
+        return (
+          <ChangeRow
+            key={change.task.id}
+            label={change.task.name || change.task.ticker}
+            aside={
+              <span className={delta > 0 ? "text-fg-positive" : "text-fg-critical"}>
+                {formatQuantityChange(delta)}
+              </span>
+            }
+            before={`${formatWithCommas(change.before)}주`}
+            after={`${formatWithCommas(change.after)}주`}
+          />
+        );
+      })}
+      {cashChanged && (
+        <ChangeRow
+          label={cash.label}
+          before={`${formatWithCommas(cash.before)}원`}
+          after={`${formatWithCommas(cash.after)}원`}
+        />
+      )}
+    </ul>
+  );
+}
+
+function ChangeRow({
+  label,
+  aside,
+  before,
+  after,
+}: {
+  label: string;
+  aside?: React.ReactNode;
+  before: string;
+  after: string;
+}) {
+  return (
+    <li className="py-x2">
+      <div className="flex items-baseline gap-x3">
+        <span className="t4-medium min-w-0 flex-1 break-keep">{label}</span>
+        {aside && <span className="t4-bold shrink-0 tabular-nums">{aside}</span>}
+      </div>
+      <p className="t3-regular text-fg-neutral-muted mt-[2px] tabular-nums">
+        {before} → <span className="text-fg-neutral font-bold">{after}</span>
+      </p>
+    </li>
+  );
 }
