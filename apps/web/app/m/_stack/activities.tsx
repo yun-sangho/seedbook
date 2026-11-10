@@ -13,6 +13,7 @@ import { RebalancingHomeMobile } from "../assets/rebalancing/_components/rebalan
 import { RebalancingListMobile } from "../assets/rebalancing/_components/rebalancing-list-mobile";
 import { RebalancingDetailMobile } from "../assets/rebalancing/[id]/_components/rebalancing-detail-mobile";
 import { RebalancingSessionMobile } from "../assets/rebalancing/sessions/[id]/_components/rebalancing-session-mobile";
+import { TradeEntryMobile } from "../assets/rebalancing/sessions/[id]/_components/trade-entry-mobile";
 import { DetailScreen, TabScreen } from "./screens";
 
 export const HomeTabActivity: StaticActivityComponentType<"HomeTab"> = () => (
@@ -93,6 +94,24 @@ export function RebalancingSessionActivity({ params }: DetailActivityProps) {
       dotColor={account?.color}
     >
       <RebalancingSessionMobile id={params.id} />
+    </DetailScreen>
+  );
+}
+
+/** 리밸런싱 매매 하나의 체결 수량·가격 입력. 제목은 종목명, 부제는 계좌. */
+export function RebalancingTradeActivity({ params }: { params: { id: string; taskId: string } }) {
+  const session = useRebalancingStore((s) => s.sessions.find((x) => x.id === params.id));
+  const task = session?.tasks.find((t) => t.id === params.taskId);
+  const account = useInvestmentStore((s) =>
+    session ? s.investments.find((inv) => inv.id === session.accountId) : undefined
+  );
+  return (
+    <DetailScreen
+      title={task ? task.name || task.ticker : "매매"}
+      subtitle={account?.accountName || session?.accountName}
+      dotColor={account?.color}
+    >
+      <TradeEntryMobile sessionId={params.id} taskId={params.taskId} />
     </DetailScreen>
   );
 }

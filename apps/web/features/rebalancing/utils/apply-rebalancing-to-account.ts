@@ -15,6 +15,11 @@ export interface AppliedRebalancing {
   holdingChanges: HoldingChange[];
   /** 예수금이 반영되는 현금 항목의 잔액 변화. 항목이 없었으면 before 0 */
   cash: CashChange;
+  /**
+   * 예수금이 모자란 금액 (원, 0 이상). 반영할 때는 예수금을 0 아래로 내리지 않으므로 이만큼이
+   * 사라진다 — 매매를 기록할 때 이 값이 0 보다 크면 막는다.
+   */
+  cashShortfall: number;
 }
 
 export interface HoldingChange {
@@ -110,13 +115,14 @@ export function applyRebalancingToAccount(
   }
 
   cashChange = Math.round(cashChange);
-  const { cashItems, cash } = applyCashChange(account.cashItems, cashChange);
+  const { cashItems, cash, shortfall } = applyCashChange(account.cashItems, cashChange);
   return {
     account: { ...account, holdings, cashItems },
     cashChange,
     skipped,
     holdingChanges,
     cash,
+    cashShortfall: shortfall,
   };
 }
 
@@ -129,22 +135,25 @@ function sumQuantity(holdings: StockHolding[], key: string): number {
 function applyCashChange(
   cashItems: CashItem[],
   change: number
-): { cashItems: CashItem[]; cash: CashChange } {
+): { cashItems: CashItem[]; cash: CashChange; shortfall: number } {
   const target =
     cashItems.find((c) => c.label === DEFAULT_CASH_LABEL) ?? (cashItems[0] as CashItem | undefined);
   const before = target?.amount ?? 0;
   const after = Math.max(0, before + change);
+  const shortfall = Math.max(0, -(before + change));
   const cash = { label: target?.label ?? DEFAULT_CASH_LABEL, before, after };
 
-  if (change === 0) return { cashItems, cash };
+  if (change === 0) return { cashItems, cash, shortfall };
   if (!target) {
     return {
       cashItems: [{ id: crypto.randomUUID(), label: DEFAULT_CASH_LABEL, amount: after }],
       cash,
+      shortfall,
     };
   }
   return {
     cashItems: cashItems.map((c) => (c.id === target.id ? { ...c, amount: after } : c)),
     cash,
+    shortfall,
   };
 }

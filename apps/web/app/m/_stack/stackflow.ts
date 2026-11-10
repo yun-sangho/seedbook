@@ -13,6 +13,7 @@ import {
   RebalancingNewActivity,
   RebalancingSessionActivity,
   RebalancingTabActivity,
+  RebalancingTradeActivity,
 } from "./activities";
 import { createNextAwareHistory } from "./next-aware-history";
 
@@ -35,6 +36,7 @@ declare module "@stackflow/config" {
     RebalancingNew: Record<string, never>;
     RebalancingDetail: { id: string };
     RebalancingSession: { id: string };
+    RebalancingTrade: { id: string; taskId: string };
     PortfolioDetail: { id: string };
   }
 }
@@ -73,6 +75,20 @@ const config = defineConfig({
       },
     },
     {
+      // 매매 하나의 체결 수량·가격 입력. 바로 들어와도 뒤로가기가 그 리밸런싱으로 간다.
+      name: "RebalancingTrade",
+      route: {
+        path: "/assets/rebalancing/sessions/:id/trades/:taskId",
+        defaultHistory: (params) => [
+          ...underTab("RebalancingTab")(),
+          {
+            activityName: "RebalancingSession" as const,
+            activityParams: { id: params.id ?? "" },
+          },
+        ],
+      },
+    },
+    {
       name: "PortfolioDetail",
       route: { path: "/assets/portfolio/:id", defaultHistory: underTab("PortfolioTab") },
     },
@@ -91,6 +107,7 @@ export const { Stack } = stackflow({
     RebalancingNew: RebalancingNewActivity,
     RebalancingDetail: RebalancingDetailActivity,
     RebalancingSession: RebalancingSessionActivity,
+    RebalancingTrade: RebalancingTradeActivity,
     PortfolioDetail: PortfolioDetailActivity,
   },
   plugins: [

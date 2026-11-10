@@ -30,13 +30,16 @@ const REBALANCING_LIST = /^\/assets\/rebalancing$/;
 // 계좌 리밸런싱 계산(`/:accountId`) 과 새 리밸런싱(`/new`).
 const REBALANCING_DETAIL = /^\/assets\/rebalancing\/[^/]+$/;
 const REBALANCING_SESSION = /^\/assets\/rebalancing\/sessions\/[^/]+$/;
+// 리밸런싱 매매 하나의 체결 수량·가격 입력.
+const REBALANCING_TRADE = /^\/assets\/rebalancing\/sessions\/[^/]+\/trades\/[^/]+$/;
 const DESKTOP_REBALANCING_HOME = "/assets/portfolio";
 
 function isRebalancingPath(pathname: string): boolean {
   return (
     REBALANCING_LIST.test(pathname) ||
     REBALANCING_DETAIL.test(pathname) ||
-    REBALANCING_SESSION.test(pathname)
+    REBALANCING_SESSION.test(pathname) ||
+    REBALANCING_TRADE.test(pathname)
   );
 }
 
@@ -45,6 +48,7 @@ const MOBILE_SUPPORTED_PATTERNS = [
   REBALANCING_LIST,
   REBALANCING_DETAIL,
   REBALANCING_SESSION,
+  REBALANCING_TRADE,
   /^\/assets$/,
   /^\/assets\/investments$/,
   /^\/assets\/portfolio$/,

@@ -220,6 +220,27 @@ describe("applyRebalancingToAccount", () => {
     expect(result.cashItems[0]?.amount).toBe(0);
   });
 
+  it("reports how much cash the buys are short of", () => {
+    // 예수금 10,000원으로 2주 × 50,000원 매수 → 90,000원 모자람
+    const { cashShortfall } = applyRebalancingToAccount(
+      account({ cashItems: [{ id: "c1", label: "예수금", amount: 10_000 }] }),
+      session([task({ quantity: 2, price: 50_000 })]),
+      KRW
+    );
+
+    expect(cashShortfall).toBe(90_000);
+  });
+
+  it("reports no shortfall when the cash covers the buys", () => {
+    const { cashShortfall } = applyRebalancingToAccount(
+      account(),
+      session([task({ quantity: 2, price: 50_000 })]),
+      KRW
+    );
+
+    expect(cashShortfall).toBe(0);
+  });
+
   it("skips tasks without a snapshot price and reports them", () => {
     const noPrice = task({ price: null, quantity: null });
 

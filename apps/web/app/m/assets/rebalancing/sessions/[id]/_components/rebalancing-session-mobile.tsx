@@ -46,8 +46,8 @@ import { List, ListCheckItem } from "@web/seed-design/ui/list";
 import { ResultSection } from "@web/seed-design/ui/result-section";
 import { formatWithCommas, numberToKorean } from "@web/utils/number-format";
 import { CompleteRebalancingSheet } from "./complete-rebalancing-sheet";
+import { isJustCompleted, takeJustCompleted } from "./just-completed-tasks";
 import { RebalancingResultSection } from "./rebalancing-result-section";
-import { TradeQuantitySheet } from "./trade-quantity-sheet";
 
 /** 체크된 할 일이 남은 목록에 머무는 시간. globals.css 의 task-leave (지연 500 + 300ms) 와 맞춘다. */
 const TASK_LEAVE_MS = 800;
@@ -59,13 +59,11 @@ const TASK_LEAVE_MS = 800;
  */
 export function RebalancingSessionMobile({ id }: { id: string }) {
   const session = useRebalancingStore((s) => s.sessions.find((x) => x.id === id));
-  const toggleTask = useRebalancingStore((s) => s.toggleTask);
-  const completeTaskWith = useRebalancingStore((s) => s.completeTaskWith);
   const removeRebalancing = useRebalancingStore((s) => s.removeRebalancing);
-  const { pop } = useFlow();
+  const { pop, push } = useFlow();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [completing, setCompleting] = useState(false);
-  const { leavingIds, markLeaving, cancelLeaving } = useLeavingTasks();
+  const leavingIds = useLeavingTasks(session?.tasks);
   const [sortOpen, setSortOpen] = useState(false);
   // 정렬은 개인 설정 — 계정에 저장되어 어느 기기에서든 이어진다.
   const sort = usePreferencesStore((s) => s.rebalancingTaskSort);
@@ -77,12 +75,8 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
   const account = useInvestmentStore((s) =>
     s.investments.find((inv) => inv.id === session?.accountId)
   );
-  // 수량 시트로 여는 매매. 남은 매매면 완료 기록, 완료한 매매면 수량 수정/완료 취소.
-  const [editingId, setEditingId] = useState<string | null>(null);
-  // 완료를 취소한 매매의 직전 기록 수량 — 다시 완료할 때 미리 채워 실수로 풀어도 그대로 되돌린다.
-  const [lastRecorded, setLastRecorded] = useState<
-    ReadonlyMap<string, { quantity: number | null; price: number | null }>
-  >(() => new Map());
+  // 매매를 누르면 체결 수량·가격 입력 화면으로 간다 (남은 매매는 완료 기록, 완료한 매매는 수정/완료 취소).
+  const openTrade = (taskId: string) => push("RebalancingTrade", { id: session?.id ?? "", taskId });
 
   if (!session) {
     return (
@@ -112,8 +106,6 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
   const remaining = total - done;
   const canComplete = canCompleteRebalancing(session);
   const stopped = isRebalancingStopped(session);
-
-  const editingTask = session.tasks.find((t) => t.id === editingId) ?? null;
 
   return (
     <div className="pb-x4">
@@ -199,7 +191,7 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
               // 방금 체크했으면 체크된 모습을 보여준 뒤 접히며 빠지고, 완료 그룹으로 옮겨진다.
               leaving={leavingIds.has(task.id)}
               disabled={completed}
-              onToggle={() => setEditingId(task.id)}
+              onToggle={() => openTrade(task.id)}
             />
           ))}
         </List>
@@ -217,7 +209,7 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
                   task={task}
                   leaving={false}
                   disabled={completed}
-                  onToggle={() => setEditingId(task.id)}
+                  onToggle={() => openTrade(task.id)}
                 />
               ))}
             </List>
@@ -232,36 +224,6 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
             리밸런싱 중지하기
           </ActionButton>
         </div>
-      )}
-      {editingTask && (
-        <TradeQuantitySheet
-          key={`${editingTask.id}-${editingTask.done ? "edit" : "check"}`}
-          task={editingTask}
-          mode={editingTask.done ? "edit" : "check"}
-          initialQuantity={
-            editingTask.done
-              ? executedQuantityOf(editingTask)
-              : (lastRecorded.get(editingTask.id)?.quantity ?? editingTask.quantity)
-          }
-          initialPrice={
-            editingTask.done
-              ? executedPriceOf(editingTask)
-              : (lastRecorded.get(editingTask.id)?.price ?? editingTask.price)
-          }
-          open
-          onOpenChange={(open) => !open && setEditingId(null)}
-          onConfirm={(quantity, price) => {
-            if (!editingTask.done) markLeaving(editingTask.id);
-            completeTaskWith(session.id, editingTask.id, quantity, price);
-          }}
-          onUncheck={() => {
-            const quantity = executedQuantityOf(editingTask);
-            const price = executedPriceOf(editingTask);
-            setLastRecorded((prev) => new Map(prev).set(editingTask.id, { quantity, price }));
-            cancelLeaving(editingTask.id);
-            toggleTask(session.id, editingTask.id);
-          }}
-        />
       )}
       <SortSheet
         open={sortOpen}
@@ -365,10 +327,12 @@ const TASK_SORT_OPTIONS: SortOptionList<RebalancingTaskSort> = [
 ];
 
 /**
- * 방금 체크한 할 일을 `TASK_LEAVE_MS` 동안 "사라지는 중" 으로 들고 있는다.
- * 그 사이 체크를 풀면 바로 목록에 그대로 남는다.
+ * 방금 완료한 할 일을 `TASK_LEAVE_MS` 동안 "사라지는 중" 으로 들고 있는다 — 체크된 모습으로
+ * 남아 있다가 접히며 완료 그룹으로 옮겨진다. 완료는 매매 입력 화면에서 하므로, 그 화면이 남긴
+ * 신호(`just-completed-tasks`)를 돌아왔을 때 꺼내 시작한다. 꺼내기 전 렌더에서도 바로 완료 그룹으로
+ * 옮기지 않도록 아직 꺼내지 않은 신호도 함께 본다.
  */
-function useLeavingTasks() {
+function useLeavingTasks(tasks: RebalancingTask[] | undefined): ReadonlySet<string> {
   const [leavingIds, setLeavingIds] = useState<ReadonlySet<string>>(() => new Set());
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
@@ -397,7 +361,16 @@ function useLeavingTasks() {
     setLeavingIds((prev) => new Set(prev).add(id));
   };
 
-  return { leavingIds, markLeaving, cancelLeaving: remove };
+  // 매매 입력 화면에서 완료하고 돌아오면 (할 일이 바뀌면) 남긴 신호를 꺼내 애니메이션을 시작한다.
+  useEffect(() => {
+    for (const id of takeJustCompleted()) markLeaving(id);
+    // markLeaving 은 렌더마다 새로 만들어지지만 상태 setter 와 ref 만 쓴다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks]);
+
+  const pendingIds = (tasks ?? []).filter((t) => isJustCompleted(t.id)).map((t) => t.id);
+  if (pendingIds.length === 0) return leavingIds;
+  return new Set([...leavingIds, ...pendingIds]);
 }
 
 function sumAmount(tasks: RebalancingTask[], action: RebalancingTask["action"]): number {

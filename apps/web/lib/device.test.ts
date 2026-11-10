@@ -95,6 +95,20 @@ describe("decideMobileRoute", () => {
     });
   });
 
+  it("rewrites a rebalancing trade entry page into the mobile tree", () => {
+    expect(decideMobileRoute("/assets/rebalancing/sessions/s-1/trades/t-1", "mobile")).toEqual({
+      type: "rewrite",
+      pathname: "/m/assets/rebalancing/sessions/s-1/trades/t-1",
+    });
+  });
+
+  it("sends desktop users of a rebalancing trade entry page to the portfolio list", () => {
+    expect(decideMobileRoute("/assets/rebalancing/sessions/s-1/trades/t-1", "desktop")).toEqual({
+      type: "redirect",
+      pathname: "/assets/portfolio",
+    });
+  });
+
   it("sends desktop users of the rebalancing list to the portfolio list", () => {
     expect(decideMobileRoute("/assets/rebalancing", "desktop")).toEqual({
       type: "redirect",
