@@ -4,6 +4,8 @@ import {
   canCompleteRebalancing,
   completeRebalancing,
   completeRebalancingTaskWith,
+  executedPriceFor,
+  executedPriceOf,
   executedQuantityOf,
   findInProgressForAccount,
   groupRebalancingTasks,
@@ -251,6 +253,12 @@ describe("completeRebalancingTaskWith", () => {
     expect(result.tasks[0]).toMatchObject({ done: true, quantity: 54, executedQuantity: 50 });
   });
 
+  it("records the price actually traded at, keeping the snapshot price", () => {
+    const result = completeRebalancingTaskWith(session({ tasks: [planned] }), "a", 50, 103_500);
+
+    expect(result.tasks[0]).toMatchObject({ price: 104_010, executedPrice: 103_500 });
+  });
+
   it("changes the recorded quantity of a task that is already done", () => {
     const done = completeRebalancingTaskWith(session({ tasks: [planned] }), "a", 50);
 
@@ -283,5 +291,44 @@ describe("executedQuantityOf", () => {
 
   it("treats a task checked without a quantity as traded at the recommendation", () => {
     expect(executedQuantityOf({ ...task("a", true), quantity: 54 })).toBe(54);
+  });
+});
+
+describe("executedPriceOf", () => {
+  it("is null for a task that is not done", () => {
+    expect(executedPriceOf({ ...task("a"), price: 104_010 })).toBeNull();
+  });
+
+  it("is the price actually traded at once recorded", () => {
+    expect(executedPriceOf({ ...task("a", true), price: 104_010, executedPrice: 103_500 })).toBe(
+      103_500
+    );
+  });
+
+  it("treats a task checked without a price as traded at the snapshot price", () => {
+    expect(executedPriceOf({ ...task("a", true), price: 104_010 })).toBe(104_010);
+  });
+});
+
+describe("executedPriceFor", () => {
+  const traded = (id: string, ticker: string, price: number, executedPrice?: number) => ({
+    ...task(id, true),
+    ticker,
+    price,
+    executedPrice,
+  });
+
+  it("is the traded price of the stock's done task", () => {
+    const tasks = [traded("a", "A", 10_000, 10_050), traded("b", "B", 20_000)];
+
+    expect(executedPriceFor(tasks, "KOSPI", "A")).toBe(10_050);
+    expect(executedPriceFor(tasks, "KOSPI", "B")).toBe(20_000);
+  });
+
+  it("is null for a stock that was not traded", () => {
+    const tasks = [{ ...task("a"), ticker: "A", price: 10_000 }];
+
+    expect(executedPriceFor(tasks, "KOSPI", "A")).toBeNull();
+    expect(executedPriceFor(tasks, "KOSPI", "Z")).toBeNull();
   });
 });

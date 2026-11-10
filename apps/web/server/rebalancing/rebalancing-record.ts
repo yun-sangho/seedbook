@@ -83,6 +83,9 @@ function parseTask(value: unknown): RebalancingTask | null {
   // 실제로 사고판 수량도 나중에 추가된 필드라 없으면 null (권장 수량대로 거래한 것으로 본다).
   const executedQuantity = v.executedQuantity ?? null;
   if (!isNullableNumber(executedQuantity)) return null;
+  // 실제로 사고판 가격도 나중에 추가된 필드라 없으면 null (시작 시점 가격으로 거래한 것으로 본다).
+  const executedPrice = v.executedPrice ?? null;
+  if (!isNullableNumber(executedPrice)) return null;
   // 알려진 필드만 남긴다 — jsonb 컬럼에 임의 데이터가 쌓이지 않게.
   return {
     id: v.id,
@@ -96,6 +99,7 @@ function parseTask(value: unknown): RebalancingTask | null {
     priceAsOf,
     priceKind,
     executedQuantity,
+    executedPrice,
     done: v.done,
   };
 }
@@ -135,7 +139,9 @@ function parseResult(value: unknown): RebalancingResult | null | undefined {
     !Array.isArray(v.holdings) ||
     v.holdings.length > MAX_RESULT_HOLDINGS ||
     !isNumber(v.cash) ||
-    !isNullableNumber(v.cashPercent)
+    !isNullableNumber(v.cashPercent) ||
+    // 반영 전 예수금은 나중에 추가된 필드라 없을 수 있다.
+    !isNullableNumber(v.cashBefore ?? null)
   ) {
     return undefined;
   }
@@ -146,7 +152,12 @@ function parseResult(value: unknown): RebalancingResult | null | undefined {
     holdings.push(holding);
   }
   // 알려진 필드만 남긴다 — jsonb 컬럼에 임의 데이터가 쌓이지 않게.
-  return { holdings, cash: v.cash, cashPercent: v.cashPercent };
+  return {
+    holdings,
+    cash: v.cash,
+    cashPercent: v.cashPercent,
+    ...(isNumber(v.cashBefore) ? { cashBefore: v.cashBefore } : {}),
+  };
 }
 
 /**

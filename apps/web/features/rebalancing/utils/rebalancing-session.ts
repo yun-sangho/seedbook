@@ -100,19 +100,30 @@ export function groupRebalancingTasks(
 }
 
 /**
- * 할 일을 실제로 사고판 수량과 함께 완료로 기록한다. 이미 완료한 할 일이면 기록한 수량을
- * 바꾼다. 권장 수량(`quantity`)은 그대로 두어 비교할 수 있게 한다.
+ * 할 일을 실제로 사고판 수량·가격과 함께 완료로 기록한다. 이미 완료한 할 일이면 기록한 값을
+ * 바꾼다. 권장 수량(`quantity`)과 시작 시점 가격(`price`)은 그대로 두어 비교할 수 있게 한다.
+ * 가격을 주지 않으면 이미 기록한 가격(없으면 기록하지 않음)을 유지한다.
  */
 export function completeRebalancingTaskWith(
   session: RebalancingSession,
   taskId: string,
-  executedQuantity: number
+  executedQuantity: number,
+  executedPrice?: number
 ): RebalancingSession {
   if (isRebalancingCompleted(session)) return session;
   if (!session.tasks.some((t) => t.id === taskId)) return session;
   return {
     ...session,
-    tasks: session.tasks.map((t) => (t.id === taskId ? { ...t, done: true, executedQuantity } : t)),
+    tasks: session.tasks.map((t) =>
+      t.id === taskId
+        ? {
+            ...t,
+            done: true,
+            executedQuantity,
+            ...(executedPrice !== undefined ? { executedPrice } : {}),
+          }
+        : t
+    ),
   };
 }
 
@@ -120,4 +131,24 @@ export function completeRebalancingTaskWith(
 export function executedQuantityOf(task: RebalancingTask): number | null {
   if (!task.done) return null;
   return task.executedQuantity ?? task.quantity;
+}
+
+/** 실제로 사고판 가격 (주당). 완료하지 않았으면 null, 가격 없이 체크했으면 시작 시점 가격. */
+export function executedPriceOf(task: RebalancingTask): number | null {
+  if (!task.done) return null;
+  return task.executedPrice ?? task.price;
+}
+
+/** 종목을 이번 리밸런싱에서 사고판 가격 — 그 종목의 완료한 매매가 없으면 null. */
+export function executedPriceFor(
+  tasks: RebalancingTask[],
+  market: string,
+  ticker: string
+): number | null {
+  for (const task of tasks) {
+    if (task.market !== market || task.ticker !== ticker) continue;
+    const price = executedPriceOf(task);
+    if (price !== null) return price;
+  }
+  return null;
 }

@@ -19,8 +19,13 @@ interface RebalancingState {
   /** 새 리밸런싱을 시작하고 id 를 돌려준다. */
   startRebalancing: (input: StartRebalancingInput) => string;
   toggleTask: (sessionId: string, taskId: string) => void;
-  /** 실제로 사고판 수량과 함께 완료로 기록한다 (이미 완료했으면 수량을 바꾼다). */
-  completeTaskWith: (sessionId: string, taskId: string, executedQuantity: number) => void;
+  /** 실제로 사고판 수량·가격과 함께 완료로 기록한다 (이미 완료했으면 값을 바꾼다). */
+  completeTaskWith: (
+    sessionId: string,
+    taskId: string,
+    executedQuantity: number,
+    executedPrice: number
+  ) => void;
   /** 완료 기록으로 넘긴다. 계좌에 반영했으면 반영 후 구성을 함께 남긴다. */
   completeRebalancing: (sessionId: string, result?: RebalancingResult | null) => void;
   removeRebalancing: (sessionId: string) => void;
@@ -51,10 +56,12 @@ export const useRebalancingStore = create<RebalancingState>()(
         }));
       },
 
-      completeTaskWith: (sessionId, taskId, executedQuantity) => {
+      completeTaskWith: (sessionId, taskId, executedQuantity, executedPrice) => {
         set((state) => ({
           sessions: state.sessions.map((s) =>
-            s.id === sessionId ? completeRebalancingTaskWith(s, taskId, executedQuantity) : s
+            s.id === sessionId
+              ? completeRebalancingTaskWith(s, taskId, executedQuantity, executedPrice)
+              : s
           ),
         }));
       },

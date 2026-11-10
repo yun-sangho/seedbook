@@ -173,4 +173,16 @@ describe("computeRebalancingResult", () => {
     expect(result.holdings[0]?.percent).toBeNull();
     expect(result.cashPercent).toBeNull();
   });
+
+  it("records the account's total cash before the rebalancing when given", () => {
+    const result = computeRebalancingResult(
+      account([holding("A", 3)], 1_000),
+      [allocation("A", 100)],
+      new Map([["KOSPI:A", 2_000]]),
+      [],
+      { cashBefore: 7_000 }
+    );
+
+    expect(result).toMatchObject({ cash: 1_000, cashBefore: 7_000 });
+  });
 });

@@ -20,7 +20,9 @@ export function computeRebalancingResult(
   account: InvestmentItem,
   allocations: PortfolioAllocation[],
   prices: Map<string, number>,
-  changes: QuantityChange[]
+  changes: QuantityChange[],
+  /** `cashBefore`: 반영 전 계좌의 예수금 합 — 결과에 예수금 변화를 보여주려고 함께 남긴다. */
+  options: { cashBefore?: number } = {}
 ): RebalancingResult {
   const changeByKey = new Map<string, number>();
   for (const c of changes) {
@@ -63,5 +65,6 @@ export function computeRebalancingResult(
     holdings: stocks.map(({ value, ...s }) => ({ ...s, percent: percentOf(value) })),
     cash,
     cashPercent: percentOf(cash),
+    ...(options.cashBefore !== undefined ? { cashBefore: options.cashBefore } : {}),
   };
 }

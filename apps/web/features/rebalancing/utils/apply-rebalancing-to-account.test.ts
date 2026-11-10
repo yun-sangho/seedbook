@@ -111,6 +111,38 @@ describe("applyRebalancingToAccount", () => {
     expect(result.cashChange).toBe(-150_000);
   });
 
+  it("moves cash by the price actually traded at when buying", () => {
+    const result = applyRebalancingToAccount(
+      account(),
+      session([task({ action: "매수", quantity: 2, executedQuantity: 2, executedPrice: 49_000 })]),
+      KRW
+    );
+
+    expect(result.cashChange).toBe(-98_000);
+  });
+
+  it("moves cash by the price actually traded at when selling", () => {
+    const result = applyRebalancingToAccount(
+      account(),
+      session([task({ action: "매도", quantity: 2, executedQuantity: 2, executedPrice: 51_000 })]),
+      KRW
+    );
+
+    expect(result.cashChange).toBe(102_000);
+  });
+
+  it("applies a task without a snapshot price once a traded price and quantity are recorded", () => {
+    const result = applyRebalancingToAccount(
+      account(),
+      session([task({ price: null, quantity: null, executedQuantity: 3, executedPrice: 40_000 })]),
+      KRW
+    );
+
+    expect(result.skipped).toEqual([]);
+    expect(result.account.holdings[0]?.quantity).toBe(13);
+    expect(result.cashChange).toBe(-120_000);
+  });
+
   it("keeps a fully sold holding at zero instead of going negative", () => {
     const { account: result } = applyRebalancingToAccount(
       account(),

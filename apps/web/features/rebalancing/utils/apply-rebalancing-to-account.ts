@@ -1,7 +1,7 @@
 import type { CashItem, InvestmentItem, StockHolding } from "@web/features/investments/types/types";
 import { stockPriceKey } from "@web/features/investments/utils/use-stock-prices";
 import type { RebalancingSession, RebalancingTask } from "../types/types";
-import { executedQuantityOf } from "./rebalancing-session";
+import { executedPriceOf, executedQuantityOf } from "./rebalancing-session";
 
 const DEFAULT_CASH_LABEL = "예수금";
 
@@ -9,7 +9,7 @@ export interface AppliedRebalancing {
   account: InvestmentItem;
   /** 예수금 변화 (원). 매도 - 매수 + 현금 투입/인출 */
   cashChange: number;
-  /** 반영하지 못한 할 일 — 시세(예상 수량)가 없었거나, 보유하지 않은 종목의 매도 */
+  /** 반영하지 못한 할 일 — 거래 수량·가격을 모르거나, 보유하지 않은 종목의 매도 */
   skipped: RebalancingTask[];
   /** 반영한 매매별 보유 수량 변화 (할 일 순서). 새로 산 종목은 before 0 */
   holdingChanges: HoldingChange[];
@@ -36,7 +36,8 @@ export interface CashChange {
  *   같은 종목이 여러 줄이면 매도는 앞 줄부터 차례로 뺀다. 보유보다 많이 판 기록이면
  *   실제로 있던 수량만큼만 팔고, 예수금도 그만큼만 더한다.
  *   보유하지 않던 종목을 샀으면 새 보유 종목을 만든다 (`currencyFor` 로 통화를 정한다).
- * - 예수금은 시작 시점 시세 × 수량으로 매도 금액을 더하고 매수 금액을 뺀 뒤, 시작할 때
+ * - 예수금은 실제 체결 가격(`executedPriceOf`, 기록 전이면 시작 시점 가격) × 수량으로 매도 금액을
+ *   더하고 매수 금액을 뺀 뒤, 시작할 때
  *   입력한 현금 투입/인출을 더한다. 첫 "예수금" 항목(없으면 첫 현금 항목, 그것도 없으면 새로 만듦)에
  *   반영하며 0 아래로 내려가지 않는다.
  */
@@ -53,14 +54,15 @@ export function applyRebalancingToAccount(
   for (const task of session.tasks) {
     if (!task.done) continue;
     const tradeQuantity = executedQuantityOf(task);
-    if (tradeQuantity === null || task.price === null || tradeQuantity <= 0) {
+    const tradePrice = executedPriceOf(task);
+    if (tradeQuantity === null || tradePrice === null || tradeQuantity <= 0) {
       skipped.push(task);
       continue;
     }
     const key = stockPriceKey(task.market, task.ticker);
     const existing = holdings.find((h) => stockPriceKey(h.market, h.ticker) === key);
 
-    const tradeValue = tradeQuantity * task.price;
+    const tradeValue = tradeQuantity * tradePrice;
 
     if (task.action === "매도") {
       if (!existing) {
@@ -80,7 +82,7 @@ export function applyRebalancingToAccount(
       holdingChanges.push({ task, before, after });
       // 보유보다 많이 판 기록이면 실제로 있던 수량만큼만 예수금에 더한다 — 없는 주식의 돈이
       // 생기지 않도록.
-      cashChange += (before - after) * task.price;
+      cashChange += (before - after) * tradePrice;
       continue;
     }
 

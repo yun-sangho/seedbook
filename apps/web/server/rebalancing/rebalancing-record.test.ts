@@ -14,6 +14,7 @@ function validTask(overrides: Record<string, unknown> = {}) {
     priceAsOf: "2026-11-06T06:30:00.000Z",
     priceKind: "close",
     executedQuantity: null,
+    executedPrice: null,
     done: false,
     ...overrides,
   };
@@ -91,6 +92,27 @@ describe("parseRebalancingFields", () => {
     expect(parseRebalancingFields(fields)).toBeNull();
   });
 
+  it("keeps the price actually traded at for a checked task", () => {
+    const fields = validFields({ tasks: [validTask({ done: true, executedPrice: 69_500 })] });
+
+    expect(parseRebalancingFields(fields)?.tasks[0]?.executedPrice).toBe(69_500);
+  });
+
+  it("treats a missing traded price as unknown for tasks checked before it was recorded", () => {
+    const legacy: Record<string, unknown> = validTask({ done: true });
+    delete legacy.executedPrice;
+
+    expect(parseRebalancingFields(validFields({ tasks: [legacy] }))?.tasks[0]).toMatchObject({
+      executedPrice: null,
+    });
+  });
+
+  it("rejects a traded price that is not a number", () => {
+    const fields = validFields({ tasks: [validTask({ executedPrice: "69500" })] });
+
+    expect(parseRebalancingFields(fields)).toBeNull();
+  });
+
   it("drops unknown task fields before they reach the jsonb column", () => {
     const fields = validFields({ tasks: [validTask({ extra: "x".repeat(10) })] });
 
@@ -155,6 +177,18 @@ describe("parseRebalancingFields result", () => {
 
   it("rejects a malformed result holding", () => {
     const result = validResult({ holdings: [{ name: "삼성전자" }] });
+
+    expect(parseRebalancingFields(validFields({ result }))).toBeNull();
+  });
+
+  it("keeps the account's cash before the rebalancing", () => {
+    const result = validResult({ cashBefore: 21_000_000 });
+
+    expect(parseRebalancingFields(validFields({ result }))?.result?.cashBefore).toBe(21_000_000);
+  });
+
+  it("rejects a cash-before that is not a number", () => {
+    const result = validResult({ cashBefore: "21000000" });
 
     expect(parseRebalancingFields(validFields({ result }))).toBeNull();
   });

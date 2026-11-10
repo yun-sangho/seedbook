@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { stockPriceKey, useStockPrices } from "@web/features/investments/utils/use-stock-prices";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
+import { sumCash } from "@web/features/portfolio/utils/linked-portfolio-status";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import type { RebalancingSession, RebalancingTask } from "@web/features/rebalancing/types/types";
 import {
@@ -13,6 +14,7 @@ import {
 } from "@web/features/rebalancing/utils/apply-rebalancing-to-account";
 import { formatQuantityChange } from "@web/features/rebalancing/utils/format-quantity-change";
 import { computeRebalancingResult } from "@web/features/rebalancing/utils/rebalancing-result";
+import { executedPriceOf } from "@web/features/rebalancing/utils/rebalancing-session";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
   BottomSheetBody,
@@ -60,7 +62,7 @@ export function CompleteRebalancingSheet({
     return applyRebalancingToAccount(account, session, currencyFor);
   }, [account, portfolio, session]);
 
-  // 결과 비중의 가격: 이번에 매매한 종목은 리밸런싱 기준 가격, 나머지는 지금 시세.
+  // 결과 비중의 가격: 이번에 매매한 종목은 실제 체결 가격, 나머지는 지금 시세.
   const { prices: livePrices } = useStockPrices(preview?.account.holdings ?? []);
 
   const canApply = preview !== null;
@@ -75,14 +77,18 @@ export function CompleteRebalancingSheet({
       const prices = new Map<string, number>();
       for (const [key, point] of livePrices) prices.set(key, point.close);
       for (const task of session.tasks) {
-        if (task.price !== null) prices.set(stockPriceKey(task.market, task.ticker), task.price);
+        // 매매한 종목은 실제 체결 가격, 남은 매매는 시작 시점 가격.
+        const price = task.done ? executedPriceOf(task) : task.price;
+        if (price !== null) prices.set(stockPriceKey(task.market, task.ticker), price);
       }
       const result = portfolio
         ? computeRebalancingResult(
             preview.account,
             portfolio.allocations,
             prices,
-            preview.holdingChanges
+            preview.holdingChanges,
+            // 결과에 예수금 변화(전 → 후)를 보여주려고 반영 전 예수금 합을 함께 남긴다.
+            { cashBefore: sumCash(account) }
           )
         : null;
       completeRebalancing(session.id, result);
@@ -147,7 +153,8 @@ export function CompleteRebalancingSheet({
 
 /**
  * 계좌에 반영될 종목별 수량 변화와 예수금 변화. 반영되는 종목은 모두 보여주고, 길어지면
- * 이 목록만 스크롤된다. 종목명이 잘리지 않게 두 줄 (위: 이름 · 증감, 아래: 전 → 후).
+ * 이 목록만 스크롤된다. 종목명이 잘리지 않게 두 줄 (위: 이름 · 증감, 아래: 전 → 후 · 체결 가격).
+ * 예수금은 체결 가격 × 수량으로 계산하므로 가격을 함께 보여 확인할 수 있게 한다.
  */
 function ApplyPreview({
   holdingChanges,
@@ -164,6 +171,7 @@ function ApplyPreview({
     <ul className="divide-stroke-neutral-subtle mt-x2 max-h-[45dvh] divide-y overflow-y-auto">
       {holdingChanges.map((change) => {
         const delta = change.after - change.before;
+        const price = executedPriceOf(change.task);
         return (
           <ChangeRow
             key={change.task.id}
@@ -175,6 +183,7 @@ function ApplyPreview({
             }
             before={`${formatWithCommas(change.before)}주`}
             after={`${formatWithCommas(change.after)}주`}
+            price={price !== null ? `${formatWithCommas(price)}원` : undefined}
           />
         );
       })}
@@ -194,11 +203,14 @@ function ChangeRow({
   aside,
   before,
   after,
+  price,
 }: {
   label: string;
   aside?: React.ReactNode;
   before: string;
   after: string;
+  /** 체결 가격 (주당). 예수금 줄에는 없다. */
+  price?: string;
 }) {
   return (
     <li className="py-x2">
@@ -206,9 +218,12 @@ function ChangeRow({
         <span className="t4-medium min-w-0 flex-1 break-keep">{label}</span>
         {aside && <span className="t4-bold shrink-0 tabular-nums">{aside}</span>}
       </div>
-      <p className="t3-regular text-fg-neutral-muted mt-[2px] tabular-nums">
-        {before} → <span className="text-fg-neutral font-bold">{after}</span>
-      </p>
+      <div className="t3-regular text-fg-neutral-muted mt-[2px] flex items-baseline gap-x3 tabular-nums">
+        <p className="min-w-0 flex-1">
+          {before} → <span className="text-fg-neutral font-bold">{after}</span>
+        </p>
+        {price && <span className="shrink-0">{price}</span>}
+      </div>
     </li>
   );
 }

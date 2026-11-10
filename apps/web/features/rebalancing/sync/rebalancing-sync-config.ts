@@ -23,6 +23,7 @@ function toTask(value: unknown): RebalancingTask {
     price: nullableNum(v.price),
     quantity: nullableNum(v.quantity),
     executedQuantity: nullableNum(v.executedQuantity),
+    executedPrice: nullableNum(v.executedPrice),
     priceAsOf: typeof v.priceAsOf === "string" ? v.priceAsOf : null,
     priceKind: v.priceKind === "realtime" || v.priceKind === "close" ? v.priceKind : null,
     done: v.done === true,
@@ -51,6 +52,7 @@ function toResult(value: unknown): RebalancingResult | null {
     holdings: v.holdings.map(toResultHolding),
     cash: num(v.cash),
     cashPercent: nullableNum(v.cashPercent),
+    cashBefore: nullableNum(v.cashBefore),
   };
 }
 

@@ -27,8 +27,9 @@ function rebalancingData(overrides: Record<string, unknown> = {}) {
         quantity: 7,
         priceAsOf: "2026-11-06T06:30:00.000Z",
         priceKind: "close",
-        // 권장 7주와 다르게 실제로는 6주를 팔았다.
+        // 권장 7주·70,000원과 다르게 실제로는 6주를 69,500원에 팔았다.
         executedQuantity: 6,
+        executedPrice: 69_500,
         done: true,
       },
       {
@@ -43,6 +44,7 @@ function rebalancingData(overrides: Record<string, unknown> = {}) {
         priceAsOf: null,
         priceKind: null,
         executedQuantity: null,
+        executedPrice: null,
         done: false,
       },
     ],

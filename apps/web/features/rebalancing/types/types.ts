@@ -23,6 +23,12 @@ export interface RebalancingTask {
    * 수량대로 거래한 것으로 본다 (`executedQuantityOf`).
    */
   executedQuantity?: number | null;
+  /**
+   * 실제로 사고판 가격 (원, 주당) — 완료할 때 입력한다. 예수금은 이 가격으로 계산한다.
+   * 이 필드가 생기기 전에 체크한 할 일은 시작 시점 가격(`price`)으로 거래한 것으로 본다
+   * (`executedPriceOf`).
+   */
+  executedPrice?: number | null;
   /** `price` 의 기준 시각 (ISO). 가격이 없거나 기록 전에 시작한 리밸런싱이면 null */
   priceAsOf: string | null;
   /** `price` 가 장중 시세인지 종가인지. `priceAsOf` 와 함께 null */
@@ -74,5 +80,7 @@ export interface RebalancingResult {
   holdings: RebalancingResultHolding[];
   /** 반영 후 예수금 합 (원) */
   cash: number;
+  /** 반영 전 예수금 합 (원). 이 필드가 생기기 전에 완료한 기록이면 없다. */
+  cashBefore?: number | null;
   cashPercent: number | null;
 }

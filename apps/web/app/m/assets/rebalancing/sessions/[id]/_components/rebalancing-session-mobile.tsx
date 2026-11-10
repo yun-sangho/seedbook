@@ -24,6 +24,7 @@ import { priceAgeWarning } from "@web/features/rebalancing/utils/price-age";
 import { summarizeRebalancingPriceAsOf } from "@web/features/rebalancing/utils/rebalancing-price-as-of";
 import {
   canCompleteRebalancing,
+  executedPriceOf,
   executedQuantityOf,
   groupRebalancingTasks,
   isRebalancingCompleted,
@@ -79,7 +80,9 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
   // 수량 시트로 여는 매매. 남은 매매면 완료 기록, 완료한 매매면 수량 수정/완료 취소.
   const [editingId, setEditingId] = useState<string | null>(null);
   // 완료를 취소한 매매의 직전 기록 수량 — 다시 완료할 때 미리 채워 실수로 풀어도 그대로 되돌린다.
-  const [lastRecorded, setLastRecorded] = useState<ReadonlyMap<string, number>>(() => new Map());
+  const [lastRecorded, setLastRecorded] = useState<
+    ReadonlyMap<string, { quantity: number | null; price: number | null }>
+  >(() => new Map());
 
   if (!session) {
     return (
@@ -155,7 +158,9 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
         </div>
       )}
       {/* 계좌에 반영하며 완료했으면 반영 후 구성을 보여준다. */}
-      {completed && session.result && <RebalancingResultSection result={session.result} />}
+      {completed && session.result && (
+        <RebalancingResultSection result={session.result} tasks={session.tasks} />
+      )}
 
       <Divider />
 
@@ -236,19 +241,23 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
           initialQuantity={
             editingTask.done
               ? executedQuantityOf(editingTask)
-              : (lastRecorded.get(editingTask.id) ?? editingTask.quantity)
+              : (lastRecorded.get(editingTask.id)?.quantity ?? editingTask.quantity)
+          }
+          initialPrice={
+            editingTask.done
+              ? executedPriceOf(editingTask)
+              : (lastRecorded.get(editingTask.id)?.price ?? editingTask.price)
           }
           open
           onOpenChange={(open) => !open && setEditingId(null)}
-          onConfirm={(quantity) => {
+          onConfirm={(quantity, price) => {
             if (!editingTask.done) markLeaving(editingTask.id);
-            completeTaskWith(session.id, editingTask.id, quantity);
+            completeTaskWith(session.id, editingTask.id, quantity, price);
           }}
           onUncheck={() => {
-            const recorded = executedQuantityOf(editingTask);
-            if (recorded !== null) {
-              setLastRecorded((prev) => new Map(prev).set(editingTask.id, recorded));
-            }
+            const quantity = executedQuantityOf(editingTask);
+            const price = executedPriceOf(editingTask);
+            setLastRecorded((prev) => new Map(prev).set(editingTask.id, { quantity, price }));
             cancelLeaving(editingTask.id);
             toggleTask(session.id, editingTask.id);
           }}
@@ -422,13 +431,19 @@ function TaskQuantity({ task }: { task: RebalancingTask }) {
 
 function TaskDetail({ task }: { task: RebalancingTask }) {
   const executed = executedQuantityOf(task);
-  // 완료한 매매는 실제 수량 × 기준 가격, 아니면 권장 금액.
-  const amount = executed !== null && task.price !== null ? executed * task.price : task.amount;
+  const price = task.done ? executedPriceOf(task) : task.price;
+  // 완료한 매매는 실제 수량 × 실제 가격, 아니면 권장 금액.
+  const amount = executed !== null && price !== null ? executed * price : task.amount;
   const differs = executed !== null && task.quantity !== null && executed !== task.quantity;
   return (
     <span className="tabular-nums">
-      {formatWithCommas(amount)}원
-      {task.price !== null && <> · {formatWithCommas(task.price)}원 기준</>}
+      {formatWithCommas(Math.round(amount))}원
+      {price !== null && (
+        <>
+          {" "}
+          · {formatWithCommas(price)}원{task.done ? "" : " 기준"}
+        </>
+      )}
       {differs && <> · 권장 {formatWithCommas(task.quantity ?? 0)}주</>}
     </span>
   );
