@@ -27,6 +27,7 @@ function portfolioData(overrides: Record<string, unknown> = {}) {
     color: "#111111",
     note: "",
     accountIds: [] as string[],
+    driftMode: "relative",
     driftThresholdPercent: 5,
     allocations: [allocation()],
     ...overrides,
@@ -74,6 +75,17 @@ describe("portfolio entity sync", () => {
         data: { ...data, createdAt: expect.any(String), updatedAt: expect.any(String) },
       },
     ]);
+  });
+
+  it("stores a portfolio from an older client (no drift mode) as the %p mode", async () => {
+    const userId = await createTestUser();
+    const id = randomUUID();
+    const { driftMode: _omitted, ...legacy } = portfolioData();
+
+    await upsert(userId, id, legacy);
+
+    const { changes } = await pullChanges(db, userId, null);
+    expect(changes.portfolio?.[0]?.data).toMatchObject({ driftMode: "absolute" });
   });
 
   it("replaces the allocations on the next save", async () => {
