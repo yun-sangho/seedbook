@@ -92,6 +92,13 @@
       "when": 1794234862509,
       "tag": "0012_sad_goblin_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794310256585,
+      "tag": "0013_orange_kitty_pryde",
+      "breakpoints": true
     }
   ]
 }

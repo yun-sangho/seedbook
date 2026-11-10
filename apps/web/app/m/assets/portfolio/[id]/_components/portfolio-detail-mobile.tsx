@@ -5,26 +5,25 @@ import { IconArrowDownHorizlineLine, IconPlusLine } from "@karrotmarket/react-mo
 import { Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 import { usePopThenRemove } from "@web/app/m/_stack/use-pop-then-remove";
-import {
-  EditHint,
-  EmptyLine,
-  InlineAmount,
-  TabToolbar,
-} from "@web/components/mobile/detail-layout";
+import { EditHint, EmptyLine, TabToolbar } from "@web/components/mobile/detail-layout";
 import { HeaderAction } from "@web/components/mobile/header-action";
 import { HoldingsPriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
 import { profitToneClass } from "@web/components/mobile/profit-tone";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { summarizeAccounts } from "@web/features/investments/utils/summarize-accounts";
 import { useLiveAccounts } from "@web/features/investments/utils/use-live-accounts";
+import { useStockPrices } from "@web/features/investments/utils/use-stock-prices";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import type { PortfolioItem } from "@web/features/portfolio/types/types";
+import { exampleTargetPercent } from "@web/features/portfolio/utils/drift-percent";
+import { linkedPortfolioStatus } from "@web/features/portfolio/utils/linked-portfolio-status";
 import {
   accountPortfolioMap,
   otherLinkedPortfolio,
   sortLinkedElsewhereLast,
 } from "@web/features/portfolio/utils/portfolio-links";
 import { resolvePortfolioAccounts } from "@web/features/portfolio/utils/resolve-portfolio-accounts";
+import { summarizePortfolioDrift } from "@web/features/portfolio/utils/summarize-portfolio-drift";
 import { validateAllocations } from "@web/features/portfolio/utils/validate-allocations";
 import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
@@ -45,6 +44,7 @@ import { formatProfitWon } from "@web/utils/profit-color";
 import { AddAllocationFlow, EditAllocationSheet } from "./allocation-sheets";
 import { ImportAllocationsSheet } from "./import-allocations-sheet";
 import { MoveAccountSheet, type AccountMove } from "./move-account-sheet";
+import { PortfolioDriftCard } from "./portfolio-drift-card";
 import { EditDriftThresholdSheet, PortfolioSettingsSheet } from "./portfolio-edit-sheets";
 import { PortfolioOverviewTab } from "./portfolio-overview-tab";
 
@@ -109,6 +109,7 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
   const removeAllocation = usePortfolioStore((s) => s.removeAllocation);
   const toggleAccountLink = usePortfolioStore((s) => s.toggleAccountLink);
   const setDriftThreshold = usePortfolioStore((s) => s.setDriftThreshold);
+  const setDriftMode = usePortfolioStore((s) => s.setDriftMode);
   const investments = useInvestmentStore((s) => s.investments);
   const portfolios = usePortfolioStore((s) => s.portfolios);
   // 한 계좌는 하나의 포트폴리오에만 연결된다 — 다른 포트폴리오에 연결된 계좌는 확인 후 옮겨온다.
@@ -143,6 +144,26 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
   const linkedAccounts = useLiveAccounts(storedLinkedAccounts);
   const linkedCount = linkedAccounts.length;
   const linkedTotals = useMemo(() => summarizeAccounts(linkedAccounts), [linkedAccounts]);
+  // 계좌별 리밸런싱 필요 여부 — 상단 이격 카드와 현황 탭의 계좌 목록이 같은 판정을 쓴다.
+  const linkedHoldings = useMemo(
+    () => linkedAccounts.flatMap((inv) => inv.holdings ?? []),
+    [linkedAccounts]
+  );
+  const { prices } = useStockPrices(linkedHoldings);
+  const accountStatuses = useMemo(
+    () =>
+      new Map(
+        linkedAccounts.map((inv) => [
+          inv.id,
+          linkedPortfolioStatus(inv.id, [portfolio], linkedAccounts, prices),
+        ])
+      ),
+    [portfolio, linkedAccounts, prices]
+  );
+  const driftSummary = useMemo(
+    () => summarizePortfolioDrift(linkedAccounts.map((inv) => accountStatuses.get(inv.id) ?? null)),
+    [linkedAccounts, accountStatuses]
+  );
 
   const totalPct = validation.totalPercent;
   const totalClass = totalToneClass(totalPct, portfolio.allocations.length > 0);
@@ -185,13 +206,12 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
             연결된 계좌가 없어요. 적용 계좌 탭에서 연결하세요.
           </p>
         )}
-        <div className="border-stroke-neutral-muted rounded-r3 mt-x4 flex flex-col gap-y-x3 border-2 px-x4 py-x3">
-          <InlineAmount
-            label="이격 경고"
-            value={`${portfolio.driftThresholdPercent}% 초과 시`}
-            onEdit={() => setEditing({ kind: "drift" })}
-          />
-        </div>
+        <PortfolioDriftCard
+          portfolio={portfolio}
+          summary={driftSummary}
+          linkedCount={linkedCount}
+          onEdit={() => setEditing({ kind: "drift" })}
+        />
       </section>
 
       <ChipTabsRoot
@@ -212,7 +232,12 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
         </div>
 
         <ChipTabsContent value="overview">
-          <PortfolioOverviewTab portfolio={portfolio} linkedAccounts={linkedAccounts} />
+          <PortfolioOverviewTab
+            portfolio={portfolio}
+            linkedAccounts={linkedAccounts}
+            prices={prices}
+            accountStatuses={accountStatuses}
+          />
         </ChipTabsContent>
 
         <ChipTabsContent value="allocations">
@@ -349,11 +374,13 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
         <ChipTabsContent value="memo">
           <div className="px-x4 pt-x3">
             <TextField
-              aria-label="메모"
               value={portfolio.note}
               onValueChange={({ value }) => updatePortfolio(portfolio.id, "note", value)}
             >
-              <TextFieldTextarea placeholder="리밸런싱 기준, 매매 규칙 등을 기록" />
+              <TextFieldTextarea
+                aria-label="메모"
+                placeholder="리밸런싱 기준, 매매 규칙 등을 기록"
+              />
             </TextField>
           </div>
         </ChipTabsContent>
@@ -382,8 +409,13 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
         <EditDriftThresholdSheet
           key={`drift-${editing?.kind === "drift"}`}
           {...sheetProps(editing?.kind === "drift")}
+          mode={portfolio.driftMode}
           value={portfolio.driftThresholdPercent}
-          onSave={(value) => setDriftThreshold(portfolio.id, value)}
+          exampleTarget={exampleTargetPercent(portfolio.allocations)}
+          onSave={(mode, value) => {
+            setDriftMode(portfolio.id, mode);
+            setDriftThreshold(portfolio.id, value);
+          }}
         />
         <ImportAllocationsSheet
           key={`import-${editing?.kind === "import-allocations"}`}

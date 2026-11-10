@@ -1,8 +1,12 @@
 import type { ManagedStoreConfig } from "@web/lib/sync/managed-store-config";
-import type { PortfolioItem } from "../types/types";
+import { LEGACY_DRIFT_MODE } from "../types/constants";
+import type { DriftMode, PortfolioItem } from "../types/types";
 
 const num = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : 0);
 const text = (value: unknown) => (typeof value === "string" ? value : "");
+// 방식이 없는 데이터는 방식이 생기기 전에 저장된 것 — 그때처럼 %p 차이로 판정한다.
+const driftMode = (value: unknown): DriftMode =>
+  value === "relative" || value === "absolute" ? value : LEGACY_DRIFT_MODE;
 
 /**
  * 포트폴리오 store (`portfolio-storage`) 의 엔티티 동기화 설정. store 를 import 하지 않는다.
@@ -23,6 +27,7 @@ export const portfolioSyncConfig: ManagedStoreConfig<PortfolioItem> = {
     color: text(item.color),
     note: text(item.note),
     accountIds: (item.accountIds ?? []).filter((id) => typeof id === "string"),
+    driftMode: driftMode(item.driftMode),
     driftThresholdPercent: num(item.driftThresholdPercent),
     allocations: (item.allocations ?? []).map((a) => ({
       id: text(a.id),
@@ -51,6 +56,7 @@ export const portfolioSyncConfig: ManagedStoreConfig<PortfolioItem> = {
     accountIds: Array.isArray(data.accountIds)
       ? (data.accountIds as unknown[]).filter((x): x is string => typeof x === "string")
       : [],
+    driftMode: driftMode(data.driftMode),
     driftThresholdPercent: num(data.driftThresholdPercent),
     note: text(data.note),
     createdAt: text(data.createdAt),

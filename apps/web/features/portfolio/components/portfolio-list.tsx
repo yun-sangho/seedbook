@@ -41,7 +41,7 @@ export function PortfolioList({ portfolios }: PortfolioListProps) {
           portfolioStockValue(portfolio.allocations, actual.perStock),
           0
         );
-        const drift = computeDriftAlert(summary, portfolio.driftThresholdPercent);
+        const drift = computeDriftAlert(summary, portfolio);
         // 삭제된 계좌는 연결 목록에 남아 있어도 세지 않는다.
         const linkEmpty = scopedAccounts.length === 0;
         const linkLabel = linkEmpty ? "연결 계좌 없음" : `계좌 ${scopedAccounts.length}개`;

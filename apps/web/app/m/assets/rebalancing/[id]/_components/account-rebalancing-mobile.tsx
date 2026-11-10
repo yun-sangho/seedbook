@@ -12,7 +12,9 @@ import { buildAllocationColors } from "@web/features/portfolio/utils/allocation-
 import { computeActualAllocation } from "@web/features/portfolio/utils/compute-actual-allocation";
 import {
   computeDriftAlert,
+  isDriftBreached,
   type DriftAlert,
+  type DriftRule,
 } from "@web/features/portfolio/utils/compute-drift-alert";
 import {
   computeRebalancingGap,
@@ -106,10 +108,7 @@ export function AccountRebalancingMobile({
     [summary, allocationPrices]
   );
   const isEmpty = actual.totalStockValue === 0 && cashBalance === 0 && cashDelta === 0;
-  const drift = useMemo(
-    () => computeDriftAlert(summary, portfolio.driftThresholdPercent),
-    [summary, portfolio.driftThresholdPercent]
-  );
+  const drift = useMemo(() => computeDriftAlert(summary, portfolio), [summary, portfolio]);
 
   return (
     // 카드 대신 한 장의 표면 위에 섹션을 이어 붙이고 디바이더로 구분한다.
@@ -152,12 +151,7 @@ export function AccountRebalancingMobile({
       />
       {!isEmpty && (
         <div className="pb-x4">
-          <DriftRows
-            drift={drift}
-            summary={summary}
-            colorMap={colorMap}
-            thresholdPercent={portfolio.driftThresholdPercent}
-          />
+          <DriftRows drift={drift} summary={summary} colorMap={colorMap} rule={portfolio} />
         </div>
       )}
 
@@ -293,21 +287,16 @@ function startDisabledReason(
 }
 
 /**
- * "목표 30.0% · 현재 36.2% · 이격 +6.2%". 이격률은 현재 − 목표 (목표보다 많으면 +).
+ * "목표 30.0% · 현재 36.2% · 이격 +20.7%". 이격률은 포트폴리오의 계산 방식(`driftMode`)을 따르고
+ * 목표보다 많으면 +.
  * 부호와 상관없이 경고 색으로 보여주고, 이격 기준을 넘으면 굵게.
  */
-function PercentLine({
-  row,
-  thresholdPercent,
-}: {
-  row: RebalancingGapRow;
-  thresholdPercent: number;
-}) {
-  const drift = driftPercent(row);
+function PercentLine({ row, rule }: { row: RebalancingGapRow; rule: DriftRule }) {
+  const drift = driftPercent(row, rule.driftMode);
   return (
     <span className="tabular-nums">
       목표 {row.targetPercent.toFixed(1)}% · 현재 {row.actualPercent.toFixed(1)}% · 이격{" "}
-      <span className={cn("text-fg-warning", Math.abs(drift) > thresholdPercent && "font-bold")}>
+      <span className={cn("text-fg-warning", isDriftBreached(row, rule) && "font-bold")}>
         {formatDriftPercent(drift)}
       </span>
     </span>
@@ -322,12 +311,12 @@ function DriftRows({
   drift,
   summary,
   colorMap,
-  thresholdPercent,
+  rule,
 }: {
   drift: DriftAlert;
   summary: RebalancingSummary;
   colorMap: Map<string, string>;
-  thresholdPercent: number;
+  rule: DriftRule;
 }) {
   const [showAll, setShowAll] = useState(false);
   const cashRow = summary.cashRow;
@@ -338,7 +327,7 @@ function DriftRows({
     <div className="flex flex-col gap-x2 px-x4">
       <div className="flex items-center gap-x2">
         <p className="t3-regular text-fg-neutral-subtle flex-1">
-          {showAll ? "모든 종목" : `이격 기준(${thresholdPercent}%)을 넘은 종목`}
+          {showAll ? "모든 종목" : `이격 기준(${rule.driftThresholdPercent}%)을 넘은 종목`}
         </p>
         <ActionButton
           variant="ghost"
@@ -370,7 +359,7 @@ function DriftRows({
                     {isCash ? "예수금" : row.name || "(미선택)"}
                   </p>
                   <p className="t3-regular text-fg-neutral-subtle">
-                    <PercentLine row={row} thresholdPercent={thresholdPercent} />
+                    <PercentLine row={row} rule={rule} />
                   </p>
                 </div>
               </li>

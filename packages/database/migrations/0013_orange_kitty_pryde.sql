@@ -1,0 +1,1 @@
+ALTER TABLE "seedbook"."portfolio" ADD COLUMN "driftMode" text DEFAULT 'absolute' NOT NULL;

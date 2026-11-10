@@ -17,6 +17,7 @@ const item: PortfolioItem = {
     },
   ],
   accountIds: ["acc-1"],
+  driftMode: "relative",
   driftThresholdPercent: 5,
   note: "",
   createdAt: "2026-10-01T00:00:00.000Z",
@@ -48,5 +49,16 @@ describe("portfolioSyncConfig", () => {
       ...item,
       updatedAt: "2026-11-08T00:00:00.000Z",
     });
+  });
+
+  it("reads a portfolio pulled without a drift mode as the legacy %p mode", () => {
+    const pulled: Record<string, unknown> = {
+      ...portfolioSyncConfig.toData(item),
+      createdAt: "2026-10-01T00:00:00.000Z",
+      updatedAt: "2026-11-01T00:00:00.000Z",
+    };
+    delete pulled.driftMode;
+
+    expect(portfolioSyncConfig.fromData("p-1", pulled).driftMode).toBe("absolute");
   });
 });

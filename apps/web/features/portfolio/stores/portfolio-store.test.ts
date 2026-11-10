@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_DRIFT_THRESHOLD_PERCENT } from "../types/constants";
+import {
+  DEFAULT_DRIFT_MODE,
+  DEFAULT_DRIFT_THRESHOLD_PERCENT,
+  LEGACY_DRIFT_MODE,
+} from "../types/constants";
 import type { PortfolioItem } from "../types/types";
 import { usePortfolioStore } from "./portfolio-store";
 
@@ -88,6 +92,36 @@ describe("Portfolio Store", () => {
       const p = usePortfolioStore.getState().portfolios[0]!;
       expect(p.accountIds).toEqual([]);
       expect(p.driftThresholdPercent).toBe(DEFAULT_DRIFT_THRESHOLD_PERCENT);
+    });
+
+    it("measures drift relative to the target by default", () => {
+      usePortfolioStore.getState().addPortfolio();
+      expect(usePortfolioStore.getState().portfolios[0]!.driftMode).toBe(DEFAULT_DRIFT_MODE);
+      expect(DEFAULT_DRIFT_MODE).toBe("relative");
+    });
+  });
+
+  describe("setDriftMode", () => {
+    it("switches how drift is measured", () => {
+      const id = usePortfolioStore.getState().addPortfolio();
+      usePortfolioStore.getState().setDriftMode(id, "absolute");
+      expect(usePortfolioStore.getState().portfolios[0]!.driftMode).toBe("absolute");
+    });
+  });
+
+  describe("rehydrate", () => {
+    it("keeps portfolios saved before drift modes existed on the %p difference", () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const persistApi = (usePortfolioStore as any).persist;
+      const onRehydrate = persistApi.getOptions().onRehydrateStorage() as (state: unknown) => void;
+      const state = {
+        portfolios: [{ id: "old", name: "old", driftThresholdPercent: 5 } as PortfolioItem],
+      };
+
+      onRehydrate(state);
+
+      expect(state.portfolios[0]!.driftMode).toBe(LEGACY_DRIFT_MODE);
+      expect(LEGACY_DRIFT_MODE).toBe("absolute");
     });
   });
 

@@ -22,13 +22,19 @@ import {
 import { cn } from "@web/lib/utils";
 import { formatWithCommas, numberToKorean, parseNumericString } from "@web/utils/number-format";
 import { AlertTriangle, CheckCircle2, Minus, Plus } from "lucide-react";
+import { DRIFT_MODE_LABELS } from "../types/constants";
 import type { PortfolioItem } from "../types/types";
 import { buildAllocationColors } from "../utils/allocation-colors";
 import {
   computeActualAllocation,
   type ActualAllocationResult,
 } from "../utils/compute-actual-allocation";
-import { computeDriftAlert, type DriftAlert } from "../utils/compute-drift-alert";
+import {
+  computeDriftAlert,
+  isDriftBreached,
+  type DriftAlert,
+  type DriftRule,
+} from "../utils/compute-drift-alert";
 import {
   computeRebalancingGap,
   portfolioStockValue,
@@ -94,10 +100,7 @@ export function PortfolioComparison({ portfolio }: PortfolioComparisonProps) {
       ),
     [portfolio.allocations, sumActual.perStock, cashDelta]
   );
-  const sumDrift = useMemo(
-    () => computeDriftAlert(sumSummary, portfolio.driftThresholdPercent),
-    [sumSummary, portfolio.driftThresholdPercent]
-  );
+  const sumDrift = useMemo(() => computeDriftAlert(sumSummary, portfolio), [sumSummary, portfolio]);
 
   const handleCashDeltaCommit = (raw: string) => {
     const trimmed = raw.trim();
@@ -346,7 +349,7 @@ function SumView({
 
       {/* 요약 카드 + 이격률 배지 */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <DriftBadge drift={drift} thresholdPercent={portfolio.driftThresholdPercent} />
+        <DriftBadge drift={drift} rule={portfolio} />
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <SummaryCard label="현재 평가액" value={summary.currentBaseValue} />
@@ -393,11 +396,7 @@ function SumView({
           </div>
 
           {/* 권장 액션 테이블 */}
-          <RebalancingTable
-            summary={summary}
-            colorMap={colorMap}
-            thresholdPercent={portfolio.driftThresholdPercent}
-          />
+          <RebalancingTable summary={summary} colorMap={colorMap} rule={portfolio} />
         </>
       )}
     </>
@@ -452,10 +451,7 @@ function PerAccountCard({ portfolio, account, prices, colorMap }: PerAccountCard
       ),
     [portfolio.allocations, actual.perStock]
   );
-  const drift = useMemo(
-    () => computeDriftAlert(summary, portfolio.driftThresholdPercent),
-    [summary, portfolio.driftThresholdPercent]
-  );
+  const drift = useMemo(() => computeDriftAlert(summary, portfolio), [summary, portfolio]);
 
   return (
     <div className="rounded-lg border bg-background overflow-hidden">
@@ -477,7 +473,7 @@ function PerAccountCard({ portfolio, account, prices, colorMap }: PerAccountCard
             평가액 {numberToKorean(actual.totalStockValue) || "0원"}
           </p>
         </div>
-        <DriftBadge drift={drift} thresholdPercent={portfolio.driftThresholdPercent} compact />
+        <DriftBadge drift={drift} rule={portfolio} compact />
       </div>
 
       {actual.totalStockValue === 0 ? (
@@ -490,12 +486,7 @@ function PerAccountCard({ portfolio, account, prices, colorMap }: PerAccountCard
             <SummaryCard label="총 매수" value={summary.totalBuyValue} tone="buy" />
             <SummaryCard label="총 매도" value={summary.totalSellValue} tone="sell" />
           </div>
-          <RebalancingTable
-            summary={summary}
-            colorMap={colorMap}
-            thresholdPercent={portfolio.driftThresholdPercent}
-            dense
-          />
+          <RebalancingTable summary={summary} colorMap={colorMap} rule={portfolio} dense />
         </>
       )}
     </div>
@@ -506,11 +497,11 @@ function PerAccountCard({ portfolio, account, prices, colorMap }: PerAccountCard
 
 function DriftBadge({
   drift,
-  thresholdPercent,
+  rule,
   compact,
 }: {
   drift: DriftAlert;
-  thresholdPercent: number;
+  rule: DriftRule;
   compact?: boolean;
 }) {
   const base = cn(
@@ -523,7 +514,7 @@ function DriftBadge({
   return (
     <span
       className={base}
-      title={`임계 ${thresholdPercent}% | 최대 |gap| ${drift.maxAbsGapPercent.toFixed(1)}%`}
+      title={`${DRIFT_MODE_LABELS[rule.driftMode]} 기준 임계 ${rule.driftThresholdPercent}% | 최대 이격 ${drift.maxAbsGapPercent.toFixed(1)}%`}
     >
       {drift.hasBreach ? (
         <AlertTriangle className="h-3.5 w-3.5" />
@@ -540,12 +531,12 @@ function DriftBadge({
 function RebalancingTable({
   summary,
   colorMap,
-  thresholdPercent,
+  rule,
   dense,
 }: {
   summary: RebalancingSummary;
   colorMap: Map<string, string>;
-  thresholdPercent: number;
+  rule: DriftRule;
   dense?: boolean;
 }) {
   return (
@@ -564,7 +555,7 @@ function RebalancingTable({
         <TableBody>
           {summary.rows.map((row) => {
             const color = colorMap.get(`${row.market}:${row.ticker}`) ?? "#94a3b8";
-            const breached = Math.abs(row.gapPercent) > thresholdPercent;
+            const breached = isDriftBreached(row, rule);
             return (
               <TableRow key={row.allocationId}>
                 <TableCell>

@@ -7,6 +7,7 @@ const valid = {
   color: "#111111",
   note: "",
   accountIds: [accountId],
+  driftMode: "relative",
   driftThresholdPercent: 5,
   allocations: [
     {
@@ -64,5 +65,15 @@ describe("parsePortfolioFields", () => {
 
   it("rejects a negative drift threshold", () => {
     expect(parsePortfolioFields({ ...valid, driftThresholdPercent: -1 })).toBeNull();
+  });
+
+  it("reads a missing drift mode as the legacy %p mode (older clients)", () => {
+    const { driftMode: _m, ...rest } = valid;
+
+    expect(parsePortfolioFields(rest)?.driftMode).toBe("absolute");
+  });
+
+  it("rejects an unknown drift mode", () => {
+    expect(parsePortfolioFields({ ...valid, driftMode: "ratio" })).toBeNull();
   });
 });

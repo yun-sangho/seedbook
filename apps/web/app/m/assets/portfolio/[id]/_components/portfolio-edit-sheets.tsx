@@ -4,7 +4,8 @@ import { useState } from "react";
 import { ConfirmDialog } from "@web/components/mobile/confirm-dialog";
 import { sanitizePercentDraft } from "@web/components/mobile/input-format";
 import { ACCOUNT_COLORS } from "@web/features/investments/types/constants";
-import type { PortfolioItem } from "@web/features/portfolio/types/types";
+import { DRIFT_MODE_LABELS } from "@web/features/portfolio/types/constants";
+import type { DriftMode, PortfolioItem } from "@web/features/portfolio/types/types";
 import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
@@ -13,8 +14,10 @@ import {
   BottomSheetFooter,
   BottomSheetRoot,
 } from "@web/seed-design/ui/bottom-sheet";
+import { SegmentedControl, SegmentedControlItem } from "@web/seed-design/ui/segmented-control";
 import { TextField, TextFieldInput } from "@web/seed-design/ui/text-field";
 import { parseNumericString } from "@web/utils/number-format";
+import { DriftRuleExample } from "./portfolio-drift-card";
 
 /*
  * 편집 시트들은 열릴 때마다 현재 값으로 폼을 초기화해야 한다.
@@ -26,27 +29,56 @@ interface SheetProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/** 이격률 경고 임계 (%) 를 고치는 시트. */
+/** 이격률 계산 방식과 경고 임계 (%) 를 고치는 시트. */
 export function EditDriftThresholdSheet({
   open,
   onOpenChange,
+  mode,
   value,
+  exampleTarget,
   onSave,
-}: SheetProps & { value: number; onSave: (value: number) => void }) {
+}: SheetProps & {
+  mode: DriftMode;
+  value: number;
+  /** 예시 범위에 쓸 목표 비중 (%). */
+  exampleTarget: number;
+  onSave: (mode: DriftMode, value: number) => void;
+}) {
+  const [modeDraft, setModeDraft] = useState(mode);
   const [draft, setDraft] = useState(String(value));
+  const parsed = parseNumericString(draft);
+  const parsedDraft = Number.isFinite(parsed) ? parsed : 0;
   return (
     <BottomSheetRoot open={open} onOpenChange={onOpenChange}>
-      <BottomSheetContent
-        title="이격 경고"
-        description="목표 대비 차이가 이 값보다 크면 리밸런싱이 필요하다고 표시해요"
-        showHandle
-      >
+      <BottomSheetContent title="이격 경고" showHandle>
         <BottomSheetBody>
+          <div className="pb-x4">
+            <SegmentedControl
+              aria-label="이격률 계산 방식"
+              value={modeDraft}
+              onValueChange={(next) => setModeDraft(next as DriftMode)}
+            >
+              {(Object.keys(DRIFT_MODE_LABELS) as DriftMode[]).map((m) => (
+                <SegmentedControlItem key={m} value={m}>
+                  {DRIFT_MODE_LABELS[m]}
+                </SegmentedControlItem>
+              ))}
+            </SegmentedControl>
+          </div>
+          {/* 방식과 임계값을 바꿀 때마다 실제 범위가 어떻게 되는지 입력 전에 바로 보여준다. */}
+          <div className="bg-bg-neutral-weak rounded-r3 mb-x4 px-x4 py-x3" aria-live="polite">
+            <DriftRuleExample
+              rule={{ driftMode: modeDraft, driftThresholdPercent: parsedDraft }}
+              targetPercent={exampleTarget}
+              highlight
+              className="t5-bold"
+            />
+          </div>
           <TextField
             label="이격률 경고 임계"
             value={draft}
             onValueChange={({ value: next }) => setDraft(sanitizePercentDraft(next))}
-            suffix="%"
+            suffix={modeDraft === "absolute" ? "%p" : "%"}
           >
             <TextFieldInput inputMode="decimal" autoFocus />
           </TextField>
@@ -56,8 +88,7 @@ export function EditDriftThresholdSheet({
             size="large"
             className="w-full"
             onClick={() => {
-              const num = parseNumericString(draft);
-              onSave(Number.isFinite(num) ? num : 0);
+              onSave(modeDraft, parsedDraft);
               onOpenChange(false);
             }}
           >

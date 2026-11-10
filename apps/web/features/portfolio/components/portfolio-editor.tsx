@@ -11,7 +11,9 @@ import { cn } from "@web/lib/utils";
 import { parseNumericString } from "@web/utils/number-format";
 import { Plus } from "lucide-react";
 import { usePortfolioStore } from "../stores/portfolio-store";
-import type { PortfolioItem } from "../types/types";
+import { DRIFT_MODE_LABELS } from "../types/constants";
+import type { DriftMode, PortfolioItem } from "../types/types";
+import { driftRuleExample, exampleTargetPercent } from "../utils/drift-percent";
 import { accountPortfolioMap } from "../utils/portfolio-links";
 import { validateAllocations } from "../utils/validate-allocations";
 import { PortfolioAllocationRow } from "./portfolio-allocation-row";
@@ -28,6 +30,7 @@ export function PortfolioEditor({ portfolio }: PortfolioEditorProps) {
   const removeAllocation = usePortfolioStore((s) => s.removeAllocation);
   const toggleAccountLink = usePortfolioStore((s) => s.toggleAccountLink);
   const setDriftThreshold = usePortfolioStore((s) => s.setDriftThreshold);
+  const setDriftMode = usePortfolioStore((s) => s.setDriftMode);
 
   const investments = useInvestmentStore((s) => s.investments);
   const linkedIdSet = useMemo(() => new Set(portfolio.accountIds), [portfolio.accountIds]);
@@ -223,7 +226,28 @@ export function PortfolioEditor({ portfolio }: PortfolioEditorProps) {
         )}
       </div>
 
-      {/* 이격률 경고 임계 */}
+      {/* 이격률 계산 방식 + 경고 임계 */}
+      <div>
+        <Label>이격률 계산 방식</Label>
+        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          {(Object.keys(DRIFT_MODE_LABELS) as DriftMode[]).map((mode) => (
+            <Button
+              key={mode}
+              type="button"
+              size="sm"
+              variant={portfolio.driftMode === mode ? "default" : "outline"}
+              aria-pressed={portfolio.driftMode === mode}
+              onClick={() => setDriftMode(portfolio.id, mode)}
+            >
+              {DRIFT_MODE_LABELS[mode]}
+            </Button>
+          ))}
+          <span className="text-xs text-muted-foreground">
+            <DriftExampleText portfolio={portfolio} />
+          </span>
+        </div>
+      </div>
+
       <div>
         <Label htmlFor={`portfolio-drift-${portfolio.id}`}>이격률 경고 임계 (%)</Label>
         <div className="mt-1.5 flex items-center gap-2">
@@ -239,7 +263,7 @@ export function PortfolioEditor({ portfolio }: PortfolioEditorProps) {
             }}
           />
           <span className="text-xs text-muted-foreground">
-            목표 대비 |차이|%가 이 값보다 크면 경고 배지 노출
+            |이격률|이 이 값보다 크면 경고 배지 노출
           </span>
         </div>
       </div>
@@ -256,5 +280,20 @@ export function PortfolioEditor({ portfolio }: PortfolioEditorProps) {
         />
       </div>
     </div>
+  );
+}
+
+/** "목표 20% → 17%~23% 밖이면 경고" — 허용 범위는 굵게. */
+function DriftExampleText({ portfolio }: { portfolio: PortfolioItem }) {
+  const { target, range } = driftRuleExample(
+    portfolio,
+    exampleTargetPercent(portfolio.allocations)
+  );
+  return (
+    <>
+      목표 {target} →{" "}
+      <span className="font-semibold text-foreground">{range ?? "조금만 벗어나도"}</span>
+      {range === null ? "" : " 밖이면"} 경고
+    </>
   );
 }

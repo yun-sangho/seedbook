@@ -6,8 +6,13 @@ import { getNextColor as getNextColorUtil } from "@web/utils/color-selection";
 import { parseNumericString } from "@web/utils/number-format";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { DEFAULT_DRIFT_THRESHOLD_PERCENT, DEFAULT_PORTFOLIO_NAME_PREFIX } from "../types/constants";
-import type { PortfolioAllocation, PortfolioItem, StockSelection } from "../types/types";
+import {
+  DEFAULT_DRIFT_MODE,
+  DEFAULT_DRIFT_THRESHOLD_PERCENT,
+  DEFAULT_PORTFOLIO_NAME_PREFIX,
+  LEGACY_DRIFT_MODE,
+} from "../types/constants";
+import type { DriftMode, PortfolioAllocation, PortfolioItem, StockSelection } from "../types/types";
 import { dedupePortfolioLinks } from "../utils/portfolio-links";
 
 const nowIso = () => new Date().toISOString();
@@ -54,6 +59,7 @@ interface PortfolioState {
   setPortfolioAccountIds: (portfolioId: string, accountIds: string[]) => void;
   toggleAccountLink: (portfolioId: string, accountId: string) => void;
   setDriftThreshold: (portfolioId: string, value: number) => void;
+  setDriftMode: (portfolioId: string, mode: DriftMode) => void;
 
   reorderPortfolios: (reordered: PortfolioItem[]) => void;
   resetStore: () => void;
@@ -84,6 +90,7 @@ export const usePortfolioStore = create<PortfolioState>()(
           color: getNextColor(portfolios),
           allocations: [],
           accountIds: [],
+          driftMode: DEFAULT_DRIFT_MODE,
           driftThresholdPercent: DEFAULT_DRIFT_THRESHOLD_PERCENT,
           note: "",
           createdAt: nowIso(),
@@ -213,6 +220,14 @@ export const usePortfolioStore = create<PortfolioState>()(
         }));
       },
 
+      setDriftMode: (portfolioId, mode) => {
+        set((state) => ({
+          portfolios: state.portfolios.map((p) =>
+            p.id === portfolioId ? touch({ ...p, driftMode: mode }) : p
+          ),
+        }));
+      },
+
       reorderPortfolios: (reordered) => {
         set({ portfolios: reordered });
       },
@@ -250,6 +265,8 @@ export const usePortfolioStore = create<PortfolioState>()(
           color: p.color || ACCOUNT_COLORS[i % ACCOUNT_COLORS.length] || "#3b82f6",
           allocations: p.allocations ?? [],
           accountIds: p.accountIds ?? [],
+          // 계산 방식이 생기기 전 포트폴리오는 그때처럼 %p 차이로 판정한다.
+          driftMode: p.driftMode ?? LEGACY_DRIFT_MODE,
           driftThresholdPercent: p.driftThresholdPercent ?? DEFAULT_DRIFT_THRESHOLD_PERCENT,
           note: p.note ?? "",
           createdAt: p.createdAt ?? nowIso(),

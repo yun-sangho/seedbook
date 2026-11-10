@@ -10,6 +10,7 @@ export type PortfolioFields = {
   color: string;
   note: string;
   accountIds: string[];
+  driftMode: "relative" | "absolute";
   driftThresholdPercent: number;
   allocations: Array<{
     id: string;
@@ -31,6 +32,8 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const isText = (x: unknown): x is string => typeof x === "string";
 const isNumber = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x);
 const isUuid = (x: unknown): x is string => isText(x) && UUID_RE.test(x);
+const isDriftMode = (x: unknown): x is PortfolioFields["driftMode"] =>
+  x === "relative" || x === "absolute";
 
 /** 외부 입력 검증. 잘못된 모양이면 `null`. */
 export function parsePortfolioFields(value: unknown): PortfolioFields | null {
@@ -39,10 +42,13 @@ export function parsePortfolioFields(value: unknown): PortfolioFields | null {
   const note = v.note ?? "";
   const accountIds = v.accountIds ?? [];
   const rawAllocations = v.allocations ?? [];
+  // 방식이 생기기 전 클라이언트는 보내지 않는다 — 그때의 판정 방식(%p 차이)으로 둔다.
+  const driftMode = v.driftMode ?? "absolute";
   if (
     !isText(v.name) ||
     !isText(v.color) ||
     !isText(note) ||
+    !isDriftMode(driftMode) ||
     !isNumber(v.driftThresholdPercent) ||
     v.driftThresholdPercent < 0 ||
     !Array.isArray(accountIds) ||
@@ -81,6 +87,7 @@ export function parsePortfolioFields(value: unknown): PortfolioFields | null {
     color: v.color,
     note,
     accountIds: Array.from(new Set(accountIds)),
+    driftMode,
     driftThresholdPercent: v.driftThresholdPercent,
     allocations,
   };
@@ -93,6 +100,7 @@ export function portfolioFieldsToColumns(fields: PortfolioFields) {
     color: fields.color,
     note: fields.note,
     accountIds: fields.accountIds,
+    driftMode: fields.driftMode,
     driftThresholdPercent: fields.driftThresholdPercent,
   };
 }
@@ -107,6 +115,7 @@ export function portfolioRowToData(row: PortfolioRow, allocations: AllocationRow
     color: row.color,
     note: row.note,
     accountIds: row.accountIds,
+    driftMode: row.driftMode,
     driftThresholdPercent: row.driftThresholdPercent,
     allocations: allocations.map((a) => ({
       id: a.id,

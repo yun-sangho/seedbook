@@ -13,6 +13,7 @@ function portfolio(partial: Partial<PortfolioItem> & Pick<PortfolioItem, "id">):
     color: "#111",
     allocations: [],
     accountIds: [],
+    driftMode: "absolute",
     driftThresholdPercent: 5,
     note: "",
     createdAt: "2026-01-01T00:00:00.000Z",

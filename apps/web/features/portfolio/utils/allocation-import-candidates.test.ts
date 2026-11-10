@@ -46,6 +46,7 @@ function portfolio(allocations: PortfolioAllocation[]): PortfolioItem {
     color: "#111",
     allocations,
     accountIds: [],
+    driftMode: "absolute",
     driftThresholdPercent: 5,
     note: "",
     createdAt: "",

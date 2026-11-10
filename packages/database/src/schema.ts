@@ -398,6 +398,11 @@ export const portfolio = seedbook.table(
       .array()
       .notNull()
       .default(sql`ARRAY[]::uuid[]`),
+    // 이격률 계산 방식: "relative" (목표 대비 비율) | "absolute" (%p 차이).
+    // 기존 행은 방식이 생기기 전처럼 %p 차이로 판정하도록 "absolute" 가 기본값.
+    driftMode: text("driftMode", { enum: ["relative", "absolute"] })
+      .notNull()
+      .default("absolute"),
     driftThresholdPercent: doublePrecision("driftThresholdPercent").notNull().default(5),
     ...syncColumns(),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),

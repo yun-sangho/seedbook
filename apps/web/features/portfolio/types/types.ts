@@ -14,6 +14,13 @@ export interface PortfolioAllocation {
 }
 
 /**
+ * 이격률 계산 방식.
+ * - `relative`: 목표 비중의 % — (현재 − 목표) ÷ 목표. 목표 20% → 현재 25% 면 25%.
+ * - `absolute`: 비중 차이 (%p) — 현재 − 목표. 목표 20% → 현재 25% 면 5%.
+ */
+export type DriftMode = "relative" | "absolute";
+
+/**
  * 모델 포트폴리오 정의.
  *
  * 사용자가 원하는 자산 배분(allocations) + 메타데이터를 묶는 단위.
@@ -29,8 +36,10 @@ export interface PortfolioItem {
    * 빈 배열이면 적용 계좌가 없는 것 — 리밸런싱 비교가 불가능한 상태.
    */
   accountIds: string[];
+  /** 이격률 계산 방식 (`driftThresholdPercent` 를 이 방식으로 잰 값과 비교한다). */
+  driftMode: DriftMode;
   /**
-   * 이격률 경고 임계값 (%). `|gapPercent|` 가 이 값보다 크면 이격 초과로 판정.
+   * 이격률 경고 임계값 (%). `driftMode` 로 잰 |이격률| 이 이 값보다 크면 이격 초과로 판정.
    * 매수/매도 action 판정용 임계값과는 별개 (그쪽은 `DEFAULT_REBALANCE_THRESHOLD_PERCENT`).
    */
   driftThresholdPercent: number;

@@ -12,7 +12,7 @@ export interface LinkedPortfolioStatus {
   name: string;
   color: string;
   /**
-   * - `needs-rebalancing`: 목표 대비 |차이| 가 임계값을 넘는 종목이 있음
+   * - `needs-rebalancing`: |이격률| 이 임계값을 넘는 종목이 있음 (`driftMode` 기준)
    * - `ok`: 임계값 이내
    * - `unknown`: 목표 종목이 없거나 시세 있는 보유·예수금이 없어 판단 불가
    */
@@ -54,7 +54,7 @@ export function linkedPortfolioStatus(
     0,
     { cashBalance }
   );
-  const drift = computeDriftAlert(summary, portfolio.driftThresholdPercent);
+  const drift = computeDriftAlert(summary, portfolio);
   return {
     ...base,
     state: drift.hasBreach ? "needs-rebalancing" : "ok",
