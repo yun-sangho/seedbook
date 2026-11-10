@@ -39,7 +39,6 @@ export const HOLDINGS_SORT_OPTIONS: SortOptionList<HoldingsSortOption> = [
 
 /** 투자 홈의 계좌 목록 정렬. */
 export const ACCOUNT_SORT_OPTIONS: SortOptionList<AccountSortOption> = [
-  { value: "default", label: "기본 순서" },
   { value: "evalDesc", label: "평가액 높은 순" },
   { value: "evalAsc", label: "평가액 낮은 순" },
 ];

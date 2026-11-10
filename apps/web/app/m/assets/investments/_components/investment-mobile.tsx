@@ -6,6 +6,8 @@ import { Divider, Icon } from "@seed-design/react";
 import { HoldingsPriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import {
+  DEFAULT_ACCOUNT_SORT_OPTION,
+  normalizeAccountSortOption,
   sortAccounts,
   type AccountSortOption,
 } from "@web/features/investments/utils/sort-accounts";
@@ -21,13 +23,11 @@ const ACCOUNT_SORT_KEY = "seedbook.mobile.accountSort";
 
 /** 계좌 정렬 선택은 기기별 편의 설정이라 localStorage 에만 둔다. */
 function useAccountSort(): [AccountSortOption, (value: AccountSortOption) => void] {
-  const [value, setValue] = useState<AccountSortOption>("default");
+  const [value, setValue] = useState<AccountSortOption>(DEFAULT_ACCOUNT_SORT_OPTION);
   useEffect(() => {
     try {
-      const saved = window.localStorage.getItem(ACCOUNT_SORT_KEY);
-      if (ACCOUNT_SORT_OPTIONS.some((o) => o.value === saved)) {
-        setValue(saved as AccountSortOption);
-      }
+      // 없앤 "기본 순서"(default) 가 저장돼 있으면 기본값(평가액 높은 순)으로 읽는다.
+      setValue(normalizeAccountSortOption(window.localStorage.getItem(ACCOUNT_SORT_KEY)));
     } catch {
       // 스토리지 접근 불가 — 기본값 유지
     }
