@@ -51,8 +51,10 @@ export function EditDriftThresholdSheet({
   return (
     <BottomSheetRoot open={open} onOpenChange={onOpenChange}>
       <BottomSheetContent title="이격 경고" showHandle>
+        {/* 키보드가 올라오면 시트가 키보드 위 공간에 들어가야 한다 (iOS 는 하단 안전 영역도 남는다).
+            라벨 없이 간격을 줄여 한 화면에 들어가게 한다 — 무엇을 입력하는지는 제목과 예시가 말해 준다. */}
         <BottomSheetBody>
-          <div className="pb-x4">
+          <div className="pb-x3">
             <SegmentedControl
               aria-label="이격률 계산 방식"
               value={modeDraft}
@@ -66,7 +68,7 @@ export function EditDriftThresholdSheet({
             </SegmentedControl>
           </div>
           {/* 방식과 임계값을 바꿀 때마다 실제 범위가 어떻게 되는지 입력 전에 바로 보여준다. */}
-          <div className="bg-bg-neutral-weak rounded-r3 mb-x4 px-x4 py-x3" aria-live="polite">
+          <div className="bg-bg-neutral-weak rounded-r3 mb-x3 px-x4 py-x3" aria-live="polite">
             <DriftRuleExample
               rule={{ driftMode: modeDraft, driftThresholdPercent: parsedDraft }}
               targetPercent={exampleTarget}
@@ -75,12 +77,11 @@ export function EditDriftThresholdSheet({
             />
           </div>
           <TextField
-            label="이격률 경고 임계"
             value={draft}
             onValueChange={({ value: next }) => setDraft(sanitizePercentDraft(next))}
             suffix={modeDraft === "absolute" ? "%p" : "%"}
           >
-            <TextFieldInput inputMode="decimal" autoFocus />
+            <TextFieldInput aria-label="이격률 경고 임계" inputMode="decimal" autoFocus />
           </TextField>
         </BottomSheetBody>
         <BottomSheetFooter>
