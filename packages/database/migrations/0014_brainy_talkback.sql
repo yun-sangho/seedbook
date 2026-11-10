@@ -1,0 +1,1 @@
+ALTER TABLE "seedbook"."Stock" ADD COLUMN "securityType" text;

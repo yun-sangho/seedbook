@@ -8,7 +8,7 @@ import { fetchAllStocks, fetchStockDailyPrice, type StockRef } from "./naver.js"
 
 interface NaverListBody {
   totalCount: number;
-  stocks: Array<{ itemCode: string; stockName: string }>;
+  stocks: Array<{ itemCode: string; stockName: string; stockEndType?: string }>;
 }
 
 function makeFetchMock(
@@ -65,6 +65,33 @@ describe("fetchAllStocks", () => {
     expect(stocks).toHaveLength(5);
     expect(stocks.filter((s) => s.market === "KOSPI")).toHaveLength(3);
     expect(stocks.filter((s) => s.market === "KOSDAQ")).toHaveLength(2);
+  });
+
+  it("종목 종류(stockEndType)를 securityType 으로 옮긴다 — 호가 단위가 종류마다 다르다", async () => {
+    const fetchMock = makeFetchMock((url) => {
+      if (url.includes("KOSPI"))
+        return jsonBody({
+          totalCount: 2,
+          stocks: [
+            { itemCode: "069500", stockName: "KODEX 200", stockEndType: "etf" },
+            { itemCode: "005930", stockName: "삼성전자", stockEndType: "stock" },
+          ],
+        });
+      if (url.includes("KOSDAQ"))
+        return jsonBody({ totalCount: 1, stocks: [{ itemCode: "100000", stockName: "x" }] });
+      return new Response("not found", { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const promise = fetchAllStocks();
+    await vi.runAllTimersAsync();
+    const stocks = await promise;
+
+    expect(stocks.map((s) => [s.ticker, s.securityType])).toEqual([
+      ["069500", "etf"],
+      ["005930", "stock"],
+      ["100000", null],
+    ]);
   });
 
   it("KOSPI 실패 + KOSDAQ 성공: KOSDAQ만 반환 (부분 장애 격리)", async () => {

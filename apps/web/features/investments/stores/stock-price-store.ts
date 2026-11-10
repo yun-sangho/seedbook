@@ -70,7 +70,13 @@ export const useStockPriceStore = create<StockPriceState>()(
           const received = new Map(
             data.prices.map((p) => [
               `${p.market}:${p.ticker}`,
-              { close: p.close, date: p.date, asOf: p.asOf, kind: p.kind },
+              {
+                close: p.close,
+                date: p.date,
+                asOf: p.asOf,
+                kind: p.kind,
+                securityType: p.securityType ?? null,
+              },
             ])
           );
           const entries = { ...get().entries };

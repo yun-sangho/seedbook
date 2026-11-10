@@ -45,7 +45,13 @@ describe("useStockPriceStore.ensurePrices", () => {
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(useStockPriceStore.getState().entries["KOSPI:005930"]).toEqual({
-      point: { close: 70000, date: "2024-01-15", asOf: "2024-01-15T06:30:00.000Z", kind: "close" },
+      point: {
+        close: 70000,
+        date: "2024-01-15",
+        asOf: "2024-01-15T06:30:00.000Z",
+        kind: "close",
+        securityType: null,
+      },
       fetchedAt: NOW,
     });
   });
@@ -203,7 +209,31 @@ describe("useStockPriceStore.ensurePrices", () => {
       date: "2024-01-15",
       asOf: "2024-01-15T01:31:12.000Z",
       kind: "realtime",
+      securityType: null,
     });
+  });
+
+  it("stores the security type the server returns, for the tick size", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      Response.json({
+        prices: [
+          {
+            market: "KOSPI",
+            ticker: "069500",
+            close: 40_000,
+            date: "2024-01-15",
+            asOf: "2024-01-15T06:30:00.000Z",
+            kind: "close",
+            securityType: "etf",
+          },
+        ],
+      })
+    );
+
+    useStockPriceStore.getState().ensurePrices(["KOSPI:069500"]);
+    await vi.runAllTimersAsync();
+
+    expect(useStockPriceStore.getState().entries["KOSPI:069500"]?.point?.securityType).toBe("etf");
   });
 });
 

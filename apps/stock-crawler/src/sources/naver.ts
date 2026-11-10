@@ -21,6 +21,8 @@ interface NaverStockListItem {
   marketValue: string;
   compareToPreviousClosePrice: string;
   stockExchangeType: { nameKor: string };
+  /** 종목 종류: "stock" | "etf" | "etn" … */
+  stockEndType?: string;
 }
 
 interface NaverMarketValueResponse {
@@ -33,6 +35,8 @@ export interface StockListItem {
   ticker: string;
   name: string;
   currency: string;
+  /** 네이버 stockEndType ("stock" | "etf" | "etn" …). 응답에 없으면 null. */
+  securityType: string | null;
 }
 
 export interface StockRef {
@@ -123,19 +127,16 @@ export async function fetchAllStocks(): Promise<StockListItem[]> {
     throw new Error("KOSPI/KOSDAQ 모두 실패");
   }
 
+  const toItem = (market: string, s: NaverStockListItem): StockListItem => ({
+    market,
+    ticker: s.itemCode,
+    name: s.stockName,
+    currency: "KRW",
+    securityType: s.stockEndType || null,
+  });
   const stocks: StockListItem[] = [
-    ...(kospi ?? []).map((s) => ({
-      market: "KOSPI",
-      ticker: s.itemCode,
-      name: s.stockName,
-      currency: "KRW",
-    })),
-    ...(kosdaq ?? []).map((s) => ({
-      market: "KOSDAQ",
-      ticker: s.itemCode,
-      name: s.stockName,
-      currency: "KRW",
-    })),
+    ...(kospi ?? []).map((s) => toItem("KOSPI", s)),
+    ...(kosdaq ?? []).map((s) => toItem("KOSDAQ", s)),
   ];
 
   logger.info(

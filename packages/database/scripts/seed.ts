@@ -27,6 +27,8 @@ type StockFixture = {
   name: string;
   currency: string;
   sector: string | null;
+  /** 이 필드가 생기기 전에 캡처한 fixture 에는 없다. */
+  securityType?: string | null;
   isActive: boolean;
 };
 
@@ -62,6 +64,7 @@ async function seedStocks(stocks: StockFixture[]): Promise<void> {
       name: s.name,
       currency: s.currency,
       sector: s.sector,
+      securityType: s.securityType ?? null,
       isActive: s.isActive,
       updatedAt: new Date(),
     }));

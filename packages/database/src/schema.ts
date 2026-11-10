@@ -50,6 +50,9 @@ export const stock = seedbook.table(
     name: text("name").notNull(),
     currency: text("currency").notNull().default("KRW"),
     sector: text("sector"),
+    // 종목 종류 — 네이버 stockEndType 그대로 ("stock" | "etf" | "etn" …). 호가 단위가 종류마다
+    // 다르다. 크롤러가 아직 채우지 않은 종목이면 null.
+    securityType: text("securityType"),
     isActive: boolean("isActive").notNull().default(true),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })

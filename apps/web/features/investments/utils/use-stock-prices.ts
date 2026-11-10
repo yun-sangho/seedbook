@@ -14,6 +14,11 @@ export interface StockPricePoint {
   /** 이 가격의 기준 시각 (ISO). 장중 = 마지막 체결 시각, 종가 = 해당일 15:30 KST. */
   asOf: string;
   kind: StockPriceKind;
+  /**
+   * 종목 종류 ("stock" | "etf" | "etn" …) — 호가 단위를 정할 때 쓴다. 서버가 아직 모르거나
+   * 이 필드가 생기기 전에 캐시한 값이면 null/undefined.
+   */
+  securityType?: string | null;
 }
 
 export interface UseStockPricesResult {

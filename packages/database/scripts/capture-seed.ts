@@ -45,6 +45,7 @@ async function main(): Promise<void> {
       name: schema.stock.name,
       currency: schema.stock.currency,
       sector: schema.stock.sector,
+      securityType: schema.stock.securityType,
       isActive: schema.stock.isActive,
     })
     .from(schema.stock)

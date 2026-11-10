@@ -27,6 +27,7 @@ export async function syncStockList(): Promise<void> {
       ticker: stock.ticker,
       name: stock.name,
       currency: stock.currency,
+      securityType: stock.securityType,
       isActive: true,
       updatedAt: now,
     }));
@@ -38,6 +39,7 @@ export async function syncStockList(): Promise<void> {
         set: {
           name: sql.raw(`EXCLUDED."name"`),
           currency: sql.raw(`EXCLUDED."currency"`),
+          securityType: sql.raw(`EXCLUDED."securityType"`),
           isActive: sql.raw(`EXCLUDED."isActive"`),
           updatedAt: now,
         },
