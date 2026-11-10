@@ -60,7 +60,7 @@ export function describePriceAsOf(summary: PriceAsOfSummary, now: Date): PriceAs
 
   if (summary.kind === "realtime") {
     return {
-      title: `실시간 시세 · ${dayLabel(at, now)} ${timeFormat.format(at)} 기준`,
+      title: `${dayLabel(at, now)} ${timeFormat.format(at)} 기준`,
       description,
       tone: "informative",
     };

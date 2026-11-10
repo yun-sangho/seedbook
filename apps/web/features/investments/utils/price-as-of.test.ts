@@ -57,12 +57,12 @@ describe("describePriceAsOf", () => {
 
   it("labels a realtime price from today with today's trade time", () => {
     const summary = summarizePriceAsOf([realtime("2026-11-09T10:31:00")])!;
-    expect(describePriceAsOf(summary, now).title).toBe("실시간 시세 · 오늘 10:31 기준");
+    expect(describePriceAsOf(summary, now).title).toBe("오늘 10:31 기준");
   });
 
   it("labels a realtime price from an earlier day with its date", () => {
     const summary = summarizePriceAsOf([realtime("2026-11-06T14:05:00")])!;
-    expect(describePriceAsOf(summary, now).title).toBe("실시간 시세 · 11월 6일 (금) 14:05 기준");
+    expect(describePriceAsOf(summary, now).title).toBe("11월 6일 (금) 14:05 기준");
   });
 
   it("labels a closing price with its trading day", () => {
