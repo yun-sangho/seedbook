@@ -77,6 +77,10 @@ Vitest with jsdom and globals. Tests live alongside source as `*.test.ts`. Focus
 
 DB integration tests (`*.db.test.ts`, e.g. storage translators) run against real Postgres via `test:db` (`vitest.db.config.ts`), and are excluded from the default `test` run. They use a separate `seedbook_test` database on the local dev postgres (override with `TEST_DATABASE_URL`; the name must end in `_test`). Global setup applies the drizzle migrations; each test creates its own user via `openTestDb().createTestUser()` and rows are cleaned up by cascade.
 
+### QA (구현 완료 후 필수)
+
+구현이 끝나면 테스트 통과와 별개로 **ego-lite 브라우저(`ego-browser` 스킬)로 로컬 환경에서 직접 QA 한다.** 호스트에서 `pnpm dev` (+ 필요하면 `pnpm db:dev:up` / `pnpm docker:dev`) 로 띄운 `localhost:3001` 에 접속해 바뀐 화면·흐름을 실제로 조작하고 결과를 확인한다. 모바일 화면(`/m/...`)을 바꿨다면 모바일 뷰포트로 확인한다. QA 하지 못했다면 (로그인 불가, 데이터 없음 등) 그 사실과 이유를 명시한다.
+
 ## Conventions
 
 - Types: prefer explicit nullable (`number | null`) for missing chart points (Recharts `connectNulls=false`)
