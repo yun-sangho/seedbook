@@ -183,6 +183,8 @@ export const investmentAccount = seedbook.table(
     currentValue: bigint("currentValue", { mode: "bigint" }).notNull(),
     note: text("note").notNull().default(""),
     color: text("color").notNull(),
+    // 매도 제비용률 (%) — 매도 대금에서 세금·수수료로 빠지는 비율.
+    sellCostPercent: doublePrecision("sellCostPercent").notNull().default(0),
     // 이 계좌가 연결된 포트폴리오. 한 계좌는 최대 하나의 포트폴리오에만 연결된다.
     // 전환 기간에는 `portfolio.accountIds` 가 클라이언트 envelope 의 원본이고, 이 컬럼은
     // translator 가 `syncAccountPortfolioLinks` 로 맞춰 둔다.

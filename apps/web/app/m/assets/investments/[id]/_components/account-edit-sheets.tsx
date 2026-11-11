@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ConfirmDialog } from "@web/components/mobile/confirm-dialog";
-import { formatMoneyDraft } from "@web/components/mobile/input-format";
+import { formatMoneyDraft, sanitizePercentDraft } from "@web/components/mobile/input-format";
 import { MoneyField } from "@web/components/mobile/money-field";
 import { ACCOUNT_COLORS } from "@web/features/investments/types/constants";
 import type { InvestmentItem, StockHolding } from "@web/features/investments/types/types";
@@ -138,21 +138,34 @@ export function EditHoldingSheet({
   );
 }
 
-/** 계좌 이름 / 색상 / 삭제. */
+/** 매도 제비용률 입력을 숫자로. 비었으면 0, 0 이상 100 미만이 아니면 null (저장하지 않음). */
+function parseSellCostDraft(draft: string): number | null {
+  if (draft.trim() === "") return 0;
+  const value = Number(draft);
+  return Number.isFinite(value) && value >= 0 && value < 100 ? value : null;
+}
+
+/** 계좌 이름 / 매도 제비용률 / 색상 / 삭제. */
 export function AccountSettingsSheet({
   open,
   onOpenChange,
   item,
   onRename,
+  onSellCostPercentChange,
   onColorChange,
   onDelete,
 }: SheetProps & {
   item: InvestmentItem;
   onRename: (name: string) => void;
+  onSellCostPercentChange: (percent: number) => void;
   onColorChange: (color: string) => void;
   onDelete: () => void;
 }) {
   const [name, setName] = useState(item.accountName);
+  const [sellCostDraft, setSellCostDraft] = useState(() =>
+    item.sellCostPercent ? String(item.sellCostPercent) : ""
+  );
+  const sellCost = parseSellCostDraft(sellCostDraft);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
@@ -167,6 +180,17 @@ export function AccountSettingsSheet({
                 onValueChange={({ value }) => setName(value)}
               >
                 <TextFieldInput placeholder="계좌 이름" />
+              </TextField>
+              <TextField
+                label="매도 제비용률"
+                value={sellCostDraft}
+                onValueChange={({ value }) => setSellCostDraft(sanitizePercentDraft(value))}
+                suffix="%"
+                invalid={sellCost === null}
+                errorMessage={sellCost === null ? "100% 미만으로 입력해 주세요" : undefined}
+                description="매도할 때 세금·수수료로 빠지는 비율이에요. 리밸런싱에서 매도 대금은 이만큼 빼고 예수금에 들어와요."
+              >
+                <TextFieldInput inputMode="decimal" placeholder="0" />
               </TextField>
               <div>
                 <p className="t4-medium text-fg-neutral mb-x2">색상</p>
@@ -194,7 +218,9 @@ export function AccountSettingsSheet({
           <BottomSheetFooter>
             <SheetActions
               onSave={() => {
+                if (sellCost === null) return;
                 onRename(name);
+                if (sellCost !== (item.sellCostPercent ?? 0)) onSellCostPercentChange(sellCost);
                 onOpenChange(false);
               }}
               onDelete={() => setConfirmOpen(true)}

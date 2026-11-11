@@ -1,0 +1,1 @@
+ALTER TABLE "seedbook"."investment_account" ADD COLUMN "sellCostPercent" double precision DEFAULT 0 NOT NULL;

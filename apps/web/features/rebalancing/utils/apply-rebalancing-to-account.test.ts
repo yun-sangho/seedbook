@@ -307,4 +307,59 @@ describe("applyRebalancingToAccount changes", () => {
 
     expect(cash).toEqual({ label: "예수금", before: 0, after: 50_000 });
   });
+
+  describe("sell costs (tax and fees)", () => {
+    it("takes the account's sell cost rate out of the sell proceeds", () => {
+      // 3주 × 50,000원 = 150,000원, 0.2% = 300원
+      const { cashChange } = applyRebalancingToAccount(
+        account({ sellCostPercent: 0.2 }),
+        session([task({ action: "매도", quantity: 3, price: 50_000 })]),
+        KRW
+      );
+
+      expect(cashChange).toBe(149_700);
+    });
+
+    it("drops costs below 1원", () => {
+      // 1주 × 12,345원 × 0.015% = 1.85원 → 1원
+      const { cashChange } = applyRebalancingToAccount(
+        account({ sellCostPercent: 0.015 }),
+        session([task({ action: "매도", quantity: 1, price: 12_345 })]),
+        KRW
+      );
+
+      expect(cashChange).toBe(12_344);
+    });
+
+    it("charges the cost only on the shares actually sold", () => {
+      // 보유 10주인데 15주 매도 기록 → 10주 × 50,000원 = 500,000원, 0.2% = 1,000원
+      const { cashChange } = applyRebalancingToAccount(
+        account({ sellCostPercent: 0.2 }),
+        session([task({ action: "매도", quantity: 15, price: 50_000 })]),
+        KRW
+      );
+
+      expect(cashChange).toBe(499_000);
+    });
+
+    it("does not charge buys", () => {
+      const { cashChange } = applyRebalancingToAccount(
+        account({ sellCostPercent: 0.2 }),
+        session([task({ action: "매수", quantity: 2, price: 50_000 })]),
+        KRW
+      );
+
+      expect(cashChange).toBe(-100_000);
+    });
+
+    it("charges nothing when the account has no sell cost rate", () => {
+      const { cashChange } = applyRebalancingToAccount(
+        account(),
+        session([task({ action: "매도", quantity: 3, price: 50_000 })]),
+        KRW
+      );
+
+      expect(cashChange).toBe(150_000);
+    });
+  });
 });

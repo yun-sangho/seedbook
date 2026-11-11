@@ -29,6 +29,7 @@ export const investmentsSyncConfig: ManagedStoreConfig<InvestmentItem> = {
     currentValue: num(item.currentValue),
     note: text(item.note),
     color: text(item.color),
+    sellCostPercent: num(item.sellCostPercent),
     records: (item.records ?? []).map((r) => ({
       date: text(r.date),
       initialInvestment: num(r.initialInvestment),
@@ -77,5 +78,6 @@ export const investmentsSyncConfig: ManagedStoreConfig<InvestmentItem> = {
     })),
     note: text(data.note),
     color: text(data.color),
+    sellCostPercent: num(data.sellCostPercent),
   }),
 };

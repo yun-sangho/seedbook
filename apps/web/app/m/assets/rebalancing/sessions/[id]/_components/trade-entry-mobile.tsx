@@ -13,6 +13,7 @@ import {
   tickSize,
   type SecurityType,
 } from "@web/features/investments/utils/krx-tick-size";
+import { sellCostOf } from "@web/features/investments/utils/sell-cost";
 import { stockPriceKey, useStockPrices } from "@web/features/investments/utils/use-stock-prices";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import type { RebalancingTask, RebalancingTaskStatus } from "@web/features/rebalancing/types/types";
@@ -105,6 +106,11 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
   // 기록할 가격은 호가에 맞춘 값이다 — 금액과 예수금도 그 값으로 계산한다.
   const tradePrice = priceOk ? snapToTick(price, securityType) : null;
   const amount = quantityOk && tradePrice !== null ? Math.round(quantity * tradePrice) : null;
+  // 매도 대금에서 빠지는 세금·수수료 — 계좌에 매도 제비용률을 정해 뒀을 때만 보인다.
+  const sellCost =
+    task.action === "매도" && account && (account.sellCostPercent ?? 0) > 0 && amount !== null
+      ? sellCostOf(account, amount)
+      : null;
   // 계좌가 지워졌으면 예수금을 알 수 없어 확인하지 않는다.
   const cash =
     account && quantityOk && tradePrice !== null
@@ -182,6 +188,11 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
         <SummaryRow label={`${task.action} 금액`}>
           {amount !== null ? `${formatWithCommas(amount)}원` : "-"}
         </SummaryRow>
+        {sellCost !== null && account && (
+          <SummaryRow label={`제비용 (${account.sellCostPercent}%)`}>
+            -{formatWithCommas(sellCost)}원
+          </SummaryRow>
+        )}
         {cash && (
           <SummaryRow label="예수금">
             <span className="text-fg-neutral-muted font-normal">

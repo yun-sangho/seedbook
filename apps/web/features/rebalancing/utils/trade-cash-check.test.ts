@@ -271,3 +271,32 @@ describe("rebalancingCashOutlook", () => {
     expect(outlook.expected).toBe(30_000);
   });
 });
+
+describe("sell costs in the cash preview and outlook", () => {
+  const withHolding = (cash: number): InvestmentItem => ({
+    ...account(cash),
+    sellCostPercent: 0.2,
+    holdings: [
+      {
+        id: "h",
+        market: "KOSPI",
+        ticker: "005930",
+        name: "삼성전자",
+        currency: "KRW",
+        quantity: 10,
+        memo: "",
+      },
+    ],
+  });
+  const sell = task({ id: "sell", ticker: "005930", action: "매도" });
+
+  it("adds a sell's proceeds after the account's sell costs", () => {
+    // 5주 × 10,000원 = 50,000원 − 0.2% 100원
+    expect(tradeCashPreview(withHolding(0), session([sell]), "sell", 5, 10_000).after).toBe(49_900);
+  });
+
+  it("expects remaining sells to bring in their proceeds after sell costs", () => {
+    // 권장 10주 × 10,000원 = 100,000원 − 0.2% 200원
+    expect(rebalancingCashOutlook(withHolding(0), session([sell])).expected).toBe(99_800);
+  });
+});

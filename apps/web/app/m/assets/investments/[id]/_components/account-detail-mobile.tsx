@@ -423,6 +423,9 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
           {...sheetProps(editing?.kind === "settings")}
           item={item}
           onRename={(name) => updateInvestment(item.id, "accountName", name)}
+          onSellCostPercentChange={(percent) =>
+            updateInvestment(item.id, "sellCostPercent", percent)
+          }
           onColorChange={(color) => updateInvestment(item.id, "color", color)}
           onDelete={deleteAccount}
         />

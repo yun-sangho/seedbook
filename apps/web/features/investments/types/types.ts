@@ -48,4 +48,9 @@ export interface InvestmentItem {
   cashItems: CashItem[]; // 현금성 자산 목록
   note: string;
   color: string; // 차트 표시 색상
+  /**
+   * 매도 제비용률 (%) — 매도할 때 세금·수수료로 빠지는 비율 (예: 0.2). 리밸런싱에서 매도 대금은
+   * 이만큼 빼고 예수금에 들어온다. 없으면 0 (이 필드가 생기기 전의 계좌).
+   */
+  sellCostPercent?: number;
 }

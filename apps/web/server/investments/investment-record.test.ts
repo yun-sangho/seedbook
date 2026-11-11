@@ -9,6 +9,7 @@ const valid = {
   currentValue: 1_200_000,
   note: "",
   color: "#3b82f6",
+  sellCostPercent: 0.2,
   records: [{ date: "2026-11-01", initialInvestment: 1_000_000, currentValue: 1_200_000 }],
   holdings: [
     {
@@ -39,6 +40,17 @@ describe("parseInvestmentFields", () => {
       holdings: [],
       cashItems: [],
     });
+  });
+
+  it("treats a missing sell cost rate as 0 (accounts saved before the field existed)", () => {
+    const { sellCostPercent: _s, ...rest } = valid;
+
+    expect(parseInvestmentFields(rest)?.sellCostPercent).toBe(0);
+  });
+
+  it("rejects a sell cost rate below 0 or at 100% and above", () => {
+    expect(parseInvestmentFields({ ...valid, sellCostPercent: -0.1 })).toBeNull();
+    expect(parseInvestmentFields({ ...valid, sellCostPercent: 100 })).toBeNull();
   });
 
   it("allows fractional holding quantities", () => {

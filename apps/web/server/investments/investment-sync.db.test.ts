@@ -32,6 +32,7 @@ function accountData(overrides: Record<string, unknown> = {}) {
     currentValue: 1_200,
     note: "",
     color: "#3b82f6",
+    sellCostPercent: 0.2,
     records: [{ date: "2026-11-01", initialInvestment: 1_000, currentValue: 1_200 }],
     holdings: [holding()],
     cashItems: [{ id: randomUUID(), label: "예수금", amount: 50 }],
