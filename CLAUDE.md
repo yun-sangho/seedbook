@@ -39,6 +39,12 @@ Web 은 **호스트에서** `pnpm dev` 로 직접 띄운다 (Next.js + turbopack
 - **재생**: `pnpm docker:dev` 기동 시 entrypoint 가 `migrate deploy` 뒤에 자동 실행 (NODE_ENV=development 일 때만). 수동: `pnpm db:seed`.
 - 재생은 upsert 라 멱등. 크롤러가 이후 덮어쓰므로 fixture 는 "최소한 이만큼은 있어야 함" 의미. 프로덕션 (`pnpm docker:prod`) 에서는 실행되지 않음.
 
+dev 사용자(`dev-user-v1`)의 계좌·포트폴리오는 **테스트 시나리오 픽스처** `packages/database/seed-data/user-data.json` (관리 화면 백업 2.0 모양) 이다. 목표에 가까운 계좌 / 크게 벗어난 계좌 / 포트폴리오 밖 종목을 가진 계좌 / 예수금만 있는 계좌 / 연결 안 된 계좌 / 계좌 없는 포트폴리오를 담는다.
+
+- 같은 파일이 관리 화면 "데모 데이터" (`apps/web/public/seed-data/user-data.json`) 로도 쓰인다 — 두 파일은 같아야 한다 (`features/settings/utils/demo-data.test.ts` 가 정합성을 검사).
+- 시드는 dev 사용자에게 계좌·포트폴리오가 없을 때만 넣는다. **테스트 전에 시나리오로 되돌리려면 `pnpm db:seed:reset`** (postgres 가 떠 있어야 함). 리밸런싱·설정까지 지우고 시나리오로 바꾸며, 동기화 엔티티는 톰스톤으로 남겨 cloud 모드 브라우저에도 반영된다. local 모드 브라우저는 관리 화면 "데모 데이터" 로 넣는다.
+- 픽스처 수량은 stock 시드의 가격으로 맞췄다. stock 시드를 다시 캡처하면 시나리오의 이격이 달라질 수 있으니 함께 확인한다.
+
 ## Architecture
 
 **Monorepo** (Turborepo + pnpm workspaces):

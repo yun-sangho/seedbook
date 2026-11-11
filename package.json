@@ -19,6 +19,7 @@
     "db:generate": "pnpm --filter @seedbook/database prisma:generate",
     "db:seed": "pnpm --filter @seedbook/database db:seed",
     "db:seed:capture": "pnpm --filter @seedbook/database db:seed:capture",
+    "db:seed:reset": "docker compose -f docker-compose.dev.yml run --rm --no-deps --entrypoint ./node_modules/.bin/tsx -w /app/packages/database stock-crawler scripts/reset-dev-user.ts",
     "docker:dev": "docker compose -f docker-compose.dev.yml up -d",
     "docker:dev:down": "docker compose -f docker-compose.dev.yml down",
     "docker:dev:logs": "docker compose -f docker-compose.dev.yml logs -f",
