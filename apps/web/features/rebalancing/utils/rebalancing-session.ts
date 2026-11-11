@@ -1,7 +1,23 @@
-import type { RebalancingResult, RebalancingSession, RebalancingTask } from "../types/types";
+import type {
+  RebalancingResult,
+  RebalancingSession,
+  RebalancingTask,
+  RebalancingTaskStatus,
+} from "../types/types";
+
+/** 대기 / 주문 (주문 수량·가격을 기록했고 아직 체결 전) / 체결. */
+export function rebalancingTaskStatus(task: RebalancingTask): RebalancingTaskStatus {
+  if (task.done) return "filled";
+  if (isNumber(task.orderedQuantity) && isNumber(task.orderedPrice)) return "ordered";
+  return "pending";
+}
+
+const isNumber = (value: number | null | undefined): value is number =>
+  value !== null && value !== undefined;
 
 /**
- * 할 일 하나의 완료 여부를 뒤집는다. 모두 체크해도 바로 완료되지 않는다 —
+ * 할 일 하나의 완료 여부를 뒤집는다. 체결을 취소하면 주문을 기록했었으면 주문 상태로, 아니면
+ * 대기로 돌아간다 (`rebalancingTaskStatus`). 모두 체크해도 바로 완료되지 않는다 —
  * 사용자가 "리밸런싱 완료하기"(`completeRebalancing`)를 눌러야 기록으로 넘어간다
  * (다 체크하지 않아도 완료할 수 있다).
  * 완료된 리밸런싱은 (계좌에 반영됐을 수 있으므로) 더 이상 바꾸지 않는다.
@@ -43,7 +59,7 @@ export function isRebalancingCompleted(session: RebalancingSession): boolean {
   return session.completedAt !== null;
 }
 
-/** 매매를 다 하지 않고 끝낸(중지한) 리밸런싱. */
+/** 매매를 다 하지 않고 끝낸(종료한) 리밸런싱. */
 export function isRebalancingStopped(session: RebalancingSession): boolean {
   return isRebalancingCompleted(session) && session.tasks.some((t) => !t.done);
 }
@@ -80,23 +96,62 @@ export function inProgressAccountIds(sessions: RebalancingSession[]): Set<string
   return new Set(sessions.filter((s) => !isRebalancingCompleted(s)).map((s) => s.accountId));
 }
 
+/** 화면의 매매 그룹 — 상태별로 나눈다. */
+export type RebalancingTaskGroup = "pending" | "ordered";
+
 /**
- * 할 일을 "남은 매매" 와 "완료" 그룹으로 나눈다 (각 그룹 안 순서는 원래 순서 그대로).
+ * 할 일을 대기 / 주문 / 체결 그룹으로 나눈다 (각 그룹 안 순서는 원래 순서 그대로).
  *
- * `leavingIds` 는 방금 체크해 남은 목록에서 빠지는 애니메이션 중인 할 일 — 체크된 모습을
- * 잠깐 보여준 뒤 완료 그룹으로 옮기도록 그동안은 남은 매매에 둔다.
+ * `leaving` 은 방금 상태가 바뀌어 원래 그룹에서 빠지는 애니메이션 중인 할 일과 그 원래 그룹 —
+ * 바뀐 모습을 잠깐 보여준 뒤 다음 그룹으로 옮기도록 그동안은 원래 그룹에 둔다.
  */
 export function groupRebalancingTasks(
   tasks: RebalancingTask[],
-  leavingIds: ReadonlySet<string> = new Set()
-): { remaining: RebalancingTask[]; done: RebalancingTask[] } {
-  const remaining: RebalancingTask[] = [];
-  const done: RebalancingTask[] = [];
-  for (const t of tasks) {
-    if (!t.done || leavingIds.has(t.id)) remaining.push(t);
-    else done.push(t);
-  }
-  return { remaining, done };
+  leaving: ReadonlyMap<string, RebalancingTaskGroup> = new Map()
+): { pending: RebalancingTask[]; ordered: RebalancingTask[]; filled: RebalancingTask[] } {
+  const groups = {
+    pending: [] as RebalancingTask[],
+    ordered: [] as RebalancingTask[],
+    filled: [] as RebalancingTask[],
+  };
+  for (const t of tasks) groups[leaving.get(t.id) ?? rebalancingTaskStatus(t)].push(t);
+  return groups;
+}
+
+/**
+ * 증권사에 넣은 주문을 기록한다 (이미 주문했으면 값을 바꾼다). 체결한 할 일은 바꾸지 않는다 —
+ * 체결을 먼저 취소한다.
+ */
+export function orderRebalancingTaskWith(
+  session: RebalancingSession,
+  taskId: string,
+  orderedQuantity: number,
+  orderedPrice: number
+): RebalancingSession {
+  return updateUnfilledTask(session, taskId, (t) => ({ ...t, orderedQuantity, orderedPrice }));
+}
+
+/** 주문을 취소해 대기로 돌린다. 체결한 할 일은 바꾸지 않는다. */
+export function cancelRebalancingTaskOrder(
+  session: RebalancingSession,
+  taskId: string
+): RebalancingSession {
+  return updateUnfilledTask(session, taskId, (t) => ({
+    ...t,
+    orderedQuantity: null,
+    orderedPrice: null,
+  }));
+}
+
+function updateUnfilledTask(
+  session: RebalancingSession,
+  taskId: string,
+  update: (task: RebalancingTask) => RebalancingTask
+): RebalancingSession {
+  if (isRebalancingCompleted(session)) return session;
+  const target = session.tasks.find((t) => t.id === taskId);
+  if (!target || target.done) return session;
+  return { ...session, tasks: session.tasks.map((t) => (t.id === taskId ? update(t) : t)) };
 }
 
 /**

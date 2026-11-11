@@ -5,8 +5,10 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { RebalancingResult, RebalancingSession } from "../types/types";
 import {
+  cancelRebalancingTaskOrder,
   completeRebalancing,
   completeRebalancingTaskWith,
+  orderRebalancingTaskWith,
   toggleRebalancingTask,
 } from "../utils/rebalancing-session";
 
@@ -26,6 +28,15 @@ interface RebalancingState {
     executedQuantity: number,
     executedPrice: number
   ) => void;
+  /** 증권사에 넣은 주문 수량·가격을 기록한다 (이미 주문했으면 값을 바꾼다). */
+  orderTaskWith: (
+    sessionId: string,
+    taskId: string,
+    orderedQuantity: number,
+    orderedPrice: number
+  ) => void;
+  /** 주문을 취소해 대기로 돌린다. */
+  cancelTaskOrder: (sessionId: string, taskId: string) => void;
   /** 완료 기록으로 넘긴다. 계좌에 반영했으면 반영 후 구성을 함께 남긴다. */
   completeRebalancing: (sessionId: string, result?: RebalancingResult | null) => void;
   removeRebalancing: (sessionId: string) => void;
@@ -62,6 +73,24 @@ export const useRebalancingStore = create<RebalancingState>()(
             s.id === sessionId
               ? completeRebalancingTaskWith(s, taskId, executedQuantity, executedPrice)
               : s
+          ),
+        }));
+      },
+
+      orderTaskWith: (sessionId, taskId, orderedQuantity, orderedPrice) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId
+              ? orderRebalancingTaskWith(s, taskId, orderedQuantity, orderedPrice)
+              : s
+          ),
+        }));
+      },
+
+      cancelTaskOrder: (sessionId, taskId) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? cancelRebalancingTaskOrder(s, taskId) : s
           ),
         }));
       },

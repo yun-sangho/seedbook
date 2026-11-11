@@ -1,6 +1,10 @@
 "use client";
 
 import {
+  parseCollapsedSections,
+  type RebalancingTaskSection,
+} from "@web/features/rebalancing/utils/collapsed-sections";
+import {
   DEFAULT_REBALANCING_TASK_SORT,
   isRebalancingTaskSort,
   type RebalancingTaskSort,
@@ -17,6 +21,9 @@ import { createJSONStorage, persist } from "zustand/middleware";
 interface PreferencesState {
   rebalancingTaskSort: RebalancingTaskSort;
   setRebalancingTaskSort: (sort: RebalancingTaskSort) => void;
+  /** 진행 중 리밸런싱에서 접어 둔 매매 섹션. 비어 있으면 모두 펼침. */
+  rebalancingCollapsedSections: RebalancingTaskSection[];
+  setRebalancingCollapsedSections: (sections: RebalancingTaskSection[]) => void;
 }
 
 export const usePreferencesStore = create<PreferencesState>()(
@@ -27,16 +34,33 @@ export const usePreferencesStore = create<PreferencesState>()(
         // 예전 캐시나 서버에서 온 값이 없어진 옵션이면 무시한다.
         if (isRebalancingTaskSort(sort)) set({ rebalancingTaskSort: sort });
       },
+      rebalancingCollapsedSections: [],
+      setRebalancingCollapsedSections: (sections) => {
+        const parsed = parseCollapsedSections(sections);
+        if (parsed) set({ rebalancingCollapsedSections: parsed });
+      },
     }),
     {
       name: "seedbook.preferences",
       storage: createJSONStorage(() => localStorage),
       version: 1,
-      partialize: (state) => ({ rebalancingTaskSort: state.rebalancingTaskSort }),
+      partialize: (state) => ({
+        rebalancingTaskSort: state.rebalancingTaskSort,
+        rebalancingCollapsedSections: state.rebalancingCollapsedSections,
+      }),
+      // 캐시에 없거나 이상한 값은 기본값을 그대로 둔다.
       merge: (persisted, current) => {
-        const sort = (persisted as { rebalancingTaskSort?: unknown } | undefined)
-          ?.rebalancingTaskSort;
-        return isRebalancingTaskSort(sort) ? { ...current, rebalancingTaskSort: sort } : current;
+        const cached = (persisted ?? {}) as {
+          rebalancingTaskSort?: unknown;
+          rebalancingCollapsedSections?: unknown;
+        };
+        const sort = cached.rebalancingTaskSort;
+        const sections = parseCollapsedSections(cached.rebalancingCollapsedSections);
+        return {
+          ...current,
+          ...(isRebalancingTaskSort(sort) ? { rebalancingTaskSort: sort } : {}),
+          ...(sections ? { rebalancingCollapsedSections: sections } : {}),
+        };
       },
     }
   )

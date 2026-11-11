@@ -16,7 +16,10 @@ function serverSort(sort: string) {
 describe("PreferencesSync", () => {
   beforeEach(() => {
     window.localStorage.clear();
-    usePreferencesStore.setState({ rebalancingTaskSort: "nameDesc" });
+    usePreferencesStore.setState({
+      rebalancingTaskSort: "nameDesc",
+      rebalancingCollapsedSections: [],
+    });
     mockUseSession.mockReturnValue({ data: { user: { id: "u1" } }, isPending: false });
   });
 
@@ -31,6 +34,25 @@ describe("PreferencesSync", () => {
 
     await waitFor(() =>
       expect(usePreferencesStore.getState().rebalancingTaskSort).toBe("evalDesc")
+    );
+  });
+
+  it("applies the account's collapsed rebalancing sections on login", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            rebalancingTaskSort: "nameDesc",
+            rebalancingCollapsedSections: ["filled"],
+          }),
+          { status: 200 }
+        )
+    );
+
+    render(<PreferencesSync />);
+
+    await waitFor(() =>
+      expect(usePreferencesStore.getState().rebalancingCollapsedSections).toEqual(["filled"])
     );
   });
 

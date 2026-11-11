@@ -13,6 +13,9 @@ export function PreferencesSync() {
   const { data: session, isPending } = useSession();
   const syncedUserIdRef = useRef<string | null>(null);
   const setRebalancingTaskSort = usePreferencesStore((s) => s.setRebalancingTaskSort);
+  const setRebalancingCollapsedSections = usePreferencesStore(
+    (s) => s.setRebalancingCollapsedSections
+  );
 
   useEffect(() => {
     if (isPending) return;
@@ -32,7 +35,10 @@ export function PreferencesSync() {
       // 스토어가 이 기기의 캐시로 복원되기 전에 넣으면 복원이 덮어쓴다 — 복원이 끝난 뒤에 넣는다.
       const apply = () => {
         applied = true;
-        setRebalancingTaskSort(prefs.rebalancingTaskSort);
+        if (prefs.rebalancingTaskSort) setRebalancingTaskSort(prefs.rebalancingTaskSort);
+        if (prefs.rebalancingCollapsedSections) {
+          setRebalancingCollapsedSections(prefs.rebalancingCollapsedSections);
+        }
       };
       if (usePreferencesStore.persist.hasHydrated()) apply();
       else unsubscribe = usePreferencesStore.persist.onFinishHydration(apply);
@@ -43,7 +49,7 @@ export function PreferencesSync() {
       // 반영하기 전에 정리되면 (개발 모드 StrictMode 의 두 번 실행 등) 다음 실행이 다시 받아오게 한다.
       if (!applied) syncedUserIdRef.current = null;
     };
-  }, [isPending, session?.user?.id, setRebalancingTaskSort]);
+  }, [isPending, session?.user?.id, setRebalancingTaskSort, setRebalancingCollapsedSections]);
 
   return null;
 }

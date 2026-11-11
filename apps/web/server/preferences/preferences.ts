@@ -1,5 +1,9 @@
 import { schema, type Database } from "@seedbook/database";
 import {
+  parseCollapsedSections,
+  type RebalancingTaskSection,
+} from "@web/features/rebalancing/utils/collapsed-sections";
+import {
   DEFAULT_REBALANCING_TASK_SORT,
   isRebalancingTaskSort,
   type RebalancingTaskSort,
@@ -35,5 +39,32 @@ export async function writeRebalancingTaskSort(
     .onConflictDoUpdate({
       target: schema.userPreference.userId,
       set: { rebalancingTaskSort: sort },
+    });
+}
+
+/** 진행 중 리밸런싱에서 접어 둔 매매 섹션. 접은 적이 없으면 빈 목록 (모두 펼침). */
+export async function readRebalancingCollapsedSections(
+  db: Database,
+  userId: string
+): Promise<RebalancingTaskSection[]> {
+  const row = await db.query.userPreference.findFirst({
+    where: (t, { eq }) => eq(t.userId, userId),
+    columns: { rebalancingCollapsedSections: true },
+  });
+  return parseCollapsedSections(row?.rebalancingCollapsedSections) ?? [];
+}
+
+/** 접어 둔 섹션만 바꾼다 — 같은 행의 다른 설정은 그대로. */
+export async function writeRebalancingCollapsedSections(
+  db: Database,
+  userId: string,
+  sections: RebalancingTaskSection[]
+): Promise<void> {
+  await db
+    .insert(schema.userPreference)
+    .values({ userId, rebalancingCollapsedSections: sections })
+    .onConflictDoUpdate({
+      target: schema.userPreference.userId,
+      set: { rebalancingCollapsedSections: sections },
     });
 }

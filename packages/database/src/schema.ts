@@ -503,6 +503,11 @@ export const userPreference = seedbook.table("user_preference", {
   holdingsSortOption: text("holdingsSortOption").notNull().default("evalDesc"),
   // 진행 중 리밸런싱의 매매 정렬 ("nameDesc" | "nameAsc" | "evalDesc" | "evalAsc").
   rebalancingTaskSort: text("rebalancingTaskSort").notNull().default("nameDesc"),
+  // 진행 중 리밸런싱에서 접어 둔 매매 섹션 ("pending" | "ordered" | "filled"). 기본은 모두 펼침.
+  rebalancingCollapsedSections: text("rebalancingCollapsedSections")
+    .array()
+    .notNull()
+    .default(sql`ARRAY[]::text[]`),
   // 사용자가 선택한 저장소 모드 ("local" | "cloud"). 로그인 시 클라이언트가 이 값을
   // 받아 localStorage 와 동기화한다. 기본 "local" 이라 기존 행도 안전.
   storageMode: text("storageMode").notNull().default("local"),

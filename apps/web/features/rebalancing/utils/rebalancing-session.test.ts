@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { RebalancingSession, RebalancingTask } from "../types/types";
 import {
+  cancelRebalancingTaskOrder,
   canCompleteRebalancing,
   completeRebalancing,
   completeRebalancingTaskWith,
@@ -11,7 +12,9 @@ import {
   groupRebalancingTasks,
   inProgressAccountIds,
   isRebalancingStopped,
+  orderRebalancingTaskWith,
   rebalancingProgress,
+  rebalancingTaskStatus,
   toggleRebalancingTask,
   visibleRebalancingTasks,
 } from "./rebalancing-session";
@@ -219,28 +222,90 @@ describe("isRebalancingStopped", () => {
 });
 
 describe("groupRebalancingTasks", () => {
-  it("puts unchecked tasks in remaining and checked ones in done, keeping their order", () => {
-    const result = groupRebalancingTasks([task("a", true), task("b"), task("c", true)]);
+  const ordered = (id: string) => ({ ...task(id), orderedQuantity: 3, orderedPrice: 1_000 });
 
-    expect(result.remaining.map((t) => t.id)).toEqual(["b"]);
-    expect(result.done.map((t) => t.id)).toEqual(["a", "c"]);
+  it("splits tasks into pending, ordered and filled, keeping their order", () => {
+    const result = groupRebalancingTasks([task("a", true), ordered("b"), task("c"), ordered("d")]);
+
+    expect(result.pending.map((t) => t.id)).toEqual(["c"]);
+    expect(result.ordered.map((t) => t.id)).toEqual(["b", "d"]);
+    expect(result.filled.map((t) => t.id)).toEqual(["a"]);
   });
 
-  it("keeps a just-checked task in remaining while it animates out", () => {
-    const result = groupRebalancingTasks([task("a", true), task("b")], new Set(["a"]));
+  it("keeps a just-ordered task in pending while it animates out", () => {
+    const result = groupRebalancingTasks([ordered("a"), task("b")], new Map([["a", "pending"]]));
 
-    expect(result.remaining.map((t) => t.id)).toEqual(["a", "b"]);
-    expect(result.done).toEqual([]);
+    expect(result.pending.map((t) => t.id)).toEqual(["a", "b"]);
+    expect(result.ordered).toEqual([]);
   });
 
-  it("ignores leaving ids for tasks that are no longer checked", () => {
-    const result = groupRebalancingTasks([task("a"), task("b")], new Set(["a"]));
+  it("keeps a just-filled order in ordered while it animates out", () => {
+    const filled = { ...ordered("a"), done: true };
+    const result = groupRebalancingTasks([filled], new Map([["a", "ordered"]]));
 
-    expect(result.remaining.map((t) => t.id)).toEqual(["a", "b"]);
+    expect(result.ordered.map((t) => t.id)).toEqual(["a"]);
+    expect(result.filled).toEqual([]);
   });
 
   it("returns empty groups for no tasks", () => {
-    expect(groupRebalancingTasks([])).toEqual({ remaining: [], done: [] });
+    expect(groupRebalancingTasks([])).toEqual({ pending: [], ordered: [], filled: [] });
+  });
+});
+
+describe("rebalancingTaskStatus", () => {
+  it("is pending before an order is recorded", () => {
+    expect(rebalancingTaskStatus(task("a"))).toBe("pending");
+  });
+
+  it("is ordered once an order quantity and price are recorded", () => {
+    expect(rebalancingTaskStatus({ ...task("a"), orderedQuantity: 3, orderedPrice: 1_000 })).toBe(
+      "ordered"
+    );
+  });
+
+  it("is filled once done, whether or not it was ordered first", () => {
+    expect(rebalancingTaskStatus(task("a", true))).toBe("filled");
+  });
+});
+
+describe("orderRebalancingTaskWith", () => {
+  it("records the order quantity and price, keeping the recommendation", () => {
+    const result = orderRebalancingTaskWith(session(), "a", 4, 1_050);
+    const ordered = result.tasks.find((t) => t.id === "a");
+
+    expect(ordered).toMatchObject({ orderedQuantity: 4, orderedPrice: 1_050, done: false });
+    expect(ordered?.amount).toBe(1000);
+  });
+
+  it("does not change a filled task", () => {
+    const s = session({ tasks: [task("a", true)] });
+    expect(orderRebalancingTaskWith(s, "a", 4, 1_050)).toBe(s);
+  });
+
+  it("does not change a completed rebalancing", () => {
+    const s = session({ completedAt: NOW });
+    expect(orderRebalancingTaskWith(s, "a", 4, 1_050)).toBe(s);
+  });
+});
+
+describe("cancelRebalancingTaskOrder", () => {
+  it("returns an ordered task to pending", () => {
+    const ordered = orderRebalancingTaskWith(session(), "a", 4, 1_050);
+    const result = cancelRebalancingTaskOrder(ordered, "a");
+
+    expect(rebalancingTaskStatus(result.tasks[0]!)).toBe("pending");
+  });
+
+  it("does not change a filled task", () => {
+    const s = session({ tasks: [{ ...task("a", true), orderedQuantity: 4, orderedPrice: 1_050 }] });
+    expect(cancelRebalancingTaskOrder(s, "a")).toBe(s);
+  });
+});
+
+describe("unfilling a task (toggleRebalancingTask on a filled task)", () => {
+  it("returns it to ordered when it had been ordered", () => {
+    const s = session({ tasks: [{ ...task("a", true), orderedQuantity: 4, orderedPrice: 1_050 }] });
+    expect(rebalancingTaskStatus(toggleRebalancingTask(s, "a").tasks[0]!)).toBe("ordered");
   });
 });
 

@@ -30,6 +30,9 @@ function rebalancingData(overrides: Record<string, unknown> = {}) {
         // 권장 7주·70,000원과 다르게 실제로는 6주를 69,500원에 팔았다.
         executedQuantity: 6,
         executedPrice: 69_500,
+        // 7주를 69,500원에 주문했고 6주만 체결됐다고 기록했다.
+        orderedQuantity: 7,
+        orderedPrice: 69_500,
         done: true,
       },
       {
@@ -45,6 +48,9 @@ function rebalancingData(overrides: Record<string, unknown> = {}) {
         priceKind: null,
         executedQuantity: null,
         executedPrice: null,
+        // 주문을 넣고 체결을 기다리는 중.
+        orderedQuantity: 100,
+        orderedPrice: 35_000,
         done: false,
       },
     ],

@@ -3,7 +3,10 @@ import { usePreferencesStore } from "./preferences-store";
 
 describe("preferences store", () => {
   beforeEach(() => {
-    usePreferencesStore.setState({ rebalancingTaskSort: "nameDesc" });
+    usePreferencesStore.setState({
+      rebalancingTaskSort: "nameDesc",
+      rebalancingCollapsedSections: [],
+    });
   });
 
   it("defaults the rebalancing trade sort to name descending", () => {
@@ -20,5 +23,15 @@ describe("preferences store", () => {
     usePreferencesStore.getState().setRebalancingTaskSort("default" as never);
 
     expect(usePreferencesStore.getState().rebalancingTaskSort).toBe("nameDesc");
+  });
+
+  it("starts with every rebalancing section expanded", () => {
+    expect(usePreferencesStore.getState().rebalancingCollapsedSections).toEqual([]);
+  });
+
+  it("updates the collapsed rebalancing sections, dropping unknown ones", () => {
+    usePreferencesStore.getState().setRebalancingCollapsedSections(["filled", "done" as never]);
+
+    expect(usePreferencesStore.getState().rebalancingCollapsedSections).toEqual(["filled"]);
   });
 });

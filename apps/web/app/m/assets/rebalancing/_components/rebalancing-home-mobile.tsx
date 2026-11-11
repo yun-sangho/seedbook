@@ -165,14 +165,14 @@ function SessionRow({
             </p>
             {completed && (
               <Badge tone={stopped ? "warning" : "positive"} variant="weak" className="shrink-0">
-                {stopped ? "중지" : "완료"}
+                {stopped ? "종료" : "완료"}
               </Badge>
             )}
           </div>
           <p className="t3-regular text-fg-neutral-subtle mt-[2px] truncate tabular-nums">
             {session.portfolioName} ·{" "}
             {completed
-              ? `${formatRebalancingDate(session.completedAt ?? "")} ${stopped ? "중지" : "완료"} · 매도 ${sellCount} · 매수 ${buyCount}`
+              ? `${formatRebalancingDate(session.completedAt ?? "")} ${stopped ? "종료" : "완료"} · 매도 ${sellCount} · 매수 ${buyCount}`
               : inProgressBasisLabel(session)}
           </p>
           {!completed && <RebalancingProgressBar done={done} total={total} />}

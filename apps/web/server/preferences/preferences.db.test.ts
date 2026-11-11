@@ -1,6 +1,11 @@
 import { openTestDb } from "@web/test/db/test-db";
 import { afterAll, describe, expect, it } from "vitest";
-import { readRebalancingTaskSort, writeRebalancingTaskSort } from "./preferences";
+import {
+  readRebalancingCollapsedSections,
+  readRebalancingTaskSort,
+  writeRebalancingCollapsedSections,
+  writeRebalancingTaskSort,
+} from "./preferences";
 
 const { db, createTestUser, close } = openTestDb();
 afterAll(close);
@@ -46,5 +51,32 @@ describe("rebalancing trade sort preference (real Postgres)", () => {
     await writeRebalancingTaskSort(db, a, "evalDesc");
 
     expect(await readRebalancingTaskSort(db, b)).toBe("nameDesc");
+  });
+});
+
+describe("rebalancing collapsed sections preference (real Postgres)", () => {
+  it("is nothing collapsed when the user has never folded a section", async () => {
+    const userId = await createTestUser();
+
+    expect(await readRebalancingCollapsedSections(db, userId)).toEqual([]);
+  });
+
+  it("reads back what was written", async () => {
+    const userId = await createTestUser();
+
+    await writeRebalancingCollapsedSections(db, userId, ["filled", "ordered"]);
+
+    expect(await readRebalancingCollapsedSections(db, userId)).toEqual(["filled", "ordered"]);
+  });
+
+  it("keeps the trade sort when writing, and the other way round", async () => {
+    const userId = await createTestUser();
+
+    await writeRebalancingTaskSort(db, userId, "evalAsc");
+    await writeRebalancingCollapsedSections(db, userId, ["filled"]);
+    await writeRebalancingTaskSort(db, userId, "nameAsc");
+
+    expect(await readRebalancingTaskSort(db, userId)).toBe("nameAsc");
+    expect(await readRebalancingCollapsedSections(db, userId)).toEqual(["filled"]);
   });
 });

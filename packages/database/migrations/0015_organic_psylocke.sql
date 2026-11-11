@@ -1,0 +1,1 @@
+ALTER TABLE "seedbook"."user_preference" ADD COLUMN "rebalancingCollapsedSections" text[] DEFAULT ARRAY[]::text[] NOT NULL;

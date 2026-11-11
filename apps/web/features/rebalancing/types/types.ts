@@ -29,14 +29,25 @@ export interface RebalancingTask {
    * (`executedPriceOf`).
    */
   executedPrice?: number | null;
+  /**
+   * 증권사에 넣은 주문 수량 (주) 과 주문 가격 (원, 주당) — 주문을 기록하면 둘 다 채워진다.
+   * 체결 전(`done` false)이면 "주문" 상태이고, 매수 주문 금액은 예수금에서 묶인다.
+   * 주문을 취소하거나 이 필드가 생기기 전의 할 일이면 없다 (null).
+   */
+  orderedQuantity?: number | null;
+  orderedPrice?: number | null;
   /** `price` 의 기준 시각 (ISO). 가격이 없거나 기록 전에 시작한 리밸런싱이면 null */
   priceAsOf: string | null;
   /** `price` 가 장중 시세인지 종가인지. `priceAsOf` 와 함께 null */
   priceKind: StockPriceKind | null;
+  /** 체결됨. `rebalancingTaskStatus` 로 대기 / 주문 / 체결을 구한다. */
   done: boolean;
 }
 
 export type RebalancingTaskAction = "매수" | "매도";
+
+/** 할 일의 진행 상태: 대기 → 주문 → 체결. 주문을 건너뛰고 바로 체결할 수도 있다. */
+export type RebalancingTaskStatus = "pending" | "ordered" | "filled";
 
 /**
  * 계좌 하나에 대해 시작한 리밸런싱.

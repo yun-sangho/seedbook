@@ -1,7 +1,7 @@
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import { describe, expect, it } from "vitest";
 import type { RebalancingSession, RebalancingTask } from "../types/types";
-import { tradeCashPreview } from "./trade-cash-check";
+import { rebalancingCashOutlook, tradeCashPreview } from "./trade-cash-check";
 
 /** 예수금이 모자라는 금액 — 0 보다 크면 매매 입력 화면이 완료를 막는다. */
 const cashShortfallAfterTrade = (...args: Parameters<typeof tradeCashPreview>) =>
@@ -174,5 +174,100 @@ describe("tradeCashPreview", () => {
       before: 0,
       after: 50_000,
     });
+  });
+});
+
+describe("tradeCashPreview with buy orders waiting to fill", () => {
+  const orderedBuy = (overrides: Partial<RebalancingTask> = {}) =>
+    task({
+      id: "ordered",
+      ticker: "005930",
+      orderedQuantity: 3,
+      orderedPrice: 10_000,
+      ...overrides,
+    });
+
+  it("holds back other buy orders from cash before", () => {
+    const preview = tradeCashPreview(
+      account(100_000),
+      session([orderedBuy(), task()]),
+      "buy",
+      2,
+      10_000
+    );
+    expect(preview).toEqual({ before: 70_000, after: 50_000 });
+  });
+
+  it("releases an order's own hold when filling it, so it is not counted twice", () => {
+    const ordered = orderedBuy({ id: "buy", ticker: "069500" });
+    const preview = tradeCashPreview(account(100_000), session([ordered]), "buy", 3, 10_000);
+    expect(preview).toEqual({ before: 100_000, after: 70_000 });
+  });
+
+  it("ignores a filled task's old order values", () => {
+    const filled = orderedBuy({ done: true, executedQuantity: 3, executedPrice: 10_000 });
+    const preview = tradeCashPreview(account(100_000), session([filled, task()]), "buy", 1, 10_000);
+    expect(preview.before).toBe(70_000);
+  });
+});
+
+describe("rebalancingCashOutlook", () => {
+  const sell = (overrides: Partial<RebalancingTask> = {}) =>
+    task({ id: "sell", ticker: "005930", name: "삼성전자", action: "매도", ...overrides });
+  const holding = {
+    id: "h1",
+    market: "KOSPI",
+    ticker: "005930",
+    name: "삼성전자",
+    currency: "KRW",
+    quantity: 100,
+    memo: "",
+  };
+  const withHolding = (cash: number): InvestmentItem => ({
+    ...account(cash),
+    holdings: [holding],
+  });
+
+  it("is the account cash plus the cash deposit before any trade is done", () => {
+    const outlook = rebalancingCashOutlook(account(50_000), session([task()], 50_000));
+    expect(outlook.now).toBe(100_000);
+  });
+
+  it("includes completed trades at their executed quantity and price", () => {
+    const done = sell({ done: true, executedQuantity: 3, executedPrice: 20_000 });
+    const outlook = rebalancingCashOutlook(withHolding(0), session([done, task()]));
+    expect(outlook.now).toBe(60_000);
+  });
+
+  it("expects the remaining trades to follow the recommended quantity and start price", () => {
+    // 지금 0 + 매도 10주 × 10,000 − 매수 10주 × 10,000
+    const outlook = rebalancingCashOutlook(withHolding(0), session([sell(), task()]));
+    expect(outlook.expected).toBe(0);
+  });
+
+  it("can expect negative cash when the remaining buys cost more than is left", () => {
+    const done = sell({ done: true, executedQuantity: 5, executedPrice: 10_000 });
+    const outlook = rebalancingCashOutlook(withHolding(0), session([done, task()]));
+    expect(outlook.now).toBe(50_000);
+    expect(outlook.expected).toBe(-50_000);
+  });
+
+  it("holds back buy orders waiting to fill from cash now", () => {
+    const ordered = task({ orderedQuantity: 4, orderedPrice: 10_000 });
+    const outlook = rebalancingCashOutlook(account(100_000), session([ordered]));
+    expect(outlook.now).toBe(60_000);
+    expect(outlook.heldForOrders).toBe(40_000);
+  });
+
+  it("expects ordered trades to fill at their order quantity and price", () => {
+    const ordered = task({ orderedQuantity: 4, orderedPrice: 10_000 });
+    const outlook = rebalancingCashOutlook(account(100_000), session([ordered]));
+    expect(outlook.expected).toBe(60_000);
+  });
+
+  it("leaves out remaining trades whose price was unknown", () => {
+    const unpriced = task({ price: null, quantity: null });
+    const outlook = rebalancingCashOutlook(account(30_000), session([unpriced]));
+    expect(outlook.expected).toBe(30_000);
   });
 });

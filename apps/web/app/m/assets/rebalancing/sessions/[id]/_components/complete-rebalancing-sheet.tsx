@@ -67,7 +67,7 @@ export function CompleteRebalancingSheet({
 
   const canApply = preview !== null;
   const uncheckedCount = session.tasks.filter((t) => !t.done).length;
-  // 남은 매매가 있으면 "완료"가 아니라 "중지"다.
+  // 남은 매매가 있으면 "완료"가 아니라 "종료"다.
   const stopping = uncheckedCount > 0;
   const willApply = canApply && applyToAccount;
 
@@ -101,7 +101,7 @@ export function CompleteRebalancingSheet({
   return (
     <BottomSheetRoot open={open} onOpenChange={onOpenChange}>
       <BottomSheetContent
-        title={stopping ? "리밸런싱을 중지할까요?" : "리밸런싱을 완료할까요?"}
+        title={stopping ? "리밸런싱을 종료할까요?" : "리밸런싱을 완료할까요?"}
         showHandle
       >
         <BottomSheetBody>
@@ -143,7 +143,7 @@ export function CompleteRebalancingSheet({
         </BottomSheetBody>
         <BottomSheetFooter>
           <ActionButton size="large" className="w-full" onClick={submit}>
-            {stopping ? "중지" : "완료"}
+            {stopping ? "종료" : "완료"}
           </ActionButton>
         </BottomSheetFooter>
       </BottomSheetContent>

@@ -15,6 +15,8 @@ function validTask(overrides: Record<string, unknown> = {}) {
     priceKind: "close",
     executedQuantity: null,
     executedPrice: null,
+    orderedQuantity: null,
+    orderedPrice: null,
     done: false,
     ...overrides,
   };
@@ -109,6 +111,34 @@ describe("parseRebalancingFields", () => {
 
   it("rejects a traded price that is not a number", () => {
     const fields = validFields({ tasks: [validTask({ executedPrice: "69500" })] });
+
+    expect(parseRebalancingFields(fields)).toBeNull();
+  });
+
+  it("keeps the order quantity and price of an ordered task", () => {
+    const fields = validFields({
+      tasks: [validTask({ orderedQuantity: 7, orderedPrice: 69_400 })],
+    });
+
+    expect(parseRebalancingFields(fields)?.tasks[0]).toMatchObject({
+      orderedQuantity: 7,
+      orderedPrice: 69_400,
+    });
+  });
+
+  it("treats a missing order as none for tasks saved before orders were recorded", () => {
+    const legacy: Record<string, unknown> = validTask();
+    delete legacy.orderedQuantity;
+    delete legacy.orderedPrice;
+
+    expect(parseRebalancingFields(validFields({ tasks: [legacy] }))?.tasks[0]).toMatchObject({
+      orderedQuantity: null,
+      orderedPrice: null,
+    });
+  });
+
+  it("rejects an order price that is not a number", () => {
+    const fields = validFields({ tasks: [validTask({ orderedPrice: "69400" })] });
 
     expect(parseRebalancingFields(fields)).toBeNull();
   });
