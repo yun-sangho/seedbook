@@ -8,9 +8,6 @@
     "check-types": "turbo run check-types",
     "format": "biome check --write --linter-enabled=false",
     "format:check": "biome check --linter-enabled=false",
-    "openapi:api": "pnpm --filter api build:openapi",
-    "openapi-ts": "openapi-ts",
-    "openapi:regen": "pnpm openapi:api && pnpm --filter @seedbook/web openapi:gen",
     "crawler:start": "pnpm --filter @seedbook/stock-crawler start",
     "crawler:stocks": "pnpm --filter @seedbook/stock-crawler crawl:stocks",
     "crawler:prices": "pnpm --filter @seedbook/stock-crawler crawl:prices",
@@ -29,7 +26,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.7",
-    "@hey-api/openapi-ts": "0.84.1",
     "@types/node": "^22.20.5",
     "turbo": "^2.11.11"
   },

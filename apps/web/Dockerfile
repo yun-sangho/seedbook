@@ -75,7 +75,6 @@ COPY apps/web/next.config.js ./apps/web/
 COPY apps/web/tsconfig.json ./apps/web/
 COPY apps/web/postcss.config.js ./apps/web/
 COPY apps/web/components.json ./apps/web/
-COPY apps/web/openapi-ts.config.ts ./apps/web/
 COPY apps/web/vitest.config.ts ./apps/web/
 COPY apps/web/vitest.setup.ts ./apps/web/
 

@@ -55,3 +55,6 @@ dist/
 
 # playwright MCP session artifacts
 .playwright-mcp/
+
+# Next.js 가 dev/build/typegen 때 만든다 (check-types 가 `next typegen` 으로 생성)
+next-env.d.ts

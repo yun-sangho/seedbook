@@ -10,7 +10,6 @@
       "**",
       "!**/seed-data",
       "!packages/database/migrations",
-      "!apps/web/api-client",
       "!**/.claude",
       "!apps/web/public"
     ]
