@@ -35,12 +35,17 @@ jobs:
         if: github.event_name == 'push'
         uses: dorny/paths-filter@v3
         with:
-          # 각 Dockerfile 이 COPY 하는 경로 + 의존성 설치에 영향을 주는 루트 파일.
-          # packages/database 는 양쪽 공통 (마이그레이션은 crawler entrypoint 가 돌린다).
+          # 각 이미지가 실제로 쓰는 경로 + 의존성 설치에 영향을 주는 루트 파일.
+          # packages/database 는 나눠서 본다:
+          #   - src · package.json · tsconfig → DB 클라이언트·스키마라 양쪽 다
+          #   - migrations · migrate.ts · backfill-* → 프로덕션에서 crawler 가 돌리므로 crawler 만
+          #   - seed-data · seed/capture/reset 스크립트 → dev 전용이라 어느 이미지도 다시 빌드하지 않음
           # 워크플로 자체가 바뀌면 빌드 설정이 바뀐 것일 수 있으니 둘 다 다시 빌드.
           filters: |
             shared: &shared
-              - packages/database/**
+              - packages/database/src/**
+              - packages/database/package.json
+              - packages/database/tsconfig.json
               - packages/typescript-config/**
               - package.json
               - pnpm-lock.yaml
@@ -56,6 +61,9 @@ jobs:
             stock-crawler:
               - *shared
               - apps/stock-crawler/**
+              - packages/database/migrations/**
+              - packages/database/scripts/migrate.ts
+              - packages/database/scripts/backfill-*.ts
             compose:
               - docker-compose.yml
 
