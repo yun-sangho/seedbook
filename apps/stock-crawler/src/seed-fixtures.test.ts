@@ -1,9 +1,9 @@
-import { existsSync, readFileSync } from "fs";
-import { resolve } from "path";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
- * packages/database/prisma/seed-data/ 의 JSON fixture 무결성 검증.
+ * packages/database/seed-data/ 의 JSON fixture 무결성 검증.
  *
  * fixture 는 실 크롤러 산출물을 캡처한 것이므로 이 테스트는 "실 데이터가 들어왔는지"
  * 를 검증하는 smoke 수준 — BigInt 직렬화 포맷, 참조 정합성(price → stock),
@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
  * 빨갛게 뜨지 않도록.
  */
 
-const SEED_DATA_DIR = resolve(__dirname, "../../../packages/database/prisma/seed-data");
+const SEED_DATA_DIR = resolve(__dirname, "../../../packages/database/seed-data");
 
 const STOCKS_PATH = resolve(SEED_DATA_DIR, "stocks.json");
 const PRICES_PATH = resolve(SEED_DATA_DIR, "stock-prices.json");
@@ -45,7 +45,7 @@ const ALLOWED_MARKETS = new Set(["KOSPI", "KOSDAQ", "KONEX", "NASDAQ", "NYSE"]);
 // KR 티커는 6자리 alphanumeric — 일반주는 숫자만 (005930), 우선주/워런트 등은
 // 숫자+대문자 suffix (38380K, 0001A0) 가 섞인다.
 const KR_TICKER_RE = /^[0-9A-Z]{6}$/;
-const US_TICKER_RE = /^[A-Z][A-Z0-9.\-]*$/;
+const US_TICKER_RE = /^[A-Z][A-Z0-9.-]*$/;
 
 function readStocks(): StockFixture[] {
   return JSON.parse(readFileSync(STOCKS_PATH, "utf8"));

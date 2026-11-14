@@ -1,36 +1,61 @@
+import type { SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * syncStockList 는 prisma 와 fetchAllStocks 에 의존한다. 둘 다 vi.mock 으로 스텁.
- * vi.mock factory 는 파일 상위로 hoist 되므로 외부 변수 참조가 불가 → 모든 훅을
- * vi.hoisted 로 공유한다.
+ * syncStockList 는 DB(drizzle `db`) 와 fetchAllStocks 에 의존한다. 둘 다 vi.mock 으로 스텁.
+ * `db` 는 쓰는 체인(insert → values → onConflictDoUpdate, update → set → where → returning)만
+ * 흉내 내고 호출을 기록한다. vi.mock factory 는 파일 상위로 hoist 되므로 공유 상태는
+ * vi.hoisted 로 둔다.
  */
 
 const mocks = vi.hoisted(() => {
   return {
-    upsert: vi.fn(),
-    updateMany: vi.fn(),
+    /** insert 배치마다 넣은 행 */
+    insertedBatches: [] as unknown[][],
+    /** 비활성화 update 의 where 조건 */
+    deactivations: [] as unknown[],
     fetchAllStocks: vi.fn(),
   };
 });
 
-// prisma 만 mock 하고 나머지 export 는 실제 구현을 통과시킨다.
+// db 만 mock 하고 나머지 export (schema 등) 는 실제 구현을 통과시킨다.
 vi.mock("@seedbook/database", async () => {
   const actual = await vi.importActual<typeof import("@seedbook/database")>("@seedbook/database");
-  return {
-    ...actual,
-    prisma: {
-      stock: {
-        upsert: mocks.upsert,
-        updateMany: mocks.updateMany,
-      },
-    },
+  const db = {
+    insert: () => ({
+      values: (rows: unknown[]) => ({
+        onConflictDoUpdate: async () => {
+          mocks.insertedBatches.push(rows);
+        },
+      }),
+    }),
+    update: () => ({
+      set: () => ({
+        where: (where: unknown) => ({
+          returning: async () => {
+            mocks.deactivations.push(where);
+            return [];
+          },
+        }),
+      }),
+    }),
   };
+  return { ...actual, db };
 });
 
 vi.mock("../sources/naver.js", () => ({
   fetchAllStocks: mocks.fetchAllStocks,
 }));
+
+const dialect = new PgDialect();
+
+/** 비활성화한 시장 — where 조건의 첫 파라미터가 시장이다. */
+function deactivatedMarkets(): unknown[] {
+  return mocks.deactivations.map((where) => dialect.sqlToQuery(where as SQL).params[0]);
+}
+
+const upsertedRowCount = () => mocks.insertedBatches.reduce((sum, rows) => sum + rows.length, 0);
 
 // 동적 import: vi.mock 가 적용된 후에만 대상 모듈을 읽어야 한다.
 const { syncStockList } = await import("./sync-stock-list.js");
@@ -50,47 +75,38 @@ function makeStocks(market: string, count: number) {
 
 describe("syncStockList", () => {
   beforeEach(() => {
-    // 매 테스트마다 implementation 을 다시 심어서 restoreAllMocks / mockReset 이
-    // 다른 테스트에 영향을 주지 않도록 한다.
-    mocks.upsert.mockReset().mockResolvedValue(undefined);
-    mocks.updateMany.mockReset().mockResolvedValue({ count: 0 });
+    mocks.insertedBatches.length = 0;
+    mocks.deactivations.length = 0;
     mocks.fetchAllStocks.mockReset();
   });
 
-  it("정상: 200+200 입력 → upsert 400회, KOSPI/KOSDAQ 각자 deactivation", async () => {
+  it("정상: 200+200 입력 → 400행 upsert, KOSPI/KOSDAQ 각자 deactivation", async () => {
     const stocks = [...makeStocks("KOSPI", 200), ...makeStocks("KOSDAQ", 200)];
     mocks.fetchAllStocks.mockResolvedValue(stocks);
 
     await syncStockList();
 
-    expect(mocks.upsert).toHaveBeenCalledTimes(400);
-    // KOSPI, KOSDAQ 각 1번씩 deactivation
-    expect(mocks.updateMany).toHaveBeenCalledTimes(2);
-    const markets = mocks.updateMany.mock.calls.map(
-      ([arg]: [{ where: { market: string } }]) => arg.where.market
-    );
-    expect(new Set(markets)).toEqual(new Set(["KOSPI", "KOSDAQ"]));
+    expect(upsertedRowCount()).toBe(400);
+    expect(new Set(deactivatedMarkets())).toEqual(new Set(["KOSPI", "KOSDAQ"]));
   });
 
-  it("빈 결과: upsert / updateMany 호출 0회 (조기 return)", async () => {
+  it("빈 결과: upsert / deactivation 0회 (조기 return)", async () => {
     mocks.fetchAllStocks.mockResolvedValue([]);
 
     await syncStockList();
 
-    expect(mocks.upsert).toHaveBeenCalledTimes(0);
-    expect(mocks.updateMany).toHaveBeenCalledTimes(0);
+    expect(mocks.insertedBatches).toHaveLength(0);
+    expect(mocks.deactivations).toHaveLength(0);
   });
 
-  it("★ Deactivation 가드: 50개 반환 시 upsert 는 실행, updateMany 는 스킵", async () => {
+  it("★ Deactivation 가드: 50개 반환 시 upsert 는 실행, deactivation 은 스킵", async () => {
     // KOSPI 50개만 → MIN_STOCKS_PER_MARKET_FOR_DEACTIVATION(100) 미만
-    const stocks = makeStocks("KOSPI", 50);
-    mocks.fetchAllStocks.mockResolvedValue(stocks);
+    mocks.fetchAllStocks.mockResolvedValue(makeStocks("KOSPI", 50));
 
     await syncStockList();
 
-    expect(mocks.upsert).toHaveBeenCalledTimes(50);
-    // 50 < 100 이므로 KOSPI deactivation 스킵
-    expect(mocks.updateMany).toHaveBeenCalledTimes(0);
+    expect(upsertedRowCount()).toBe(50);
+    expect(mocks.deactivations).toHaveLength(0);
   });
 
   it("혼합: KOSPI 200 + KOSDAQ 50 → KOSPI 만 deactivation 실행", async () => {
@@ -99,21 +115,17 @@ describe("syncStockList", () => {
 
     await syncStockList();
 
-    expect(mocks.upsert).toHaveBeenCalledTimes(250);
-    expect(mocks.updateMany).toHaveBeenCalledTimes(1);
-    const [arg] = mocks.updateMany.mock.calls[0]! as [{ where: { market: string } }];
-    expect(arg.where.market).toBe("KOSPI");
+    expect(upsertedRowCount()).toBe(250);
+    expect(deactivatedMarkets()).toEqual(["KOSPI"]);
   });
 
-  it("배치 사이즈: 250 입력 시 upsert 는 병렬 배치로 나뉘어 호출됨 (총 250회)", async () => {
-    const stocks = makeStocks("KOSPI", 250);
-    mocks.fetchAllStocks.mockResolvedValue(stocks);
+  it("배치 사이즈: 250 입력 시 100개씩 3번에 나눠 upsert 한다", async () => {
+    mocks.fetchAllStocks.mockResolvedValue(makeStocks("KOSPI", 250));
 
     await syncStockList();
 
-    // 각 stock 마다 upsert 한 번 → 총 250
-    expect(mocks.upsert).toHaveBeenCalledTimes(250);
+    expect(mocks.insertedBatches.map((rows) => rows.length)).toEqual([100, 100, 50]);
     // 250 ≥ 100 이므로 KOSPI deactivation 실행
-    expect(mocks.updateMany).toHaveBeenCalledTimes(1);
+    expect(deactivatedMarkets()).toEqual(["KOSPI"]);
   });
 });

@@ -1,29 +1,29 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * syncStockPrices 는 prisma + fetchAllStockPrices 에 의존한다.
- * 주말 가드 검증이 핵심.
+ * syncStockPrices 는 DB(drizzle `db`) + fetchAllStockPrices 에 의존한다.
+ * 주말 가드 검증이 핵심. `db` 는 쓰는 체인(select → from → where, insert → values →
+ * onConflictDoUpdate)만 흉내 낸다.
  */
 
 const mocks = vi.hoisted(() => {
   return {
-    findMany: vi.fn(),
+    /** 활성 종목 조회 */
+    findActiveStocks: vi.fn(),
     upsert: vi.fn(),
     fetchAllStockPrices: vi.fn(),
   };
 });
 
-// prisma 만 mock 하고 kst* 헬퍼는 실제 구현을 통과시킨다 (syncStockPrices 가
+// db 만 mock 하고 kst* 헬퍼는 실제 구현을 통과시킨다 (syncStockPrices 가
 // 내부적으로 kstDateString/kstDayOfWeek 를 import 하므로).
 vi.mock("@seedbook/database", async () => {
   const actual = await vi.importActual<typeof import("@seedbook/database")>("@seedbook/database");
-  return {
-    ...actual,
-    prisma: {
-      stock: { findMany: mocks.findMany },
-      stockPrice: { upsert: mocks.upsert },
-    },
+  const db = {
+    select: () => ({ from: () => ({ where: () => mocks.findActiveStocks() }) }),
+    insert: () => ({ values: () => ({ onConflictDoUpdate: () => mocks.upsert() }) }),
   };
+  return { ...actual, db };
 });
 
 vi.mock("../sources/naver.js", () => ({
@@ -34,7 +34,7 @@ const { syncStockPrices } = await import("./sync-stock-prices.js");
 
 describe("syncStockPrices", () => {
   beforeEach(() => {
-    mocks.findMany.mockReset().mockResolvedValue([]);
+    mocks.findActiveStocks.mockReset().mockResolvedValue([]);
     mocks.upsert.mockReset().mockResolvedValue(undefined);
     mocks.fetchAllStockPrices.mockReset().mockResolvedValue([]);
   });
@@ -51,7 +51,7 @@ describe("syncStockPrices", () => {
     }
 
     // 주말 → 조기 return. DB/크롤 호출 모두 0회.
-    expect(mocks.findMany).toHaveBeenCalledTimes(0);
+    expect(mocks.findActiveStocks).toHaveBeenCalledTimes(0);
     expect(mocks.fetchAllStockPrices).toHaveBeenCalledTimes(0);
   });
 
@@ -66,7 +66,7 @@ describe("syncStockPrices", () => {
       vi.useRealTimers();
     }
 
-    expect(mocks.findMany).toHaveBeenCalledTimes(0);
+    expect(mocks.findActiveStocks).toHaveBeenCalledTimes(0);
     expect(mocks.fetchAllStockPrices).toHaveBeenCalledTimes(0);
   });
 
@@ -81,14 +81,14 @@ describe("syncStockPrices", () => {
       vi.useRealTimers();
     }
 
-    expect(mocks.findMany).toHaveBeenCalledTimes(1);
+    expect(mocks.findActiveStocks).toHaveBeenCalledTimes(1);
     expect(mocks.fetchAllStockPrices).toHaveBeenCalledTimes(1);
   });
 
   it("명시 date 인자 + 토요일: 호출자 의도 존중하여 실행됨", async () => {
     await syncStockPrices(new Date("2025-01-04T10:00:00+09:00"));
 
-    expect(mocks.findMany).toHaveBeenCalledTimes(1);
+    expect(mocks.findActiveStocks).toHaveBeenCalledTimes(1);
     expect(mocks.fetchAllStockPrices).toHaveBeenCalledTimes(1);
   });
 
@@ -108,7 +108,7 @@ describe("syncStockPrices", () => {
     }
 
     // KST 월요일이므로 실행되어야 한다 (UTC 기준 일요일로 오인하면 이 테스트가 깨진다)
-    expect(mocks.findMany).toHaveBeenCalledTimes(1);
+    expect(mocks.findActiveStocks).toHaveBeenCalledTimes(1);
     expect(mocks.fetchAllStockPrices).toHaveBeenCalledTimes(1);
   });
 
@@ -124,7 +124,7 @@ describe("syncStockPrices", () => {
     }
 
     // KST 토요일이므로 스킵되어야 한다 (UTC 기준 금요일로 오인하면 이 테스트가 깨진다)
-    expect(mocks.findMany).toHaveBeenCalledTimes(0);
+    expect(mocks.findActiveStocks).toHaveBeenCalledTimes(0);
     expect(mocks.fetchAllStockPrices).toHaveBeenCalledTimes(0);
   });
 
@@ -139,7 +139,7 @@ describe("syncStockPrices", () => {
       vi.useRealTimers();
     }
 
-    expect(mocks.findMany).toHaveBeenCalledTimes(1);
+    expect(mocks.findActiveStocks).toHaveBeenCalledTimes(1);
     expect(mocks.fetchAllStockPrices).toHaveBeenCalledTimes(1);
   });
 
@@ -154,7 +154,7 @@ describe("syncStockPrices", () => {
       vi.useRealTimers();
     }
 
-    expect(mocks.findMany).toHaveBeenCalledTimes(0);
+    expect(mocks.findActiveStocks).toHaveBeenCalledTimes(0);
     expect(mocks.fetchAllStockPrices).toHaveBeenCalledTimes(0);
   });
 });

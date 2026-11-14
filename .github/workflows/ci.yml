@@ -68,6 +68,9 @@ jobs:
       - name: Unit tests
         run: pnpm --filter @seedbook/web test
 
+      - name: Crawler unit tests
+        run: pnpm --filter @seedbook/stock-crawler test
+
       - name: DB integration tests
         run: pnpm --filter @seedbook/web test:db
 
