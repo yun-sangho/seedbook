@@ -5,6 +5,7 @@ import { Button } from "@web/components/ui/button";
 import { formatReturnRate, numberToKorean } from "@web/utils/number-format";
 import { formatProfitKorean, getProfitColorClass } from "@web/utils/profit-color";
 import { ArrowUpDown } from "lucide-react";
+import type { DataTableFeatures } from "./monthly-summary-data-table";
 
 export interface MonthlySummaryRow {
   yearMonth: string; // "YYYY-MM" format
@@ -15,7 +16,7 @@ export interface MonthlySummaryRow {
   returnRate: number;
 }
 
-export const columns: ColumnDef<MonthlySummaryRow>[] = [
+export const columns: ColumnDef<DataTableFeatures, MonthlySummaryRow>[] = [
   {
     accessorKey: "displayMonth",
     header: ({ column }) => {
@@ -32,7 +33,7 @@ export const columns: ColumnDef<MonthlySummaryRow>[] = [
     cell: ({ row }) => {
       return <div className="font-medium">{row.getValue("displayMonth")}</div>;
     },
-    sortingFn: (rowA, rowB) => {
+    sortFn: (rowA, rowB) => {
       // Sort by yearMonth instead of displayMonth for correct chronological order
       return rowA.original.yearMonth.localeCompare(rowB.original.yearMonth);
     },

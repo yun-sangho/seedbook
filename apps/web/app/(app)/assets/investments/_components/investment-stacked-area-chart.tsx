@@ -87,7 +87,7 @@ export function InvestmentStackedAreaChart({ investments }: InvestmentStackedAre
                         />
                         <span className="text-muted-foreground flex-1">{accountName}</span>
                         <span className="font-mono font-medium tabular-nums text-foreground">
-                          {numberToKorean(value.toString())}
+                          {numberToKorean(String(value ?? 0))}
                         </span>
                       </div>
                     );

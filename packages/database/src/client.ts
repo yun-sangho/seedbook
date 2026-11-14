@@ -29,7 +29,7 @@ function findDatabaseEnvFile(): string | null {
 
 const envFile = findDatabaseEnvFile();
 if (envFile) {
-  loadEnv({ path: envFile });
+  loadEnv({ path: envFile, quiet: true });
 }
 
 // 실제 DB 연결은 첫 사용 시점에 만든다 (lazy). Next.js 빌드 (정적 페이지 분석)

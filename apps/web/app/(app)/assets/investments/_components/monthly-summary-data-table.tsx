@@ -3,12 +3,15 @@
 import { useState } from "react";
 import {
   type ColumnDef,
+  createPaginatedRowModel,
+  createSortedRowModel,
   flexRender,
-  getCoreRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
+  type PaginationState,
+  rowPaginationFeature,
+  rowSortingFeature,
   type SortingState,
-  useReactTable,
+  tableFeatures,
+  useTable,
 } from "@tanstack/react-table";
 import { Button } from "@web/components/ui/button";
 import {
@@ -20,31 +23,40 @@ import {
   TableRow,
 } from "@web/components/ui/table";
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
+/** 표가 쓰는 기능 — 정렬과 페이지 나눔. 모듈 상수라 렌더마다 새로 만들지 않는다. */
+const features = tableFeatures({
+  rowSortingFeature,
+  rowPaginationFeature,
+  sortedRowModel: createSortedRowModel(),
+  paginatedRowModel: createPaginatedRowModel(),
+});
+
+export type DataTableFeatures = typeof features;
+
+interface DataTableProps<TData extends object> {
+  columns: ColumnDef<DataTableFeatures, TData>[];
   data: TData[];
 }
 
-export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData, TValue>) {
+export function DataTable<TData extends object>({ columns, data }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
   });
 
-  const table = useReactTable({
+  const table = useTable({
+    features,
     data,
     columns,
-    getCoreRowModel: getCoreRowModel(),
     onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     onPaginationChange: setPagination,
     state: {
       sorting,
       pagination,
     },
   });
+  const rowCount = table.getPrePaginatedRowModel().rows.length;
 
   return (
     <div className="space-y-4">
@@ -68,8 +80,8 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
-                  {row.getVisibleCells().map((cell) => (
+                <TableRow key={row.id}>
+                  {row.getAllCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
@@ -90,12 +102,8 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
       {/* Pagination Controls */}
       <div className="flex items-center justify-end gap-4">
         <p className="text-sm">
-          {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}-
-          {Math.min(
-            (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
-            table.getFilteredRowModel().rows.length
-          )}{" "}
-          of {table.getFilteredRowModel().rows.length}
+          {pagination.pageIndex * pagination.pageSize + 1}-
+          {Math.min((pagination.pageIndex + 1) * pagination.pageSize, rowCount)} of {rowCount}
         </p>
 
         <div className="flex items-center gap-2">

@@ -19,13 +19,12 @@
     "etl:etf:holdings": "tsx ./scripts/fetch-etf-holdings.ts"
   },
   "dependencies": {
-    "dotenv": "^16.6.1",
+    "dotenv": "^18.0.10",
     "drizzle-orm": "^0.45.4",
-    "postgres": "^3.4.9"
+    "postgres": "^4.1.1"
   },
   "devDependencies": {
-    "@types/node": "^22.20.5",
-    "dotenv-cli": "^10.0.0",
+    "@types/node": "^24.19.2",
     "drizzle-kit": "^0.31.11",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"

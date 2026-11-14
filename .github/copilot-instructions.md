@@ -66,7 +66,7 @@ Top-level scripts (turbo):
 - build: `pnpm build`
 - test (web): `pnpm --filter @seedbook/web test`
 - type check: `pnpm check-types`
-  Ensure Node >= 22 (see engines). Package manager: pnpm 8.
+  Ensure Node >= 24 (see engines). Package manager: pnpm 8.
 
 ## 10. Formatting & Lint
 

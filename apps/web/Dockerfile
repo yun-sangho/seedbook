@@ -1,4 +1,4 @@
-FROM node:22-slim AS base
+FROM node:24-slim AS base
 
 RUN corepack enable && corepack prepare pnpm@8.15.6 --activate
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*

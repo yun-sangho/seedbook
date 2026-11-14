@@ -21,7 +21,7 @@ pnpm db:dev:up                        # Postgres only (lighter — skip stock-cr
 pnpm db:dev:down                      # Stop postgres only
 ```
 
-Requires Node >= 22, pnpm 8.
+Requires Node >= 24 (LTS, `.nvmrc`), pnpm 8.
 
 ### Dev topology
 

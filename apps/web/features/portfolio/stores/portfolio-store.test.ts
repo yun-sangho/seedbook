@@ -13,8 +13,8 @@ const localStorageMock = {
   removeItem: vi.fn(),
   clear: vi.fn(),
 };
-// biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
-global.localStorage = localStorageMock as any;
+// jsdom 의 localStorage 는 getter 라 직접 대입할 수 없다.
+vi.stubGlobal("localStorage", localStorageMock);
 
 describe("Portfolio Store", () => {
   beforeEach(() => {
