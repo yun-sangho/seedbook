@@ -3,9 +3,9 @@ import { createEntityRepo, selectRowsByIds } from "@web/server/sync/entity-repo"
 import type { SyncEntity } from "@web/server/sync/registry";
 import {
   parseRebalancingFields,
+  type RebalancingPayload,
   rebalancingPayloadToColumns,
   rebalancingRowToPayload,
-  type RebalancingPayload,
 } from "./rebalancing-record";
 
 type RebalancingFields = Omit<RebalancingPayload, "id">;

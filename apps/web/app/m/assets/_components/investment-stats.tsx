@@ -18,8 +18,8 @@ import { formatReturnRate, numberToKorean } from "@web/utils/number-format";
 import { formatProfitKorean } from "@web/utils/profit-color";
 import {
   HOLDINGS_SORT_OPTIONS,
-  sortOptionLabel,
   SortSheet,
+  sortOptionLabel,
 } from "../investments/_components/investment-sheets";
 
 /** 홈 "투자 추이" 탭: 계좌별 누적 평가금액 차트. */

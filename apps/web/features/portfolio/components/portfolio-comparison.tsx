@@ -15,9 +15,9 @@ import {
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import {
+  type StockPricePoint,
   stockPriceKey,
   useStockPrices,
-  type StockPricePoint,
 } from "@web/features/investments/utils/use-stock-prices";
 import { cn } from "@web/lib/utils";
 import { formatWithCommas, numberToKorean, parseNumericString } from "@web/utils/number-format";
@@ -26,14 +26,14 @@ import { DRIFT_MODE_LABELS } from "../types/constants";
 import type { PortfolioItem } from "../types/types";
 import { buildAllocationColors } from "../utils/allocation-colors";
 import {
-  computeActualAllocation,
   type ActualAllocationResult,
+  computeActualAllocation,
 } from "../utils/compute-actual-allocation";
 import {
   computeDriftAlert,
-  isDriftBreached,
   type DriftAlert,
   type DriftRule,
+  isDriftBreached,
 } from "../utils/compute-drift-alert";
 import {
   computeRebalancingGap,
@@ -666,6 +666,7 @@ function BarRow({
       <div className="flex h-7 w-full overflow-hidden rounded-md border bg-muted">
         {segments.map((s, i) => (
           <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: 같은 이름의 구간이 있을 수 있어 순서로 구분한다 (목록은 다시 정렬되지 않음).
             key={`${s.label}-${i}`}
             title={`${s.label}: ${s.percent.toFixed(1)}%`}
             className="h-full transition-all"

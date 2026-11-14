@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useSession } from "@web/lib/auth-client";
 import { downloadAllFromCloud, uploadAllToCloud } from "@web/lib/storage-migration";
-import { getStorageMode, setStorageMode, type StorageMode } from "@web/lib/storage-mode";
+import { getStorageMode, type StorageMode, setStorageMode } from "@web/lib/storage-mode";
 
 /**
  * 로그인된 사용자의 user_preference.storageMode 를 localStorage 와 동기화한다.

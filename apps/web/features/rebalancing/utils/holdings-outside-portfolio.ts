@@ -1,7 +1,7 @@
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import {
-  stockPriceKey,
   type StockPricePoint,
+  stockPriceKey,
 } from "@web/features/investments/utils/use-stock-prices";
 import type { PortfolioItem } from "@web/features/portfolio/types/types";
 

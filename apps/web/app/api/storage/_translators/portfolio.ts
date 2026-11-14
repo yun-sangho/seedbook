@@ -1,4 +1,4 @@
-import { schema, type Database } from "@seedbook/database";
+import { type Database, schema } from "@seedbook/database";
 import { dedupePortfolioLinks } from "@web/features/portfolio/utils/portfolio-links";
 import { parsePortfolioFields, portfolioRowToData } from "@web/server/portfolio/portfolio-record";
 import { portfolioRepo } from "@web/server/portfolio/portfolio-sync";

@@ -10,9 +10,9 @@
  * 돌리려면 ALLOW_PROD_SEED=1.
  */
 
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync } from "node:fs";
+import path, { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import path, { resolve } from "path";
 import { db, schema } from "../src/client";
 import { DEV_SESSION_ID, DEV_USER_EMAIL, DEV_USER_ID } from "../src/dev-auth";
 import { ensureDevAuth } from "../src/ensure-dev-auth";

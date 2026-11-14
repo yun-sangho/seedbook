@@ -9,7 +9,7 @@ const localStorageMock = {
   clear: vi.fn(),
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
 global.localStorage = localStorageMock as any;
 
 // Date mock for consistent testing
@@ -67,7 +67,7 @@ describe("Investment Store", () => {
     });
 
     it("replaces a saved 'default' sort, which no longer exists, when loading", () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
       const persistApi = (useInvestmentStore as any).persist;
       const merge = persistApi.getOptions().merge;
 
@@ -83,7 +83,7 @@ describe("Investment Store", () => {
       const { setHoldingsSortOption } = useInvestmentStore.getState();
       setHoldingsSortOption("evalDesc");
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
       const persistApi = (useInvestmentStore as any).persist;
       const partialize = persistApi.getOptions().partialize;
       const snapshot = partialize(useInvestmentStore.getState());
@@ -789,7 +789,7 @@ describe("Investment Store", () => {
       };
 
       // Drive the store's persist.migrate directly.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
       const persistApi = (useInvestmentStore as any).persist;
       const migrated = persistApi.getOptions().migrate(legacyState, 1);
 
@@ -837,7 +837,7 @@ describe("Investment Store", () => {
         ],
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
       const persistApi = (useInvestmentStore as any).persist;
       const migrated = persistApi.getOptions().migrate(alreadyUuidState, 1);
 
@@ -869,7 +869,7 @@ describe("Investment Store", () => {
         lastInvestmentId: 2,
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
       const persistApi = (useInvestmentStore as any).persist;
       const migrated = persistApi.getOptions().migrate(legacyStateWithCash, 2);
 
@@ -1082,7 +1082,7 @@ describe("Investment Store", () => {
     });
 
     it("adds a 예수금 cash item to persisted accounts that have none", () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
       const persistApi = (useInvestmentStore as any).persist;
       const migrated = persistApi
         .getOptions()
@@ -1093,7 +1093,7 @@ describe("Investment Store", () => {
     });
 
     it("leaves accounts that already have cash items untouched", () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
       const persistApi = (useInvestmentStore as any).persist;
       const existing = [{ id: "c1", label: "CMA", amount: 1000 }];
       const migrated = persistApi

@@ -1,4 +1,4 @@
-import { schema } from "@seedbook/database";
+import type { schema } from "@seedbook/database";
 import { and, getTableName, inArray, ne } from "drizzle-orm";
 import type { Db } from "./types";
 

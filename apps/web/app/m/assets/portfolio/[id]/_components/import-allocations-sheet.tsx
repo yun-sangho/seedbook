@@ -6,9 +6,9 @@ import type { Stock } from "@web/features/investments/types/stock";
 import { useStockPrices } from "@web/features/investments/utils/use-stock-prices";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import {
+  type AllocationImportCandidate,
   candidatesFromAccount,
   candidatesFromPortfolio,
-  type AllocationImportCandidate,
 } from "@web/features/portfolio/utils/allocation-import-candidates";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {

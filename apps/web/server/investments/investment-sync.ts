@@ -3,11 +3,11 @@ import { createEntityRepo, selectRowsByIds, type Tx } from "@web/server/sync/ent
 import type { SyncEntity } from "@web/server/sync/registry";
 import { eq, inArray } from "drizzle-orm";
 import {
+  type InvestmentFields,
   investmentChildRows,
   investmentFieldsToColumns,
   investmentRowToFields,
   parseInvestmentFields,
-  type InvestmentFields,
 } from "./investment-record";
 
 type AccountRow = typeof schema.investmentAccount.$inferSelect;

@@ -99,15 +99,13 @@ export function PortfolioListMobile() {
         );
       })}
 
-      <>
-        <Divider />
-        <div className="flex justify-center pt-x4">
-          <ActionButton variant="ghost" size="medium" onClick={handleAdd}>
-            <Icon svg={<IconPlusLine />} />
-            포트폴리오 추가
-          </ActionButton>
-        </div>
-      </>
+      <Divider />
+      <div className="flex justify-center pt-x4">
+        <ActionButton variant="ghost" size="medium" onClick={handleAdd}>
+          <Icon svg={<IconPlusLine />} />
+          포트폴리오 추가
+        </ActionButton>
+      </div>
     </div>
   );
 }

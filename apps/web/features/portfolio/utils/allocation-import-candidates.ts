@@ -1,8 +1,8 @@
 import type { Stock } from "@web/features/investments/types/stock";
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import {
-  stockPriceKey,
   type StockPricePoint,
+  stockPriceKey,
 } from "@web/features/investments/utils/use-stock-prices";
 import type { PortfolioItem } from "../types/types";
 import { computeActualAllocation } from "./compute-actual-allocation";

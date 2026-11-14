@@ -1,4 +1,4 @@
-import { schema, type Database } from "@seedbook/database";
+import { type Database, schema } from "@seedbook/database";
 import { and, eq, gt } from "drizzle-orm";
 import type { ListOrderChange, MutationResult } from "./types";
 

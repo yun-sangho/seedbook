@@ -1,8 +1,8 @@
-import { InvestmentItem } from "@web/features/investments/types/types";
+import type { InvestmentItem } from "@web/features/investments/types/types";
 import { TimeRange } from "@web/types/time.consts";
 import { describe, expect, test } from "vitest";
 import {
-  AccountChartData,
+  type AccountChartData,
   prepareStackedAreaChartData,
 } from "./investments-stacked-area-chart-utils";
 

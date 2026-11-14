@@ -7,6 +7,7 @@
 
 import { relations, sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   bigint,
   boolean,
   date,
@@ -21,7 +22,6 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
-  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 export const seedbook = pgSchema("seedbook");
@@ -399,10 +399,7 @@ export const portfolio = seedbook.table(
     description: text("description").notNull().default(""),
     color: text("color").notNull(),
     note: text("note").notNull().default(""),
-    accountIds: uuid("accountIds")
-      .array()
-      .notNull()
-      .default(sql`ARRAY[]::uuid[]`),
+    accountIds: uuid("accountIds").array().notNull().default(sql`ARRAY[]::uuid[]`),
     // 이격률 계산 방식: "relative" (목표 대비 비율) | "absolute" (%p 차이).
     // 기존 행은 방식이 생기기 전처럼 %p 차이로 판정하도록 "absolute" 가 기본값.
     driftMode: text("driftMode", { enum: ["relative", "absolute"] })

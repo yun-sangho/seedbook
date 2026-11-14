@@ -7,7 +7,7 @@ import { iosStartupImages } from "@web/lib/ios-splash";
 import { MobileStack } from "./_stack/mobile-stack";
 
 /**
- * 모바일 전용 트리. middleware 가 모바일 UA 요청을 URL 유지한 채 `/m/...` 로
+ * 모바일 전용 트리. proxy 가 모바일 UA 요청을 URL 유지한 채 `/m/...` 로
  * rewrite 한다 (`lib/device.ts`). SEED Design CSS 는 이 레이아웃에서만 로드되어
  * 데스크탑 번들에는 섞이지 않는다.
  */

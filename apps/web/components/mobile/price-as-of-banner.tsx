@@ -6,13 +6,13 @@ import { PageBanner, PrefixIcon } from "@seed-design/react";
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import {
   describePriceAsOf,
-  summarizePriceAsOf,
   type PriceAsOfLabel,
   type PriceAsOfSummary,
+  summarizePriceAsOf,
 } from "@web/features/investments/utils/price-as-of";
 import {
-  useStockPrices,
   type StockPricePoint,
+  useStockPrices,
 } from "@web/features/investments/utils/use-stock-prices";
 
 /**

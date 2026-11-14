@@ -48,6 +48,7 @@ export function AppSidebar() {
   const { isMobile, setOpenMobile } = useSidebar();
 
   // 경로 변경 시 모바일에서 사이드바 닫기
+  // biome-ignore lint/correctness/useExhaustiveDependencies: pathname 이 바뀔 때마다 닫으려고 넣었다.
   useEffect(() => {
     if (isMobile) {
       setOpenMobile(false);

@@ -11,8 +11,8 @@ import IconCheckmarkFatFill from "@karrotmarket/react-monochrome-icon/IconCheckm
 import IconExclamationmarkCircleFill from "@karrotmarket/react-monochrome-icon/IconExclamationmarkCircleFill";
 import IconMinusFatFill from "@karrotmarket/react-monochrome-icon/IconMinusFatFill";
 import {
-  checkboxGroup,
   type CheckboxGroupVariantProps,
+  checkboxGroup,
 } from "@seed-design/css/recipes/checkbox-group";
 import {
   PrefixIcon,

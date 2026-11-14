@@ -13,10 +13,10 @@ import { SortableItem } from "@web/components/ui/sortable-item";
 import { SortableList } from "@web/components/ui/sortable-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@web/components/ui/tabs";
 import {
-  useInvestmentStore,
   type HoldingsSortOption,
+  useInvestmentStore,
 } from "@web/features/investments/stores/investment-store";
-import { InvestmentItem } from "@web/features/investments/types/types";
+import type { InvestmentItem } from "@web/features/investments/types/types";
 import { Plus, TrendingUp } from "lucide-react";
 import { AddInvestmentModal } from "./add-investment-modal";
 import { InvestmentTab } from "./constants";

@@ -11,7 +11,7 @@ Personal asset planning & projection tool (투자/예금/실물/부채). Core fe
 Monorepo (Turborepo + pnpm)
 
 - apps/web: Next.js (App Router) main app
-- packages/: shared config (eslint, tailwind, tsconfig)
+- packages/: shared config (tailwind, tsconfig) + database
   Key Web Folders:
 - app/: route segments (page.tsx, layout.tsx)
 - components/: reusable UI (incl. chart container wrappers)
@@ -70,7 +70,7 @@ Top-level scripts (turbo):
 
 ## 10. Formatting & Lint
 
-- ESLint + Prettier + import sorting plugin + tailwind class sorting.
+- Biome (lint + format + import sorting), config in `biome.json`.
 - Do not disable lint rules unless necessary; explain in comment if you must.
 
 ## 11. Adding Features (Checklist)

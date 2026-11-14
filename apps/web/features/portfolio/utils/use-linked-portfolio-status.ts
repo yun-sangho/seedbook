@@ -4,7 +4,7 @@ import { useCallback, useMemo } from "react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { useStockPrices } from "@web/features/investments/utils/use-stock-prices";
 import { usePortfolioStore } from "../stores/portfolio-store";
-import { linkedPortfolioStatus, type LinkedPortfolioStatus } from "./linked-portfolio-status";
+import { type LinkedPortfolioStatus, linkedPortfolioStatus } from "./linked-portfolio-status";
 
 /**
  * 계좌 id → 연결된 포트폴리오 상태 (없으면 `null`) 조회 함수를 돌려준다.

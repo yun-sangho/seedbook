@@ -12,8 +12,8 @@ import {
   IconExclamationmarkCircleFill,
 } from "@karrotmarket/react-monochrome-icon";
 import {
-  selectBoxGroup,
   type SelectBoxGroupVariantProps,
+  selectBoxGroup,
 } from "@seed-design/css/recipes/select-box-group";
 import {
   PrefixIcon,

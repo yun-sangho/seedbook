@@ -1,10 +1,10 @@
 import { db, kstDateString, schema } from "@seedbook/database";
 import { resolveUserId } from "@web/lib/auth-server";
-import { loadQuotes, stockRefKey, type StockRef } from "@web/lib/stock-quotes/load-quotes";
+import { loadQuotes, type StockRef, stockRefKey } from "@web/lib/stock-quotes/load-quotes";
 import {
-  pickPricePoint,
   type DailyClose,
   type PricePoint,
+  pickPricePoint,
 } from "@web/lib/stock-quotes/quote-policy";
 import { and, desc, eq, inArray } from "drizzle-orm";
 

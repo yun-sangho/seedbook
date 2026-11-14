@@ -5,7 +5,7 @@ import { Button } from "@web/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@web/components/ui/dialog";
 import { Input } from "@web/components/ui/input";
 import { Label } from "@web/components/ui/label";
-import { InvestmentItem } from "@web/features/investments/types/types";
+import type { InvestmentItem } from "@web/features/investments/types/types";
 import { numberToKorean } from "@web/utils/number-format";
 
 interface AddHistoryModalProps {
@@ -44,7 +44,7 @@ export function AddHistoryModal({ isOpen, onClose, item, onAddHistory }: AddHist
     if (!currentValue) {
       newErrors.currentValue = "평가금액을 입력해주세요.";
     } else if (
-      isNaN(Number(currentValue.replace(/,/g, ""))) ||
+      Number.isNaN(Number(currentValue.replace(/,/g, ""))) ||
       Number(currentValue.replace(/,/g, "")) <= 0
     ) {
       newErrors.currentValue = "올바른 평가금액을 입력해주세요.";
@@ -52,7 +52,7 @@ export function AddHistoryModal({ isOpen, onClose, item, onAddHistory }: AddHist
 
     if (
       initialInvestment &&
-      (isNaN(Number(initialInvestment.replace(/,/g, ""))) ||
+      (Number.isNaN(Number(initialInvestment.replace(/,/g, ""))) ||
         Number(initialInvestment.replace(/,/g, "")) < 0)
     ) {
       newErrors.initialInvestment = "올바른 투자원금을 입력해주세요.";

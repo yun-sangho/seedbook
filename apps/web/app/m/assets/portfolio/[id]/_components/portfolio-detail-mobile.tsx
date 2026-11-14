@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState, type CSSProperties } from "react";
+import { type CSSProperties, Fragment, useMemo, useState } from "react";
 import { IconArrowDownHorizlineLine, IconPlusLine } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
@@ -43,7 +43,7 @@ import { formatReturnRate, formatWithCommas, numberToKorean } from "@web/utils/n
 import { formatProfitWon } from "@web/utils/profit-color";
 import { AddAllocationFlow, EditAllocationSheet } from "./allocation-sheets";
 import { ImportAllocationsSheet } from "./import-allocations-sheet";
-import { MoveAccountSheet, type AccountMove } from "./move-account-sheet";
+import { type AccountMove, MoveAccountSheet } from "./move-account-sheet";
 import { PortfolioDriftCard } from "./portfolio-drift-card";
 import { EditDriftThresholdSheet, PortfolioSettingsSheet } from "./portfolio-edit-sheets";
 import { PortfolioOverviewTab } from "./portfolio-overview-tab";
@@ -386,59 +386,43 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
         </ChipTabsContent>
       </ChipTabsRoot>
 
-      <>
-        <HeaderAction>
-          <ActionButton
-            variant="ghost"
-            size="small"
-            aria-label="포트폴리오 수정"
-            onClick={() => setEditing({ kind: "settings" })}
-          >
-            수정
-          </ActionButton>
-        </HeaderAction>
+      <HeaderAction>
+        <ActionButton
+          variant="ghost"
+          size="small"
+          aria-label="포트폴리오 수정"
+          onClick={() => setEditing({ kind: "settings" })}
+        >
+          수정
+        </ActionButton>
+      </HeaderAction>
 
-        <PortfolioSettingsSheet
-          key={`settings-${editing?.kind === "settings"}`}
-          {...sheetProps(editing?.kind === "settings")}
-          portfolio={portfolio}
-          onRename={(name) => updatePortfolio(portfolio.id, "name", name)}
-          onColorChange={(color) => updatePortfolio(portfolio.id, "color", color)}
-          onDelete={deletePortfolio}
-        />
-        <EditDriftThresholdSheet
-          key={`drift-${editing?.kind === "drift"}`}
-          {...sheetProps(editing?.kind === "drift")}
-          mode={portfolio.driftMode}
-          value={portfolio.driftThresholdPercent}
-          exampleTarget={exampleTargetPercent(portfolio.allocations)}
-          onSave={(mode, value) => {
-            setDriftMode(portfolio.id, mode);
-            setDriftThreshold(portfolio.id, value);
-          }}
-        />
-        <ImportAllocationsSheet
-          key={`import-${editing?.kind === "import-allocations"}`}
-          {...sheetProps(editing?.kind === "import-allocations")}
-          targetPortfolioId={portfolio.id}
-          existingKeys={usedKeys}
-          onImport={(items) =>
-            items.forEach(({ stock, targetPercent }) =>
-              addAllocation(portfolio.id, {
-                market: stock.market,
-                ticker: stock.ticker,
-                name: stock.name,
-                currency: stock.currency,
-                targetPercent,
-              })
-            )
-          }
-        />
-        <AddAllocationFlow
-          {...sheetProps(editing?.kind === "add-allocation")}
-          disabledKeys={usedKeys}
-          remainingPercent={100 - totalPct}
-          onAdd={(stock, targetPercent) =>
+      <PortfolioSettingsSheet
+        key={`settings-${editing?.kind === "settings"}`}
+        {...sheetProps(editing?.kind === "settings")}
+        portfolio={portfolio}
+        onRename={(name) => updatePortfolio(portfolio.id, "name", name)}
+        onColorChange={(color) => updatePortfolio(portfolio.id, "color", color)}
+        onDelete={deletePortfolio}
+      />
+      <EditDriftThresholdSheet
+        key={`drift-${editing?.kind === "drift"}`}
+        {...sheetProps(editing?.kind === "drift")}
+        mode={portfolio.driftMode}
+        value={portfolio.driftThresholdPercent}
+        exampleTarget={exampleTargetPercent(portfolio.allocations)}
+        onSave={(mode, value) => {
+          setDriftMode(portfolio.id, mode);
+          setDriftThreshold(portfolio.id, value);
+        }}
+      />
+      <ImportAllocationsSheet
+        key={`import-${editing?.kind === "import-allocations"}`}
+        {...sheetProps(editing?.kind === "import-allocations")}
+        targetPortfolioId={portfolio.id}
+        existingKeys={usedKeys}
+        onImport={(items) =>
+          items.forEach(({ stock, targetPercent }) =>
             addAllocation(portfolio.id, {
               market: stock.market,
               ticker: stock.ticker,
@@ -446,21 +430,35 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
               currency: stock.currency,
               targetPercent,
             })
+          )
+        }
+      />
+      <AddAllocationFlow
+        {...sheetProps(editing?.kind === "add-allocation")}
+        disabledKeys={usedKeys}
+        remainingPercent={100 - totalPct}
+        onAdd={(stock, targetPercent) =>
+          addAllocation(portfolio.id, {
+            market: stock.market,
+            ticker: stock.ticker,
+            name: stock.name,
+            currency: stock.currency,
+            targetPercent,
+          })
+        }
+      />
+      {editingAllocation && (
+        <EditAllocationSheet
+          key={editingAllocation.id}
+          {...sheetProps(true)}
+          allocation={editingAllocation}
+          remainingPercent={100 - totalPct}
+          onSave={(percent) =>
+            updateAllocation(portfolio.id, editingAllocation.id, "targetPercent", percent)
           }
+          onDelete={() => removeAllocation(portfolio.id, editingAllocation.id)}
         />
-        {editingAllocation && (
-          <EditAllocationSheet
-            key={editingAllocation.id}
-            {...sheetProps(true)}
-            allocation={editingAllocation}
-            remainingPercent={100 - totalPct}
-            onSave={(percent) =>
-              updateAllocation(portfolio.id, editingAllocation.id, "targetPercent", percent)
-            }
-            onDelete={() => removeAllocation(portfolio.id, editingAllocation.id)}
-          />
-        )}
-      </>
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CashItem, StockHolding } from "../types/types";
 import { computeAccountValuation } from "./compute-account-valuation";
-import { stockPriceKey, type StockPricePoint } from "./use-stock-prices";
+import { type StockPricePoint, stockPriceKey } from "./use-stock-prices";
 
 function holding(partial: Partial<StockHolding>): StockHolding {
   return {

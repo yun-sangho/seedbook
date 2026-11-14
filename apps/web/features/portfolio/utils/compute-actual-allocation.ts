@@ -1,7 +1,7 @@
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import {
-  stockPriceKey,
   type StockPricePoint,
+  stockPriceKey,
 } from "@web/features/investments/utils/use-stock-prices";
 
 export interface ActualHoldingValue {

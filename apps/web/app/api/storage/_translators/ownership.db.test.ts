@@ -1,4 +1,4 @@
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 import { schema } from "@seedbook/database";
 import { openTestDb } from "@web/test/db/test-db";
 import { eq } from "drizzle-orm";

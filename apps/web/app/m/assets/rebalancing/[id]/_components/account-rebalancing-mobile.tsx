@@ -12,9 +12,9 @@ import { buildAllocationColors } from "@web/features/portfolio/utils/allocation-
 import { computeActualAllocation } from "@web/features/portfolio/utils/compute-actual-allocation";
 import {
   computeDriftAlert,
-  isDriftBreached,
   type DriftAlert,
   type DriftRule,
+  isDriftBreached,
 } from "@web/features/portfolio/utils/compute-drift-alert";
 import {
   computeRebalancingGap,

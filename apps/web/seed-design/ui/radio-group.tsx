@@ -8,7 +8,7 @@
 
 import * as React from "react";
 import { IconExclamationmarkCircleFill } from "@karrotmarket/react-monochrome-icon";
-import { radioGroup, type RadioGroupVariantProps } from "@seed-design/css/recipes/radio-group";
+import { type RadioGroupVariantProps, radioGroup } from "@seed-design/css/recipes/radio-group";
 import {
   PrefixIcon,
   RadioGroup as SeedRadioGroup,

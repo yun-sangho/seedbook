@@ -1,6 +1,6 @@
 import {
-  stockPriceKey,
   type StockPricePoint,
+  stockPriceKey,
 } from "@web/features/investments/utils/use-stock-prices";
 import type { RebalancingSummary } from "@web/features/portfolio/utils/compute-rebalancing-gap";
 import type { RebalancingTask, RebalancingTaskAction } from "../types/types";

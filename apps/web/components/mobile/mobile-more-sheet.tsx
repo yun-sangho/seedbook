@@ -8,7 +8,7 @@ import {
 } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
 import { authClient, useSession } from "@web/lib/auth-client";
-import { needsSeparateStorageNotice, type InstallMode } from "@web/lib/pwa-install";
+import { type InstallMode, needsSeparateStorageNotice } from "@web/lib/pwa-install";
 import { getStorageMode } from "@web/lib/storage-mode";
 import { setViewOverride } from "@web/lib/view-override";
 import {

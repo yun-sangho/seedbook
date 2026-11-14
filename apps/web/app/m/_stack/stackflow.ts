@@ -1,4 +1,4 @@
-import { seedPlugin, type SeedPluginOptions } from "@seed-design/stackflow";
+import { type SeedPluginOptions, seedPlugin } from "@seed-design/stackflow";
 import { defineConfig } from "@stackflow/config";
 import { historySyncPlugin } from "@stackflow/plugin-history-sync";
 import { basicRendererPlugin } from "@stackflow/plugin-renderer-basic";
@@ -21,7 +21,7 @@ import { createNextAwareHistory } from "./next-aware-history";
  * 모바일 (`/m` 트리) 화면 스택. 하단 탭 4개는 루트 activity 로 두고 탭 전환은
  * `replace` (애니메이션 없음), 상세 화면은 `push` 로 쌓는다.
  *
- * URL 은 데스크탑과 같은 `/assets/...` 를 그대로 쓴다 (middleware 가 `/m` 으로 rewrite).
+ * URL 은 데스크탑과 같은 `/assets/...` 를 그대로 쓴다 (proxy 가 `/m` 으로 rewrite).
  * 스택은 브라우저 history 를 쌓지 않는 단일 페이지로 동작하고, 뒤로가기는 앱바 뒤로 버튼과
  * SEED 스와이프만 쓴다 (next-aware-history.ts).
  * 이 모듈은 `window` 를 쓰므로 클라이언트 전용으로만 불러온다 (`mobile-stack.tsx`).

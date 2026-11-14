@@ -6,7 +6,7 @@ import { Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { ACCOUNT_TYPES } from "@web/features/investments/types/constants";
-import { toHoldingSeeds, type HoldingSeed } from "@web/features/investments/utils/holding-seeds";
+import { type HoldingSeed, toHoldingSeeds } from "@web/features/investments/utils/holding-seeds";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import {
   BottomSheetBody,

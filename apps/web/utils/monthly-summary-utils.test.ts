@@ -1,4 +1,4 @@
-import { InvestmentItem } from "@web/features/investments/types/types";
+import type { InvestmentItem } from "@web/features/investments/types/types";
 import { describe, expect, it } from "vitest";
 import { prepareMonthlyInvestmentSummary } from "./monthly-summary-utils";
 

@@ -1,4 +1,4 @@
-import { createHmac } from "crypto";
+import { createHmac } from "node:crypto";
 import { DEV_SESSION_COOKIE_NAME, DEV_SESSION_TOKEN, ensureDevAuth } from "@seedbook/database";
 
 /**

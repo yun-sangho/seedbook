@@ -1,5 +1,5 @@
-import { randomUUID } from "crypto";
-import { schema, type Database } from "@seedbook/database";
+import { randomUUID } from "node:crypto";
+import { type Database, schema } from "@seedbook/database";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";

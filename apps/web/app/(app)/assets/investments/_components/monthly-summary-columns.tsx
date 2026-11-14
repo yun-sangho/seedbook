@@ -1,6 +1,6 @@
 "use client";
 
-import { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@web/components/ui/button";
 import { formatReturnRate, numberToKorean } from "@web/utils/number-format";
 import { formatProfitKorean, getProfitColorClass } from "@web/utils/profit-color";

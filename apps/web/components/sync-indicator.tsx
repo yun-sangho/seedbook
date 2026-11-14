@@ -22,7 +22,7 @@ export function SyncIndicator() {
 
   if (!isCloud) return null;
 
-  const { icon: Icon, label, tone } = describe(state, lastSyncedAt);
+  const { icon: Icon, label, tone } = describeSyncState(state, lastSyncedAt);
 
   return (
     <div
@@ -37,7 +37,7 @@ export function SyncIndicator() {
   );
 }
 
-function describe(
+function describeSyncState(
   state: ReturnType<typeof useSyncStatusStore.getState>["state"],
   lastSyncedAt: number | null
 ): {
@@ -54,7 +54,6 @@ function describe(
       return { icon: AlertCircle, label: "저장 실패", tone: "text-red-600" };
     case "unauthenticated":
       return { icon: AlertCircle, label: "로그인 필요", tone: "text-red-600" };
-    case "idle":
     default:
       return {
         icon: Check,

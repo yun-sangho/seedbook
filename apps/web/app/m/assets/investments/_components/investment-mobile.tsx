@@ -6,10 +6,10 @@ import { Divider, Icon } from "@seed-design/react";
 import { HoldingsPriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import {
+  type AccountSortOption,
   DEFAULT_ACCOUNT_SORT_OPTION,
   normalizeAccountSortOption,
   sortAccounts,
-  type AccountSortOption,
 } from "@web/features/investments/utils/sort-accounts";
 import { useLiveAccounts } from "@web/features/investments/utils/use-live-accounts";
 import { useLinkedPortfolioStatus } from "@web/features/portfolio/utils/use-linked-portfolio-status";
@@ -17,7 +17,7 @@ import { ActionButton } from "@web/seed-design/ui/action-button";
 import { ResultSection } from "@web/seed-design/ui/result-section";
 import { AccountSummaryCard } from "./account-summary-card";
 import { AddAccountSheet } from "./add-account-sheet";
-import { ACCOUNT_SORT_OPTIONS, sortOptionLabel, SortSheet } from "./investment-sheets";
+import { ACCOUNT_SORT_OPTIONS, SortSheet, sortOptionLabel } from "./investment-sheets";
 
 const ACCOUNT_SORT_KEY = "seedbook.mobile.accountSort";
 
@@ -107,15 +107,14 @@ export function InvestmentMobile() {
           <AccountSummaryCard item={item} linkedPortfolio={statusByAccount.get(item.id) ?? null} />
         </div>
       ))}
-      <>
-        <Divider />
-        <div className="flex justify-center pt-x4">
-          <ActionButton variant="ghost" size="medium" onClick={() => setAddOpen(true)}>
-            <Icon svg={<IconPlusLine />} />
-            투자 계좌 추가
-          </ActionButton>
-        </div>
-      </>
+
+      <Divider />
+      <div className="flex justify-center pt-x4">
+        <ActionButton variant="ghost" size="medium" onClick={() => setAddOpen(true)}>
+          <Icon svg={<IconPlusLine />} />
+          투자 계좌 추가
+        </ActionButton>
+      </div>
 
       {addSheet}
       <SortSheet

@@ -1,3 +1,5 @@
+// biome-ignore-all lint/a11y/useKeyWithClickEvents: 데스크탑 레거시 화면의 클릭 영역 — ESLint 때 검사하지 않던 규칙이라 화면을 정리할 때 함께 고친다.
+// biome-ignore-all lint/a11y/noStaticElementInteractions: 위와 같음.
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -11,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@web/components/ui/popo
 import { StockCombobox } from "@web/features/investments/components/stock-combobox";
 import { ACCOUNT_COLORS } from "@web/features/investments/types/constants";
 import type { Stock } from "@web/features/investments/types/stock";
-import { CashItem, InvestmentItem, StockHolding } from "@web/features/investments/types/types";
+import type { CashItem, InvestmentItem, StockHolding } from "@web/features/investments/types/types";
 import { useAccountValuation } from "@web/features/investments/utils/use-account-valuation";
 import { stockPriceKey } from "@web/features/investments/utils/use-stock-prices";
 import { formatWithCommas, numberToKorean } from "@web/utils/number-format";
@@ -229,6 +231,7 @@ export function InvestmentItemComponent({
             <Popover open={isColorPickerOpen} onOpenChange={setIsColorPickerOpen}>
               <PopoverTrigger asChild>
                 <button
+                  type="button"
                   className="w-6 h-6 rounded"
                   style={{ backgroundColor: item.color }}
                   title="색상 변경"
@@ -240,6 +243,7 @@ export function InvestmentItemComponent({
                   <div className="grid grid-cols-5 gap-2">
                     {ACCOUNT_COLORS.map((color) => (
                       <button
+                        type="button"
                         key={color}
                         onClick={() => handleColorChange(color)}
                         className="w-8 h-8 rounded border-2 hover:scale-110 transition-transform"
@@ -370,21 +374,19 @@ export function InvestmentItemComponent({
                         className="flex flex-wrap gap-2 items-center p-2 rounded-lg border"
                       >
                         <div className="flex items-center gap-1">
-                          <>
-                            <StockCombobox
-                              value={selectedStock}
-                              onSelect={(stock) =>
-                                handleSetStockHoldingFromSearch(item.id, holding.id, stock)
-                              }
-                              className="min-w-[140px]"
-                            />
-                            <span
-                              className="ml-1 text-xs cursor-pointer underline"
-                              onClick={() => handleRemoveStockHolding(item.id, holding.id)}
-                            >
-                              삭제
-                            </span>
-                          </>
+                          <StockCombobox
+                            value={selectedStock}
+                            onSelect={(stock) =>
+                              handleSetStockHoldingFromSearch(item.id, holding.id, stock)
+                            }
+                            className="min-w-[140px]"
+                          />
+                          <span
+                            className="ml-1 text-xs cursor-pointer underline"
+                            onClick={() => handleRemoveStockHolding(item.id, holding.id)}
+                          >
+                            삭제
+                          </span>
                         </div>
                         <div className="flex flex-1 flex-wrap justify-end items-center gap-2">
                           <HoldingQuantityInput
@@ -518,7 +520,7 @@ export function InvestmentItemComponent({
                       const isLatest = index === 0;
                       return (
                         <div
-                          key={`${record.date}-${index}`}
+                          key={record.date}
                           className="flex flex-wrap sm:justify-between gap-2 sm:items-center p-2 rounded-lg border max-sm:flex-col"
                         >
                           <div className="text-sm">

@@ -57,7 +57,6 @@ jobs:
               - *shared
               - apps/web/**
               - packages/tailwind-config/**
-              - packages/eslint-config/**
             stock-crawler:
               - *shared
               - apps/stock-crawler/**

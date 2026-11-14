@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { startEntitySync, type EntitySyncHandle } from "./entity-sync-engine";
+import { type EntitySyncHandle, startEntitySync } from "./entity-sync-engine";
 import { recordPersistedChange } from "./local-change-recorder";
 import type { ManagedStoreConfig } from "./managed-store-config";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { VIEW_OVERRIDE_COOKIE, type DeviceKind } from "./device";
+import { type DeviceKind, VIEW_OVERRIDE_COOKIE } from "./device";
 
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
@@ -9,6 +9,7 @@ const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
  * 다음 요청부터 반영하므로 호출 후 전체 리로드가 필요하다.
  */
 export function setViewOverride(kind: DeviceKind | null): void {
+  // biome-ignore lint/suspicious/noDocumentCookie: 서버(proxy)가 읽는 단순 쿠키 하나라 Cookie Store API 없이 쓴다.
   document.cookie =
     kind === null
       ? `${VIEW_OVERRIDE_COOKIE}=; path=/; max-age=0`

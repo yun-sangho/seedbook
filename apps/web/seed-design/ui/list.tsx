@@ -12,9 +12,9 @@ import {
   Checkbox,
   RadioGroup,
   Divider as SeedDivider,
+  type DividerProps as SeedDividerProps,
   List as SeedList,
   Switch,
-  type DividerProps as SeedDividerProps,
 } from "@seed-design/react";
 
 export interface ListProps extends SeedList.RootProps {}

@@ -12,7 +12,6 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/database/package.json ./packages/database/package.json
 COPY packages/typescript-config/package.json ./packages/typescript-config/package.json
 COPY packages/tailwind-config/package.json ./packages/tailwind-config/package.json
-COPY packages/eslint-config/package.json ./packages/eslint-config/package.json
 COPY apps/web/package.json ./apps/web/package.json
 
 RUN pnpm install --frozen-lockfile
@@ -22,7 +21,6 @@ FROM deps AS build
 
 COPY packages/typescript-config/ ./packages/typescript-config/
 COPY packages/tailwind-config/ ./packages/tailwind-config/
-COPY packages/eslint-config/ ./packages/eslint-config/
 COPY packages/database/ ./packages/database/
 COPY apps/web/ ./apps/web/
 
@@ -67,18 +65,16 @@ WORKDIR /app
 # Shared packages (change infrequently — good cache layer)
 COPY packages/typescript-config/ ./packages/typescript-config/
 COPY packages/tailwind-config/ ./packages/tailwind-config/
-COPY packages/eslint-config/ ./packages/eslint-config/
 COPY packages/database/ ./packages/database/
 
 RUN pnpm --filter @seedbook/database build
 
 # Web config files only — source directories come in via volume mounts
 COPY apps/web/package.json ./apps/web/
-COPY apps/web/next.config.ts ./apps/web/
+COPY apps/web/next.config.js ./apps/web/
 COPY apps/web/tsconfig.json ./apps/web/
 COPY apps/web/postcss.config.js ./apps/web/
 COPY apps/web/components.json ./apps/web/
-COPY apps/web/eslint.config.js ./apps/web/
 COPY apps/web/openapi-ts.config.ts ./apps/web/
 COPY apps/web/vitest.config.ts ./apps/web/
 COPY apps/web/vitest.setup.ts ./apps/web/

@@ -55,7 +55,7 @@ export function UserMenu() {
           )}
         >
           {user.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
+            // biome-ignore lint/performance/noImgElement: 카카오 프로필 이미지는 외부 도메인이라 next/image 최적화를 쓰지 않는다.
             <img
               src={user.image}
               alt={user.name ?? "user"}

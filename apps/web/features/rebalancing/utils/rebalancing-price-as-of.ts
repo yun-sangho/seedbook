@@ -1,6 +1,6 @@
 import {
-  summarizePriceAsOf,
   type PriceAsOfSummary,
+  summarizePriceAsOf,
 } from "@web/features/investments/utils/price-as-of";
 import type { RebalancingTask } from "../types/types";
 

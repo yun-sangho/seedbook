@@ -3,8 +3,8 @@ import type { RebalancingTask } from "../types/types";
 import {
   DEFAULT_REBALANCING_TASK_SORT,
   isRebalancingTaskSort,
-  sortRebalancingTasks,
   type RebalancingTaskSort,
+  sortRebalancingTasks,
 } from "./sort-rebalancing-tasks";
 
 function task(

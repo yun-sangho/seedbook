@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { selectKeysToFetch, type CachedPrice } from "../utils/stock-price-cache";
+import { type CachedPrice, selectKeysToFetch } from "../utils/stock-price-cache";
 import type { StockPricePoint } from "../utils/use-stock-prices";
 
 /**

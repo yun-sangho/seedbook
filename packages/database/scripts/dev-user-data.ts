@@ -12,9 +12,9 @@
  *   브라우저가 다음 pull 에서 삭제와 새 데이터를 함께 받아 가게 한다.
  */
 
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync } from "node:fs";
+import path, { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import path, { resolve } from "path";
 import { and, eq, isNull, notInArray, sql } from "drizzle-orm";
 import { db, schema } from "../src/client";
 

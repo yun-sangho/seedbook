@@ -15,14 +15,14 @@ import {
   CLOUD_STORE_LABELS,
   downloadAllFromCloud,
   hasAnyLocalData,
-  uploadAllToCloud,
   type MigrationProgress,
+  uploadAllToCloud,
 } from "@web/lib/storage-migration";
 import {
   getStorageMode,
   pushStorageModeToServer,
-  setStorageMode,
   type StorageMode,
+  setStorageMode,
 } from "@web/lib/storage-mode";
 import { Cloud, HardDrive, Loader2 } from "lucide-react";
 

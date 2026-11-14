@@ -3,8 +3,8 @@ import {
   applyMutationResults,
   buildMutations,
   emptySyncMeta,
-  mergePull,
   type MutationResult,
+  mergePull,
   type SyncedEntity,
   type SyncMeta,
 } from "./entity-sync-core";

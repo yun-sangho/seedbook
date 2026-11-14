@@ -9,10 +9,10 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { ACCOUNT_COLORS, COLOR_FAMILIES } from "../types/constants";
 import {
   DEFAULT_HOLDINGS_SORT_OPTION,
-  normalizeHoldingsSortOption,
   type HoldingsSortOption,
+  normalizeHoldingsSortOption,
 } from "../types/holdings-sort";
-import { CashItem, InvestmentItem, InvestmentRecord, StockHolding } from "../types/types";
+import type { CashItem, InvestmentItem, InvestmentRecord, StockHolding } from "../types/types";
 import type { HoldingSeed } from "../utils/holding-seeds";
 
 export type { HoldingsSortOption } from "../types/holdings-sort";
@@ -335,7 +335,7 @@ export const useInvestmentStore = create<InvestmentState>()(
             // 기존 레코드에서 같은 날짜가 있는지 확인
             const existingRecordIndex = item.records.findIndex((record) => record.date === date);
 
-            let updatedRecords;
+            let updatedRecords: InvestmentRecord[];
             if (existingRecordIndex !== -1) {
               // 같은 날짜가 있으면 덮어쓰기
               updatedRecords = [...item.records];

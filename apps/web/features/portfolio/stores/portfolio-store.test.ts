@@ -13,7 +13,7 @@ const localStorageMock = {
   removeItem: vi.fn(),
   clear: vi.fn(),
 };
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
 global.localStorage = localStorageMock as any;
 
 describe("Portfolio Store", () => {
@@ -111,7 +111,7 @@ describe("Portfolio Store", () => {
 
   describe("rehydrate", () => {
     it("keeps portfolios saved before drift modes existed on the %p difference", () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
       const persistApi = (usePortfolioStore as any).persist;
       const onRehydrate = persistApi.getOptions().onRehydrateStorage() as (state: unknown) => void;
       const state = {
@@ -385,7 +385,7 @@ describe("Portfolio Store", () => {
 
   describe("Persist Config", () => {
     it("migrate (v1 -> v2) fills accountIds and driftThresholdPercent with defaults", () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
       const persistApi = (usePortfolioStore as any).persist;
       const migrate = persistApi.getOptions().migrate as (
         persisted: unknown,
@@ -412,7 +412,7 @@ describe("Portfolio Store", () => {
     });
 
     it("migrate preserves existing v2 values", () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
       const persistApi = (usePortfolioStore as any).persist;
       const migrate = persistApi.getOptions().migrate as (
         persisted: unknown,
@@ -441,7 +441,7 @@ describe("Portfolio Store", () => {
     });
 
     it("migrate (v2 -> v3) keeps a shared account only in the most recently updated portfolio", () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
       const persistApi = (usePortfolioStore as any).persist;
       const migrate = persistApi.getOptions().migrate as (
         persisted: unknown,
@@ -480,7 +480,7 @@ describe("Portfolio Store", () => {
     });
 
     it("persists at version 3", () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
       const persistApi = (usePortfolioStore as any).persist;
       expect(persistApi.getOptions().version).toBe(3);
     });

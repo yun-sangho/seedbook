@@ -1,7 +1,7 @@
 import type { InvestmentItem, StockHolding } from "@web/features/investments/types/types";
 import {
-  stockPriceKey,
   type StockPricePoint,
+  stockPriceKey,
 } from "@web/features/investments/utils/use-stock-prices";
 import { describe, expect, it } from "vitest";
 import type { PortfolioAllocation, PortfolioItem } from "../types/types";

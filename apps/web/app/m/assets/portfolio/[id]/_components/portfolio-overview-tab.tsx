@@ -8,9 +8,9 @@ import {
 import { Divider, Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 import {
-  sortOptionLabel,
-  SortSheet,
   type SortOptionList,
+  SortSheet,
+  sortOptionLabel,
 } from "@web/app/m/assets/investments/_components/investment-sheets";
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import type { StockPricePoint } from "@web/features/investments/utils/use-stock-prices";
@@ -21,9 +21,9 @@ import type { LinkedPortfolioStatus } from "@web/features/portfolio/utils/linked
 import { portfolioStockRows } from "@web/features/portfolio/utils/portfolio-stock-rows";
 import {
   DEFAULT_PORTFOLIO_STOCK_SORT_OPTION,
+  type PortfolioStockSortOption,
   sortPortfolioStockRows,
   stockRowDrift,
-  type PortfolioStockSortOption,
 } from "@web/features/portfolio/utils/sort-portfolio-stock-rows";
 import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";

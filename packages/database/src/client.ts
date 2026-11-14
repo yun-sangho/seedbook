@@ -1,5 +1,5 @@
-import { existsSync } from "fs";
-import { dirname, resolve } from "path";
+import { existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { config as loadEnv } from "dotenv";
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres, { type Sql } from "postgres";

@@ -1,4 +1,4 @@
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 import { rebalancingTranslator } from "@web/app/api/storage/_translators/rebalancing";
 import { applyMutation } from "@web/server/sync/apply-mutation";
 import { pullChanges } from "@web/server/sync/pull";

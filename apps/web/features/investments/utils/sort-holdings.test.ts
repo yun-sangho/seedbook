@@ -3,9 +3,9 @@ import type { StockHolding } from "../types/types";
 import {
   DEFAULT_HOLDINGS_SORT_OPTION,
   normalizeHoldingsSortOption,
+  type SortPricePoint,
   sortByHoldingsOption,
   sortHoldings,
-  type SortPricePoint,
 } from "./sort-holdings";
 import { stockPriceKey } from "./use-stock-prices";
 

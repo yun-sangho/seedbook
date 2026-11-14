@@ -7,7 +7,7 @@ const MAN_PER_JO = 100000000;
  * 만원 미만은 절삭하고, 각 단위 안의 숫자에는 천 단위 콤마를 붙인다 (예: 1억2,345만원).
  */
 export function numberToKorean(num: string | number): string {
-  if ((!num && num !== 0) || (typeof num === "string" && isNaN(Number(num)))) return "";
+  if ((!num && num !== 0) || (typeof num === "string" && Number.isNaN(Number(num)))) return "";
 
   const rawWon = typeof num === "string" ? Number(num) : num;
   if (rawWon === 0) return "0원";
@@ -85,15 +85,15 @@ export function truncateToHighestDenomination(koreanCurrency: string): string {
     // 조 단위가 있는 경우
     if (koreanCurrency.includes("조")) {
       const joMatch = koreanCurrency.match(/(\d+)조/);
-      if (!joMatch || !joMatch[1]) return koreanCurrency;
+      if (!joMatch?.[1]) return koreanCurrency;
 
-      const joValue = parseInt(joMatch[1]!);
+      const joValue = parseInt(joMatch[1]!, 10);
 
       // 억 단위 추출 (소수점 계산용)
       let decimalPart = 0;
       const eokMatch = koreanCurrency.match(/(\d+)억/);
-      if (eokMatch && eokMatch[1]) {
-        decimalPart = parseInt(eokMatch[1]!) / 10000;
+      if (eokMatch?.[1]) {
+        decimalPart = parseInt(eokMatch[1]!, 10) / 10000;
       }
 
       const total = joValue + decimalPart;
@@ -103,15 +103,15 @@ export function truncateToHighestDenomination(koreanCurrency: string): string {
     // 억 단위가 있는 경우
     else if (koreanCurrency.includes("억")) {
       const eokMatch = koreanCurrency.match(/(\d+)억/);
-      if (!eokMatch || !eokMatch[1]) return koreanCurrency;
+      if (!eokMatch?.[1]) return koreanCurrency;
 
-      const eokValue = parseInt(eokMatch[1]!);
+      const eokValue = parseInt(eokMatch[1]!, 10);
 
       // 만 단위 추출 (소수점 계산용)
       let decimalPart = 0;
       const manMatch = koreanCurrency.match(/(\d+)만/);
-      if (manMatch && manMatch[1]) {
-        decimalPart = parseInt(manMatch[1]!) / 10000;
+      if (manMatch?.[1]) {
+        decimalPart = parseInt(manMatch[1]!, 10) / 10000;
       }
 
       if (decimalPart === 0) return `${eokValue}억원`;

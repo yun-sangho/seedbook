@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   fetchAllStocksWithPrices,
+  type KrxStockItem,
   parsePriceData,
   parseStockList,
-  type KrxStockItem,
 } from "./krx.js";
 
 function item(overrides: Partial<KrxStockItem> = {}): KrxStockItem {

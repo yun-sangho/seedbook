@@ -5,10 +5,10 @@ import { Button, buttonVariants } from "@web/components/ui/button";
 import { cn } from "@web/lib/utils";
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import {
-  DayButton,
+  type ChevronProps,
+  type DayButton,
   DayPicker,
   getDefaultClassNames,
-  type ChevronProps,
   type RootProps,
 } from "react-day-picker";
 
@@ -113,6 +113,7 @@ function Calendar({
         Root: CalendarRoot,
         Chevron: CalendarChevron,
         DayButton: CalendarDayButton,
+        // biome-ignore lint/correctness/noComponentHookFactories: hook 을 쓰지 않는 렌더 함수 (shadcn calendar).
         WeekNumber: ({ children, ...props }) => {
           return (
             <td {...props}>

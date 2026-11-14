@@ -1,6 +1,6 @@
 ---
-applyTo: "apps/web/{app,components,features,utils,stores}/\*_/_.{ts,tsx}"
----
+
+## applyTo: "apps/web/{app,components,features,utils,stores}/\*_/_.{ts,tsx}"
 
 ## Seedbook Next.js Implementation Guidelines
 

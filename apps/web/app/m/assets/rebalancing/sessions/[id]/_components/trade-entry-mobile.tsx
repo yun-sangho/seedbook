@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { IconMinusLine, IconPlusLine } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
@@ -8,10 +8,10 @@ import { formatMoneyDraft } from "@web/components/mobile/input-format";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import type { StockHolding } from "@web/features/investments/types/types";
 import {
+  type SecurityType,
   snapToTick,
   stepByTick,
   tickSize,
-  type SecurityType,
 } from "@web/features/investments/utils/krx-tick-size";
 import { sellCostOf } from "@web/features/investments/utils/sell-cost";
 import { stockPriceKey, useStockPrices } from "@web/features/investments/utils/use-stock-prices";

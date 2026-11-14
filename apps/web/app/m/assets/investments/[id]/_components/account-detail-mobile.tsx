@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useMemo, useState, type CSSProperties } from "react";
+import { type CSSProperties, Fragment, useCallback, useMemo, useState } from "react";
 import { IconChevronDownSmallLine, IconPlusLine } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
@@ -47,8 +47,8 @@ import {
   AddHistorySheet,
   AddHoldingFlow,
   HOLDINGS_SORT_OPTIONS,
-  sortOptionLabel,
   SortSheet,
+  sortOptionLabel,
 } from "../../_components/investment-sheets";
 import { AccountSettingsSheet, EditAmountSheet, EditHoldingSheet } from "./account-edit-sheets";
 
@@ -387,83 +387,79 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
         onChange={setHoldingsSortOption}
       />
 
-      <>
-        <EditAmountSheet
-          key={`initial-${editing?.kind === "initial"}`}
-          {...sheetProps(editing?.kind === "initial")}
-          title="투자원금"
-          value={item.initialInvestment}
-          onSave={(value) => updateInvestment(item.id, "initialInvestment", value)}
-        />
-        <EditAmountSheet
-          key={`deposit-${editing?.kind === "deposit"}`}
-          {...sheetProps(editing?.kind === "deposit")}
-          title={DEFAULT_CASH_LABEL}
-          value={deposit?.amount ?? 0}
-          onSave={saveDeposit}
-        />
-        {editingHolding && (
-          <EditHoldingSheet
-            key={editingHolding.id}
-            {...sheetProps(true)}
-            holding={editingHolding}
-            price={holdingPrice(editingHolding.market, editingHolding.ticker)}
-            onSave={(quantity) => {
-              updateStockHolding(item.id, editingHolding.id, "quantity", quantity);
-              markHistoryDirty();
-            }}
-            onDelete={() => {
-              removeStockHolding(item.id, editingHolding.id);
-              markHistoryDirty();
-            }}
-          />
-        )}
-        <AccountSettingsSheet
-          key={`settings-${editing?.kind === "settings"}`}
-          {...sheetProps(editing?.kind === "settings")}
-          item={item}
-          onRename={(name) => updateInvestment(item.id, "accountName", name)}
-          onSellCostPercentChange={(percent) =>
-            updateInvestment(item.id, "sellCostPercent", percent)
-          }
-          onColorChange={(color) => updateInvestment(item.id, "color", color)}
-          onDelete={deleteAccount}
-        />
-        <AddHoldingFlow
-          {...sheetProps(editing?.kind === "add-holding")}
-          existingHoldingKeys={existingHoldingKeys}
-          onAdd={(stock: Stock, quantity: number) => {
-            addStockHolding(item.id, {
-              market: stock.market,
-              ticker: stock.ticker,
-              name: stock.name,
-              currency: stock.currency,
-              quantity,
-            });
+      <EditAmountSheet
+        key={`initial-${editing?.kind === "initial"}`}
+        {...sheetProps(editing?.kind === "initial")}
+        title="투자원금"
+        value={item.initialInvestment}
+        onSave={(value) => updateInvestment(item.id, "initialInvestment", value)}
+      />
+      <EditAmountSheet
+        key={`deposit-${editing?.kind === "deposit"}`}
+        {...sheetProps(editing?.kind === "deposit")}
+        title={DEFAULT_CASH_LABEL}
+        value={deposit?.amount ?? 0}
+        onSave={saveDeposit}
+      />
+      {editingHolding && (
+        <EditHoldingSheet
+          key={editingHolding.id}
+          {...sheetProps(true)}
+          holding={editingHolding}
+          price={holdingPrice(editingHolding.market, editingHolding.ticker)}
+          onSave={(quantity) => {
+            updateStockHolding(item.id, editingHolding.id, "quantity", quantity);
+            markHistoryDirty();
+          }}
+          onDelete={() => {
+            removeStockHolding(item.id, editingHolding.id);
             markHistoryDirty();
           }}
         />
-        <AddHistorySheet
-          {...sheetProps(editing?.kind === "add-history")}
-          onAdd={(date, initial, current) => addHistoryRecord(item.id, date, initial, current)}
-        />
-        <ConfirmDialog
-          open={editing?.kind === "delete-record"}
-          onOpenChange={(next) => !next && close()}
-          title="이 기록을 삭제할까요?"
-          description={
-            editing?.kind === "delete-record"
-              ? new Date(editing.date).toLocaleDateString("ko-KR")
-              : undefined
+      )}
+      <AccountSettingsSheet
+        key={`settings-${editing?.kind === "settings"}`}
+        {...sheetProps(editing?.kind === "settings")}
+        item={item}
+        onRename={(name) => updateInvestment(item.id, "accountName", name)}
+        onSellCostPercentChange={(percent) => updateInvestment(item.id, "sellCostPercent", percent)}
+        onColorChange={(color) => updateInvestment(item.id, "color", color)}
+        onDelete={deleteAccount}
+      />
+      <AddHoldingFlow
+        {...sheetProps(editing?.kind === "add-holding")}
+        existingHoldingKeys={existingHoldingKeys}
+        onAdd={(stock: Stock, quantity: number) => {
+          addStockHolding(item.id, {
+            market: stock.market,
+            ticker: stock.ticker,
+            name: stock.name,
+            currency: stock.currency,
+            quantity,
+          });
+          markHistoryDirty();
+        }}
+      />
+      <AddHistorySheet
+        {...sheetProps(editing?.kind === "add-history")}
+        onAdd={(date, initial, current) => addHistoryRecord(item.id, date, initial, current)}
+      />
+      <ConfirmDialog
+        open={editing?.kind === "delete-record"}
+        onOpenChange={(next) => !next && close()}
+        title="이 기록을 삭제할까요?"
+        description={
+          editing?.kind === "delete-record"
+            ? new Date(editing.date).toLocaleDateString("ko-KR")
+            : undefined
+        }
+        onConfirm={() => {
+          if (editing?.kind === "delete-record") {
+            removeInvestmentHistoryRecord(item.id, editing.date);
           }
-          onConfirm={() => {
-            if (editing?.kind === "delete-record") {
-              removeInvestmentHistoryRecord(item.id, editing.date);
-            }
-            close();
-          }}
-        />
-      </>
+          close();
+        }}
+      />
     </div>
   );
 }

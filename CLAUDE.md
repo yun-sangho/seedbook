@@ -7,10 +7,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 pnpm dev                              # Start dev server (Next.js on :3001 with turbopack)
 pnpm build                            # Production build (runs format:check first)
-pnpm lint                             # ESLint (max-warnings 0)
+pnpm lint                             # Biome lint (warnings fail)
 pnpm check-types                      # TypeScript type checking
-pnpm format                           # Prettier + import sort + tailwind class sort
+pnpm format                           # Biome format + import sort (`biome.json`)
 pnpm --filter @seedbook/web test      # Run Vitest tests
+pnpm --filter @seedbook/stock-crawler test  # Crawler unit tests (DB/HTTP mocked)
 pnpm --filter @seedbook/web test:watch
 pnpm --filter @seedbook/web test:db   # DB integration tests (*.db.test.ts) — needs `pnpm db:dev:up`
 pnpm docker:dev                       # Dev infra in Docker (postgres + stock-crawler)
@@ -49,8 +50,9 @@ dev 사용자(`dev-user-v1`)의 계좌·포트폴리오는 **테스트 시나리
 
 **Monorepo** (Turborepo + pnpm workspaces):
 
-- `apps/web` — Next.js 15 (App Router), React 19, main application
-- `packages/` — shared configs (eslint, tailwind, tsconfig), database (Drizzle ORM)
+- `apps/web` — Next.js 16 (App Router, Turbopack), React 19, main application. UA 분기는 `proxy.ts` (옛 middleware), PWA 서비스 워커는 `next build` 뒤 `serwist build` (`serwist.config.js`) 가 만든다
+- `packages/` — shared configs (tailwind, tsconfig), database (Drizzle ORM)
+- 도구: TypeScript 7 (네이티브 `tsc`, `@types/*` 는 tsconfig `types` 에 적어야 포함된다), Biome (lint + format)
 
 **Service scope**: 투자 (계좌·보유 종목), 포트폴리오 (목표 비중), 리밸런싱 세 가지만 다룬다. 이 셋을 먼저 확실히 만든 뒤 도메인을 하나씩 넓힌다. (저축·대출·실물자산·자산 계획·자산 기록은 2026-11 제거됨 — DB 테이블은 아직 남아 있고 별도로 삭제 예정.)
 
@@ -93,7 +95,7 @@ DB integration tests (`*.db.test.ts`, e.g. storage translators) run against real
 - Memoize slicing/projection in `useMemo` to avoid recomputing large arrays each render
 - Extract magic numeric factors to top-level consts if reused
 - Search existing utils before adding new ones; mirror established patterns
-- Do not disable lint rules unless necessary; explain in comment if you must
+- Do not disable lint rules unless necessary; if you must, use `// biome-ignore <rule>: <reason>` with the reason
 
 ## Deployment
 
@@ -113,7 +115,7 @@ pnpm docker:prod                      # 서버: pull 최신 이미지 + restart
 docker compose logs web --tail 100    # 서비스 로그
 ```
 
-The web app builds with `output: 'standalone'` (see `apps/web/next.config.ts`) and runs as a non-root Node process on port `3001` inside the `web` service in `docker-compose.yml`. `apps/web/Dockerfile` follows the same multi-stage pattern as `apps/stock-crawler/Dockerfile` (base → deps → build → production).
+The web app builds with `output: 'standalone'` (see `apps/web/next.config.js`) and runs as a non-root Node process on port `3001` inside the `web` service in `docker-compose.yml`. `apps/web/Dockerfile` follows the same multi-stage pattern as `apps/stock-crawler/Dockerfile` (base → deps → build → production).
 
 **Only use Next.js features that are supported by `output: 'standalone'`.** Do not add functionality that depends on Vercel-only infrastructure.
 

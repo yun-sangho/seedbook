@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-import { NetworkOnly, Serwist, type PrecacheEntry, type SerwistGlobalConfig } from "serwist";
+import { NetworkOnly, type PrecacheEntry, Serwist, type SerwistGlobalConfig } from "serwist";
 
 /**
  * Seedbook 서비스 워커 (`@serwist/next` 가 prod 빌드 시 public/sw.js 로 번들).
@@ -8,7 +8,7 @@ import { NetworkOnly, Serwist, type PrecacheEntry, type SerwistGlobalConfig } fr
  * 실행 속도를 높이고, 페이지·API 응답은 캐시하지 않는다. 네비게이션이 네트워크
  * 실패로 끝나면 precache 해 둔 `/offline` 안내 페이지를 보여준다.
  *
- * 페이지를 캐시하지 않는 또 다른 이유: middleware 가 UA 에 따라 같은 URL 에
+ * 페이지를 캐시하지 않는 또 다른 이유: proxy 가 UA 에 따라 같은 URL 에
  * 데스크탑/모바일(`/m`) 서로 다른 HTML 을 내려주므로, URL 키 캐시는 보기 전환
  * 쿠키를 바꿨을 때 엉뚱한 트리를 돌려줄 수 있다.
  */

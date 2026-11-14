@@ -3,12 +3,12 @@ import { createEntityRepo, selectRowsByIds } from "@web/server/sync/entity-repo"
 import type { SyncEntity } from "@web/server/sync/registry";
 import { eq, inArray } from "drizzle-orm";
 import {
+  type PortfolioData,
+  type PortfolioFields,
   parsePortfolioFields,
   portfolioAllocationRows,
   portfolioFieldsToColumns,
   portfolioRowToData,
-  type PortfolioData,
-  type PortfolioFields,
 } from "./portfolio-record";
 
 type PortfolioRow = typeof schema.portfolio.$inferSelect;

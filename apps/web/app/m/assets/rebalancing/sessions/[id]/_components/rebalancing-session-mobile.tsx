@@ -5,9 +5,9 @@ import { IconChevronDownSmallLine } from "@karrotmarket/react-monochrome-icon";
 import { Divider, Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 import {
-  sortOptionLabel,
-  SortSheet,
   type SortOptionList,
+  SortSheet,
+  sortOptionLabel,
 } from "@web/app/m/assets/investments/_components/investment-sheets";
 import { ConfirmDialog } from "@web/components/mobile/confirm-dialog";
 import { HeaderAction } from "@web/components/mobile/header-action";
@@ -21,8 +21,8 @@ import { stockPriceKey } from "@web/features/investments/utils/use-stock-prices"
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import type { RebalancingTask } from "@web/features/rebalancing/types/types";
 import {
-  toggleCollapsedSection,
   type RebalancingTaskSection,
+  toggleCollapsedSection,
 } from "@web/features/rebalancing/utils/collapsed-sections";
 import { priceAgeWarning } from "@web/features/rebalancing/utils/price-age";
 import { summarizeRebalancingPriceAsOf } from "@web/features/rebalancing/utils/rebalancing-price-as-of";
@@ -33,17 +33,17 @@ import {
   groupRebalancingTasks,
   isRebalancingCompleted,
   isRebalancingStopped,
+  type RebalancingTaskGroup,
   rebalancingProgress,
   rebalancingTaskStatus,
-  type RebalancingTaskGroup,
 } from "@web/features/rebalancing/utils/rebalancing-session";
 import {
-  sortRebalancingTasks,
   type RebalancingTaskSort,
+  sortRebalancingTasks,
 } from "@web/features/rebalancing/utils/sort-rebalancing-tasks";
 import {
-  rebalancingCashOutlook,
   type RebalancingCashOutlook,
+  rebalancingCashOutlook,
 } from "@web/features/rebalancing/utils/trade-cash-check";
 import { pushRebalancingCollapsedSections, pushRebalancingTaskSort } from "@web/lib/preferences";
 import { usePreferencesStore } from "@web/lib/preferences-store";
@@ -421,10 +421,9 @@ function useLeavingTasks(
   };
 
   // 매매 입력 화면에서 기록하고 돌아오면 (할 일이 바뀌면) 남긴 신호를 꺼내 애니메이션을 시작한다.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: tasks 가 바뀔 때 다시 돈다. markLeaving 은 렌더마다 새로 만들어지지만 상태 setter 와 ref 만 쓴다.
   useEffect(() => {
     for (const [id, from] of takeJustMoved()) markLeaving(id, from);
-    // markLeaving 은 렌더마다 새로 만들어지지만 상태 setter 와 ref 만 쓴다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks]);
 
   const notYetTaken = (tasks ?? []).flatMap((t) => {

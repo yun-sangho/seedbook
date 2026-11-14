@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { EntitySyncRunner } from "@web/components/entity-sync-runner";
 import { PreferencesSync } from "@web/components/preferences-sync";
 import { StorageModeSync } from "@web/components/storage-mode-sync";

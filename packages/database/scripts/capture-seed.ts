@@ -12,9 +12,9 @@
  *   SEED_PRICE_DAYS — StockPrice 를 최근 N 거래일만 덤프 (기본 5)
  */
 
-import { existsSync, mkdirSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import path, { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import path, { resolve } from "path";
 import { asc, desc, gte } from "drizzle-orm";
 import { db, schema } from "../src/client";
 
@@ -94,12 +94,12 @@ async function main(): Promise<void> {
     priceRowCount: prices.length,
   };
 
-  writeFileSync(resolve(SEED_DATA_DIR, "stocks.json"), JSON.stringify(stocks, replacer, 2) + "\n");
+  writeFileSync(resolve(SEED_DATA_DIR, "stocks.json"), `${JSON.stringify(stocks, replacer, 2)}\n`);
   writeFileSync(
     resolve(SEED_DATA_DIR, "stock-prices.json"),
-    JSON.stringify(prices, replacer, 2) + "\n"
+    `${JSON.stringify(prices, replacer, 2)}\n`
   );
-  writeFileSync(resolve(SEED_DATA_DIR, "meta.json"), JSON.stringify(meta, null, 2) + "\n");
+  writeFileSync(resolve(SEED_DATA_DIR, "meta.json"), `${JSON.stringify(meta, null, 2)}\n`);
 
   console.log(`[capture] wrote fixtures to ${SEED_DATA_DIR}`);
   console.log("[capture] meta:", meta);

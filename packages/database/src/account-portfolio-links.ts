@@ -1,4 +1,4 @@
-import { sql, type SQL } from "drizzle-orm";
+import { type SQL, sql } from "drizzle-orm";
 
 /** `db` 와 트랜잭션 `tx` 둘 다 받을 수 있는 최소 실행기. */
 type SqlExecutor = { execute: (query: SQL) => PromiseLike<unknown> };

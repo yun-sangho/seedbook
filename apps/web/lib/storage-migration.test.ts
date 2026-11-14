@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   downloadAllFromCloud,
   hasAnyLocalData,
-  uploadAllToCloud,
   type MigrationProgress,
+  uploadAllToCloud,
 } from "./storage-migration";
 import { CLOUD_STORE_KEYS } from "./storage-mode";
 
@@ -20,7 +20,7 @@ function mockFetch(handler: (call: FetchCall) => Response | Promise<Response>) {
     calls.push(entry);
     return handler(entry);
   };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
   (globalThis as any).fetch = impl as any;
   return calls;
 }
@@ -48,7 +48,7 @@ describe("hasAnyLocalData", () => {
 describe("uploadAllToCloud", () => {
   beforeEach(() => window.localStorage.clear());
   afterEach(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
     delete (globalThis as any).fetch;
   });
 
@@ -138,7 +138,7 @@ describe("uploadAllToCloud", () => {
 describe("downloadAllFromCloud", () => {
   beforeEach(() => window.localStorage.clear());
   afterEach(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
     delete (globalThis as any).fetch;
   });
 

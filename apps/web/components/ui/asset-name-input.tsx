@@ -88,6 +88,8 @@ export function AssetNameInput({
           </div>
         </div>
       ) : (
+        // biome-ignore lint/a11y/noStaticElementInteractions: 이름을 눌러도 편집되게 한 보조 영역 — 키보드는 안의 "이름 수정" 버튼으로 같은 동작을 한다.
+        // biome-ignore lint/a11y/useKeyWithClickEvents: 위와 같음.
         <div className="flex items-center" onClick={startEditing}>
           <span className={inputClassName}>{value}</span>
           <Button variant={"ghost"} type="button" aria-label="이름 수정" size={"icon"}>

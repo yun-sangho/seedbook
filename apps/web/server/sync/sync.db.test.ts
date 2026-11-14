@@ -1,4 +1,4 @@
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 import { openTestDb } from "@web/test/db/test-db";
 import { afterAll, describe, expect, it } from "vitest";
 import { applyMutation } from "./apply-mutation";

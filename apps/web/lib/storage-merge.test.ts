@@ -10,7 +10,7 @@ describe("mergeEnvelopes", () => {
 
     const merged = mergeEnvelopes("investment-storage", local, cloud);
 
-    expect(merged?.state.investments).toEqual([
+    expect(merged!.state.investments).toEqual([
       { id: "a", accountName: "local only" },
       { id: "b", accountName: "cloud only" },
     ]);
@@ -22,7 +22,7 @@ describe("mergeEnvelopes", () => {
 
     const merged = mergeEnvelopes("investment-storage", local, cloud);
 
-    expect(merged?.state.investments).toEqual([{ id: "a", accountName: "edited locally" }]);
+    expect(merged!.state.investments).toEqual([{ id: "a", accountName: "edited locally" }]);
   });
 
   it("orders local items first, then cloud-only items in cloud order", () => {
@@ -31,7 +31,7 @@ describe("mergeEnvelopes", () => {
 
     const merged = mergeEnvelopes("investment-storage", local, cloud);
 
-    expect((merged?.state.investments as Array<{ id: string }>).map((s) => s.id)).toEqual([
+    expect((merged!.state.investments as Array<{ id: string }>).map((s) => s.id)).toEqual([
       "b",
       "a",
       "c",
@@ -79,7 +79,7 @@ describe("mergeEnvelopes", () => {
     const merged = mergeEnvelopes("portfolio-storage", local, cloud);
 
     expect(
-      (merged?.state.portfolios as Array<{ id: string; accountIds: string[] }>).map((p) => [
+      (merged!.state.portfolios as Array<{ id: string; accountIds: string[] }>).map((p) => [
         p.id,
         p.accountIds,
       ])

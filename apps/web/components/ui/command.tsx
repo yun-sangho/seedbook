@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import type * as React from "react";
 import { cn } from "@web/lib/utils";
 import { Command as CommandPrimitive } from "cmdk";
 
@@ -84,4 +84,4 @@ function CommandItem({ className, ...props }: React.ComponentProps<typeof Comman
   );
 }
 
-export { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem };
+export { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList };

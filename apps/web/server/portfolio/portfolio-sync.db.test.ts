@@ -1,4 +1,4 @@
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 import { schema } from "@seedbook/database";
 import { portfolioTranslator } from "@web/app/api/storage/_translators/portfolio";
 import { applyMutation } from "@web/server/sync/apply-mutation";
@@ -147,7 +147,7 @@ describe("portfolio envelope translator (mode switching)", () => {
     });
 
     const envelope = await portfolioTranslator.read(db, userId);
-    expect((envelope?.state.portfolios as Array<{ id: string }>).map((p) => p.id)).toEqual([kept]);
+    expect((envelope!.state.portfolios as Array<{ id: string }>).map((p) => p.id)).toEqual([kept]);
     const { changes } = await pullChanges(db, userId, cursor);
     expect(changes.portfolio!.find((p) => p.id === dropped)).toMatchObject({
       deletedAt: expect.any(String),

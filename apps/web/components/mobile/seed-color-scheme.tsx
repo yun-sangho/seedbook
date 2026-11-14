@@ -29,5 +29,6 @@ export function SeedColorScheme() {
     };
   }, []);
 
+  // biome-ignore lint/security/noDangerouslySetInnerHtml: 첫 페인트 전에 색 모드를 정하는 고정 인라인 스크립트 (사용자 입력 없음).
   return <script dangerouslySetInnerHTML={{ __html: INLINE_SCRIPT }} />;
 }

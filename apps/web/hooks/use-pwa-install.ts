@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { isIOSUserAgent, resolveInstallMode, type InstallMode } from "@web/lib/pwa-install";
+import { type InstallMode, isIOSUserAgent, resolveInstallMode } from "@web/lib/pwa-install";
 
 /** Chromium 전용 이벤트라 lib.dom 에 타입이 없다. */
 interface BeforeInstallPromptEvent extends Event {
