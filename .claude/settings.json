@@ -6,5 +6,35 @@
     "playwright@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(pnpm lint)",
+      "Bash(pnpm check-types)",
+      "Bash(pnpm tsc --noEmit *)",
+      "Bash(pnpm exec vitest run *)",
+      "Bash(pnpm --filter @seedbook/web test)",
+      "Bash(pnpm exec tsc --noEmit *)",
+      "Bash(pnpm vitest run *)",
+      "Bash(pnpm format:check)",
+      "Bash(pnpm test)",
+      "Bash(pnpm exec biome lint *)",
+      "Bash(pnpm --filter @seedbook/web lint)",
+      "Bash(pnpm --filter @seedbook/stock-crawler test)",
+      "Bash(docker compose -f docker-compose.dev.yml ps *)",
+      "Bash(docker compose -f docker-compose.dev.yml logs *)",
+      "Bash(pnpm format)",
+      "Bash(pnpm prettier --write *)",
+      "Bash(pnpm exec prettier --write *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(pnpm db:generate)",
+      "Bash(pnpm --filter @seedbook/database db:generate)",
+      "Bash(pnpm db:seed:reset)",
+      "Bash(pnpm test:db)",
+      "Bash(pnpm --filter @seedbook/web test:db)",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "mcp__plugin_playwright_playwright__browser_console_messages"
+    ]
   }
 }
