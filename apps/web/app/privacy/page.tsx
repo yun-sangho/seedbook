@@ -94,6 +94,10 @@ export default function PrivacyPage() {
             <li>Supabase, Inc.: 데이터베이스 운영 및 보관</li>
             <li>㈜카카오: 카카오 계정을 이용한 로그인(본인 확인)</li>
           </ul>
+          <p>
+            데이터베이스는 Supabase 의 서울 리전(대한민국)에 보관하며, 회사는 이용자의 개인정보를
+            국외로 이전하지 않습니다.
+          </p>
         </Section>
 
         <Section title="6. 개인정보의 파기 절차 및 방법">
