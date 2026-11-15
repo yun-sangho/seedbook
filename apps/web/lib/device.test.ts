@@ -193,6 +193,10 @@ describe("decideMobileRoute", () => {
     expect(decideMobileRoute("/", "mobile")).toEqual({ type: "pass" });
   });
 
+  it("serves the public privacy policy as-is on mobile", () => {
+    expect(decideMobileRoute("/privacy", "mobile")).toEqual({ type: "pass" });
+  });
+
   it("does not treat a path that merely shares a prefix as an app page", () => {
     expect(decideMobileRoute("/assetsfoo", "mobile")).toEqual({ type: "pass" });
   });

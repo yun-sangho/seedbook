@@ -186,6 +186,11 @@ jobs:
           BETTER_AUTH_URL: ${{ vars.BETTER_AUTH_URL }}
           KAKAO_CLIENT_ID: ${{ secrets.KAKAO_CLIENT_ID }}
           KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
+          APPLE_CLIENT_ID: ${{ vars.APPLE_CLIENT_ID }}
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          APPLE_KEY_ID: ${{ vars.APPLE_KEY_ID }}
+          APPLE_PRIVATE_KEY_BASE64: ${{ secrets.APPLE_PRIVATE_KEY_BASE64 }}
+          APPLE_APP_BUNDLE_ID: ${{ vars.APPLE_APP_BUNDLE_ID }}
           WEB_PORT: ${{ vars.WEB_PORT || '127.0.0.1:3001' }}
           CRON_MORNING: ${{ vars.CRON_MORNING }}
           CRON_AFTERNOON: ${{ vars.CRON_AFTERNOON }}
@@ -194,7 +199,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ env.DEPLOY_PORT }}
-          envs: WEB_IMAGE_TAG,CRAWLER_IMAGE_TAG,DATABASE_URL,BETTER_AUTH_SECRET,BETTER_AUTH_URL,KAKAO_CLIENT_ID,KAKAO_CLIENT_SECRET,WEB_PORT,CRON_MORNING,CRON_AFTERNOON
+          envs: WEB_IMAGE_TAG,CRAWLER_IMAGE_TAG,DATABASE_URL,BETTER_AUTH_SECRET,BETTER_AUTH_URL,KAKAO_CLIENT_ID,KAKAO_CLIENT_SECRET,APPLE_CLIENT_ID,APPLE_TEAM_ID,APPLE_KEY_ID,APPLE_PRIVATE_KEY_BASE64,APPLE_APP_BUNDLE_ID,WEB_PORT,CRON_MORNING,CRON_AFTERNOON
           command_timeout: 8m
           script_stop: true
           # ${{ env.DEPLOY_PATH }} 가 ~ 로 시작할 수 있으므로 따옴표를 두르지
@@ -231,11 +236,17 @@ jobs:
             BETTER_AUTH_URL=$(strip "$BETTER_AUTH_URL")
             KAKAO_CLIENT_ID=$(strip "$KAKAO_CLIENT_ID")
             KAKAO_CLIENT_SECRET=$(strip "$KAKAO_CLIENT_SECRET")
+            APPLE_CLIENT_ID=$(strip "$APPLE_CLIENT_ID")
+            APPLE_TEAM_ID=$(strip "$APPLE_TEAM_ID")
+            APPLE_KEY_ID=$(strip "$APPLE_KEY_ID")
+            APPLE_PRIVATE_KEY_BASE64=$(strip "$APPLE_PRIVATE_KEY_BASE64")
+            APPLE_APP_BUNDLE_ID=$(strip "$APPLE_APP_BUNDLE_ID")
             WEB_PORT=$(strip "$WEB_PORT")
             CRON_MORNING=$(strip "$CRON_MORNING")
             CRON_AFTERNOON=$(strip "$CRON_AFTERNOON")
             export WEB_IMAGE_TAG CRAWLER_IMAGE_TAG DATABASE_URL BETTER_AUTH_SECRET BETTER_AUTH_URL \
-              KAKAO_CLIENT_ID KAKAO_CLIENT_SECRET WEB_PORT CRON_MORNING CRON_AFTERNOON
+              KAKAO_CLIENT_ID KAKAO_CLIENT_SECRET APPLE_CLIENT_ID APPLE_TEAM_ID APPLE_KEY_ID \
+              APPLE_PRIVATE_KEY_BASE64 APPLE_APP_BUNDLE_ID WEB_PORT CRON_MORNING CRON_AFTERNOON
 
             # 추가로 .env 파일에도 동일 값을 0600 권한으로 저장 — 이후 사용자가
             # SSH 로 직접 docker compose ... 명령을 실행할 때 env 가 비어있어
@@ -249,6 +260,11 @@ jobs:
               printf 'BETTER_AUTH_URL=%s\n' "$BETTER_AUTH_URL"
               printf 'KAKAO_CLIENT_ID=%s\n' "$KAKAO_CLIENT_ID"
               printf 'KAKAO_CLIENT_SECRET=%s\n' "$KAKAO_CLIENT_SECRET"
+              printf 'APPLE_CLIENT_ID=%s\n' "$APPLE_CLIENT_ID"
+              printf 'APPLE_TEAM_ID=%s\n' "$APPLE_TEAM_ID"
+              printf 'APPLE_KEY_ID=%s\n' "$APPLE_KEY_ID"
+              printf 'APPLE_PRIVATE_KEY_BASE64=%s\n' "$APPLE_PRIVATE_KEY_BASE64"
+              printf 'APPLE_APP_BUNDLE_ID=%s\n' "$APPLE_APP_BUNDLE_ID"
               printf 'WEB_PORT=%s\n' "$WEB_PORT"
               printf 'CRON_MORNING=%s\n' "$CRON_MORNING"
               printf 'CRON_AFTERNOON=%s\n' "$CRON_AFTERNOON"
