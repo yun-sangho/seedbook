@@ -1,5 +1,10 @@
 import { type NextRequest, NextResponse, userAgent } from "next/server";
-import { decideMobileRoute, resolveDeviceKind, VIEW_OVERRIDE_COOKIE } from "@web/lib/device";
+import {
+  decideMobileRoute,
+  isNativeAppUserAgent,
+  resolveDeviceKind,
+  VIEW_OVERRIDE_COOKIE,
+} from "@web/lib/device";
 
 /**
  * UA 기반 모바일/데스크탑 분기. 모바일은 URL 을 유지한 채 `/m/...` 트리(SEED
@@ -12,7 +17,9 @@ export function proxy(request: NextRequest) {
     userAgent: agent.ua,
     override: request.cookies.get(VIEW_OVERRIDE_COOKIE)?.value,
   });
-  const decision = decideMobileRoute(request.nextUrl.pathname, kind);
+  const decision = decideMobileRoute(request.nextUrl.pathname, kind, {
+    nativeApp: isNativeAppUserAgent(agent.ua),
+  });
 
   if (decision.type === "pass") return NextResponse.next();
 
