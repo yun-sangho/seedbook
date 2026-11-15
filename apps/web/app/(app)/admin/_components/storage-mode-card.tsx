@@ -83,7 +83,7 @@ export function StorageModeCard() {
 
   async function requestToCloud() {
     // 로컬 데이터가 아예 없으면 업로드 단계를 완전히 스킵.
-    if (!hasAnyLocalData()) {
+    if (!(await hasAnyLocalData())) {
       setStorageMode("cloud");
       await pushStorageModeToServer("cloud");
       window.location.reload();

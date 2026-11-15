@@ -4,6 +4,7 @@
 // 이 import 가 store 파일보다 앞서 실행되도록 hybrid-storage 가 소유한다.
 import "./local-id-upgrade";
 import type { StateStorage } from "zustand/middleware";
+import { type EnvelopeStore, getLocalEnvelopeStore } from "./local-envelope-store";
 import { getStorageMode } from "./storage-mode";
 import { loadManagedStoreFromServer } from "./sync/initial-load";
 import { recordPersistedChange } from "./sync/local-change-recorder";
@@ -12,7 +13,8 @@ import { getManagedStoreConfig } from "./sync/managed-stores";
 /**
  * 하이브리드 저장소 어댑터 — Zustand persist 미들웨어의 `StateStorage`.
  *
- *   - `local` 모드: localStorage 에 동기적으로 읽고 쓴다.
+ *   - `local` 모드: 이 기기의 envelope 저장소에 읽고 쓴다 (`local-envelope-store.ts` —
+ *     브라우저는 localStorage 동기, 네이티브 앱은 SQLite 비동기).
  *
  *   - `cloud` 모드: persist storage 는 로컬 캐시만 맡고, 서버와는 엔티티 동기화로 주고받는다
  *     (`lib/sync/managed-stores.ts` 에 등록된 store).
@@ -28,35 +30,10 @@ import { getManagedStoreConfig } from "./sync/managed-stores";
 // 한 같은 세션 안에선 이 값이 바뀌지 않는다.
 const mode = typeof window === "undefined" ? "local" : getStorageMode();
 
-function readCache(key: string): string | null {
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
+/** 이 기기의 envelope 저장소 — 브라우저는 localStorage, 네이티브 앱은 SQLite. */
+function envelopes(): EnvelopeStore {
+  return getLocalEnvelopeStore();
 }
-
-function writeCache(key: string, value: string): void {
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {
-    // quota / private mode — 조용히 무시
-  }
-}
-
-function removeCache(key: string): void {
-  try {
-    window.localStorage.removeItem(key);
-  } catch {
-    // noop
-  }
-}
-
-const localStorageAdapter: StateStorage = {
-  getItem: (name) => readCache(name),
-  setItem: (name, value) => writeCache(name, value),
-  removeItem: (name) => removeCache(name),
-};
 
 /**
  * 특정 store key 에 묶인 `StateStorage` 인스턴스를 만든다.
@@ -72,22 +49,36 @@ const localStorageAdapter: StateStorage = {
 export function createHybridStorage(key: string): StateStorage {
   const managed = mode === "cloud" ? getManagedStoreConfig(key) : null;
   // local 모드 — 또는 동기화 설정이 없는 store 는 이 브라우저에만 저장한다.
-  if (!managed) return localStorageAdapter;
+  if (!managed) {
+    return {
+      getItem: (name) => envelopes().getItem(name),
+      setItem: (name, value) => envelopes().setItem(name, value),
+      removeItem: (name) => envelopes().removeItem(name),
+    };
+  }
 
   let lastPersisted: string | null = null;
   return {
     getItem: async (name) => {
-      const cached = readCache(name || key);
+      const cached = await envelopes().getItem(name || key);
       const fromServer = await loadManagedStoreFromServer(managed, cached);
       lastPersisted = fromServer ?? cached;
-      if (fromServer !== null) writeCache(name || key, fromServer);
+      if (fromServer !== null) await envelopes().setItem(name || key, fromServer);
       return lastPersisted;
     },
     setItem: (name, value) => {
-      recordPersistedChange(managed, lastPersisted ?? readCache(name || key), value);
+      const previous = lastPersisted ?? envelopes().getItem(name || key);
       lastPersisted = value;
-      writeCache(name || key, value);
+      // 브라우저는 동기로 끝난다. 네이티브 앱(SQLite)에서 직전 저장본을 아직 모를 때만 기다린다.
+      if (!(previous instanceof Promise)) {
+        recordPersistedChange(managed, previous, value);
+        return envelopes().setItem(name || key, value);
+      }
+      return previous.then((cached) => {
+        recordPersistedChange(managed, cached, value);
+        return envelopes().setItem(name || key, value);
+      });
     },
-    removeItem: (name) => removeCache(name || key),
+    removeItem: (name) => envelopes().removeItem(name || key),
   };
 }

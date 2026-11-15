@@ -67,4 +67,19 @@ describe("deleteAccount", () => {
 
     expect(result).toBe("failed");
   });
+
+  it("waits for the app database to be cleared before reporting the account deleted", async () => {
+    const data = new Map([["investment-storage", "{}"]]);
+    const storage = {
+      clear: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        data.clear();
+      },
+    };
+
+    const result = await deleteAccount({ deleteUser: async () => ({ error: null }) }, storage);
+
+    expect(result).toBe("deleted");
+    expect(data.size).toBe(0);
+  });
 });

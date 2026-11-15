@@ -40,9 +40,13 @@ pnpm --filter @seedbook/mobile open:android
 
 ```bash
 CAP_SERVER_URL=http://localhost:3001 pnpm mobile:sync   # iOS 시뮬레이터
-CAP_SERVER_URL=http://10.0.2.2:3001 pnpm mobile:sync    # Android 에뮬레이터
+adb reverse tcp:3001 tcp:3001 && \
+  CAP_SERVER_URL=http://localhost:3001 pnpm mobile:sync # Android 에뮬레이터·USB 기기
 CAP_SERVER_URL=http://<맥 LAN IP>:3001 pnpm mobile:sync # 같은 Wi-Fi 의 실기기
 ```
+
+`localhost` 가 아닌 http 주소(`10.0.2.2`, LAN IP)는 보안 컨텍스트가 아니라 `crypto.randomUUID` 가
+없어 계좌 추가 같은 쓰기가 실패한다. Android 는 `adb reverse` 로 localhost 를 쓰는 게 좋다.
 
 Next dev 서버는 localhost 가 아닌 호스트의 개발용 리소스를 막는다. `10.0.2.2` 는
 `next.config.js` 의 `allowedDevOrigins` 에 들어 있고, 실기기는
@@ -59,6 +63,18 @@ Android Studio 에서는 Settings → Build Tools → Gradle → Gradle JDK 를 
 
 `capacitor.config.json` 은 sync 때 만들어져 커밋되지 않는다 — 운영 주소로 돌아가려면 env 없이 다시
 `sync` 한다. 개발 로그인(`/api/auth/dev-login`)은 dev 서버에서만 동작한다.
+
+## 기기 저장소
+
+앱에서는 "이 기기에만 저장"(local 모드) 자산 데이터와 cloud 모드 캐시를 WebView localStorage 가
+아닌 **SQLite** (`@capacitor-community/sqlite`, DB 이름 `seedbook`, 테이블 `kv`) 에 둔다 — OS 가
+저장 공간이 부족할 때 WebView 저장소를 지울 수 있기 때문이다. 웹 쪽 구현은
+`apps/web/lib/local-envelope-store.ts`. 이전 빌드가 localStorage 에 남긴 값은 처음 읽을 때 SQLite 로
+옮기고, 플러그인이 없는 빌드에서는 localStorage 로 돌아간다. 동기화 대기열·화면 설정 같은 작은
+기기 상태는 localStorage 에 남는다.
+
+Android 에뮬레이터에서 확인: `adb exec-out run-as ing.boogie.seedbook cat databases/seedbookSQLite.db > app.db`
+뒤 `sqlite3 app.db "select key, length(value) from kv;"`.
 
 ## 확인이 필요한 것 (실기기)
 
