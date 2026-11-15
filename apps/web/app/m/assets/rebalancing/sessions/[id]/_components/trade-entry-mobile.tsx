@@ -163,7 +163,8 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
           task.quantity === null ? null : differs ? (
             // 권장 수량은 시작할 때 계산한 계획이라, 다르게 사고팔면 그 차이는 다른 매매에 반영되지 않는다.
             <span className="text-fg-warning">
-              권장 {formatWithCommas(task.quantity)}주와 달라요 · 예수금이 남거나 모자랄 수 있어요
+              권장 {formatWithCommas(task.quantity)}주와 달라요 · 주문가능금액이 남거나 모자랄 수
+              있어요
             </span>
           ) : (
             `권장 ${formatWithCommas(task.quantity)}주`
@@ -194,7 +195,7 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
           </SummaryRow>
         )}
         {cash && (
-          <SummaryRow label="예수금">
+          <SummaryRow label="주문가능금액">
             <span className="text-fg-neutral-muted font-normal">
               {formatWithCommas(cash.before)}원 →{" "}
             </span>

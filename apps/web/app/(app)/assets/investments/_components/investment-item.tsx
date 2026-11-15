@@ -429,11 +429,11 @@ export function InvestmentItemComponent({
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    현금 / 예수금
+                    현금성 자산
                   </span>
                   {cashItems.length > 0 && (
                     <span className="text-sm text-muted-foreground">
-                      {/* 예수금은 만원 단위로 줄이지 않고 1원 단위까지 보여준다. */}
+                      {/* 현금성 자산은 만원 단위로 줄이지 않고 1원 단위까지 보여준다. */}
                       {formatWithCommas(cashTotal)}원
                     </span>
                   )}

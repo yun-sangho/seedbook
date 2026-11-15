@@ -441,7 +441,7 @@ function useLeavingTasks(
 function CashOutlook({ cash, cashDelta }: { cash: RebalancingCashOutlook; cashDelta: number }) {
   return (
     <section className="px-x4 py-x4">
-      <p className="t3-regular text-fg-neutral-muted">남은 예수금</p>
+      <p className="t3-regular text-fg-neutral-muted">남은 주문가능금액</p>
       <p className={cn("t7-bold mt-[2px] tabular-nums", cash.now < 0 && "text-fg-critical")}>
         {formatSignedWon(cash.now)}
       </p>

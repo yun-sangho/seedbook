@@ -274,7 +274,7 @@ describe("computeRebalancingGap", () => {
       const result = computeRebalancingGap([a], perStock, 750_000, 0, { cashBalance: 250_000 });
 
       expect(result.cashRow).toMatchObject({
-        name: "예수금",
+        name: "주문가능금액",
         targetPercent: 0,
         targetValue: 0,
         actualValue: 250_000,

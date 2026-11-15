@@ -86,7 +86,7 @@ export function AddAccountSheet({ open, onOpenChange }: AddAccountSheetProps) {
               <ListButtonItem
                 prefix={<Icon svg={<IconPlusCircleLine />} />}
                 title="빈 계좌로 시작"
-                detail="예수금만 있는 계좌"
+                detail="현금성 자산만 있는 계좌"
                 onClick={() => create(accountType)}
               />
             </List>

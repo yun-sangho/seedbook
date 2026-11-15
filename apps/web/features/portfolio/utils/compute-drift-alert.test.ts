@@ -66,7 +66,12 @@ describe("computeDriftAlert (absolute)", () => {
   it("flags idle cash over the threshold as a breach", () => {
     const summary = {
       rows: [row({ actualPercent: 49 })],
-      cashRow: row({ allocationId: "cash", name: "예수금", targetPercent: 0, actualPercent: 20 }),
+      cashRow: row({
+        allocationId: "cash",
+        name: "주문가능금액",
+        targetPercent: 0,
+        actualPercent: 20,
+      }),
     };
     const alert = computeDriftAlert(summary, absolute(5));
     expect(alert.breachedRows.map((r) => r.allocationId)).toEqual(["cash"]);

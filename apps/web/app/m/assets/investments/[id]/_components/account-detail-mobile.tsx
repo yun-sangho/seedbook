@@ -54,7 +54,7 @@ import { AccountSettingsSheet, EditAmountSheet, EditHoldingSheet } from "./accou
 
 type Editing =
   | { kind: "initial" }
-  | { kind: "deposit" }
+  | { kind: "cash" }
   | { kind: "settings" }
   | { kind: "holding"; id: string }
   | { kind: "add-holding" }
@@ -65,6 +65,9 @@ type Editing =
 type Tab = "holdings" | "records";
 
 const RECORDS_PREVIEW = 10;
+
+/** 계좌의 현금 항목 합계를 부르는 이름. 예수금·주문가능금액·CMA 등을 따로 구분하지 않는다. */
+const CASH_LABEL = "현금성 자산";
 
 // 보유 종목 행: 위아래 16px, 구분선은 좌우 16px 들여서 (SEED 기본 12px / 전체 폭보다 여유 있게).
 const HOLDING_ROW_STYLE: CSSProperties = {
@@ -114,6 +117,7 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
   const removeStockHolding = useInvestmentStore((s) => s.removeStockHolding);
   const addCashItem = useInvestmentStore((s) => s.addCashItem);
   const updateCashItem = useInvestmentStore((s) => s.updateCashItem);
+  const removeCashItem = useInvestmentStore((s) => s.removeCashItem);
   const holdingsSortOption = useInvestmentStore((s) => s.holdingsSortOption);
   const setHoldingsSortOption = useInvestmentStore((s) => s.setHoldingsSortOption);
 
@@ -135,10 +139,10 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
     markHistoryDirty,
   } = useAccountValuation(item, { onSyncCurrentValue: syncCurrentValue });
 
-  // 모바일은 예수금을 하나로 다룬다: 첫 현금 항목(기본 예수금)을 고친다. PC 에서 만든
-  // 추가 현금 항목이 있으면 합계에는 포함하되 여기서는 건드리지 않는다.
-  const [deposit, ...otherCash] = cashItems;
-  const otherCashTotal = cashTotal - (deposit?.amount ?? 0);
+  // 모바일은 현금 항목을 나누지 않고 "현금성 자산" 합계 하나로 다룬다 — 증권사 앱의 예수금과
+  // 주문가능금액이 서로 다를 수 있어 둘 중 하나로 부르지 않는다. PC 에서 항목을 여러 개 만들었으면
+  // 합계를 고칠 때 첫 항목 하나로 합친다.
+  const [firstCash, ...otherCash] = cashItems;
 
   // 데스크탑 카드와 같이 현재 시세 기반 합계를 보여준다. 보유/현금이 없으면 저장값
   // (`liveAccountValue` 와 같은 규칙 — 목록·합계도 이 값을 쓴다).
@@ -174,9 +178,10 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
   const holdingPrice = (market: string, ticker: string) =>
     market && ticker ? (prices.get(stockPriceKey(market, ticker))?.close ?? null) : null;
 
-  const saveDeposit = (draft: string) => {
-    if (deposit) {
-      updateCashItem(item.id, deposit.id, "amount", draft);
+  const saveCashTotal = (draft: string) => {
+    if (firstCash) {
+      updateCashItem(item.id, firstCash.id, "amount", draft);
+      for (const cash of otherCash) removeCashItem(item.id, cash.id);
     } else {
       const amount = parseNumericString(draft);
       addCashItem(item.id, {
@@ -190,7 +195,7 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
   return (
     <div className="pb-x4">
       <PriceAsOfBanner prices={prices} />
-      {/* 평가금액 → 수익 → 투자원금·예수금 순서. 상세라서 만원 단위로 줄이지 않고 1원까지 보여준다. */}
+      {/* 평가금액 → 수익 → 투자원금·현금성 자산 순서. 상세라서 만원 단위로 줄이지 않고 1원까지 보여준다. */}
       <div>
         <section className="px-x4 pt-x4 pb-x3">
           <p className="flex flex-wrap items-baseline gap-x-x2">
@@ -205,7 +210,7 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
           <p className={`t4-medium mt-x1 tabular-nums ${profitToneClass(profit)}`}>
             {formatProfitWon(profit)} ({formatReturnRate(returnRate)})
           </p>
-          {/* 투자원금·예수금은 수익 아래 테두리 박스 안에 한 줄씩. 각 줄 오른쪽 [수정] 버튼으로 편집한다. */}
+          {/* 투자원금·현금성 자산은 수익 아래 테두리 박스 안에 한 줄씩. 각 줄 오른쪽 [수정] 버튼으로 편집한다. */}
           <div className="border-stroke-neutral-muted rounded-r3 mt-x3 border-2 flex flex-col gap-y-x3 px-x4 py-x3">
             <InlineAmount
               label="투자원금"
@@ -215,16 +220,11 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
               onEdit={() => setEditing({ kind: "initial" })}
             />
             <InlineAmount
-              label={DEFAULT_CASH_LABEL}
-              value={`${formatWithCommas(deposit?.amount ?? 0)}원`}
-              onEdit={() => setEditing({ kind: "deposit" })}
+              label={CASH_LABEL}
+              value={`${formatWithCommas(cashTotal)}원`}
+              onEdit={() => setEditing({ kind: "cash" })}
             />
           </div>
-          {otherCash.length > 0 && (
-            <p className="t2-regular text-fg-neutral-subtle mt-[2px]">
-              PC에서 추가한 현금 {formatWithCommas(otherCashTotal)}원 별도
-            </p>
-          )}
         </section>
 
         <LinkedPortfolioChip accountId={item.id} status={linkedPortfolio} />
@@ -395,11 +395,16 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
         onSave={(value) => updateInvestment(item.id, "initialInvestment", value)}
       />
       <EditAmountSheet
-        key={`deposit-${editing?.kind === "deposit"}`}
-        {...sheetProps(editing?.kind === "deposit")}
-        title={DEFAULT_CASH_LABEL}
-        value={deposit?.amount ?? 0}
-        onSave={saveDeposit}
+        key={`cash-${editing?.kind === "cash"}`}
+        {...sheetProps(editing?.kind === "cash")}
+        title={CASH_LABEL}
+        description={
+          otherCash.length > 0
+            ? `PC에서 나눠 둔 현금 항목 ${cashItems.length}개가 하나로 합쳐져요.`
+            : "예수금·CMA·MMF 등 바로 쓸 수 있는 현금을 합친 금액이에요."
+        }
+        value={cashTotal}
+        onSave={saveCashTotal}
       />
       {editingHolding && (
         <EditHoldingSheet

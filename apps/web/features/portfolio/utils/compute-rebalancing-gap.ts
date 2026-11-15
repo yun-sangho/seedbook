@@ -163,7 +163,7 @@ function buildCashRow(cashValue: number, baseValue: number): RebalancingGapRow {
     allocationId: CASH_ROW_ID,
     market: "",
     ticker: "",
-    name: "예수금",
+    name: "주문가능금액",
     targetPercent: 0,
     actualPercent,
     gapPercent: -actualPercent,

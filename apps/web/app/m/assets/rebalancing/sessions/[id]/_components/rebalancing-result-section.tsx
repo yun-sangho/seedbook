@@ -68,7 +68,7 @@ export function RebalancingResultSection({
         })}
         <li className="py-x3">
           <div className="flex items-baseline gap-x3">
-            <span className="t5-medium min-w-0 flex-1">예수금</span>
+            <span className="t5-medium min-w-0 flex-1">주문가능금액</span>
             <span className="t5-bold shrink-0 tabular-nums">
               {formatPercent(result.cashPercent)}
             </span>

@@ -46,7 +46,7 @@ function SheetActions({ onSave, onDelete }: { onSave: () => void; onDelete?: () 
   );
 }
 
-/** 금액 하나를 고치는 시트 (투자원금, 예수금). */
+/** 금액 하나를 고치는 시트 (투자원금, 현금성 자산). */
 export function EditAmountSheet({
   open,
   onOpenChange,
@@ -188,7 +188,7 @@ export function AccountSettingsSheet({
                 suffix="%"
                 invalid={sellCost === null}
                 errorMessage={sellCost === null ? "100% 미만으로 입력해 주세요" : undefined}
-                description="매도할 때 세금·수수료로 빠지는 비율이에요. 리밸런싱에서 매도 대금은 이만큼 빼고 예수금에 들어와요."
+                description="매도할 때 세금·수수료로 빠지는 비율이에요. 리밸런싱에서 매도 대금은 이만큼 빼고 현금성 자산에 들어와요."
               >
                 <TextFieldInput inputMode="decimal" placeholder="0" />
               </TextField>

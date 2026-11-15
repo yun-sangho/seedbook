@@ -189,7 +189,7 @@ function ApplyPreview({
       })}
       {cashChanged && (
         <ChangeRow
-          label={cash.label}
+          label="주문가능금액"
           before={`${formatWithCommas(cash.before)}원`}
           after={`${formatWithCommas(cash.after)}원`}
         />

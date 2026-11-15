@@ -146,7 +146,8 @@ export function AccountRebalancingMobile({
 
       <SummaryGrid
         items={[
-          { label: "현재 평가액 (예수금 포함)", value: summary.currentBaseValue + cashBalance },
+          // 기준 금액(포트폴리오 종목 + 현금)은 계좌 총액과 헷갈려 보여주지 않는다.
+          { label: "주문가능금액", value: cashBalance },
         ]}
       />
       {!isEmpty && (
@@ -159,7 +160,7 @@ export function AccountRebalancingMobile({
 
       {isEmpty ? (
         <p className="t4-regular text-fg-neutral-subtle px-x4 py-x6 text-center">
-          이 계좌에 보유 종목과 예수금이 없습니다. 종목을 추가하거나 투입 금액을 입력하세요.
+          이 계좌에 보유 종목과 주문가능금액이 없습니다. 종목을 추가하거나 투입 금액을 입력하세요.
         </p>
       ) : (
         <section className="py-x4">
@@ -356,7 +357,7 @@ function DriftRows({
                 />
                 <div className="min-w-0 flex-1">
                   <p className="t4-regular truncate">
-                    {isCash ? "예수금" : row.name || "(미선택)"}
+                    {isCash ? "주문가능금액" : row.name || "(미선택)"}
                   </p>
                   <p className="t3-regular text-fg-neutral-subtle">
                     <PercentLine row={row} rule={rule} />
