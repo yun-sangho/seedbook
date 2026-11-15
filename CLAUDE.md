@@ -89,6 +89,16 @@ DB integration tests (`*.db.test.ts`, e.g. storage translators) run against real
 
 구현이 끝나면 테스트 통과와 별개로 **ego-lite 브라우저(`ego-browser` 스킬)로 로컬 환경에서 직접 QA 한다.** 호스트에서 `pnpm dev` (+ 필요하면 `pnpm db:dev:up` / `pnpm docker:dev`) 로 띄운 `localhost:3001` 에 접속해 바뀐 화면·흐름을 실제로 조작하고 결과를 확인한다. 모바일 화면(`/m/...`)을 바꿨다면 모바일 뷰포트로 확인한다. QA 하지 못했다면 (로그인 불가, 데이터 없음 등) 그 사실과 이유를 명시한다.
 
+## Git workflow (작업 완료 후 커밋·PR)
+
+사용자는 Herdr 모바일 앱으로 원격 지시하는 경우가 많다. 확인 질문 없이 끝까지 진행한다.
+
+- 작업이 끝나면 (테스트·lint·타입 통과, 필요한 QA 완료) **묻지 않고 커밋한다.** 하나의 논리적 변경 = 한 커밋. 메시지는 기존 형식 (`feat(web): ...`, `fix(...)`, `chore: ...`, `test(...)`, 영어 명령형) 을 따른다.
+- `main` 에서 작업 중이면 커밋 전에 브랜치를 만든다 (`feat/…`, `fix/…`, `chore/…`).
+- 커밋 후 브랜치를 `origin` 에 push 하고 `gh pr create` 로 PR 을 연다. PR 본문에 변경 요약, 테스트 결과, QA 여부(못 했으면 이유)를 적는다.
+- **`main` 에 직접 push, force push, PR 머지는 하지 않는다** — `main` push 는 곧 프로덕션 배포다. 머지는 사용자가 한다.
+- 커밋하지 않을 때: 작업이 실패했거나 미완성일 때, 사용자가 "커밋하지 마" 라고 했을 때. 이 경우 그 이유를 보고한다.
+
 ## Conventions
 
 - Types: prefer explicit nullable (`number | null`) for missing chart points (Recharts `connectNulls=false`)
