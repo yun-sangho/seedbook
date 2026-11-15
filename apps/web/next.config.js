@@ -20,6 +20,14 @@ const nextConfig = {
   watchOptions: process.env.NEXT_DEV_POLL_INTERVAL_MS
     ? { pollIntervalMs: Number(process.env.NEXT_DEV_POLL_INTERVAL_MS) }
     : undefined,
+  // 네이티브 앱(apps/mobile)을 로컬 dev 서버에 붙일 때 localhost 가 아닌 호스트로 접속한다
+  // (Android 에뮬레이터 → 10.0.2.2, 실기기 → 맥 LAN IP). dev 서버는 기본적으로 다른 호스트의
+  // 개발용 리소스 요청을 막아 화면이 하이드레이션되지 않으므로 허용해 둔다. 프로덕션에는 영향 없음.
+  // 실기기는 `NEXT_DEV_ALLOWED_ORIGINS=192.168.0.10 pnpm dev` 처럼 추가한다.
+  allowedDevOrigins: [
+    "10.0.2.2",
+    ...(process.env.NEXT_DEV_ALLOWED_ORIGINS?.split(",").map((host) => host.trim()) ?? []),
+  ],
   typescript: {
     ignoreBuildErrors: true,
   },

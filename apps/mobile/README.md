@@ -36,11 +36,26 @@ pnpm --filter @seedbook/mobile open:ios    # Xcode 로 열어 시뮬레이터/�
 pnpm --filter @seedbook/mobile open:android
 ```
 
-로컬 서버로 띄우기 (같은 Wi-Fi 의 실제 기기나 시뮬레이터에서 호스트 `pnpm dev` 에 접속):
+로컬 dev 서버로 띄우기 — 기기에서 본 호스트 주소를 쓴다:
 
 ```bash
-CAP_SERVER_URL=http://<맥 LAN IP>:3001 pnpm --filter @seedbook/mobile sync
+CAP_SERVER_URL=http://localhost:3001 pnpm mobile:sync   # iOS 시뮬레이터
+CAP_SERVER_URL=http://10.0.2.2:3001 pnpm mobile:sync    # Android 에뮬레이터
+CAP_SERVER_URL=http://<맥 LAN IP>:3001 pnpm mobile:sync # 같은 Wi-Fi 의 실기기
 ```
+
+Next dev 서버는 localhost 가 아닌 호스트의 개발용 리소스를 막는다. `10.0.2.2` 는
+`next.config.js` 의 `allowedDevOrigins` 에 들어 있고, 실기기는
+`NEXT_DEV_ALLOWED_ORIGINS=<맥 LAN IP> pnpm dev` 로 띄운다.
+
+Android 빌드는 **JDK 21** 이 필요하다 (Capacitor 8 / Gradle 8.14 는 JDK 25 에서 돌지 않는다):
+
+```bash
+brew install openjdk@21
+JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ./gradlew assembleDebug  # android/ 에서
+```
+
+Android Studio 에서는 Settings → Build Tools → Gradle → Gradle JDK 를 21 로 고른다.
 
 `capacitor.config.json` 은 sync 때 만들어져 커밋되지 않는다 — 운영 주소로 돌아가려면 env 없이 다시
 `sync` 한다. 개발 로그인(`/api/auth/dev-login`)은 dev 서버에서만 동작한다.
