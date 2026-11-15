@@ -35,6 +35,8 @@ import { markJustMoved } from "./just-moved-tasks";
  * - 대기: 증권사에 넣은 주문 수량·주문가를 "주문 기록" 으로 남긴다. 시장가처럼 바로 체결됐으면
  *   "바로 체결" 로 건너뛴다.
  * - 주문: 주문 값이 채워져 있어 대부분 그대로 "체결 기록" 만 누른다. "주문 취소" 로 대기로 돌린다.
+ *   주문 내역의 "정정" 으로 주문 수량·주문가를 고친다 (증권사 앱의 정정/취소와 같은 흐름). 정정은
+ *   따로 들어가야 한다 — 체결 입력을 주문과 다르게 고친 게 정정인지 다른 값으로 체결된 건지 알 수 없다.
  * - 체결: 기록한 값을 고치거나 "체결 취소" 로 주문(또는 대기)으로 되돌린다.
  *
  * 체결은 실제로 사고판 수량과 체결 가격으로 기록한다. 예수금은 이 수량 × 가격으로
@@ -97,6 +99,8 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
   const [priceDraft, setPriceDraft] = useState(() =>
     draftOf(status === "ordered" ? task.orderedPrice : (task.executedPrice ?? task.price))
   );
+  // 주문 정정 중 — 입력 칸이 체결 값이 아니라 주문 값을 고친다.
+  const [amending, setAmending] = useState(false);
   const quantity = parseNumericString(quantityDraft);
   const price = parseNumericString(priceDraft);
   const quantityOk = isPositive(quantity);
@@ -141,11 +145,30 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
     toggleTask(session.id, task.id);
     pop();
   };
-  const isOrderInput = status === "pending";
+  const fillOrderDrafts = () => {
+    setQuantityDraft(draftOf(task.orderedQuantity));
+    setPriceDraft(draftOf(task.orderedPrice));
+  };
+  const startAmend = () => {
+    fillOrderDrafts();
+    setAmending(true);
+  };
+  const stopAmend = () => {
+    fillOrderDrafts();
+    setAmending(false);
+  };
+  const saveAmend = () => {
+    if (!canSave || tradePrice === null) return;
+    orderTaskWith(session.id, task.id, quantity, tradePrice);
+    pop();
+  };
+  const isOrderInput = status === "pending" || amending;
 
   return (
     <div className="flex flex-col gap-x6 px-x4 pt-x4 pb-x6">
       <p className="t4-regular text-fg-neutral-muted tabular-nums">{headline(task)}</p>
+
+      {status === "ordered" && !amending && <OrderCard task={task} onAmend={startAmend} />}
 
       <StepperField
         label={isOrderInput ? `${task.action} 주문 수량` : `${task.action} 체결 수량`}
@@ -213,9 +236,14 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
             바로 체결
           </ActionButton>
         )}
-        {status === "ordered" && (
+        {status === "ordered" && !amending && (
           <ActionButton variant="neutralWeak" size="large" onClick={cancelOrder}>
             주문 취소
+          </ActionButton>
+        )}
+        {amending && (
+          <ActionButton variant="neutralWeak" size="large" onClick={stopAmend}>
+            정정 취소
           </ActionButton>
         )}
         {status === "filled" && (
@@ -227,11 +255,35 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
           size="large"
           flexGrow
           disabled={!canSave}
-          onClick={status === "pending" ? recordOrder : recordFill}
+          onClick={amending ? saveAmend : status === "pending" ? recordOrder : recordFill}
         >
-          {PRIMARY_LABEL[status]}
+          {amending ? "정정 저장" : PRIMARY_LABEL[status]}
         </ActionButton>
       </div>
+    </div>
+  );
+}
+
+/**
+ * 증권사에 넣어 둔 주문: "주문 32주 · 주당 11,800원 / 총 377,600원" 과 [정정].
+ * 아래 입력 칸은 체결 값이라, 주문 값은 여기서 따로 보여 정정할 수 있게 한다.
+ */
+function OrderCard({ task, onAmend }: { task: RebalancingTask; onAmend: () => void }) {
+  const quantity = task.orderedQuantity ?? 0;
+  const price = task.orderedPrice ?? 0;
+  return (
+    <div className="border-stroke-neutral-muted rounded-r3 flex items-center gap-x3 border px-x4 py-x3">
+      <div className="min-w-0 flex-1">
+        <p className="t4-medium tabular-nums">
+          {task.action} 주문 {formatWithCommas(quantity)}주 · 주당 {formatWithCommas(price)}원
+        </p>
+        <p className="t3-regular text-fg-neutral-muted mt-[2px] tabular-nums">
+          총 {formatWithCommas(Math.round(quantity * price))}원
+        </p>
+      </div>
+      <ActionButton variant="neutralWeak" size="small" onClick={onAmend}>
+        정정
+      </ActionButton>
     </div>
   );
 }

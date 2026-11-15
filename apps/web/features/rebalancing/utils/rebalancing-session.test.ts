@@ -277,6 +277,16 @@ describe("orderRebalancingTaskWith", () => {
     expect(ordered?.amount).toBe(1000);
   });
 
+  it("amends an order that is still waiting to fill (주문 정정)", () => {
+    const ordered = orderRebalancingTaskWith(session(), "a", 4, 1_050);
+
+    const amended = orderRebalancingTaskWith(ordered, "a", 6, 1_000);
+    const task = amended.tasks.find((t) => t.id === "a");
+
+    expect(task).toMatchObject({ orderedQuantity: 6, orderedPrice: 1_000, done: false });
+    expect(rebalancingTaskStatus(task!)).toBe("ordered");
+  });
+
   it("does not change a filled task", () => {
     const s = session({ tasks: [task("a", true)] });
     expect(orderRebalancingTaskWith(s, "a", 4, 1_050)).toBe(s);
