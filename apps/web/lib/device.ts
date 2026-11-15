@@ -89,7 +89,17 @@ function matchesPrefix(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
-export function decideMobileRoute(pathname: string, kind: DeviceKind): MobileRouteDecision {
+export function decideMobileRoute(
+  pathname: string,
+  kind: DeviceKind,
+  options: { nativeApp?: boolean } = {}
+): MobileRouteDecision {
+  // 네이티브 앱은 설치 PWA 의 start_url 처럼 랜딩 대신 홈으로 연다. (Capacitor 의
+  // appStartPath 는 iOS 에서 원격 server.url 과 함께 쓸 수 없어 서버에서 보낸다.)
+  if (options.nativeApp && pathname === "/") {
+    return { type: "redirect", pathname: MOBILE_HOME };
+  }
+
   // 내부 트리를 직접 노출하지 않는다 — 공개 URL 로 돌려보낸 뒤 다시 판별.
   if (matchesPrefix(pathname, MOBILE_TREE_PREFIX)) {
     const stripped = pathname.slice(MOBILE_TREE_PREFIX.length);

@@ -175,6 +175,20 @@ describe("decideMobileRoute", () => {
     expect(decideMobileRoute("/admin", "mobile").type).toBe("redirect");
   });
 
+  it("opens the native app on the home screen instead of the marketing landing page", () => {
+    expect(decideMobileRoute("/", "mobile", { nativeApp: true })).toEqual({
+      type: "redirect",
+      pathname: "/assets",
+    });
+  });
+
+  it("skips the landing page in the native app even in the forced desktop view", () => {
+    expect(decideMobileRoute("/", "desktop", { nativeApp: true })).toEqual({
+      type: "redirect",
+      pathname: "/assets",
+    });
+  });
+
   it("keeps the landing page untouched on mobile", () => {
     expect(decideMobileRoute("/", "mobile")).toEqual({ type: "pass" });
   });
