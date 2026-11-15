@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { AppleSignInButton } from "@web/components/apple-sign-in-button";
 import { EntitySyncRunner } from "@web/components/entity-sync-runner";
 import { PreferencesSync } from "@web/components/preferences-sync";
 import { StorageModeSync } from "@web/components/storage-mode-sync";
@@ -56,9 +57,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
         <LogIn className="w-10 h-10 text-muted-foreground" />
         <div className="space-y-1">
           <h2 className="text-lg font-semibold">로그인이 필요합니다</h2>
-          <p className="text-sm text-muted-foreground">
-            서비스를 이용하려면 카카오 계정으로 로그인해 주세요.
-          </p>
+          <p className="text-sm text-muted-foreground">서비스를 이용하려면 로그인해 주세요.</p>
         </div>
         <div className="flex flex-col gap-2 w-full">
           <Button
@@ -71,6 +70,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
           >
             카카오로 로그인
           </Button>
+          <AppleSignInButton callbackURL={callbackURL} />
           {isDevEnv && (
             <Button variant="outline" onClick={() => signInWithDevBypass(callbackURL)}>
               개발용 빠른 로그인 (카카오 우회)
