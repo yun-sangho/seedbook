@@ -10,6 +10,7 @@ import {
   IconTrashcanLine,
 } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
+import { AppLockSettingItem } from "@web/components/mobile/app-lock";
 import { DeleteAccountDialog } from "@web/components/mobile/delete-account-dialog";
 import { authClient, useSession } from "@web/lib/auth-client";
 import { type InstallMode, needsSeparateStorageNotice } from "@web/lib/pwa-install";
@@ -89,6 +90,7 @@ export function MobileMoreSheet({
                   detail="PC 화면 → 관리 → 저장소 설정에서 '클라우드에 저장'을 켜면 어디서든 같은 데이터를 볼 수 있어요"
                 />
               )}
+              <AppLockSettingItem />
               <ListButtonItem
                 prefix={<Icon svg={<IconLaptopLine />} />}
                 title="PC 화면으로 보기"
