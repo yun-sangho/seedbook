@@ -18,6 +18,12 @@ export const auth = betterAuth({
     },
   }),
   ...(isDevEnv ? { emailAndPassword: { enabled: true } } : {}),
+  // 회원 탈퇴 (앱 스토어 요건). user 행을 지우면 모든 자산 테이블이 cascade 로 지워진다.
+  // 비밀번호가 없는 소셜 로그인이라 세션이 freshAge(기본 1일) 이내일 때만 허용된다 —
+  // 오래된 세션은 SESSION_EXPIRED 로 거절되고 클라이언트가 재로그인을 안내한다.
+  user: {
+    deleteUser: { enabled: true },
+  },
   socialProviders: {
     kakao: {
       clientId: process.env.KAKAO_CLIENT_ID ?? "",
