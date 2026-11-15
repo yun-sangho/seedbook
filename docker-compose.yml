@@ -31,6 +31,12 @@ services:
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:?BETTER_AUTH_URL must be set in .env.local (e.g. https://seedbook.boogie.ing)}
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      # Sign in with Apple (선택) — 모두 있을 때만 켜진다 (apps/web/lib/apple-auth.ts).
+      APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
+      APPLE_TEAM_ID: ${APPLE_TEAM_ID:-}
+      APPLE_KEY_ID: ${APPLE_KEY_ID:-}
+      APPLE_PRIVATE_KEY_BASE64: ${APPLE_PRIVATE_KEY_BASE64:-}
+      APPLE_APP_BUNDLE_ID: ${APPLE_APP_BUNDLE_ID:-}
       NODE_ENV: production
       PORT: "3001"
       HOSTNAME: "0.0.0.0"
