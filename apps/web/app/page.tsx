@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LandingCta } from "@web/components/landing-cta";
 import { Card, CardDescription, CardHeader, CardTitle } from "@web/components/ui/card";
+import { COMPANY } from "@web/lib/company";
 import { PieChart, Sprout, Target } from "lucide-react";
 
 const features = [
@@ -20,14 +21,6 @@ const features = [
     description: "목표에서 벗어난 종목을 사고팔 금액으로 정리하고, 진행 상황을 체크해요.",
   },
 ];
-
-const COMPANY = {
-  name: "부기클럽",
-  ceo: "전인아",
-  email: "ina@boogie.ing",
-  registrationNumber: "529-03-03120",
-  address: "서울시 성동구 독서당로 272 103동 1001호",
-};
 
 export default function HomePage() {
   return (
@@ -103,7 +96,12 @@ export default function HomePage() {
             <dt className="font-medium text-foreground/80">이메일</dt>
             <dd>{COMPANY.email}</dd>
           </dl>
-          <p className="mt-8 text-xs">
+          <p className="mt-6 text-xs">
+            <Link href="/privacy" className="font-medium underline-offset-4 hover:underline">
+              개인정보처리방침
+            </Link>
+          </p>
+          <p className="mt-4 text-xs">
             &copy; {new Date().getFullYear()} {COMPANY.name}. All rights reserved.
           </p>
         </div>
