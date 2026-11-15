@@ -57,6 +57,14 @@ describe("resolveInstallMode", () => {
   });
 });
 
+describe("resolveInstallMode in the native app", () => {
+  it("reports installed inside the native app shell so install prompts stay hidden", () => {
+    expect(
+      resolveInstallMode({ isStandalone: false, isIOS: true, hasPrompt: false, isNativeApp: true })
+    ).toBe("installed");
+  });
+});
+
 describe("needsSeparateStorageNotice", () => {
   it("warns iOS users on browser-only storage, since the home screen app has its own storage", () => {
     expect(needsSeparateStorageNotice({ isIOS: true, storageMode: "local" })).toBe(true);
@@ -68,5 +76,17 @@ describe("needsSeparateStorageNotice", () => {
 
   it("stays quiet on Android, where the installed app shares Chrome storage", () => {
     expect(needsSeparateStorageNotice({ isIOS: false, storageMode: "local" })).toBe(false);
+  });
+
+  it("warns Android users inside the native app, whose WebView does not share Chrome storage", () => {
+    expect(
+      needsSeparateStorageNotice({ isIOS: false, storageMode: "local", isNativeApp: true })
+    ).toBe(true);
+  });
+
+  it("stays quiet in the native app on cloud storage", () => {
+    expect(
+      needsSeparateStorageNotice({ isIOS: false, storageMode: "cloud", isNativeApp: true })
+    ).toBe(false);
   });
 });

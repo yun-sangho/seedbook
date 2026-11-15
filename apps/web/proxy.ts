@@ -6,8 +6,10 @@ import { decideMobileRoute, resolveDeviceKind, VIEW_OVERRIDE_COOKIE } from "@web
  * Design) 로 rewrite 된다. 규칙은 `lib/device.ts` 참조.
  */
 export function proxy(request: NextRequest) {
+  const agent = userAgent(request);
   const kind = resolveDeviceKind({
-    deviceType: userAgent(request).device.type,
+    deviceType: agent.device.type,
+    userAgent: agent.ua,
     override: request.cookies.get(VIEW_OVERRIDE_COOKIE)?.value,
   });
   const decision = decideMobileRoute(request.nextUrl.pathname, kind);

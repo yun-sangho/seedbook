@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { isNativeAppUserAgent } from "@web/lib/device";
 import { type InstallMode, isIOSUserAgent, resolveInstallMode } from "@web/lib/pwa-install";
 
 /** Chromium 전용 이벤트라 lib.dom 에 타입이 없다. */
@@ -25,14 +26,17 @@ export function usePwaInstall(): {
   mode: InstallMode;
   install: () => Promise<void>;
   isIOS: boolean;
+  isNativeApp: boolean;
 } {
   const [promptEvent, setPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [standalone, setStandalone] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isNativeApp, setIsNativeApp] = useState(false);
 
   useEffect(() => {
     setStandalone(isStandaloneDisplay());
     setIsIOS(isIOSUserAgent(navigator.userAgent, navigator.maxTouchPoints));
+    setIsNativeApp(isNativeAppUserAgent(navigator.userAgent));
 
     const onPrompt = (event: Event) => {
       // 브라우저 기본 미니 인포바 대신 우리 버튼에서 띄운다.
@@ -60,8 +64,14 @@ export function usePwaInstall(): {
   }, [promptEvent]);
 
   return {
-    mode: resolveInstallMode({ isStandalone: standalone, isIOS, hasPrompt: promptEvent !== null }),
+    mode: resolveInstallMode({
+      isStandalone: standalone,
+      isIOS,
+      hasPrompt: promptEvent !== null,
+      isNativeApp,
+    }),
     install,
     isIOS,
+    isNativeApp,
   };
 }

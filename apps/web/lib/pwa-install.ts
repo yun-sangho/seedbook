@@ -23,8 +23,10 @@ export function resolveInstallMode(input: {
   isStandalone: boolean;
   isIOS: boolean;
   hasPrompt: boolean;
+  /** 네이티브 앱 셸 안 (`lib/device.ts` isNativeAppUserAgent) — 이미 설치된 앱이다. */
+  isNativeApp?: boolean;
 }): InstallMode {
-  if (input.isStandalone) return "installed";
+  if (input.isStandalone || input.isNativeApp) return "installed";
   if (input.hasPrompt) return "prompt";
   if (input.isIOS) return "ios-manual";
   return "unavailable";
@@ -34,11 +36,13 @@ export function resolveInstallMode(input: {
  * iOS 홈 화면 앱은 Safari 와 localStorage·쿠키가 분리된 별도 저장공간을 쓴다.
  * "이 기기에만 저장"(local) 모드라면 Safari 에서 쓰던 데이터가 홈 화면 앱에서
  * 보이지 않으므로(반대도 마찬가지) 클라우드 저장을 안내해야 한다.
- * Android 설치 앱은 Chrome 과 저장공간을 공유해 해당 없음.
+ * Android 설치(PWA) 앱은 Chrome 과 저장공간을 공유해 해당 없음. 네이티브 앱은 OS 와
+ * 상관없이 WebView 저장공간이 브라우저와 분리돼 있다.
  */
 export function needsSeparateStorageNotice(input: {
   isIOS: boolean;
   storageMode: StorageMode;
+  isNativeApp?: boolean;
 }): boolean {
-  return input.isIOS && input.storageMode === "local";
+  return (input.isIOS || input.isNativeApp === true) && input.storageMode === "local";
 }
