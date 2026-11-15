@@ -56,7 +56,7 @@ export default function HomePage() {
             가장 단순한 방법이에요. 카카오 계정으로 30초만에 시작하세요.
           </p>
           <div className="mt-10 flex justify-center">
-            <LandingCta size="lg" />
+            <LandingCta size="lg" withApple />
           </div>
         </section>
 
