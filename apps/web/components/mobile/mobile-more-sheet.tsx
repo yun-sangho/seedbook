@@ -28,6 +28,7 @@ interface MobileMoreSheetProps {
   installMode: InstallMode;
   onInstall: () => Promise<void>;
   isIOS: boolean;
+  isNativeApp: boolean;
 }
 
 /** 하단 탭 "더보기": 앱 설치, PC 화면 전환, 로그아웃, 회원 탈퇴. */
@@ -37,11 +38,16 @@ export function MobileMoreSheet({
   installMode,
   onInstall,
   isIOS,
+  isNativeApp,
 }: MobileMoreSheetProps) {
   const { data: session } = useSession();
   const user = session?.user as { name?: string | null; email?: string | null } | undefined;
   // HydrationGate 아래에서만 렌더되므로 render 중 localStorage 읽기가 SSR 과 어긋나지 않는다.
-  const showStorageNotice = needsSeparateStorageNotice({ isIOS, storageMode: getStorageMode() });
+  const showStorageNotice = needsSeparateStorageNotice({
+    isIOS,
+    storageMode: getStorageMode(),
+    isNativeApp,
+  });
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   return (
@@ -75,7 +81,11 @@ export function MobileMoreSheet({
               {showStorageNotice && (
                 <ListItem
                   prefix={<Icon svg={<IconExclamationmarkCircleLine />} />}
-                  title="Safari와 홈 화면 앱은 데이터가 따로 저장돼요"
+                  title={
+                    isNativeApp
+                      ? "앱과 브라우저는 데이터가 따로 저장돼요"
+                      : "Safari와 홈 화면 앱은 데이터가 따로 저장돼요"
+                  }
                   detail="PC 화면 → 관리 → 저장소 설정에서 '클라우드에 저장'을 켜면 어디서든 같은 데이터를 볼 수 있어요"
                 />
               )}

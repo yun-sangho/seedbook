@@ -22,7 +22,8 @@
     "docker:dev:logs": "docker compose -f docker-compose.dev.yml logs -f",
     "db:dev:up": "docker compose -f docker-compose.dev.yml up postgres -d",
     "db:dev:down": "docker compose -f docker-compose.dev.yml stop postgres",
-    "docker:prod": "docker compose pull && docker compose up -d --remove-orphans"
+    "docker:prod": "docker compose pull && docker compose up -d --remove-orphans",
+    "mobile:sync": "pnpm --filter @seedbook/mobile sync"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.7",

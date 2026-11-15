@@ -58,11 +58,24 @@ const MOBILE_SUPPORTED_PATTERNS = [
 /** `(app)` 그룹 아래의 앱 경로 prefix. 모바일 미지원 시 MOBILE_HOME 으로 보낸다. */
 const APP_PATH_PREFIXES = ["/assets", "/admin"];
 
+/**
+ * 네이티브 앱 셸(`apps/mobile`, Capacitor)이 WebView User-Agent 뒤에 붙이는 표시.
+ * `apps/mobile/capacitor.config.ts` 의 `appendUserAgent` 와 같아야 한다.
+ */
+export const NATIVE_APP_UA_MARKER = "SeedbookApp";
+
+export function isNativeAppUserAgent(userAgent: string | undefined): boolean {
+  return userAgent?.includes(NATIVE_APP_UA_MARKER) ?? false;
+}
+
 export function resolveDeviceKind(input: {
   deviceType: string | undefined;
+  userAgent?: string;
   override?: string;
 }): DeviceKind {
   if (input.override === "mobile" || input.override === "desktop") return input.override;
+  // 네이티브 앱은 모바일 UI 만 담는다 — iPad 앱도 모바일 화면.
+  if (isNativeAppUserAgent(input.userAgent)) return "mobile";
   // 태블릿은 데스크탑 UI 를 감당할 폭이 있어 desktop 으로 취급한다.
   return input.deviceType === "mobile" ? "mobile" : "desktop";
 }
@@ -76,7 +89,17 @@ function matchesPrefix(pathname: string, prefix: string): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
-export function decideMobileRoute(pathname: string, kind: DeviceKind): MobileRouteDecision {
+export function decideMobileRoute(
+  pathname: string,
+  kind: DeviceKind,
+  options: { nativeApp?: boolean } = {}
+): MobileRouteDecision {
+  // 네이티브 앱은 설치 PWA 의 start_url 처럼 랜딩 대신 홈으로 연다. (Capacitor 의
+  // appStartPath 는 iOS 에서 원격 server.url 과 함께 쓸 수 없어 서버에서 보낸다.)
+  if (options.nativeApp && pathname === "/") {
+    return { type: "redirect", pathname: MOBILE_HOME };
+  }
+
   // 내부 트리를 직접 노출하지 않는다 — 공개 URL 로 돌려보낸 뒤 다시 판별.
   if (matchesPrefix(pathname, MOBILE_TREE_PREFIX)) {
     const stripped = pathname.slice(MOBILE_TREE_PREFIX.length);

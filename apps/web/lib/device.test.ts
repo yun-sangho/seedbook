@@ -1,5 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { decideMobileRoute, resolveDeviceKind } from "./device";
+import { decideMobileRoute, isNativeAppUserAgent, resolveDeviceKind } from "./device";
+
+const IPAD_NATIVE_APP =
+  "Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 SeedbookApp/1";
+const IPHONE_SAFARI =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
+
+describe("isNativeAppUserAgent", () => {
+  it("recognizes the marker the native shell appends to its WebView user agent", () => {
+    expect(isNativeAppUserAgent(IPAD_NATIVE_APP)).toBe(true);
+  });
+
+  it("does not treat a regular mobile browser as the native app", () => {
+    expect(isNativeAppUserAgent(IPHONE_SAFARI)).toBe(false);
+  });
+
+  it("handles a missing user agent", () => {
+    expect(isNativeAppUserAgent(undefined)).toBe(false);
+  });
+});
 
 describe("resolveDeviceKind", () => {
   it("treats a mobile user agent as mobile", () => {
@@ -20,6 +39,16 @@ describe("resolveDeviceKind", () => {
 
   it("lets the override cookie force mobile on a desktop", () => {
     expect(resolveDeviceKind({ deviceType: undefined, override: "mobile" })).toBe("mobile");
+  });
+
+  it("serves the mobile UI to the native app even on a tablet (the app ships only the mobile UI)", () => {
+    expect(resolveDeviceKind({ deviceType: "tablet", userAgent: IPAD_NATIVE_APP })).toBe("mobile");
+  });
+
+  it("still lets the override cookie force desktop inside the native app", () => {
+    expect(
+      resolveDeviceKind({ deviceType: "tablet", userAgent: IPAD_NATIVE_APP, override: "desktop" })
+    ).toBe("desktop");
   });
 
   it("ignores an invalid override value", () => {
@@ -144,6 +173,20 @@ describe("decideMobileRoute", () => {
 
   it("redirects admin to the mobile home on mobile", () => {
     expect(decideMobileRoute("/admin", "mobile").type).toBe("redirect");
+  });
+
+  it("opens the native app on the home screen instead of the marketing landing page", () => {
+    expect(decideMobileRoute("/", "mobile", { nativeApp: true })).toEqual({
+      type: "redirect",
+      pathname: "/assets",
+    });
+  });
+
+  it("skips the landing page in the native app even in the forced desktop view", () => {
+    expect(decideMobileRoute("/", "desktop", { nativeApp: true })).toEqual({
+      type: "redirect",
+      pathname: "/assets",
+    });
   });
 
   it("keeps the landing page untouched on mobile", () => {

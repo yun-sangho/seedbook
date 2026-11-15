@@ -72,7 +72,7 @@ export function TabScreen({ name, children }: { name: TabActivityName; children:
   const { isRoot } = useActivity();
   const [profileOpen, setProfileOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const { mode: installMode, install, isIOS } = usePwaInstall();
+  const { mode: installMode, install, isIOS, isNativeApp } = usePwaInstall();
 
   return (
     <AppScreen>
@@ -107,6 +107,7 @@ export function TabScreen({ name, children }: { name: TabActivityName; children:
             installMode={installMode}
             onInstall={install}
             isIOS={isIOS}
+            isNativeApp={isNativeApp}
           />
         </>
       )}
