@@ -10,7 +10,9 @@ async function nativeBiometric() {
   const { Capacitor } = await import("@capacitor/core");
   if (!Capacitor.isNativePlatform()) return null;
   const { NativeBiometric } = await import("@capgo/capacitor-native-biometric");
-  return NativeBiometric;
+  // 플러그인 Proxy 는 `.then` 도 네이티브 호출로 바꾼다 — 그대로 돌려주면 await 가 멈춘다.
+  // 객체로 감싸 thenable 로 취급되지 않게 한다.
+  return { plugin: NativeBiometric };
 }
 
 export type BiometryName = "Face ID" | "Touch ID" | "지문" | "생체 인증";
@@ -26,8 +28,9 @@ export const BIOMETRY_WITH_RO: Record<BiometryName, string> = {
 /** 쓸 수 있는 생체 인증 이름 (설정 문구용). 없으면 null. */
 export async function availableBiometryLabel(): Promise<BiometryName | null> {
   try {
-    const plugin = await nativeBiometric();
-    if (!plugin) return null;
+    const native = await nativeBiometric();
+    if (!native) return null;
+    const { plugin } = native;
     const { BiometryType } = await import("@capgo/capacitor-native-biometric");
     const result = await plugin.isAvailable({ useFallback: true });
     if (!result.isAvailable) return null;
@@ -43,8 +46,9 @@ export async function availableBiometryLabel(): Promise<BiometryName | null> {
 /** 생체 인증(실패 시 기기 암호) 을 요청한다. 통과하면 true. */
 export async function verifyBiometric(reason: string): Promise<boolean> {
   try {
-    const plugin = await nativeBiometric();
-    if (!plugin) return false;
+    const native = await nativeBiometric();
+    if (!native) return false;
+    const { plugin } = native;
     await plugin.verifyIdentity({
       reason,
       title: "Seedbook 잠금 해제",
