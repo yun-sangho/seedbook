@@ -1,7 +1,11 @@
+import { cookies, headers } from "next/headers";
 import Link from "next/link";
+import { userAgent } from "next/server";
 import { LandingCta } from "@web/components/landing-cta";
+import { LandingMobileOnly } from "@web/components/landing-mobile-only";
 import { Card, CardDescription, CardHeader, CardTitle } from "@web/components/ui/card";
 import { COMPANY } from "@web/lib/company";
+import { resolveDeviceKind, VIEW_OVERRIDE_COOKIE } from "@web/lib/device";
 import { PieChart, Sprout, Target } from "lucide-react";
 
 const features = [
@@ -22,7 +26,20 @@ const features = [
   },
 ];
 
-export default function HomePage() {
+/** 앱 화면은 모바일 UI 뿐이라, 데스크탑에서는 로그인 대신 휴대폰 이용을 안내한다. */
+async function isDesktopVisitor(): Promise<{ desktop: boolean; host: string }> {
+  const [headerList, cookieStore] = await Promise.all([headers(), cookies()]);
+  const agent = userAgent({ headers: headerList });
+  const kind = resolveDeviceKind({
+    deviceType: agent.device.type,
+    userAgent: agent.ua,
+    override: cookieStore.get(VIEW_OVERRIDE_COOKIE)?.value,
+  });
+  return { desktop: kind === "desktop", host: headerList.get("host") ?? "seedbook.boogie.ing" };
+}
+
+export default async function HomePage() {
+  const { desktop, host } = await isDesktopVisitor();
   return (
     <div className="w-full h-full overflow-y-auto bg-background">
       <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
@@ -31,7 +48,7 @@ export default function HomePage() {
             <Sprout className="w-5 h-5 text-primary" />
             <span>Seedbook</span>
           </Link>
-          <LandingCta size="default" />
+          {!desktop && <LandingCta size="default" />}
         </div>
       </header>
 
@@ -49,7 +66,7 @@ export default function HomePage() {
             가장 단순한 방법이에요. 카카오 계정으로 30초만에 시작하세요.
           </p>
           <div className="mt-10 flex justify-center">
-            <LandingCta size="lg" withApple />
+            {desktop ? <LandingMobileOnly host={host} /> : <LandingCta size="lg" withApple />}
           </div>
         </section>
 

@@ -54,8 +54,8 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: "#ffffff",
     display: "standalone",
     scope: "/",
-    // 설치한 앱은 랜딩 대신 바로 홈(총 평가금액·통계)으로 연다. 모바일이면 proxy 가
-    // SEED 홈으로 rewrite 하고, 데스크탑에서는 같은 URL 이 자산 개요 화면이다.
+    // 설치한 앱은 랜딩 대신 바로 홈(총 평가금액·통계)으로 연다. proxy 가 SEED 홈으로
+    // rewrite 한다 (데스크탑은 앱 화면이 없어 소개 페이지로 돌아간다).
     start_url: "/assets",
   };
 }

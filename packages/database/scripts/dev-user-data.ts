@@ -1,8 +1,8 @@
 /**
  * dev 사용자의 테스트 시나리오 데이터 (`seed-data/user-data.json`) 를 DB 에 넣는다.
  *
- * 픽스처는 관리 화면 백업 2.0 모양 ({ investments, portfolios, rebalancingSessions }) 이라
- * 같은 파일을 관리 화면 "데모 데이터" (`apps/web/public/seed-data/user-data.json`) 로도 쓴다.
+ * 픽스처는 설정 화면 백업 2.0 모양 ({ investments, portfolios, rebalancingSessions }) 이라
+ * 같은 파일을 설정 화면 "데모 데이터" (`apps/web/public/seed-data/user-data.json`) 로도 쓴다.
  * 두 파일은 같아야 한다.
  *
  * - `seedDevUserData` (seed.ts): dev 사용자에게 계좌·포트폴리오가 하나도 없을 때만 넣는다.

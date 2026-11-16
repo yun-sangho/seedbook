@@ -14,6 +14,7 @@ import {
   RebalancingSessionActivity,
   RebalancingTabActivity,
   RebalancingTradeActivity,
+  SettingsActivity,
 } from "./activities";
 import { createNextAwareHistory } from "./next-aware-history";
 
@@ -38,6 +39,7 @@ declare module "@stackflow/config" {
     RebalancingSession: { id: string };
     RebalancingTrade: { id: string; taskId: string };
     PortfolioDetail: { id: string };
+    Settings: Record<string, never>;
   }
 }
 
@@ -92,6 +94,10 @@ const config = defineConfig({
       name: "PortfolioDetail",
       route: { path: "/assets/portfolio/:id", defaultHistory: underTab("PortfolioTab") },
     },
+    {
+      name: "Settings",
+      route: { path: "/assets/settings", defaultHistory: underTab("HomeTab") },
+    },
   ],
   transitionDuration: 350,
 });
@@ -109,6 +115,7 @@ export const { Stack } = stackflow({
     RebalancingSession: RebalancingSessionActivity,
     RebalancingTrade: RebalancingTradeActivity,
     PortfolioDetail: PortfolioDetailActivity,
+    Settings: SettingsActivity,
   },
   plugins: [
     basicRendererPlugin(),

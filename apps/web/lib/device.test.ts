@@ -25,16 +25,16 @@ describe("resolveDeviceKind", () => {
     expect(resolveDeviceKind({ deviceType: "mobile" })).toBe("mobile");
   });
 
-  it("treats tablets as desktop (iPad layouts have room for the desktop UI)", () => {
-    expect(resolveDeviceKind({ deviceType: "tablet" })).toBe("desktop");
+  it("treats tablets as mobile (the app UI is mobile only)", () => {
+    expect(resolveDeviceKind({ deviceType: "tablet" })).toBe("mobile");
   });
 
   it("treats an unknown device type as desktop", () => {
     expect(resolveDeviceKind({ deviceType: undefined })).toBe("desktop");
   });
 
-  it("lets the override cookie force desktop on a phone", () => {
-    expect(resolveDeviceKind({ deviceType: "mobile", override: "desktop" })).toBe("desktop");
+  it("ignores a leftover desktop override cookie (there is no desktop app UI any more)", () => {
+    expect(resolveDeviceKind({ deviceType: "mobile", override: "desktop" })).toBe("mobile");
   });
 
   it("lets the override cookie force mobile on a desktop", () => {
@@ -45,20 +45,34 @@ describe("resolveDeviceKind", () => {
     expect(resolveDeviceKind({ deviceType: "tablet", userAgent: IPAD_NATIVE_APP })).toBe("mobile");
   });
 
-  it("still lets the override cookie force desktop inside the native app", () => {
-    expect(
-      resolveDeviceKind({ deviceType: "tablet", userAgent: IPAD_NATIVE_APP, override: "desktop" })
-    ).toBe("desktop");
-  });
-
   it("ignores an invalid override value", () => {
     expect(resolveDeviceKind({ deviceType: "mobile", override: "tv" })).toBe("mobile");
   });
 });
 
 describe("decideMobileRoute", () => {
-  it("passes every path through untouched on desktop", () => {
-    expect(decideMobileRoute("/assets/savings", "desktop")).toEqual({ type: "pass" });
+  it.each([
+    "/assets",
+    "/assets/investments",
+    "/assets/investments/acc-1",
+    "/assets/portfolio",
+    "/assets/portfolio/abc-123",
+    "/assets/rebalancing",
+    "/assets/rebalancing/acc-1",
+    "/assets/rebalancing/sessions/s-1",
+    "/assets/rebalancing/sessions/s-1/trades/t-1",
+    "/assets/settings",
+    "/admin",
+  ])("sends desktop users of the app page %s to the landing page", (pathname) => {
+    expect(decideMobileRoute(pathname, "desktop")).toEqual({ type: "redirect", pathname: "/" });
+  });
+
+  it("keeps the landing page on desktop", () => {
+    expect(decideMobileRoute("/", "desktop")).toEqual({ type: "pass" });
+  });
+
+  it("serves the public privacy policy as-is on desktop", () => {
+    expect(decideMobileRoute("/privacy", "desktop")).toEqual({ type: "pass" });
   });
 
   it("rewrites the investments page into the mobile tree", () => {
@@ -72,13 +86,6 @@ describe("decideMobileRoute", () => {
     expect(decideMobileRoute("/assets/investments/acc-1", "mobile")).toEqual({
       type: "rewrite",
       pathname: "/m/assets/investments/acc-1",
-    });
-  });
-
-  it("sends desktop users of a mobile-only account detail URL to the investments list", () => {
-    expect(decideMobileRoute("/assets/investments/acc-1", "desktop")).toEqual({
-      type: "redirect",
-      pathname: "/assets/investments",
     });
   });
 
@@ -117,39 +124,10 @@ describe("decideMobileRoute", () => {
     });
   });
 
-  it("sends desktop users of a rebalancing session to the portfolio list", () => {
-    expect(decideMobileRoute("/assets/rebalancing/sessions/s-1", "desktop")).toEqual({
-      type: "redirect",
-      pathname: "/assets/portfolio",
-    });
-  });
-
   it("rewrites a rebalancing trade entry page into the mobile tree", () => {
     expect(decideMobileRoute("/assets/rebalancing/sessions/s-1/trades/t-1", "mobile")).toEqual({
       type: "rewrite",
       pathname: "/m/assets/rebalancing/sessions/s-1/trades/t-1",
-    });
-  });
-
-  it("sends desktop users of a rebalancing trade entry page to the portfolio list", () => {
-    expect(decideMobileRoute("/assets/rebalancing/sessions/s-1/trades/t-1", "desktop")).toEqual({
-      type: "redirect",
-      pathname: "/assets/portfolio",
-    });
-  });
-
-  it("sends desktop users of the rebalancing list to the portfolio list", () => {
-    expect(decideMobileRoute("/assets/rebalancing", "desktop")).toEqual({
-      type: "redirect",
-      pathname: "/assets/portfolio",
-    });
-  });
-
-  it("sends desktop users of an account rebalancing detail to the portfolio list", () => {
-    // 상세 id 는 계좌 id 라 데스크탑 포트폴리오 상세로 매핑할 수 없다.
-    expect(decideMobileRoute("/assets/rebalancing/acc-1", "desktop")).toEqual({
-      type: "redirect",
-      pathname: "/assets/portfolio",
     });
   });
 
@@ -167,23 +145,22 @@ describe("decideMobileRoute", () => {
     });
   });
 
-  it("keeps the asset overview root as the desktop page on desktop", () => {
-    expect(decideMobileRoute("/assets", "desktop")).toEqual({ type: "pass" });
+  it("rewrites the settings page into the mobile tree", () => {
+    expect(decideMobileRoute("/assets/settings", "mobile")).toEqual({
+      type: "rewrite",
+      pathname: "/m/assets/settings",
+    });
   });
 
-  it("redirects admin to the mobile home on mobile", () => {
-    expect(decideMobileRoute("/admin", "mobile").type).toBe("redirect");
+  it("sends the old admin page to the mobile settings page", () => {
+    expect(decideMobileRoute("/admin", "mobile")).toEqual({
+      type: "redirect",
+      pathname: "/assets/settings",
+    });
   });
 
   it("opens the native app on the home screen instead of the marketing landing page", () => {
     expect(decideMobileRoute("/", "mobile", { nativeApp: true })).toEqual({
-      type: "redirect",
-      pathname: "/assets",
-    });
-  });
-
-  it("skips the landing page in the native app even in the forced desktop view", () => {
-    expect(decideMobileRoute("/", "desktop", { nativeApp: true })).toEqual({
       type: "redirect",
       pathname: "/assets",
     });
