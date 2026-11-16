@@ -141,9 +141,15 @@ async function moveLegacyStorage(
   safe(() => legacy.clear(), undefined);
 }
 
+/** 실패한 쓰기를 다시 시도하기까지 기다리는 시간 (실패할 때마다 두 배, 최대값까지). */
+const RETRY_BASE_MS = 2_000;
+const RETRY_MAX_MS = 60_000;
+
 /**
- * 네이티브 앱 저장소. 모든 SQLite 작업을 한 줄로 세워 호출 순서대로 적용한다. 데이터베이스를
- * 열 수 없으면 (플러그인이 없는 예전 앱 빌드) localStorage 로 돌아간다.
+ * 네이티브 앱 저장소. SQLite 쓰기는 키마다 **마지막 값만** 대기열에 두고 차례로 저장한다 —
+ * 같은 키를 여러 번 쓰면 마지막 것만 저장하고, 이미 저장한 값과 같으면 건너뛴다. 저장에
+ * 실패한 값은 버리지 않고 대기열에 남겨 다음 쓰기·`flush`·재시도 타이머 때 다시 저장한다.
+ * 데이터베이스를 열 수 없으면 (플러그인이 없는 예전 앱 빌드) localStorage 로 돌아간다.
  */
 export function createNativeDeviceStorage(
   openDriver: () => Promise<SqlDriver | null>,
@@ -176,16 +182,74 @@ export function createNativeDeviceStorage(
     }
   })();
 
-  let queue: Promise<unknown> = opened;
-  const enqueue = <T>(task: (db: SqlDriver) => Promise<T>, onFallback: () => T): Promise<T> => {
-    const run = queue.then(() => (driver ? task(driver) : onFallback()));
-    queue = run.catch((error: unknown) => {
-      console.warn("[seedbook] SQLite write failed", error);
-    });
-    return run;
+  /** 저장할 값 (null = 지우기). 키마다 마지막 값 하나, 쓴 순서대로. */
+  const pending = new Map<string, string | null>();
+  /** 마지막으로 저장에 성공한 값 — 같은 값은 다시 쓰지 않는다. */
+  const written = new Map<string, string | null>();
+  let draining: Promise<void> | null = null;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let retryDelay = RETRY_BASE_MS;
+
+  const save = async (db: SqlDriver, key: string, value: string | null) => {
+    if (!isTableEnvelopeKey(key)) await db.batch([kvWrite(key, value)]);
+    else if (value === null) await removeTableEnvelope(db, key);
+    else await writeTableEnvelope(db, key, value);
   };
-  const persist = (statement: SqlStatement, onFallback: () => void) => {
-    void enqueue((db) => db.batch([statement]), onFallback).catch(() => undefined);
+
+  const saveToFallback = (key: string, value: string | null) => {
+    if (value === null) fallback.removeItem(key);
+    else fallback.setItem(key, value);
+  };
+
+  const scheduleRetry = () => {
+    if (retryTimer) return;
+    retryTimer = setTimeout(() => {
+      retryTimer = null;
+      void drain();
+    }, retryDelay);
+    retryDelay = Math.min(retryDelay * 2, RETRY_MAX_MS);
+  };
+
+  const drainPending = async () => {
+    await opened;
+    for (const [key, value] of pending) {
+      pending.delete(key);
+      if (!driver) {
+        saveToFallback(key, value);
+        continue;
+      }
+      try {
+        await save(driver, key, value);
+        written.set(key, value);
+        retryDelay = RETRY_BASE_MS;
+      } catch (error) {
+        console.warn("[seedbook] SQLite write failed, will retry", error);
+        // 그 사이 새 값이 들어왔으면 그것이 이긴다.
+        if (!pending.has(key)) pending.set(key, value);
+        scheduleRetry();
+        return;
+      }
+    }
+  };
+
+  /** 대기열을 비운다. 이미 비우는 중이면 그것이 끝난 뒤 남은 것을 이어서 비운다. */
+  const drain = (): Promise<void> => {
+    const run = (draining ?? Promise.resolve()).then(drainPending);
+    const current = run.finally(() => {
+      if (draining === current) draining = null;
+    });
+    draining = current;
+    return current;
+  };
+
+  const enqueue = (key: string, value: string | null): Promise<void> => {
+    if (!pending.has(key) && written.has(key) && written.get(key) === value) {
+      return draining ?? Promise.resolve();
+    }
+    // 지우고 다시 넣어 마지막으로 쓴 순서를 지킨다.
+    pending.delete(key);
+    pending.set(key, value);
+    return drain();
   };
 
   return {
@@ -196,56 +260,42 @@ export function createNativeDeviceStorage(
     setItem: (key, value) => {
       if (usingFallback) return fallback.setItem(key, value);
       memory.set(key, value);
-      persist(kvWrite(key, value), () => fallback.setItem(key, value));
+      void enqueue(key, value);
     },
     removeItem: (key) => {
       if (usingFallback) return fallback.removeItem(key);
       memory.delete(key);
-      persist(kvWrite(key, null), () => fallback.removeItem(key));
+      void enqueue(key, null);
     },
-    readEnvelope: (key) =>
-      enqueue(
-        async (db) =>
-          isTableEnvelopeKey(key) ? readTableEnvelope(db, key) : (memory.get(key) ?? null),
-        () => fallback.getItem(key)
-      ),
-    writeEnvelope: (key, value) =>
-      enqueue(
-        async (db) => {
-          if (isTableEnvelopeKey(key)) {
-            await writeTableEnvelope(db, key, value);
-            return;
-          }
-          memory.set(key, value);
-          await db.batch([kvWrite(key, value)]);
-        },
-        () => fallback.setItem(key, value)
-      ).catch(() => undefined),
-    removeEnvelope: (key) =>
-      enqueue(
-        async (db) => {
-          if (isTableEnvelopeKey(key)) {
-            await removeTableEnvelope(db, key);
-            return;
-          }
-          memory.delete(key);
-          await db.batch([kvWrite(key, null)]);
-        },
-        () => fallback.removeItem(key)
-      ).catch(() => undefined),
+    readEnvelope: async (key) => {
+      await drain();
+      if (!driver) return fallback.getItem(key);
+      if (!isTableEnvelopeKey(key)) return memory.get(key) ?? null;
+      // 저장에 실패해 대기 중인 값이 테이블보다 최신이다.
+      if (pending.has(key)) return pending.get(key) ?? null;
+      return readTableEnvelope(driver, key);
+    },
+    writeEnvelope: (key, value) => {
+      if (!isTableEnvelopeKey(key)) memory.set(key, value);
+      return enqueue(key, value);
+    },
+    removeEnvelope: (key) => {
+      if (!isTableEnvelopeKey(key)) memory.delete(key);
+      return enqueue(key, null);
+    },
     clear: async () => {
       memory.clear();
-      await enqueue(
-        (db) => clearDeviceTables(db),
-        () => undefined
-      );
+      pending.clear();
+      written.clear();
+      if (retryTimer) clearTimeout(retryTimer);
+      retryTimer = null;
+      await drain();
+      if (driver) await clearDeviceTables(driver);
       fallback.clear();
     },
     isReady: () => ready,
     whenReady: () => opened,
-    flush: async () => {
-      await queue;
-    },
+    flush: drain,
   };
 }
 
@@ -267,9 +317,20 @@ let current: DeviceStorage | null = null;
 /** 이 기기의 저장소. 네이티브 앱이면 SQLite, 브라우저면 localStorage, 서버 렌더링이면 빈 저장소. */
 export function getDeviceStorage(): DeviceStorage {
   if (typeof window === "undefined") return serverStorage;
-  current ??= isNativeAppUserAgent(window.navigator.userAgent)
-    ? createNativeDeviceStorage(openCapacitorSqlDriver, window.localStorage)
-    : createBrowserStorage(window.localStorage);
+  if (current) return current;
+  if (isNativeAppUserAgent(window.navigator.userAgent)) {
+    const storage = createNativeDeviceStorage(openCapacitorSqlDriver, window.localStorage);
+    // 앱이 백그라운드로 가면 OS 가 곧 멈추거나 종료할 수 있다 — 실패해 기다리던 쓰기를
+    // 재시도 타이머를 기다리지 않고 바로 다시 저장한다.
+    const flushWhenHidden = () => {
+      if (document.visibilityState === "hidden") void storage.flush();
+    };
+    document.addEventListener("visibilitychange", flushWhenHidden);
+    window.addEventListener("pagehide", () => void storage.flush());
+    current = storage;
+  } else {
+    current = createBrowserStorage(window.localStorage);
+  }
   return current;
 }
 
