@@ -12,7 +12,7 @@ import {
   DEFAULT_PORTFOLIO_NAME_PREFIX,
   LEGACY_DRIFT_MODE,
 } from "../types/constants";
-import type { DriftMode, PortfolioAllocation, PortfolioItem, StockSelection } from "../types/types";
+import type { DriftMode, PortfolioAllocation, PortfolioItem } from "../types/types";
 import { dedupePortfolioLinks } from "../utils/portfolio-links";
 
 const nowIso = () => new Date().toISOString();
@@ -49,11 +49,6 @@ interface PortfolioState {
     field: keyof PortfolioAllocation,
     value: string | number
   ) => void;
-  setAllocationStockFromSearch: (
-    portfolioId: string,
-    allocationId: string,
-    stock: StockSelection
-  ) => void;
   removeAllocation: (portfolioId: string, allocationId: string) => void;
 
   setPortfolioAccountIds: (portfolioId: string, accountIds: string[]) => void;
@@ -61,7 +56,6 @@ interface PortfolioState {
   setDriftThreshold: (portfolioId: string, value: number) => void;
   setDriftMode: (portfolioId: string, mode: DriftMode) => void;
 
-  reorderPortfolios: (reordered: PortfolioItem[]) => void;
   resetStore: () => void;
 }
 
@@ -155,26 +149,6 @@ export const usePortfolioStore = create<PortfolioState>()(
         }));
       },
 
-      setAllocationStockFromSearch: (portfolioId, allocationId, stock) => {
-        set((state) => ({
-          portfolios: state.portfolios.map((p) => {
-            if (p.id !== portfolioId) return p;
-            const allocations = p.allocations.map((a) =>
-              a.id === allocationId
-                ? {
-                    ...a,
-                    market: stock.market,
-                    ticker: stock.ticker,
-                    name: stock.name,
-                    currency: stock.currency,
-                  }
-                : a
-            );
-            return touch({ ...p, allocations });
-          }),
-        }));
-      },
-
       removeAllocation: (portfolioId, allocationId) => {
         set((state) => ({
           portfolios: state.portfolios.map((p) =>
@@ -226,10 +200,6 @@ export const usePortfolioStore = create<PortfolioState>()(
             p.id === portfolioId ? touch({ ...p, driftMode: mode }) : p
           ),
         }));
-      },
-
-      reorderPortfolios: (reordered) => {
-        set({ portfolios: reordered });
       },
 
       resetStore: () => {

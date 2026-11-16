@@ -331,28 +331,6 @@ describe("Portfolio Store", () => {
     });
   });
 
-  describe("setAllocationStockFromSearch", () => {
-    it("writes market/ticker/name/currency atomically and preserves targetPercent", () => {
-      const id = usePortfolioStore.getState().addPortfolio();
-      usePortfolioStore.getState().addAllocation(id, { targetPercent: 25 });
-      const aId = usePortfolioStore.getState().portfolios[0]!.allocations[0]!.id;
-      usePortfolioStore.getState().setAllocationStockFromSearch(id, aId, {
-        market: "KOSDAQ",
-        ticker: "035720",
-        name: "카카오",
-        currency: "KRW",
-      });
-      const a = usePortfolioStore.getState().portfolios[0]!.allocations[0]!;
-      expect(a).toMatchObject({
-        market: "KOSDAQ",
-        ticker: "035720",
-        name: "카카오",
-        currency: "KRW",
-        targetPercent: 25,
-      });
-    });
-  });
-
   describe("removeAllocation", () => {
     it("removes only the matching allocation", () => {
       const id = usePortfolioStore.getState().addPortfolio();
@@ -363,23 +341,6 @@ describe("Portfolio Store", () => {
       const allocations = usePortfolioStore.getState().portfolios[0]!.allocations;
       expect(allocations).toHaveLength(1);
       expect(allocations[0]!.ticker).toBe("000660");
-    });
-  });
-
-  describe("reorderPortfolios", () => {
-    it("replaces the array order", () => {
-      const a = usePortfolioStore.getState().addPortfolio("A");
-      const b = usePortfolioStore.getState().addPortfolio("B");
-      const c = usePortfolioStore.getState().addPortfolio("C");
-      const current = usePortfolioStore.getState().portfolios;
-      // Current order is C, B, A (most recent first). Reorder to A, B, C.
-      const reordered = [
-        current.find((p) => p.id === a)!,
-        current.find((p) => p.id === b)!,
-        current.find((p) => p.id === c)!,
-      ];
-      usePortfolioStore.getState().reorderPortfolios(reordered);
-      expect(usePortfolioStore.getState().portfolios.map((p) => p.name)).toEqual(["A", "B", "C"]);
     });
   });
 

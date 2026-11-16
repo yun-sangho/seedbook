@@ -1,6 +1,15 @@
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import { calculateReturnRate } from "@web/utils/number-format";
-import type { MonthlySummaryRow } from "../app/(app)/assets/investments/_components/monthly-summary-columns";
+
+/** 월별 요약 한 줄 (각 월의 마지막 기록 기준). */
+export interface MonthlySummaryRow {
+  yearMonth: string; // "YYYY-MM"
+  displayMonth: string; // "2024년 1월"
+  initialInvestment: number;
+  currentValue: number;
+  profit: number;
+  returnRate: number;
+}
 
 /**
  * 투자 데이터를 월별 요약 데이터로 변환합니다.

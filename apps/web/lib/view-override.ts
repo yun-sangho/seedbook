@@ -15,11 +15,3 @@ export function setViewOverride(kind: DeviceKind | null): void {
       ? `${VIEW_OVERRIDE_COOKIE}=; path=/; max-age=0`
       : `${VIEW_OVERRIDE_COOKIE}=${kind}; path=/; max-age=${ONE_YEAR_SECONDS}; samesite=lax`;
 }
-
-export function getViewOverride(): DeviceKind | null {
-  const match = document.cookie
-    .split("; ")
-    .find((c) => c.startsWith(`${VIEW_OVERRIDE_COOKIE}=`))
-    ?.split("=")[1];
-  return match === "mobile" || match === "desktop" ? match : null;
-}

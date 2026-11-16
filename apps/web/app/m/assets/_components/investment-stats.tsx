@@ -3,9 +3,9 @@
 import { useMemo, useState } from "react";
 import { IconChevronDownSmallLine } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
-import { InvestmentStackedAreaChart } from "@web/app/(app)/assets/investments/_components/investment-stacked-area-chart";
 import { TabToolbar } from "@web/components/mobile/detail-layout";
 import { profitToneClass } from "@web/components/mobile/profit-tone";
+import { InvestmentStackedAreaChart } from "@web/features/investments/components/investment-stacked-area-chart";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import { aggregateHoldings } from "@web/features/investments/utils/aggregate-holdings";
