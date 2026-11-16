@@ -8,7 +8,7 @@ import type { RebalancingTask } from "../types/types";
 
 /**
  * 리밸런싱 매매 종목의 종류 ("stock" | "etf" | "etn" …). 시세 API 가 함께 내려준다 — 받기 전이나
- * 모르는 종목이면 null. 호가 단위와 매도 세금(ETF·ETN 은 증권거래세가 없다)을 정할 때 쓴다.
+ * 모르는 종목이면 null. 호가 단위를 정할 때 쓴다.
  */
 export function useTaskSecurityTypes(
   tasks: RebalancingTask[]

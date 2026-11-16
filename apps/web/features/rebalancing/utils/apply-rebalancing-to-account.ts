@@ -1,24 +1,9 @@
 import type { CashItem, InvestmentItem, StockHolding } from "@web/features/investments/types/types";
-import type { SecurityType } from "@web/features/investments/utils/krx-tick-size";
-import { sellTaxOf } from "@web/features/investments/utils/sell-tax";
 import { stockPriceKey } from "@web/features/investments/utils/use-stock-prices";
 import type { RebalancingSession, RebalancingTask } from "../types/types";
 import { executedPriceOf, executedQuantityOf } from "./rebalancing-session";
 
 const DEFAULT_CASH_LABEL = "예수금";
-
-/** 매도 금액 `proceeds` (원) 에서 빠지는 세금 (원). */
-export type SellTaxFor = (task: RebalancingTask, proceeds: number) => number;
-
-/**
- * 매도 세금 (`sellTaxOf`) — 시장과 종목 종류(`securityTypeFor`, 모르면 null)로 정한다. ETF·ETN 은
- * 증권거래세가 없다.
- */
-export function sellTaxForTasks(
-  securityTypeFor: (task: RebalancingTask) => SecurityType
-): SellTaxFor {
-  return (task, proceeds) => sellTaxOf(task.market, securityTypeFor(task), proceeds).total;
-}
 
 export interface AppliedRebalancing {
   account: InvestmentItem;
@@ -56,8 +41,8 @@ export interface CashChange {
  *   같은 종목이 여러 줄이면 매도는 앞 줄부터 차례로 뺀다. 보유보다 많이 판 기록이면
  *   실제로 있던 수량만큼만 팔고, 예수금도 그만큼만 더한다.
  *   보유하지 않던 종목을 샀으면 새 보유 종목을 만든다 (`currencyFor` 로 통화를 정한다).
- * - 예수금은 실제 체결 가격(`executedPriceOf`, 기록 전이면 시작 시점 가격) × 수량으로 매도 금액
- *   (세금을 뺀 값, `sellTaxFor` — 보통 `sellTaxForTasks`)을 더하고 매수 금액을 뺀다. 시작할 때
+ * - 예수금은 실제 체결 가격(`executedPriceOf`, 기록 전이면 시작 시점 가격) × 수량으로 매도 금액을
+ *   더하고 매수 금액을 뺀다 (세금·수수료는 계산하지 않는다). 시작할 때
  *   정한 거래 가능 금액이 예수금보다 많았으면 (`cashDelta` > 0) 그만큼 새로 넣은 돈이라 더하고,
  *   적었으면 거래에 쓰지 않고 남겨 둔 돈이라 그대로 둔다. 첫 "예수금" 항목(없으면 첫 현금 항목, 그것도 없으면 새로 만듦)에
  *   반영하며 0 아래로 내려가지 않는다.
@@ -65,8 +50,7 @@ export interface CashChange {
 export function applyRebalancingToAccount(
   account: InvestmentItem,
   session: RebalancingSession,
-  currencyFor: (task: RebalancingTask) => string,
-  sellTaxFor: SellTaxFor
+  currencyFor: (task: RebalancingTask) => string
 ): AppliedRebalancing {
   let holdings = account.holdings;
   let cashChange = Math.max(0, session.cashDelta);
@@ -103,9 +87,8 @@ export function applyRebalancingToAccount(
       const after = sumQuantity(holdings, key);
       holdingChanges.push({ task, before, after });
       // 보유보다 많이 판 기록이면 실제로 있던 수량만큼만 예수금에 더한다 — 없는 주식의 돈이
-      // 생기지 않도록. 매도 세금은 빼고 들어온다.
-      const proceeds = (before - after) * tradePrice;
-      cashChange += proceeds - sellTaxFor(task, proceeds);
+      // 생기지 않도록.
+      cashChange += (before - after) * tradePrice;
       continue;
     }
 
