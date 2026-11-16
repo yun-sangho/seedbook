@@ -6,6 +6,7 @@ import { formatMoneyDraft, sanitizePercentDraft } from "@web/components/mobile/i
 import { MoneyField } from "@web/components/mobile/money-field";
 import { ACCOUNT_COLORS } from "@web/features/investments/types/constants";
 import type { InvestmentItem, StockHolding } from "@web/features/investments/types/types";
+import { DEFAULT_COMMISSION_PERCENT } from "@web/features/investments/utils/trade-cost";
 import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
@@ -138,34 +139,41 @@ export function EditHoldingSheet({
   );
 }
 
-/** 매도 제비용률 입력을 숫자로. 비었으면 0, 0 이상 100 미만이 아니면 null (저장하지 않음). */
-function parseSellCostDraft(draft: string): number | null {
-  if (draft.trim() === "") return 0;
+/**
+ * 수수료율 입력을 읽는다. 비었으면 null (기본 수수료율), 0 이상 100 미만이 아니면 invalid
+ * (저장하지 않음). 0 은 수수료 무료 계좌라 그대로 둔다.
+ */
+function parseCommissionDraft(
+  draft: string
+): { valid: true; percent: number | null } | { valid: false } {
+  if (draft.trim() === "") return { valid: true, percent: null };
   const value = Number(draft);
-  return Number.isFinite(value) && value >= 0 && value < 100 ? value : null;
+  return Number.isFinite(value) && value >= 0 && value < 100
+    ? { valid: true, percent: value }
+    : { valid: false };
 }
 
-/** 계좌 이름 / 매도 제비용률 / 색상 / 삭제. */
+/** 계좌 이름 / 매매 수수료율 / 색상 / 삭제. */
 export function AccountSettingsSheet({
   open,
   onOpenChange,
   item,
   onRename,
-  onSellCostPercentChange,
+  onCommissionPercentChange,
   onColorChange,
   onDelete,
 }: SheetProps & {
   item: InvestmentItem;
   onRename: (name: string) => void;
-  onSellCostPercentChange: (percent: number) => void;
+  onCommissionPercentChange: (percent: number | null) => void;
   onColorChange: (color: string) => void;
   onDelete: () => void;
 }) {
   const [name, setName] = useState(item.accountName);
-  const [sellCostDraft, setSellCostDraft] = useState(() =>
-    item.sellCostPercent ? String(item.sellCostPercent) : ""
+  const [commissionDraft, setCommissionDraft] = useState(() =>
+    typeof item.commissionPercent === "number" ? String(item.commissionPercent) : ""
   );
-  const sellCost = parseSellCostDraft(sellCostDraft);
+  const commission = parseCommissionDraft(commissionDraft);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
@@ -182,15 +190,18 @@ export function AccountSettingsSheet({
                 <TextFieldInput placeholder="계좌 이름" />
               </TextField>
               <TextField
-                label="매도 제비용률"
-                value={sellCostDraft}
-                onValueChange={({ value }) => setSellCostDraft(sanitizePercentDraft(value))}
+                label="매매 수수료율"
+                value={commissionDraft}
+                onValueChange={({ value }) => setCommissionDraft(sanitizePercentDraft(value))}
                 suffix="%"
-                invalid={sellCost === null}
-                errorMessage={sellCost === null ? "100% 미만으로 입력해 주세요" : undefined}
-                description="리밸런싱에서 매도 대금은 세금·수수료를 빼고 현금성 자산에 들어와요. 비워 두면 자동으로 계산해요 — 주식은 증권거래세 0.20% + 수수료 0.015%, ETF·ETN 은 수수료만. 증권사 수수료가 다르면 세금까지 합친 비율을 직접 입력하세요."
+                invalid={!commission.valid}
+                errorMessage={commission.valid ? undefined : "100% 미만으로 입력해 주세요"}
+                description={`우대 수수료 등 이 계좌의 증권사 수수료율이에요 (유관기관 제비용 포함). 비워 두면 ${DEFAULT_COMMISSION_PERCENT}% 로 계산해요. 매도할 때의 세금 — 주식 0.20% (코스피는 증권거래세 0.05% + 농어촌특별세 0.15%), ETF·ETN 은 없음 — 은 수수료와 따로 자동으로 계산해요.`}
               >
-                <TextFieldInput inputMode="decimal" placeholder="자동" />
+                <TextFieldInput
+                  inputMode="decimal"
+                  placeholder={String(DEFAULT_COMMISSION_PERCENT)}
+                />
               </TextField>
               <div>
                 <p className="t4-medium text-fg-neutral mb-x2">색상</p>
@@ -218,9 +229,11 @@ export function AccountSettingsSheet({
           <BottomSheetFooter>
             <SheetActions
               onSave={() => {
-                if (sellCost === null) return;
+                if (!commission.valid) return;
                 onRename(name);
-                if (sellCost !== (item.sellCostPercent ?? 0)) onSellCostPercentChange(sellCost);
+                if (commission.percent !== (item.commissionPercent ?? null)) {
+                  onCommissionPercentChange(commission.percent);
+                }
                 onOpenChange(false);
               }}
               onDelete={() => setConfirmOpen(true)}

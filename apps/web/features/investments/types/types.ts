@@ -49,9 +49,8 @@ export interface InvestmentItem {
   note: string;
   color: string; // 차트 표시 색상
   /**
-   * 매도 제비용률 (%) — 매도할 때 세금·수수료로 빠지는 비율을 직접 정한 값 (예: 0.2). 0 이나 없으면
-   * 자동 (종목별 증권거래세 + 기본 수수료, `sellCostOf`). 리밸런싱에서 매도 대금은 이만큼 빼고
-   * 예수금에 들어온다.
+   * 증권사 매매 수수료율 (%) — 매수·매도 모두 붙는다 (예: 우대 0.0036396). 없거나 null 이면 기본값
+   * (`DEFAULT_COMMISSION_PERCENT`). 세금은 종목으로 정해지므로 넣지 않는다 (`tradeCostOf`).
    */
-  sellCostPercent?: number;
+  commissionPercent?: number | null;
 }

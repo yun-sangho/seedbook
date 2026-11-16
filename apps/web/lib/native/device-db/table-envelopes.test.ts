@@ -28,7 +28,7 @@ function account(id: string, name: string, extra: Record<string, unknown> = {}) 
     currentValue: 1_200_000,
     note: "",
     color: "#ff0000",
-    sellCostPercent: 0.2,
+    commissionPercent: 0.0036,
     records: [],
     holdings: [],
     cashItems: [],

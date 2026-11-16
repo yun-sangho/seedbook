@@ -7,10 +7,10 @@ import { useFlow } from "@stackflow/react";
 import { formatMoneyDraft } from "@web/components/mobile/input-format";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { snapToTick, stepByTick, tickSize } from "@web/features/investments/utils/krx-tick-size";
-import { type SellCost, sellCostOf } from "@web/features/investments/utils/sell-cost";
+import { type TradeCost, tradeCostOf } from "@web/features/investments/utils/trade-cost";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import type { RebalancingTask, RebalancingTaskStatus } from "@web/features/rebalancing/types/types";
-import { sellCostForAccount } from "@web/features/rebalancing/utils/apply-rebalancing-to-account";
+import { tradeCostForAccount } from "@web/features/rebalancing/utils/apply-rebalancing-to-account";
 import {
   isRebalancingCompleted,
   rebalancingTaskStatus,
@@ -106,10 +106,10 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
   // 기록할 가격은 호가에 맞춘 값이다 — 금액과 예수금도 그 값으로 계산한다.
   const tradePrice = priceOk ? snapToTick(price, securityType) : null;
   const amount = quantityOk && tradePrice !== null ? Math.round(quantity * tradePrice) : null;
-  // 매도 대금에서 빠지는 세금·수수료.
-  const sellCost =
-    task.action === "매도" && account && amount !== null
-      ? sellCostOf(account, amount, securityType)
+  // 수수료 (매수·매도) 와 세금 (매도). 매수는 더 내고, 매도는 덜 받는다.
+  const tradeCost =
+    account && amount !== null
+      ? tradeCostOf(account, { action: task.action, market: task.market, securityType }, amount)
       : null;
   // 계좌가 지워졌으면 예수금을 알 수 없어 확인하지 않는다.
   const cash =
@@ -120,7 +120,7 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
           task.id,
           quantity,
           tradePrice,
-          sellCostForAccount(account, securityTypeOf)
+          tradeCostForAccount(account, securityTypeOf)
         )
       : null;
   const shortOfCash = cash !== null && cash.after < 0;
@@ -215,7 +215,9 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
         <SummaryRow label={`${task.action} 금액`}>
           {amount !== null ? `${formatWithCommas(amount)}원` : "-"}
         </SummaryRow>
-        {sellCost !== null && <SellCostRows cost={sellCost} />}
+        {tradeCost !== null && amount !== null && (
+          <TradeCostRows action={task.action} amount={amount} cost={tradeCost} />
+        )}
         {cash && (
           <SummaryRow label="주문가능금액">
             <span className="text-fg-neutral-muted font-normal">
@@ -358,24 +360,44 @@ function StepperField({
   );
 }
 
-/** 매도 대금에서 빠지는 세금·수수료. 계좌에 제비용률을 직접 정했으면 한 줄로 보인다. */
-function SellCostRows({ cost }: { cost: SellCost }) {
-  if (cost.kind === "manual") {
-    return (
-      <SummaryRow label={`제비용 (${cost.percent}%)`}>-{formatWithCommas(cost.total)}원</SummaryRow>
-    );
-  }
+/**
+ * 매매 비용 — 수수료 (계좌 수수료율), 매도면 증권거래세·농어촌특별세 (0% 인 줄은 뺀다) — 와
+ * 비용을 반영한 실제 정산 금액 (매수는 낼 돈, 매도는 받을 돈).
+ */
+function TradeCostRows({
+  action,
+  amount,
+  cost,
+}: {
+  action: RebalancingTask["action"];
+  amount: number;
+  cost: TradeCost;
+}) {
+  const settled = action === "매수" ? amount + cost.total : amount - cost.total;
   return (
     <>
-      {cost.taxPercent > 0 && (
-        <SummaryRow label={`증권거래세 (${cost.taxPercent.toFixed(2)}%)`}>
-          -{formatWithCommas(cost.tax)}원
-        </SummaryRow>
+      <CostRow label={`수수료 (${cost.commissionPercent}%)`} won={cost.commission} />
+      {cost.transactionTaxPercent > 0 && (
+        <CostRow
+          label={`증권거래세 (${cost.transactionTaxPercent.toFixed(2)}%)`}
+          won={cost.transactionTax}
+        />
       )}
-      <SummaryRow label={`수수료 (${cost.commissionPercent}%)`}>
-        -{formatWithCommas(cost.commission)}원
+      {cost.ruralTaxPercent > 0 && (
+        <CostRow label={`농어촌특별세 (${cost.ruralTaxPercent.toFixed(2)}%)`} won={cost.ruralTax} />
+      )}
+      <SummaryRow label={action === "매수" ? "내는 돈 (비용 포함)" : "받는 돈 (비용 차감)"}>
+        {formatWithCommas(settled)}원
       </SummaryRow>
     </>
+  );
+}
+
+function CostRow({ label, won }: { label: string; won: number }) {
+  return (
+    <SummaryRow label={label}>
+      <span className="text-fg-neutral-muted font-normal">{formatWithCommas(won)}원</span>
+    </SummaryRow>
   );
 }
 

@@ -1,7 +1,10 @@
 import type { ManagedStoreConfig } from "@web/lib/sync/managed-store-config";
 import type { InvestmentItem } from "../types/types";
 
-const num = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : 0);
+const isNum = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value);
+const num = (value: unknown) => (isNum(value) ? value : 0);
+const numOrNull = (value: unknown) => (isNum(value) ? value : null);
 const text = (value: unknown) => (typeof value === "string" ? value : "");
 const list = (value: unknown) =>
   Array.isArray(value) ? (value as Array<Record<string, unknown>>) : [];
@@ -29,7 +32,7 @@ export const investmentsSyncConfig: ManagedStoreConfig<InvestmentItem> = {
     currentValue: num(item.currentValue),
     note: text(item.note),
     color: text(item.color),
-    sellCostPercent: num(item.sellCostPercent),
+    commissionPercent: numOrNull(item.commissionPercent),
     records: (item.records ?? []).map((r) => ({
       date: text(r.date),
       initialInvestment: num(r.initialInvestment),
@@ -78,6 +81,6 @@ export const investmentsSyncConfig: ManagedStoreConfig<InvestmentItem> = {
     })),
     note: text(data.note),
     color: text(data.color),
-    sellCostPercent: num(data.sellCostPercent),
+    commissionPercent: numOrNull(data.commissionPercent),
   }),
 };

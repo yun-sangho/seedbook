@@ -19,7 +19,7 @@ const investmentEnvelope = (name: string) =>
           currentValue: 0,
           note: "",
           color: "#000000",
-          sellCostPercent: 0,
+          commissionPercent: null,
           records: [],
           holdings: [],
           cashItems: [],

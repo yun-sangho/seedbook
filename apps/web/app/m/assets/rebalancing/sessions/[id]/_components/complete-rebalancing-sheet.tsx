@@ -11,7 +11,7 @@ import {
   applyRebalancingToAccount,
   type CashChange,
   type HoldingChange,
-  sellCostForAccount,
+  tradeCostForAccount,
 } from "@web/features/rebalancing/utils/apply-rebalancing-to-account";
 import { formatQuantityChange } from "@web/features/rebalancing/utils/format-quantity-change";
 import { computeRebalancingResult } from "@web/features/rebalancing/utils/rebalancing-result";
@@ -67,7 +67,7 @@ export function CompleteRebalancingSheet({
       account,
       session,
       currencyFor,
-      sellCostForAccount(account, securityTypeOf)
+      tradeCostForAccount(account, securityTypeOf)
     );
   }, [account, portfolio, session, securityTypeOf]);
 

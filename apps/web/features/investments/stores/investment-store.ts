@@ -52,7 +52,11 @@ interface InvestmentState {
   /** 새 계좌를 맨 앞에 추가하고 id 를 돌려준다. `holdings` 로 시작 종목을 넣을 수 있다. */
   addInvestmentWithType: (accountType: string, options?: { holdings?: HoldingSeed[] }) => string;
   removeInvestment: (id: string) => void;
-  updateInvestment: (id: string, field: keyof InvestmentItem, value: string | number) => void;
+  updateInvestment: (
+    id: string,
+    field: keyof InvestmentItem,
+    value: string | number | null
+  ) => void;
   addInvestmentRecord: (id: string, record?: Partial<InvestmentRecord>) => void;
   updateInvestmentRecord: (
     id: string,

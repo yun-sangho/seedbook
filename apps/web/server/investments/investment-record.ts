@@ -18,8 +18,8 @@ export type InvestmentFields = {
   currentValue: number;
   note: string;
   color: string;
-  /** 매도 제비용률 (%). 0 이상 100 미만. */
-  sellCostPercent: number;
+  /** 매매 수수료율 (%). 0 이상 100 미만, null 이면 기본값. */
+  commissionPercent: number | null;
   records: Array<{ date: string; initialInvestment: number; currentValue: number }>;
   holdings: Array<{
     id: string;
@@ -53,8 +53,8 @@ export function parseInvestmentFields(value: unknown): InvestmentFields | null {
   const rawRecords = v.records ?? [];
   const rawHoldings = v.holdings ?? [];
   const rawCash = v.cashItems ?? [];
-  // 매도 제비용률은 나중에 추가된 필드라 없으면 0.
-  const sellCostPercent = v.sellCostPercent ?? 0;
+  // 수수료율은 나중에 추가된 필드라 없으면 null (기본값).
+  const commissionPercent = v.commissionPercent ?? null;
   if (
     !isText(v.accountName) ||
     !isText(v.accountType) ||
@@ -63,9 +63,8 @@ export function parseInvestmentFields(value: unknown): InvestmentFields | null {
     !isNumber(v.currentValue) ||
     !isText(note) ||
     !isText(v.color) ||
-    !isNumber(sellCostPercent) ||
-    sellCostPercent < 0 ||
-    sellCostPercent >= 100 ||
+    (commissionPercent !== null &&
+      (!isNumber(commissionPercent) || commissionPercent < 0 || commissionPercent >= 100)) ||
     !Array.isArray(rawRecords) ||
     !Array.isArray(rawHoldings) ||
     !Array.isArray(rawCash)
@@ -134,7 +133,7 @@ export function parseInvestmentFields(value: unknown): InvestmentFields | null {
     currentValue: v.currentValue,
     note,
     color: v.color,
-    sellCostPercent,
+    commissionPercent,
     records,
     holdings,
     cashItems,
@@ -151,7 +150,7 @@ export function investmentFieldsToColumns(fields: InvestmentFields) {
     currentValue: toBigInt(fields.currentValue),
     note: fields.note,
     color: fields.color,
-    sellCostPercent: fields.sellCostPercent,
+    commissionPercent: fields.commissionPercent,
   };
 }
 
@@ -196,7 +195,7 @@ export function investmentRowToFields(
     currentValue: bigIntToNumber(row.currentValue),
     note: row.note,
     color: row.color,
-    sellCostPercent: row.sellCostPercent,
+    commissionPercent: row.commissionPercent,
     records: records
       .slice()
       .sort((a, b) => b.date.getTime() - a.date.getTime())

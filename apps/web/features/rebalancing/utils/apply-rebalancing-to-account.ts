@@ -1,29 +1,34 @@
 import type { CashItem, InvestmentItem, StockHolding } from "@web/features/investments/types/types";
 import type { SecurityType } from "@web/features/investments/utils/krx-tick-size";
-import { sellCostOf } from "@web/features/investments/utils/sell-cost";
+import { tradeCostOf } from "@web/features/investments/utils/trade-cost";
 import { stockPriceKey } from "@web/features/investments/utils/use-stock-prices";
 import type { RebalancingSession, RebalancingTask } from "../types/types";
 import { executedPriceOf, executedQuantityOf } from "./rebalancing-session";
 
 const DEFAULT_CASH_LABEL = "예수금";
 
-/** 매도 대금 `proceeds` (원) 에서 빠지는 세금·수수료 (원). */
-export type SellCostFor = (task: RebalancingTask, proceeds: number) => number;
+/** 매매 금액 `amount` (원) 에 붙는 수수료·세금 (원). 매수는 더 내고, 매도는 덜 받는다. */
+export type TradeCostFor = (task: RebalancingTask, amount: number) => number;
 
 /**
- * 이 계좌에서 팔 때의 세금·수수료 (`sellCostOf`). 종목 종류(`securityTypeFor`, 모르면 null)로
- * 증권거래세를 정한다 — ETF·ETN 은 거래세가 없다.
+ * 이 계좌에서 매매할 때의 수수료·세금 (`tradeCostOf`). 수수료는 계좌의 수수료율, 세금은 매도할
+ * 때만 시장과 종목 종류(`securityTypeFor`, 모르면 null)로 정한다 — ETF·ETN 은 거래세가 없다.
  */
-export function sellCostForAccount(
-  account: Pick<InvestmentItem, "sellCostPercent">,
+export function tradeCostForAccount(
+  account: Pick<InvestmentItem, "commissionPercent">,
   securityTypeFor: (task: RebalancingTask) => SecurityType
-): SellCostFor {
-  return (task, proceeds) => sellCostOf(account, proceeds, securityTypeFor(task)).total;
+): TradeCostFor {
+  return (task, amount) =>
+    tradeCostOf(
+      account,
+      { action: task.action, market: task.market, securityType: securityTypeFor(task) },
+      amount
+    ).total;
 }
 
 export interface AppliedRebalancing {
   account: InvestmentItem;
-  /** 예수금 변화 (원). 매도 - 매수 + 현금 투입/인출 */
+  /** 예수금 변화 (원). 매도 - 매수 (수수료·세금 포함) + 현금 투입/인출 */
   cashChange: number;
   /** 반영하지 못한 할 일 — 거래 수량·가격을 모르거나, 보유하지 않은 종목의 매도 */
   skipped: RebalancingTask[];
@@ -57,17 +62,16 @@ export interface CashChange {
  *   같은 종목이 여러 줄이면 매도는 앞 줄부터 차례로 뺀다. 보유보다 많이 판 기록이면
  *   실제로 있던 수량만큼만 팔고, 예수금도 그만큼만 더한다.
  *   보유하지 않던 종목을 샀으면 새 보유 종목을 만든다 (`currencyFor` 로 통화를 정한다).
- * - 예수금은 실제 체결 가격(`executedPriceOf`, 기록 전이면 시작 시점 가격) × 수량으로 매도 금액
- *   (세금·수수료 `sellCostFor` 를 뺀 값 — 보통 `sellCostForAccount`)을
- *   더하고 매수 금액을 뺀 뒤, 시작할 때
- *   입력한 현금 투입/인출을 더한다. 첫 "예수금" 항목(없으면 첫 현금 항목, 그것도 없으면 새로 만듦)에
+ * - 예수금은 실제 체결 가격(`executedPriceOf`, 기록 전이면 시작 시점 가격) × 수량으로 매도 금액에서
+ *   수수료·세금(`tradeCostFor` — 보통 `tradeCostForAccount`)을 뺀 만큼 더하고, 매수 금액에
+ *   수수료를 더한 만큼 뺀 뒤, 시작할 때 입력한 현금 투입/인출을 더한다. 첫 "예수금" 항목(없으면 첫 현금 항목, 그것도 없으면 새로 만듦)에
  *   반영하며 0 아래로 내려가지 않는다.
  */
 export function applyRebalancingToAccount(
   account: InvestmentItem,
   session: RebalancingSession,
   currencyFor: (task: RebalancingTask) => string,
-  sellCostFor: SellCostFor
+  tradeCostFor: TradeCostFor
 ): AppliedRebalancing {
   let holdings = account.holdings;
   let cashChange = session.cashDelta;
@@ -104,9 +108,9 @@ export function applyRebalancingToAccount(
       const after = sumQuantity(holdings, key);
       holdingChanges.push({ task, before, after });
       // 보유보다 많이 판 기록이면 실제로 있던 수량만큼만 예수금에 더한다 — 없는 주식의 돈이
-      // 생기지 않도록. 세금·수수료는 빼고 들어온다.
+      // 생기지 않도록. 수수료·세금은 빼고 들어온다.
       const proceeds = (before - after) * tradePrice;
-      cashChange += proceeds - sellCostFor(task, proceeds);
+      cashChange += proceeds - tradeCostFor(task, proceeds);
       continue;
     }
 
@@ -130,7 +134,7 @@ export function applyRebalancingToAccount(
         },
       ];
     }
-    cashChange -= tradeValue;
+    cashChange -= tradeValue + tradeCostFor(task, tradeValue);
   }
 
   cashChange = Math.round(cashChange);

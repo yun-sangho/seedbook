@@ -20,7 +20,7 @@ import {
 import { stockPriceKey } from "@web/features/investments/utils/use-stock-prices";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import type { RebalancingTask } from "@web/features/rebalancing/types/types";
-import { sellCostForAccount } from "@web/features/rebalancing/utils/apply-rebalancing-to-account";
+import { tradeCostForAccount } from "@web/features/rebalancing/utils/apply-rebalancing-to-account";
 import {
   type RebalancingTaskSection,
   toggleCollapsedSection,
@@ -117,7 +117,7 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
   // 진행 중일 때만 — 완료한 기록은 아래 결과에 반영 전 → 후 예수금이 나온다. 계좌가 지워졌으면 모른다.
   const cash =
     !completed && account
-      ? rebalancingCashOutlook(account, session, sellCostForAccount(account, securityTypeOf))
+      ? rebalancingCashOutlook(account, session, tradeCostForAccount(account, securityTypeOf))
       : null;
   const priceAsOf = summarizeRebalancingPriceAsOf(session.tasks);
   const groups = groupRebalancingTasks(session.tasks, leaving);

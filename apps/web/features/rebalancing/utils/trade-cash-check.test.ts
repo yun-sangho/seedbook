@@ -1,7 +1,7 @@
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import { describe, expect, it } from "vitest";
 import type { RebalancingSession, RebalancingTask } from "../types/types";
-import { sellCostForAccount } from "./apply-rebalancing-to-account";
+import { tradeCostForAccount } from "./apply-rebalancing-to-account";
 import { rebalancingCashOutlook, tradeCashPreview } from "./trade-cash-check";
 
 const NO_COST = () => 0;
@@ -315,10 +315,11 @@ describe("rebalancingCashOutlook", () => {
   });
 });
 
-describe("sell costs in the cash preview and outlook", () => {
+describe("trade costs in the cash preview and outlook", () => {
+  // 수수료 0.1% 계좌, 코스피 주식 — 매도는 수수료 0.1% + 거래세 0.05% + 농특세 0.15%
   const withHolding = (cash: number): InvestmentItem => ({
     ...account(cash),
-    sellCostPercent: 0.2,
+    commissionPercent: 0.1,
     holdings: [
       {
         id: "h",
@@ -333,17 +334,31 @@ describe("sell costs in the cash preview and outlook", () => {
   });
   const sell = task({ id: "sell", ticker: "005930", action: "매도" });
 
-  const costs = sellCostForAccount(withHolding(0), () => "stock");
+  const costs = tradeCostForAccount(withHolding(0), () => "stock");
 
-  it("adds a sell's proceeds after the account's sell costs", () => {
-    // 5주 × 10,000원 = 50,000원 − 0.2% 100원
+  it("adds a sell's proceeds after commission and taxes", () => {
+    // 5주 × 10,000원 = 50,000원 − (50 + 25 + 75)
     expect(tradeCashPreview(withHolding(0), session([sell]), "sell", 5, 10_000, costs).after).toBe(
-      49_900
+      49_850
     );
   });
 
-  it("expects remaining sells to bring in their proceeds after sell costs", () => {
-    // 권장 10주 × 10,000원 = 100,000원 − 0.2% 200원
-    expect(rebalancingCashOutlook(withHolding(0), session([sell]), costs).expected).toBe(99_800);
+  it("takes a buy's commission on top of its price", () => {
+    // 5주 × 10,000원 = 50,000원 + 수수료 50원
+    expect(
+      tradeCashPreview(withHolding(100_000), session([task()]), "buy", 5, 10_000, costs).after
+    ).toBe(49_950);
+  });
+
+  it("holds back a buy order's commission along with its price", () => {
+    const ordered = task({ orderedQuantity: 3, orderedPrice: 10_000 });
+    expect(
+      rebalancingCashOutlook(withHolding(100_000), session([ordered]), costs).heldForOrders
+    ).toBe(30_030);
+  });
+
+  it("expects remaining sells to bring in their proceeds after costs", () => {
+    // 권장 10주 × 10,000원 = 100,000원 − (100 + 50 + 150)
+    expect(rebalancingCashOutlook(withHolding(0), session([sell]), costs).expected).toBe(99_700);
   });
 });

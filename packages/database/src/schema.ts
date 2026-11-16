@@ -183,8 +183,11 @@ export const investmentAccount = seedbook.table(
     currentValue: bigint("currentValue", { mode: "bigint" }).notNull(),
     note: text("note").notNull().default(""),
     color: text("color").notNull(),
-    // 매도 제비용률 (%) — 매도 대금에서 세금·수수료로 빠지는 비율.
+    // 더 이상 쓰지 않는다 (세금까지 합친 매도 제비용률이었다 — `commissionPercent` 로 바뀜). 삭제 예정.
     sellCostPercent: doublePrecision("sellCostPercent").notNull().default(0),
+    // 증권사 매매 수수료율 (%) — 매수·매도 모두 붙는다. 우대 등으로 계좌마다 다르다.
+    // null 이면 기본값 (앱의 DEFAULT_COMMISSION_PERCENT). 세금은 종목으로 정하므로 넣지 않는다.
+    commissionPercent: doublePrecision("commissionPercent"),
     // 이 계좌가 연결된 포트폴리오. 한 계좌는 최대 하나의 포트폴리오에만 연결된다.
     // 전환 기간에는 `portfolio.accountIds` 가 클라이언트 envelope 의 원본이고, 이 컬럼은
     // translator 가 `syncAccountPortfolioLinks` 로 맞춰 둔다.

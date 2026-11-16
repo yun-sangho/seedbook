@@ -2,7 +2,7 @@
 import { schema } from "@seedbook/database";
 import { getTableConfig, type PgTable } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
-import { migrateDeviceDatabase } from "./migrations";
+import { DEVICE_MIGRATIONS, migrateDeviceDatabase } from "./migrations";
 import { createNodeSqliteDriver } from "./testing/node-sqlite-driver";
 
 /** 서버에만 있는 컬럼 — 기기에는 한 사람의 데이터만 있고 동기화 상태가 없다. */
@@ -50,7 +50,7 @@ describe("device database schema", () => {
     const applied = await driver.query<{ version: number }>(
       "SELECT version FROM device_schema_migration"
     );
-    expect(applied).toHaveLength(1);
+    expect(applied).toHaveLength(DEVICE_MIGRATIONS.length);
   });
 
   it("applies only the versions added since the last launch", async () => {

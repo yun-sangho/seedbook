@@ -114,6 +114,11 @@ export const DEVICE_MIGRATIONS: DeviceMigration[] = [
       )`,
     ],
   },
+  {
+    // 계좌별 매매 수수료율 (서버 0017). sellCostPercent 는 서버처럼 남겨 두고 쓰지 않는다.
+    version: 2,
+    statements: ["ALTER TABLE investment_account ADD COLUMN commissionPercent REAL"],
+  },
 ];
 
 const CREATE_MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS device_schema_migration (

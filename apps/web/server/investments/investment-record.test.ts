@@ -9,7 +9,7 @@ const valid = {
   currentValue: 1_200_000,
   note: "",
   color: "#3b82f6",
-  sellCostPercent: 0.2,
+  commissionPercent: 0.0036,
   records: [{ date: "2026-11-01", initialInvestment: 1_000_000, currentValue: 1_200_000 }],
   holdings: [
     {
@@ -42,15 +42,20 @@ describe("parseInvestmentFields", () => {
     });
   });
 
-  it("treats a missing sell cost rate as 0 (accounts saved before the field existed)", () => {
-    const { sellCostPercent: _s, ...rest } = valid;
+  it("treats a missing commission rate as null (accounts saved before the field existed)", () => {
+    const { commissionPercent: _c, ...rest } = valid;
 
-    expect(parseInvestmentFields(rest)?.sellCostPercent).toBe(0);
+    expect(parseInvestmentFields(rest)?.commissionPercent).toBeNull();
   });
 
-  it("rejects a sell cost rate below 0 or at 100% and above", () => {
-    expect(parseInvestmentFields({ ...valid, sellCostPercent: -0.1 })).toBeNull();
-    expect(parseInvestmentFields({ ...valid, sellCostPercent: 100 })).toBeNull();
+  it("accepts a zero commission rate (commission-free accounts)", () => {
+    expect(parseInvestmentFields({ ...valid, commissionPercent: 0 })?.commissionPercent).toBe(0);
+  });
+
+  it("rejects a commission rate below 0, at 100% and above, or not a number", () => {
+    expect(parseInvestmentFields({ ...valid, commissionPercent: -0.1 })).toBeNull();
+    expect(parseInvestmentFields({ ...valid, commissionPercent: 100 })).toBeNull();
+    expect(parseInvestmentFields({ ...valid, commissionPercent: "0.01" })).toBeNull();
   });
 
   it("allows fractional holding quantities", () => {

@@ -1,0 +1,1 @@
+ALTER TABLE "seedbook"."investment_account" ADD COLUMN "commissionPercent" double precision;
