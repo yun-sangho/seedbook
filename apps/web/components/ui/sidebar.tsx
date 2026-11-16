@@ -20,6 +20,7 @@ import {
   TooltipTrigger,
 } from "@web/components/ui/tooltip";
 import { useIsMobile } from "@web/hooks/use-mobile";
+import { getDeviceStorage } from "@web/lib/device-storage";
 import { cn } from "@web/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import { PanelLeftIcon } from "lucide-react";
@@ -76,7 +77,7 @@ function SidebarProvider({
   React.useEffect(() => {
     if (openProp !== undefined) return;
     try {
-      const stored = window.localStorage.getItem(SIDEBAR_STORAGE_KEY);
+      const stored = getDeviceStorage().getItem(SIDEBAR_STORAGE_KEY);
       if (stored === "true") _setOpen(true);
       else if (stored === "false") _setOpen(false);
     } catch {
@@ -96,7 +97,7 @@ function SidebarProvider({
 
       // 접힘/펼침 상태를 localStorage 에 저장해 새로고침·네비게이션 후에도 유지.
       try {
-        window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(openState));
+        getDeviceStorage().setItem(SIDEBAR_STORAGE_KEY, String(openState));
       } catch {
         // localStorage 접근 실패는 무시
       }

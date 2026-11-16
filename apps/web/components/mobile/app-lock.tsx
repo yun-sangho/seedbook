@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { IconLockLine } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
+import { getDeviceStorage } from "@web/lib/device-storage";
 import { isAppLockEnabled, setAppLockEnabled, shouldLockOnReturn } from "@web/lib/native/app-lock";
 import {
   availableBiometryLabel,
@@ -50,7 +51,7 @@ export function AppLockOverlay() {
 
   // 앱을 새로 띄웠을 때: 생체 인증을 쓸 수 있고 잠금이 켜져 있으면 잠근다.
   useEffect(() => {
-    if (biometryLabel && isAppLockEnabled(window.localStorage)) {
+    if (biometryLabel && isAppLockEnabled(getDeviceStorage())) {
       setLocked(true);
       void unlock();
     }
@@ -65,7 +66,7 @@ export function AppLockOverlay() {
         return;
       }
       const lockNow = shouldLockOnReturn({
-        enabled: isAppLockEnabled(window.localStorage),
+        enabled: isAppLockEnabled(getDeviceStorage()),
         hiddenAt: hiddenAtRef.current,
         now: Date.now(),
       });
@@ -109,20 +110,20 @@ export function AppLockSettingItem() {
   const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
-    setEnabled(isAppLockEnabled(window.localStorage));
+    setEnabled(isAppLockEnabled(getDeviceStorage()));
   }, []);
 
   if (!biometryLabel) return null;
 
   const toggle = async () => {
     if (enabled) {
-      setAppLockEnabled(window.localStorage, false);
+      setAppLockEnabled(getDeviceStorage(), false);
       setEnabled(false);
       return;
     }
     const passed = await verifyBiometric(`${BIOMETRY_WITH_RO[biometryLabel]} 앱 잠금을 켭니다`);
     if (!passed) return;
-    setAppLockEnabled(window.localStorage, true);
+    setAppLockEnabled(getDeviceStorage(), true);
     setEnabled(true);
   };
 

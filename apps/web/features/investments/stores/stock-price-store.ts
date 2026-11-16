@@ -1,5 +1,6 @@
 "use client";
 
+import { createDeviceStateStorage } from "@web/lib/device-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { type CachedPrice, selectKeysToFetch } from "../utils/stock-price-cache";
@@ -117,7 +118,7 @@ export const useStockPriceStore = create<StockPriceState>()(
     },
     {
       name: "stock-price-cache",
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => createDeviceStateStorage()),
       version: 2,
       partialize: (state) => ({ entries: state.entries }),
       // v1 항목에는 가격 기준 시각 (asOf/kind) 이 없다. 공용 시세 캐시라 버리고 다시 받는다.

@@ -1,11 +1,11 @@
 "use client";
 
-// side-effect import: 레거시 number ID 를 UUID 로 일회성 업그레이드한다.
+// side-effect import: 레거시 number ID 를 UUID 로 일회성 업그레이드한다 (브라우저 데이터만).
 // 이 import 가 store 파일보다 앞서 실행되도록 hybrid-storage 가 소유한다.
 import "./local-id-upgrade";
 import type { StateStorage } from "zustand/middleware";
-import { type EnvelopeStore, getLocalEnvelopeStore } from "./local-envelope-store";
-import { getStorageMode } from "./storage-mode";
+import { afterDeviceStorageReady, getDeviceStorage } from "./device-storage";
+import { getStorageMode, type StorageMode } from "./storage-mode";
 import { loadManagedStoreFromServer } from "./sync/initial-load";
 import { recordPersistedChange } from "./sync/local-change-recorder";
 import { getManagedStoreConfig } from "./sync/managed-stores";
@@ -13,8 +13,8 @@ import { getManagedStoreConfig } from "./sync/managed-stores";
 /**
  * 하이브리드 저장소 어댑터 — Zustand persist 미들웨어의 `StateStorage`.
  *
- *   - `local` 모드: 이 기기의 envelope 저장소에 읽고 쓴다 (`local-envelope-store.ts` —
- *     브라우저는 localStorage 동기, 네이티브 앱은 SQLite 비동기).
+ *   - `local` 모드: 이 기기 저장소(`device-storage.ts` — 브라우저는 localStorage, 네이티브 앱은
+ *     서버와 같은 모양의 SQLite 테이블)에 읽고 쓴다.
  *
  *   - `cloud` 모드: persist storage 는 로컬 캐시만 맡고, 서버와는 엔티티 동기화로 주고받는다
  *     (`lib/sync/managed-stores.ts` 에 등록된 store).
@@ -23,16 +23,53 @@ import { getManagedStoreConfig } from "./sync/managed-stores";
  *         엔진이 돌고 있지 않아도(로그인 확인 전, 세션 조회 실패) 수정이 사라지지 않는다.
  *         전송은 `EntitySyncRunner` 가 맡는다.
  *
- * 모드는 **모듈 초기화 시점에 한 번만** 읽는다. 런타임 전환은 페이지 리로드로 강제한다.
+ * 모드는 **처음 쓸 때 한 번만** 읽고 고정한다. 런타임 전환은 페이지 리로드로 강제한다.
+ * 앱은 SQLite 가 준비된 뒤에야 저장된 모드를 알 수 있어 모듈 초기화 시점에는 읽지 않는다.
  */
 
-// 첫 로드 이후에는 모드가 고정된다. 호출자가 `setStorageMode + reload` 하지 않는
-// 한 같은 세션 안에선 이 값이 바뀌지 않는다.
-const mode = typeof window === "undefined" ? "local" : getStorageMode();
+let mode: StorageMode | null = null;
 
-/** 이 기기의 envelope 저장소 — 브라우저는 localStorage, 네이티브 앱은 SQLite. */
-function envelopes(): EnvelopeStore {
-  return getLocalEnvelopeStore();
+function currentMode(): StorageMode {
+  mode ??= typeof window === "undefined" ? "local" : getStorageMode();
+  return mode;
+}
+
+function createModeStorage(key: string): StateStorage {
+  const store = getDeviceStorage();
+  const managed = currentMode() === "cloud" ? getManagedStoreConfig(key) : null;
+  // local 모드 — 또는 동기화 설정이 없는 store 는 이 기기에만 저장한다.
+  if (!managed) {
+    return {
+      getItem: (name) => store.readEnvelope(name),
+      setItem: (name, value) => store.writeEnvelope(name, value),
+      removeItem: (name) => store.removeEnvelope(name),
+    };
+  }
+
+  let lastPersisted: string | null = null;
+  return {
+    getItem: async (name) => {
+      const cached = await store.readEnvelope(name || key);
+      const fromServer = await loadManagedStoreFromServer(managed, cached);
+      lastPersisted = fromServer ?? cached;
+      if (fromServer !== null) await store.writeEnvelope(name || key, fromServer);
+      return lastPersisted;
+    },
+    setItem: (name, value) => {
+      const previous = lastPersisted ?? store.readEnvelope(name || key);
+      lastPersisted = value;
+      // 브라우저는 동기로 끝난다. 네이티브 앱(SQLite)에서 직전 저장본을 아직 모를 때만 기다린다.
+      if (!(previous instanceof Promise)) {
+        recordPersistedChange(managed, previous, value);
+        return store.writeEnvelope(name || key, value);
+      }
+      return previous.then((cached) => {
+        recordPersistedChange(managed, cached, value);
+        return store.writeEnvelope(name || key, value);
+      });
+    },
+    removeItem: (name) => store.removeEnvelope(name || key),
+  };
 }
 
 /**
@@ -47,38 +84,14 @@ function envelopes(): EnvelopeStore {
  * ```
  */
 export function createHybridStorage(key: string): StateStorage {
-  const managed = mode === "cloud" ? getManagedStoreConfig(key) : null;
-  // local 모드 — 또는 동기화 설정이 없는 store 는 이 브라우저에만 저장한다.
-  if (!managed) {
-    return {
-      getItem: (name) => envelopes().getItem(name),
-      setItem: (name, value) => envelopes().setItem(name, value),
-      removeItem: (name) => envelopes().removeItem(name),
-    };
-  }
-
-  let lastPersisted: string | null = null;
+  let inner: StateStorage | null = null;
+  const resolve = () => {
+    inner ??= createModeStorage(key);
+    return inner;
+  };
   return {
-    getItem: async (name) => {
-      const cached = await envelopes().getItem(name || key);
-      const fromServer = await loadManagedStoreFromServer(managed, cached);
-      lastPersisted = fromServer ?? cached;
-      if (fromServer !== null) await envelopes().setItem(name || key, fromServer);
-      return lastPersisted;
-    },
-    setItem: (name, value) => {
-      const previous = lastPersisted ?? envelopes().getItem(name || key);
-      lastPersisted = value;
-      // 브라우저는 동기로 끝난다. 네이티브 앱(SQLite)에서 직전 저장본을 아직 모를 때만 기다린다.
-      if (!(previous instanceof Promise)) {
-        recordPersistedChange(managed, previous, value);
-        return envelopes().setItem(name || key, value);
-      }
-      return previous.then((cached) => {
-        recordPersistedChange(managed, cached, value);
-        return envelopes().setItem(name || key, value);
-      });
-    },
-    removeItem: (name) => envelopes().removeItem(name || key),
+    getItem: (name) => afterDeviceStorageReady<string | null>(() => resolve().getItem(name)),
+    setItem: (name, value) => afterDeviceStorageReady(() => resolve().setItem(name, value)),
+    removeItem: (name) => afterDeviceStorageReady(() => resolve().removeItem(name)),
   };
 }

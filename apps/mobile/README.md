@@ -66,15 +66,28 @@ Android Studio 에서는 Settings → Build Tools → Gradle → Gradle JDK 를 
 
 ## 기기 저장소
 
-앱에서는 "이 기기에만 저장"(local 모드) 자산 데이터와 cloud 모드 캐시를 WebView localStorage 가
-아닌 **SQLite** (`@capacitor-community/sqlite`, DB 이름 `seedbook`, 테이블 `kv`) 에 둔다 — OS 가
-저장 공간이 부족할 때 WebView 저장소를 지울 수 있기 때문이다. 웹 쪽 구현은
-`apps/web/lib/local-envelope-store.ts`. 이전 빌드가 localStorage 에 남긴 값은 처음 읽을 때 SQLite 로
-옮기고, 플러그인이 없는 빌드에서는 localStorage 로 돌아간다. 동기화 대기열·화면 설정 같은 작은
-기기 상태는 localStorage 에 남는다.
+앱은 WebView localStorage 를 쓰지 않는다 (OS 가 저장 공간이 부족할 때 지울 수 있다). 모든 기기 데이터는
+**SQLite** (`@capacitor-community/sqlite`, DB 이름 `seedbook`) 에 둔다. 웹 쪽 진입점은
+`apps/web/lib/device-storage.ts`.
 
-Android 에뮬레이터에서 확인: `adb exec-out run-as ing.boogie.seedbook cat databases/seedbookSQLite.db > app.db`
-뒤 `sqlite3 app.db "select key, length(value) from kv;"`.
+- 자산 데이터(local 모드 데이터, cloud 모드 캐시)는 **서버 Postgres 와 같은 테이블·컬럼**
+  (`investment_account`, `stock_holding`, `cash_item`, `investment_record`, `portfolio`,
+  `portfolio_allocation`, `rebalancing`, `user_preference`, `user_list_order`) 에 저장한다. 기기에는
+  한 사람의 데이터만 있어 `userId`·`version`·`deletedAt` 은 없다. 행 변환은 서버와 같은 함수
+  (`apps/web/server/<domain>/*-record.ts`) 를 쓴다 — `lib/native/device-db/table-envelopes.ts`.
+- 서버에 없는 기기 상태(시세 캐시, 동기화 대기열, 앱 잠금, 화면 설정)는 `device_kv`. 저장소 모드는
+  서버처럼 `user_preference.storageMode`.
+- 스키마는 `lib/native/device-db/migrations.ts` 의 버전 목록으로 올린다. **서버 스키마가 바뀌면
+  새 버전을 추가**한다 — `migrations.test.ts` 가 서버 테이블과 컬럼이 같은지 검사한다.
+- 이전 앱 빌드가 localStorage 에 남긴 값은 첫 실행 때 SQLite 로 옮기고 localStorage 를 비운다.
+  플러그인이 없는 빌드에서는 localStorage 로 돌아간다.
+
+Android 에뮬레이터에서 확인:
+
+```bash
+adb exec-out run-as ing.boogie.seedbook cat databases/seedbookSQLite.db > app.db
+sqlite3 app.db "select id, accountName, portfolioId from investment_account;"
+```
 
 ## 확인이 필요한 것 (실기기)
 

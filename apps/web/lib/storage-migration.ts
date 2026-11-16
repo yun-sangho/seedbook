@@ -1,6 +1,6 @@
 "use client";
 
-import { getLocalEnvelopeStore } from "@web/lib/local-envelope-store";
+import { getDeviceStorage } from "@web/lib/device-storage";
 import { CLOUD_STORE_KEYS, type CloudStoreKey } from "@web/lib/storage-mode";
 import { mergeEnvelopes, type PersistEnvelope } from "./storage-merge";
 import { clearEntitySyncState } from "./sync/managed-stores";
@@ -123,12 +123,12 @@ export async function hasAnyLocalData(): Promise<boolean> {
 }
 
 async function readLocalEnvelope(key: CloudStoreKey): Promise<string | null> {
-  return getLocalEnvelopeStore().getItem(key);
+  return getDeviceStorage().readEnvelope(key);
 }
 
 async function writeLocalEnvelope(key: CloudStoreKey, value: string): Promise<void> {
   // 쓰기 실패는 저장소가 삼킨다 — 전환 자체는 계속 진행.
-  await getLocalEnvelopeStore().setItem(key, value);
+  await getDeviceStorage().writeEnvelope(key, value);
 }
 
 /**
