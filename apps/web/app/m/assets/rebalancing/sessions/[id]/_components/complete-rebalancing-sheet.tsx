@@ -11,10 +11,12 @@ import {
   applyRebalancingToAccount,
   type CashChange,
   type HoldingChange,
+  sellCostForAccount,
 } from "@web/features/rebalancing/utils/apply-rebalancing-to-account";
 import { formatQuantityChange } from "@web/features/rebalancing/utils/format-quantity-change";
 import { computeRebalancingResult } from "@web/features/rebalancing/utils/rebalancing-result";
 import { executedPriceOf } from "@web/features/rebalancing/utils/rebalancing-session";
+import { useTaskSecurityTypes } from "@web/features/rebalancing/utils/use-task-security-types";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
   BottomSheetBody,
@@ -53,14 +55,21 @@ export function CompleteRebalancingSheet({
   );
   const completeRebalancing = useRebalancingStore((s) => s.completeRebalancing);
   const [applyToAccount, setApplyToAccount] = useState(true);
+  // 매도 세금은 종목 종류로 정한다 (ETF·ETN 은 증권거래세가 없다).
+  const securityTypeOf = useTaskSecurityTypes(session.tasks);
 
   // 미리보기와 실제 반영에 같은 계산을 쓴다.
   const preview = useMemo(() => {
     if (!account) return null;
     const currencyFor = (task: RebalancingTask) =>
       portfolio?.allocations.find((a) => a.id === task.id)?.currency || FALLBACK_CURRENCY;
-    return applyRebalancingToAccount(account, session, currencyFor);
-  }, [account, portfolio, session]);
+    return applyRebalancingToAccount(
+      account,
+      session,
+      currencyFor,
+      sellCostForAccount(account, securityTypeOf)
+    );
+  }, [account, portfolio, session, securityTypeOf]);
 
   // 결과 비중의 가격: 이번에 매매한 종목은 실제 체결 가격, 나머지는 지금 시세.
   const { prices: livePrices } = useStockPrices(preview?.account.holdings ?? []);

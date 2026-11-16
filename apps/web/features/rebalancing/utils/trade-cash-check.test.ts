@@ -1,7 +1,10 @@
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import { describe, expect, it } from "vitest";
 import type { RebalancingSession, RebalancingTask } from "../types/types";
+import { sellCostForAccount } from "./apply-rebalancing-to-account";
 import { rebalancingCashOutlook, tradeCashPreview } from "./trade-cash-check";
+
+const NO_COST = () => 0;
 
 /** 예수금이 모자라는 금액 — 0 보다 크면 매매 입력 화면이 완료를 막는다. */
 const cashShortfallAfterTrade = (...args: Parameters<typeof tradeCashPreview>) =>
@@ -56,14 +59,16 @@ function session(tasks: RebalancingTask[], cashDelta = 0): RebalancingSession {
 
 describe("cash shortfall (tradeCashPreview after < 0)", () => {
   it("is 0 when the cash covers the trade at the entered price", () => {
-    expect(cashShortfallAfterTrade(account(100_000), session([task()]), "buy", 10, 10_000)).toBe(0);
+    expect(
+      cashShortfallAfterTrade(account(100_000), session([task()]), "buy", 10, 10_000, NO_COST)
+    ).toBe(0);
   });
 
   it("is the amount missing when a higher price would push cash below zero", () => {
     // 10주 × 10,050원 = 100,500원 > 예수금 100,000원
-    expect(cashShortfallAfterTrade(account(100_000), session([task()]), "buy", 10, 10_050)).toBe(
-      500
-    );
+    expect(
+      cashShortfallAfterTrade(account(100_000), session([task()]), "buy", 10, 10_050, NO_COST)
+    ).toBe(500);
   });
 
   it("counts trades already done, with their recorded prices", () => {
@@ -76,7 +81,7 @@ describe("cash shortfall (tradeCashPreview after < 0)", () => {
     });
     // 이미 50,000원 매수 → 남은 50,000원으로 10주 × 10,000원은 50,000원 모자람
     expect(
-      cashShortfallAfterTrade(account(100_000), session([done, task()]), "buy", 10, 10_000)
+      cashShortfallAfterTrade(account(100_000), session([done, task()]), "buy", 10, 10_000, NO_COST)
     ).toBe(50_000);
   });
 
@@ -105,37 +110,53 @@ describe("cash shortfall (tradeCashPreview after < 0)", () => {
     };
     // 50,000 + 매도 30,000 + 투입 20,000 = 100,000 → 10주 × 10,000원 가능
     expect(
-      cashShortfallAfterTrade(withHolding, session([sold, task()], 20_000), "buy", 10, 10_000)
+      cashShortfallAfterTrade(
+        withHolding,
+        session([sold, task()], 20_000),
+        "buy",
+        10,
+        10_000,
+        NO_COST
+      )
     ).toBe(0);
   });
 
   it("ignores trades that are not done yet", () => {
     const pending = task({ id: "pending", ticker: "005930", quantity: 100 });
     expect(
-      cashShortfallAfterTrade(account(100_000), session([pending, task()]), "buy", 10, 10_000)
+      cashShortfallAfterTrade(
+        account(100_000),
+        session([pending, task()]),
+        "buy",
+        10,
+        10_000,
+        NO_COST
+      )
     ).toBe(0);
   });
 
   it("re-checks a done trade with the new values instead of its old ones", () => {
     const recorded = task({ done: true, executedQuantity: 10, executedPrice: 10_000 });
-    expect(cashShortfallAfterTrade(account(100_000), session([recorded]), "buy", 10, 10_100)).toBe(
-      1_000
-    );
+    expect(
+      cashShortfallAfterTrade(account(100_000), session([recorded]), "buy", 10, 10_100, NO_COST)
+    ).toBe(1_000);
   });
 });
 
 describe("tradeCashPreview", () => {
   it("shows cash before this trade and after it", () => {
-    expect(tradeCashPreview(account(100_000), session([task()]), "buy", 5, 10_000)).toEqual({
+    expect(
+      tradeCashPreview(account(100_000), session([task()]), "buy", 5, 10_000, NO_COST)
+    ).toEqual({
       before: 100_000,
       after: 50_000,
     });
   });
 
   it("lets cash after go below zero so the shortfall is visible", () => {
-    expect(tradeCashPreview(account(100_000), session([task()]), "buy", 10, 10_050).after).toBe(
-      -500
-    );
+    expect(
+      tradeCashPreview(account(100_000), session([task()]), "buy", 10, 10_050, NO_COST).after
+    ).toBe(-500);
   });
 
   it("counts other done trades in cash before, but not this trade's recorded values", () => {
@@ -149,7 +170,14 @@ describe("tradeCashPreview", () => {
     const recorded = task({ done: true, executedQuantity: 3, executedPrice: 10_000 });
 
     expect(
-      tradeCashPreview(account(100_000), session([done, recorded], 5_000), "buy", 1, 10_000)
+      tradeCashPreview(
+        account(100_000),
+        session([done, recorded], 5_000),
+        "buy",
+        1,
+        10_000,
+        NO_COST
+      )
     ).toEqual({ before: 85_000, after: 75_000 });
   });
 
@@ -170,7 +198,7 @@ describe("tradeCashPreview", () => {
       ],
     };
 
-    expect(tradeCashPreview(withHolding, session([sell]), "sell", 5, 10_000)).toEqual({
+    expect(tradeCashPreview(withHolding, session([sell]), "sell", 5, 10_000, NO_COST)).toEqual({
       before: 0,
       after: 50_000,
     });
@@ -193,20 +221,35 @@ describe("tradeCashPreview with buy orders waiting to fill", () => {
       session([orderedBuy(), task()]),
       "buy",
       2,
-      10_000
+      10_000,
+      NO_COST
     );
     expect(preview).toEqual({ before: 70_000, after: 50_000 });
   });
 
   it("releases an order's own hold when filling it, so it is not counted twice", () => {
     const ordered = orderedBuy({ id: "buy", ticker: "069500" });
-    const preview = tradeCashPreview(account(100_000), session([ordered]), "buy", 3, 10_000);
+    const preview = tradeCashPreview(
+      account(100_000),
+      session([ordered]),
+      "buy",
+      3,
+      10_000,
+      NO_COST
+    );
     expect(preview).toEqual({ before: 100_000, after: 70_000 });
   });
 
   it("ignores a filled task's old order values", () => {
     const filled = orderedBuy({ done: true, executedQuantity: 3, executedPrice: 10_000 });
-    const preview = tradeCashPreview(account(100_000), session([filled, task()]), "buy", 1, 10_000);
+    const preview = tradeCashPreview(
+      account(100_000),
+      session([filled, task()]),
+      "buy",
+      1,
+      10_000,
+      NO_COST
+    );
     expect(preview.before).toBe(70_000);
   });
 });
@@ -229,45 +272,45 @@ describe("rebalancingCashOutlook", () => {
   });
 
   it("is the account cash plus the cash deposit before any trade is done", () => {
-    const outlook = rebalancingCashOutlook(account(50_000), session([task()], 50_000));
+    const outlook = rebalancingCashOutlook(account(50_000), session([task()], 50_000), NO_COST);
     expect(outlook.now).toBe(100_000);
   });
 
   it("includes completed trades at their executed quantity and price", () => {
     const done = sell({ done: true, executedQuantity: 3, executedPrice: 20_000 });
-    const outlook = rebalancingCashOutlook(withHolding(0), session([done, task()]));
+    const outlook = rebalancingCashOutlook(withHolding(0), session([done, task()]), NO_COST);
     expect(outlook.now).toBe(60_000);
   });
 
   it("expects the remaining trades to follow the recommended quantity and start price", () => {
     // 지금 0 + 매도 10주 × 10,000 − 매수 10주 × 10,000
-    const outlook = rebalancingCashOutlook(withHolding(0), session([sell(), task()]));
+    const outlook = rebalancingCashOutlook(withHolding(0), session([sell(), task()]), NO_COST);
     expect(outlook.expected).toBe(0);
   });
 
   it("can expect negative cash when the remaining buys cost more than is left", () => {
     const done = sell({ done: true, executedQuantity: 5, executedPrice: 10_000 });
-    const outlook = rebalancingCashOutlook(withHolding(0), session([done, task()]));
+    const outlook = rebalancingCashOutlook(withHolding(0), session([done, task()]), NO_COST);
     expect(outlook.now).toBe(50_000);
     expect(outlook.expected).toBe(-50_000);
   });
 
   it("holds back buy orders waiting to fill from cash now", () => {
     const ordered = task({ orderedQuantity: 4, orderedPrice: 10_000 });
-    const outlook = rebalancingCashOutlook(account(100_000), session([ordered]));
+    const outlook = rebalancingCashOutlook(account(100_000), session([ordered]), NO_COST);
     expect(outlook.now).toBe(60_000);
     expect(outlook.heldForOrders).toBe(40_000);
   });
 
   it("expects ordered trades to fill at their order quantity and price", () => {
     const ordered = task({ orderedQuantity: 4, orderedPrice: 10_000 });
-    const outlook = rebalancingCashOutlook(account(100_000), session([ordered]));
+    const outlook = rebalancingCashOutlook(account(100_000), session([ordered]), NO_COST);
     expect(outlook.expected).toBe(60_000);
   });
 
   it("leaves out remaining trades whose price was unknown", () => {
     const unpriced = task({ price: null, quantity: null });
-    const outlook = rebalancingCashOutlook(account(30_000), session([unpriced]));
+    const outlook = rebalancingCashOutlook(account(30_000), session([unpriced]), NO_COST);
     expect(outlook.expected).toBe(30_000);
   });
 });
@@ -290,13 +333,17 @@ describe("sell costs in the cash preview and outlook", () => {
   });
   const sell = task({ id: "sell", ticker: "005930", action: "매도" });
 
+  const costs = sellCostForAccount(withHolding(0), () => "stock");
+
   it("adds a sell's proceeds after the account's sell costs", () => {
     // 5주 × 10,000원 = 50,000원 − 0.2% 100원
-    expect(tradeCashPreview(withHolding(0), session([sell]), "sell", 5, 10_000).after).toBe(49_900);
+    expect(tradeCashPreview(withHolding(0), session([sell]), "sell", 5, 10_000, costs).after).toBe(
+      49_900
+    );
   });
 
   it("expects remaining sells to bring in their proceeds after sell costs", () => {
     // 권장 10주 × 10,000원 = 100,000원 − 0.2% 200원
-    expect(rebalancingCashOutlook(withHolding(0), session([sell])).expected).toBe(99_800);
+    expect(rebalancingCashOutlook(withHolding(0), session([sell]), costs).expected).toBe(99_800);
   });
 });

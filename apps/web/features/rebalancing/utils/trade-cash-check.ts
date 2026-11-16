@@ -1,6 +1,6 @@
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import type { RebalancingSession, RebalancingTask } from "../types/types";
-import { applyRebalancingToAccount } from "./apply-rebalancing-to-account";
+import { applyRebalancingToAccount, type SellCostFor } from "./apply-rebalancing-to-account";
 import { rebalancingTaskStatus } from "./rebalancing-session";
 
 /**
@@ -10,10 +10,16 @@ import { rebalancingTaskStatus } from "./rebalancing-session";
 function rawCashAfter(
   account: InvestmentItem,
   session: RebalancingSession,
-  tasks: RebalancingTask[]
+  tasks: RebalancingTask[],
+  sellCostFor: SellCostFor
 ): number {
   // 통화는 새 보유 종목을 만들 때만 쓰여 예수금 계산과 상관없다.
-  const applied = applyRebalancingToAccount(account, { ...session, tasks }, () => "KRW");
+  const applied = applyRebalancingToAccount(
+    account,
+    { ...session, tasks },
+    () => "KRW",
+    sellCostFor
+  );
   return applied.cash.before + applied.cashChange;
 }
 
@@ -42,15 +48,16 @@ export function tradeCashPreview(
   session: RebalancingSession,
   taskId: string,
   quantity: number,
-  price: number
+  price: number,
+  sellCostFor: SellCostFor
 ): { before: number; after: number } {
   const without = session.tasks.map((t) => (t.id === taskId ? { ...t, done: false } : t));
   const held = heldForBuyOrders(session.tasks, taskId);
-  const before = rawCashAfter(account, session, without) - held;
+  const before = rawCashAfter(account, session, without, sellCostFor) - held;
   const withTrade = session.tasks.map((t) =>
     t.id === taskId ? { ...t, done: true, executedQuantity: quantity, executedPrice: price } : t
   );
-  return { before, after: rawCashAfter(account, session, withTrade) - held };
+  return { before, after: rawCashAfter(account, session, withTrade, sellCostFor) - held };
 }
 
 export interface RebalancingCashOutlook {
@@ -74,7 +81,8 @@ export interface RebalancingCashOutlook {
  */
 export function rebalancingCashOutlook(
   account: InvestmentItem,
-  session: RebalancingSession
+  session: RebalancingSession,
+  sellCostFor: SellCostFor
 ): RebalancingCashOutlook {
   const planned = session.tasks.map((t) => {
     if (t.done) return t;
@@ -88,8 +96,8 @@ export function rebalancingCashOutlook(
   });
   const heldForOrders = heldForBuyOrders(session.tasks);
   return {
-    now: rawCashAfter(account, session, session.tasks) - heldForOrders,
+    now: rawCashAfter(account, session, session.tasks, sellCostFor) - heldForOrders,
     heldForOrders,
-    expected: rawCashAfter(account, session, planned),
+    expected: rawCashAfter(account, session, planned, sellCostFor),
   };
 }

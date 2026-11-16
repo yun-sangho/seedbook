@@ -188,9 +188,9 @@ export function AccountSettingsSheet({
                 suffix="%"
                 invalid={sellCost === null}
                 errorMessage={sellCost === null ? "100% 미만으로 입력해 주세요" : undefined}
-                description="매도할 때 세금·수수료로 빠지는 비율이에요. 리밸런싱에서 매도 대금은 이만큼 빼고 현금성 자산에 들어와요."
+                description="리밸런싱에서 매도 대금은 세금·수수료를 빼고 현금성 자산에 들어와요. 비워 두면 자동으로 계산해요 — 주식은 증권거래세 0.20% + 수수료 0.015%, ETF·ETN 은 수수료만. 증권사 수수료가 다르면 세금까지 합친 비율을 직접 입력하세요."
               >
-                <TextFieldInput inputMode="decimal" placeholder="0" />
+                <TextFieldInput inputMode="decimal" placeholder="자동" />
               </TextField>
               <div>
                 <p className="t4-medium text-fg-neutral mb-x2">색상</p>

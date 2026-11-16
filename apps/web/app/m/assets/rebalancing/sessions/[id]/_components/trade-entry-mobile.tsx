@@ -1,27 +1,22 @@
 "use client";
 
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { IconMinusLine, IconPlusLine } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 import { formatMoneyDraft } from "@web/components/mobile/input-format";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
-import type { StockHolding } from "@web/features/investments/types/types";
-import {
-  type SecurityType,
-  snapToTick,
-  stepByTick,
-  tickSize,
-} from "@web/features/investments/utils/krx-tick-size";
-import { sellCostOf } from "@web/features/investments/utils/sell-cost";
-import { stockPriceKey, useStockPrices } from "@web/features/investments/utils/use-stock-prices";
+import { snapToTick, stepByTick, tickSize } from "@web/features/investments/utils/krx-tick-size";
+import { type SellCost, sellCostOf } from "@web/features/investments/utils/sell-cost";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import type { RebalancingTask, RebalancingTaskStatus } from "@web/features/rebalancing/types/types";
+import { sellCostForAccount } from "@web/features/rebalancing/utils/apply-rebalancing-to-account";
 import {
   isRebalancingCompleted,
   rebalancingTaskStatus,
 } from "@web/features/rebalancing/utils/rebalancing-session";
 import { tradeCashPreview } from "@web/features/rebalancing/utils/trade-cash-check";
+import { useTaskSecurityTypes } from "@web/features/rebalancing/utils/use-task-security-types";
 import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { ResultSection } from "@web/seed-design/ui/result-section";
@@ -105,20 +100,28 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
   const price = parseNumericString(priceDraft);
   const quantityOk = isPositive(quantity);
   const priceOk = isPositive(price);
-  const securityType = useSecurityType(task);
+  const securityTypeOf = useTaskSecurityTypes(session.tasks);
+  const securityType = securityTypeOf(task);
   const tick = priceOk ? tickSize(price, securityType) : null;
   // 기록할 가격은 호가에 맞춘 값이다 — 금액과 예수금도 그 값으로 계산한다.
   const tradePrice = priceOk ? snapToTick(price, securityType) : null;
   const amount = quantityOk && tradePrice !== null ? Math.round(quantity * tradePrice) : null;
-  // 매도 대금에서 빠지는 세금·수수료 — 계좌에 매도 제비용률을 정해 뒀을 때만 보인다.
+  // 매도 대금에서 빠지는 세금·수수료.
   const sellCost =
-    task.action === "매도" && account && (account.sellCostPercent ?? 0) > 0 && amount !== null
-      ? sellCostOf(account, amount)
+    task.action === "매도" && account && amount !== null
+      ? sellCostOf(account, amount, securityType)
       : null;
   // 계좌가 지워졌으면 예수금을 알 수 없어 확인하지 않는다.
   const cash =
     account && quantityOk && tradePrice !== null
-      ? tradeCashPreview(account, session, task.id, quantity, tradePrice)
+      ? tradeCashPreview(
+          account,
+          session,
+          task.id,
+          quantity,
+          tradePrice,
+          sellCostForAccount(account, securityTypeOf)
+        )
       : null;
   const shortOfCash = cash !== null && cash.after < 0;
   const canSave = quantityOk && tradePrice !== null && !shortOfCash;
@@ -212,11 +215,7 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
         <SummaryRow label={`${task.action} 금액`}>
           {amount !== null ? `${formatWithCommas(amount)}원` : "-"}
         </SummaryRow>
-        {sellCost !== null && account && (
-          <SummaryRow label={`제비용 (${account.sellCostPercent}%)`}>
-            -{formatWithCommas(sellCost)}원
-          </SummaryRow>
-        )}
+        {sellCost !== null && <SellCostRows cost={sellCost} />}
         {cash && (
           <SummaryRow label="주문가능금액">
             <span className="text-fg-neutral-muted font-normal">
@@ -359,6 +358,27 @@ function StepperField({
   );
 }
 
+/** 매도 대금에서 빠지는 세금·수수료. 계좌에 제비용률을 직접 정했으면 한 줄로 보인다. */
+function SellCostRows({ cost }: { cost: SellCost }) {
+  if (cost.kind === "manual") {
+    return (
+      <SummaryRow label={`제비용 (${cost.percent}%)`}>-{formatWithCommas(cost.total)}원</SummaryRow>
+    );
+  }
+  return (
+    <>
+      {cost.taxPercent > 0 && (
+        <SummaryRow label={`증권거래세 (${cost.taxPercent.toFixed(2)}%)`}>
+          -{formatWithCommas(cost.tax)}원
+        </SummaryRow>
+      )}
+      <SummaryRow label={`수수료 (${cost.commissionPercent}%)`}>
+        -{formatWithCommas(cost.commission)}원
+      </SummaryRow>
+    </>
+  );
+}
+
 function SummaryRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-x3">
@@ -395,26 +415,6 @@ function headline(task: RebalancingTask): string {
   if (task.quantity === null) return action;
   const basis = task.price !== null ? ` · ${formatWithCommas(task.price)}원 기준` : "";
   return `${action} · 권장 ${formatWithCommas(task.quantity)}주${basis}`;
-}
-
-/** 종목 종류 (호가 단위용). 시세 API 가 함께 내려준다 — 모르면 null 이고 단위를 맞추지 않는다. */
-function useSecurityType(task: RebalancingTask): SecurityType {
-  const holdings = useMemo<StockHolding[]>(
-    () => [
-      {
-        id: task.id,
-        market: task.market,
-        ticker: task.ticker,
-        name: task.name,
-        currency: "KRW",
-        quantity: 0,
-        memo: "",
-      },
-    ],
-    [task.id, task.market, task.ticker, task.name]
-  );
-  const { prices } = useStockPrices(holdings);
-  return prices.get(stockPriceKey(task.market, task.ticker))?.securityType ?? null;
 }
 
 /** 가격 칸 아래: "호가 5원 · 시작 시점 기준가 11,800원". 호가 단위를 모르면 그 부분은 뺀다. */
