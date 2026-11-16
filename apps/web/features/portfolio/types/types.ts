@@ -47,14 +47,3 @@ export interface PortfolioItem {
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
 }
-
-/**
- * 종목 검색 결과를 store 액션으로 넘길 때 쓰는 부분 타입.
- * `Stock` 타입과 호환되지만 cross-feature 의존을 줄이기 위해 별도 정의.
- */
-export interface StockSelection {
-  market: string;
-  ticker: string;
-  name: string;
-  currency: string;
-}

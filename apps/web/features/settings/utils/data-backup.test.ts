@@ -2,7 +2,7 @@ import type { InvestmentItem } from "@web/features/investments/types/types";
 import type { PortfolioItem } from "@web/features/portfolio/types/types";
 import type { RebalancingSession } from "@web/features/rebalancing/types/types";
 import { describe, expect, it } from "vitest";
-import { buildBackup, parseBackup } from "./data-backup";
+import { backupFileName, buildBackup, parseBackup } from "./data-backup";
 
 const investment = { id: "acc-1", accountName: "ISA" } as InvestmentItem;
 const portfolio = (id: string, accountIds: string[], updatedAt: string) =>
@@ -87,5 +87,13 @@ describe("parseBackup", () => {
     const backup = { investments: "broken", exportedAt: "2026-11-08", version: "2.0" };
 
     expect(parseBackup(backup)).toEqual({ ok: true, data: {} });
+  });
+});
+
+describe("backupFileName", () => {
+  it("names the export file after the export date", () => {
+    expect(backupFileName(new Date("2026-11-16T09:30:00.000Z"))).toBe(
+      "seedbook-data-2026-11-16.json"
+    );
   });
 });

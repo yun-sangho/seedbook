@@ -14,6 +14,7 @@ import { RebalancingListMobile } from "../assets/rebalancing/_components/rebalan
 import { RebalancingDetailMobile } from "../assets/rebalancing/[id]/_components/rebalancing-detail-mobile";
 import { RebalancingSessionMobile } from "../assets/rebalancing/sessions/[id]/_components/rebalancing-session-mobile";
 import { TradeEntryMobile } from "../assets/rebalancing/sessions/[id]/_components/trade-entry-mobile";
+import { SettingsMobile } from "../assets/settings/_components/settings-mobile";
 import { DetailScreen, TabScreen } from "./screens";
 
 export const HomeTabActivity: StaticActivityComponentType<"HomeTab"> = () => (
@@ -121,6 +122,15 @@ export function PortfolioDetailActivity({ params }: DetailActivityProps) {
   return (
     <DetailScreen title={portfolio?.name || "포트폴리오"} dotColor={portfolio?.color}>
       <PortfolioDetailMobile id={params.id} />
+    </DetailScreen>
+  );
+}
+
+/** 더보기 → 설정 (저장 위치·데이터 백업). */
+export function SettingsActivity() {
+  return (
+    <DetailScreen title="설정">
+      <SettingsMobile />
     </DetailScreen>
   );
 }

@@ -46,12 +46,6 @@ describe("web app manifest", () => {
     }
   });
 
-  it("only offers shortcuts that desktop renders as-is", () => {
-    for (const shortcut of manifest().shortcuts ?? []) {
-      expect(decideMobileRoute(shortcut.url, "desktop").type).toBe("pass");
-    }
-  });
-
   it("points every shortcut icon at a file that exists in public/", () => {
     const missing = (manifest().shortcuts ?? [])
       .flatMap((shortcut) => shortcut.icons ?? [])

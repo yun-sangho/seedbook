@@ -5,7 +5,7 @@ import { parseBackup } from "./data-backup";
 
 /**
  * 테스트 시나리오 픽스처 (`packages/database/seed-data/user-data.json`) 의 정합성.
- * dev DB 시드·리셋과 관리 화면 "데모 데이터" (`public/seed-data/user-data.json`) 가 같은 파일을 쓴다.
+ * dev DB 시드·리셋과 설정 화면 "데모 데이터" (`public/seed-data/user-data.json`) 가 같은 파일을 쓴다.
  */
 const SEED_DIR = resolve(__dirname, "../../../../../packages/database/seed-data");
 const readJson = (path: string) => JSON.parse(readFileSync(path, "utf8")) as unknown;

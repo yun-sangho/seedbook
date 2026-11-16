@@ -29,7 +29,6 @@ describe("Investment Store", () => {
     it("should have correct initial state", () => {
       const state = useInvestmentStore.getState();
       expect(state.investments).toEqual([]);
-      expect(state.expandedFormId).toBe("");
     });
 
     it("holdingsSortOption defaults to the highest evaluated value first", () => {
@@ -362,64 +361,15 @@ describe("Investment Store", () => {
     });
   });
 
-  describe("UI State", () => {
-    it("should set expanded form id", () => {
-      const { setExpandedFormId } = useInvestmentStore.getState();
-
-      setExpandedFormId("5");
-
-      const state = useInvestmentStore.getState();
-      expect(state.expandedFormId).toBe("5");
-    });
-
-    it("should update expandedFormId when updating different investment", () => {
-      const { addInvestmentWithType, updateInvestment } = useInvestmentStore.getState();
-
-      addInvestmentWithType("증권계좌");
-      const firstId = useInvestmentStore.getState().investments[0]!.id;
-      addInvestmentWithType("예금계좌");
-      const secondId = useInvestmentStore.getState().investments[0]!.id;
-
-      // Initially expanded form is the last added one
-      let state = useInvestmentStore.getState();
-      expect(state.expandedFormId).toBe(secondId);
-
-      // Update the older investment - should change expandedFormId to that id
-      updateInvestment(firstId, "accountName", "Updated");
-
-      state = useInvestmentStore.getState();
-      expect(state.expandedFormId).toBe(firstId);
-    });
-
-    it("should not change expandedFormId when updating currently expanded investment", () => {
-      const { addInvestmentWithType, setExpandedFormId, updateInvestment } =
-        useInvestmentStore.getState();
-
-      addInvestmentWithType("증권계좌");
-      const id = useInvestmentStore.getState().investments[0]!.id;
-      setExpandedFormId(id);
-
-      // Update the currently expanded investment
-      updateInvestment(id, "accountName", "Updated");
-
-      const state = useInvestmentStore.getState();
-      expect(state.expandedFormId).toBe(id); // Should remain the same
-    });
-  });
-
   describe("Store Reset", () => {
     it("should reset store to initial state", () => {
-      const { addInvestmentWithType, setExpandedFormId, resetStore } =
-        useInvestmentStore.getState();
+      const { addInvestmentWithType, resetStore } = useInvestmentStore.getState();
 
       // Add some data
       addInvestmentWithType("증권계좌");
-      setExpandedFormId("5");
-
       // Verify data was added
       let state = useInvestmentStore.getState();
       expect(state.investments).toHaveLength(1);
-      expect(state.expandedFormId).toBe("5");
 
       // Reset store
       resetStore();
@@ -427,7 +377,6 @@ describe("Investment Store", () => {
       // Verify reset
       state = useInvestmentStore.getState();
       expect(state.investments).toEqual([]);
-      expect(state.expandedFormId).toBe("");
     });
   });
 
@@ -443,92 +392,6 @@ describe("Investment Store", () => {
       const after = useInvestmentStore.getState().investments;
       expect(after.find((i) => i.id === first)?.accountName).toBe("바뀐 이름");
       expect(after.find((i) => i.id === second)?.accountType).toBe("연금저축");
-    });
-  });
-
-  describe("Reorder Investments", () => {
-    it("should reorder investments array", () => {
-      const { addInvestmentWithType, updateInvestment, reorderInvestments } =
-        useInvestmentStore.getState();
-
-      // Add three investments
-      addInvestmentWithType("증권계좌");
-      const idA = useInvestmentStore.getState().investments[0]!.id;
-      addInvestmentWithType("예금계좌");
-      const idB = useInvestmentStore.getState().investments[0]!.id;
-      addInvestmentWithType("연금계좌");
-      const idC = useInvestmentStore.getState().investments[0]!.id;
-
-      // Update names to identify them
-      updateInvestment(idA, "accountName", "First");
-      updateInvestment(idB, "accountName", "Second");
-      updateInvestment(idC, "accountName", "Third");
-
-      let state = useInvestmentStore.getState();
-      // Investments are prepended, so order is: [Third, Second, First]
-      expect(state.investments.map((inv) => inv.accountName)).toEqual(["Third", "Second", "First"]);
-
-      // Reorder: move First to the beginning
-      const reordered = [state.investments[2]!, state.investments[0]!, state.investments[1]!];
-      reorderInvestments(reordered);
-
-      state = useInvestmentStore.getState();
-      expect(state.investments.map((inv) => inv.accountName)).toEqual(["First", "Third", "Second"]);
-    });
-
-    it("should maintain investment data when reordering", () => {
-      const { addInvestmentWithType, addHistoryRecord, reorderInvestments } =
-        useInvestmentStore.getState();
-
-      // Add investments with history
-      addInvestmentWithType("증권계좌");
-      const idA = useInvestmentStore.getState().investments[0]!.id;
-      addHistoryRecord(idA, "2024-01-10", 500000, 600000);
-
-      addInvestmentWithType("예금계좌");
-      const idB = useInvestmentStore.getState().investments[0]!.id;
-      addHistoryRecord(idB, "2024-01-12", 1000000, 1100000);
-
-      let state = useInvestmentStore.getState();
-      const originalFirst = state.investments[0]!;
-      const originalSecond = state.investments[1]!;
-
-      // Reverse order
-      reorderInvestments([originalSecond, originalFirst]);
-
-      state = useInvestmentStore.getState();
-      // Verify data integrity
-      expect(state.investments[0]!.id).toBe(idA);
-      expect(state.investments[0]!.records).toHaveLength(1);
-      expect(state.investments[0]!.records[0]!.currentValue).toBe(600000);
-
-      expect(state.investments[1]!.id).toBe(idB);
-      expect(state.investments[1]!.records).toHaveLength(1);
-      expect(state.investments[1]!.records[0]!.currentValue).toBe(1100000);
-    });
-
-    it("should handle empty array reorder", () => {
-      const { reorderInvestments } = useInvestmentStore.getState();
-
-      reorderInvestments([]);
-
-      const state = useInvestmentStore.getState();
-      expect(state.investments).toEqual([]);
-    });
-
-    it("should handle single item reorder", () => {
-      const { addInvestmentWithType, reorderInvestments } = useInvestmentStore.getState();
-
-      addInvestmentWithType("증권계좌");
-
-      let state = useInvestmentStore.getState();
-      const singleItem = state.investments[0]!;
-
-      reorderInvestments([singleItem]);
-
-      state = useInvestmentStore.getState();
-      expect(state.investments).toHaveLength(1);
-      expect(state.investments[0]!.id).toBe(singleItem.id);
     });
   });
 
@@ -656,95 +519,26 @@ describe("Investment Store", () => {
       expect(typeof holdings[1]!.id).toBe("string");
     });
 
-    it("setStockHoldingFromSearch writes market/ticker/name/currency atomically", () => {
-      const { addStockHolding, setStockHoldingFromSearch } = useInvestmentStore.getState();
-
-      addStockHolding(investmentId);
-      const holdingId = useInvestmentStore.getState().investments[0]!.holdings[0]!.id;
-      setStockHoldingFromSearch(investmentId, holdingId, {
-        market: "KOSPI",
-        ticker: "005930",
-        name: "삼성전자",
-        currency: "KRW",
-      });
-
-      const holding = useInvestmentStore.getState().investments[0]!.holdings[0]!;
-      expect(holding).toMatchObject({
-        market: "KOSPI",
-        ticker: "005930",
-        name: "삼성전자",
-        currency: "KRW",
-      });
-    });
-
-    it("setStockHoldingFromSearch preserves quantity and memo set before selection", () => {
-      const { addStockHolding, updateStockHolding, setStockHoldingFromSearch } =
-        useInvestmentStore.getState();
-
-      addStockHolding(investmentId);
-      const holdingId = useInvestmentStore.getState().investments[0]!.holdings[0]!.id;
-      updateStockHolding(investmentId, holdingId, "quantity", "10");
-      updateStockHolding(investmentId, holdingId, "memo", "중장기 보유");
-
-      setStockHoldingFromSearch(investmentId, holdingId, {
-        market: "KOSPI",
-        ticker: "005930",
-        name: "삼성전자",
-        currency: "KRW",
-      });
-
-      const holding = useInvestmentStore.getState().investments[0]!.holdings[0]!;
-      expect(holding.quantity).toBe(10);
-      expect(holding.memo).toBe("중장기 보유");
-    });
-
-    it("setStockHoldingFromSearch overwrites a previously selected stock", () => {
-      const { addStockHolding, setStockHoldingFromSearch } = useInvestmentStore.getState();
-
-      addStockHolding(investmentId);
-      const holdingId = useInvestmentStore.getState().investments[0]!.holdings[0]!.id;
-      setStockHoldingFromSearch(investmentId, holdingId, {
-        market: "KOSPI",
-        ticker: "005930",
-        name: "삼성전자",
-        currency: "KRW",
-      });
-      setStockHoldingFromSearch(investmentId, holdingId, {
-        market: "NASDAQ",
-        ticker: "AAPL",
-        name: "Apple Inc.",
-        currency: "USD",
-      });
-
-      const holding = useInvestmentStore.getState().investments[0]!.holdings[0]!;
-      expect(holding).toMatchObject({
-        market: "NASDAQ",
-        ticker: "AAPL",
-        name: "Apple Inc.",
-        currency: "USD",
-      });
-    });
-
     it("removeStockHolding removes the specified holding only", () => {
-      const { addStockHolding, setStockHoldingFromSearch, removeStockHolding } =
-        useInvestmentStore.getState();
+      const { addStockHolding, removeStockHolding } = useInvestmentStore.getState();
 
-      addStockHolding(investmentId);
-      const firstHoldingId = useInvestmentStore.getState().investments[0]!.holdings[0]!.id;
-      setStockHoldingFromSearch(investmentId, firstHoldingId, {
+      addStockHolding(investmentId, {
         market: "KOSPI",
         ticker: "005930",
         name: "삼성전자",
         currency: "KRW",
+        quantity: 1,
       });
-      addStockHolding(investmentId);
-      const secondHoldingId = useInvestmentStore.getState().investments[0]!.holdings[1]!.id;
-      setStockHoldingFromSearch(investmentId, secondHoldingId, {
+      addStockHolding(investmentId, {
         market: "KOSPI",
         ticker: "000660",
         name: "SK하이닉스",
         currency: "KRW",
+        quantity: 1,
       });
+      const firstHoldingId = useInvestmentStore
+        .getState()
+        .investments[0]!.holdings.find((h) => h.ticker === "005930")!.id;
 
       removeStockHolding(investmentId, firstHoldingId);
 

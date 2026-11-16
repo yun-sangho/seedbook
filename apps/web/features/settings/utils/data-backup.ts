@@ -4,7 +4,7 @@ import { dedupePortfolioLinks } from "@web/features/portfolio/utils/portfolio-li
 import type { RebalancingSession } from "@web/features/rebalancing/types/types";
 
 /**
- * 관리 화면의 JSON 백업 (내보내기 / 가져오기 / 데모 데이터).
+ * 설정 화면(더보기 → 설정)의 JSON 백업 (내보내기 / 가져오기 / 데모 데이터).
  *
  * 2.0: 투자 · 포트폴리오 · 리밸런싱. 1.0 백업은 투자(와 지금은 없어진 도메인)만 담고 있어
  * 가져올 때는 파일에 있는 항목만 반영한다 — 없는 항목의 현재 데이터는 건드리지 않는다.
@@ -40,4 +40,9 @@ export function parseBackup(value: unknown): ParsedBackup {
     data.rebalancingSessions = v.rebalancingSessions as RebalancingSession[];
   }
   return { ok: true, data };
+}
+
+/** 내보내기 파일 이름. 날짜는 내보낸 시각의 UTC 날짜. */
+export function backupFileName(now = new Date()): string {
+  return `seedbook-data-${now.toISOString().split("T")[0]}.json`;
 }

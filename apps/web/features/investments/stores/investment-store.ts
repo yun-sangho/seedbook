@@ -42,9 +42,6 @@ interface InvestmentState {
   // 데이터
   investments: InvestmentItem[];
 
-  // UI 상태 (LocalStorage에 저장하지 않음). 빈 문자열이면 "펼친 폼 없음".
-  expandedFormId: string;
-
   // 보유 주식 정렬 옵션 — 모든 계좌에 동일하게 적용되는 전역 UI 설정. LocalStorage 에 저장.
   holdingsSortOption: HoldingsSortOption;
   setHoldingsSortOption: (option: HoldingsSortOption) => void;
@@ -84,11 +81,6 @@ interface InvestmentState {
     field: keyof StockHolding,
     value: string | number
   ) => void;
-  setStockHoldingFromSearch: (
-    investmentId: string,
-    holdingId: string,
-    stock: { market: string; ticker: string; name: string; currency: string }
-  ) => void;
   removeStockHolding: (investmentId: string, holdingId: string) => void;
   addCashItem: (investmentId: string, initial?: { label: string; amount: number }) => void;
   updateCashItem: (
@@ -98,8 +90,6 @@ interface InvestmentState {
     value: string | number
   ) => void;
   removeCashItem: (investmentId: string, cashItemId: string) => void;
-  setExpandedFormId: (id: string) => void;
-  reorderInvestments: (reorderedInvestments: InvestmentItem[]) => void;
   /** 같은 id 의 계좌를 통째로 바꾼다 (리밸런싱 반영처럼 여러 필드를 한 번에 고칠 때). */
   replaceInvestment: (item: InvestmentItem) => void;
   resetStore: () => void;
@@ -110,7 +100,6 @@ export const useInvestmentStore = create<InvestmentState>()(
   persist(
     (set, get) => ({
       investments: [],
-      expandedFormId: "",
       holdingsSortOption: DEFAULT_HOLDINGS_SORT_OPTION,
 
       setHoldingsSortOption: (option) => set({ holdingsSortOption: option }),
@@ -142,7 +131,6 @@ export const useInvestmentStore = create<InvestmentState>()(
             },
             ...investments,
           ],
-          expandedFormId: newId, // 새로 추가된 폼을 자동으로 펼침
         });
         return newId;
       },
@@ -202,10 +190,7 @@ export const useInvestmentStore = create<InvestmentState>()(
             return updatedItem;
           });
 
-          return {
-            expandedFormId: state.expandedFormId !== id ? id : state.expandedFormId,
-            investments: updatedInvestments,
-          };
+          return { investments: updatedInvestments };
         });
       },
 
@@ -397,26 +382,6 @@ export const useInvestmentStore = create<InvestmentState>()(
         });
       },
 
-      setStockHoldingFromSearch: (investmentId, holdingId, stock) => {
-        set((state) => {
-          const updatedInvestments = state.investments.map((item) => {
-            if (item.id !== investmentId) return item;
-            const updatedHoldings = item.holdings.map((h) => {
-              if (h.id !== holdingId) return h;
-              return {
-                ...h,
-                market: stock.market,
-                ticker: stock.ticker,
-                name: stock.name,
-                currency: stock.currency,
-              };
-            });
-            return { ...item, holdings: updatedHoldings };
-          });
-          return { investments: updatedInvestments };
-        });
-      },
-
       removeStockHolding: (investmentId, holdingId) => {
         set((state) => {
           const updatedInvestments = state.investments.map((item) => {
@@ -474,14 +439,6 @@ export const useInvestmentStore = create<InvestmentState>()(
         });
       },
 
-      setExpandedFormId: (id) => {
-        set({ expandedFormId: id });
-      },
-
-      reorderInvestments: (reorderedInvestments) => {
-        set({ investments: reorderedInvestments });
-      },
-
       replaceInvestment: (item) => {
         set((state) => ({
           investments: state.investments.map((inv) => (inv.id === item.id ? item : inv)),
@@ -491,7 +448,6 @@ export const useInvestmentStore = create<InvestmentState>()(
       resetStore: () => {
         set({
           investments: [],
-          expandedFormId: "",
           holdingsSortOption: DEFAULT_HOLDINGS_SORT_OPTION,
         });
       },
@@ -503,7 +459,6 @@ export const useInvestmentStore = create<InvestmentState>()(
       partialize: (state) => ({
         investments: state.investments,
         holdingsSortOption: state.holdingsSortOption,
-        // expandedFormId 는 UI 상태라 저장 안 함
       }),
       // v0~v3 에서 v4 로의 정규화 마이그레이션은 `lib/local-id-upgrade.ts` 가
       // hybrid-storage 보다 먼저 실행되어 localStorage envelope 을 재작성한다.

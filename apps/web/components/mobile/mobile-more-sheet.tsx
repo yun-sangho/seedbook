@@ -5,17 +5,17 @@ import {
   IconArrowLeftBracketRightLine,
   IconDocumentLine,
   IconExclamationmarkCircleLine,
-  IconLaptopLine,
+  IconGearLine,
   IconPlusSquareLine,
   IconTrashcanLine,
 } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
+import { useFlow } from "@stackflow/react";
 import { AppLockSettingItem } from "@web/components/mobile/app-lock";
 import { DeleteAccountDialog } from "@web/components/mobile/delete-account-dialog";
 import { authClient, useSession } from "@web/lib/auth-client";
 import { type InstallMode, needsSeparateStorageNotice } from "@web/lib/pwa-install";
 import { getStorageMode } from "@web/lib/storage-mode";
-import { setViewOverride } from "@web/lib/view-override";
 import {
   BottomSheetBody,
   BottomSheetContent,
@@ -32,7 +32,7 @@ interface MobileMoreSheetProps {
   isNativeApp: boolean;
 }
 
-/** 하단 탭 "더보기": 앱 설치, PC 화면 전환, 로그아웃, 회원 탈퇴. */
+/** 하단 탭 "더보기": 앱 설치, 설정, 로그아웃, 회원 탈퇴. */
 export function MobileMoreSheet({
   open,
   onOpenChange,
@@ -50,6 +50,7 @@ export function MobileMoreSheet({
     isNativeApp,
   });
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const { push } = useFlow();
 
   return (
     <>
@@ -87,17 +88,17 @@ export function MobileMoreSheet({
                       ? "앱과 브라우저는 데이터가 따로 저장돼요"
                       : "Safari와 홈 화면 앱은 데이터가 따로 저장돼요"
                   }
-                  detail="PC 화면 → 관리 → 저장소 설정에서 '클라우드에 저장'을 켜면 어디서든 같은 데이터를 볼 수 있어요"
+                  detail="설정 → 저장 위치에서 '클라우드에 저장'을 고르면 어디서든 같은 데이터를 볼 수 있어요"
                 />
               )}
               <AppLockSettingItem />
               <ListButtonItem
-                prefix={<Icon svg={<IconLaptopLine />} />}
-                title="PC 화면으로 보기"
-                detail="계좌 순서 변경 등 PC 전용 기능"
+                prefix={<Icon svg={<IconGearLine />} />}
+                title="설정"
+                detail="저장 위치, 데이터 백업"
                 onClick={() => {
-                  setViewOverride("desktop");
-                  window.location.reload();
+                  onOpenChange(false);
+                  push("Settings", {});
                 }}
               />
               <ListButtonItem
