@@ -1,10 +1,10 @@
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import { describe, expect, it } from "vitest";
 import type { RebalancingSession, RebalancingTask } from "../types/types";
-import { tradeCostForAccount } from "./apply-rebalancing-to-account";
+import { sellTaxForTasks } from "./apply-rebalancing-to-account";
 import { rebalancingCashOutlook, tradeCashPreview } from "./trade-cash-check";
 
-const NO_COST = () => 0;
+const NO_TAX = () => 0;
 
 /** 예수금이 모자라는 금액 — 0 보다 크면 매매 입력 화면이 완료를 막는다. */
 const cashShortfallAfterTrade = (...args: Parameters<typeof tradeCashPreview>) =>
@@ -60,14 +60,14 @@ function session(tasks: RebalancingTask[], cashDelta = 0): RebalancingSession {
 describe("cash shortfall (tradeCashPreview after < 0)", () => {
   it("is 0 when the cash covers the trade at the entered price", () => {
     expect(
-      cashShortfallAfterTrade(account(100_000), session([task()]), "buy", 10, 10_000, NO_COST)
+      cashShortfallAfterTrade(account(100_000), session([task()]), "buy", 10, 10_000, NO_TAX)
     ).toBe(0);
   });
 
   it("is the amount missing when a higher price would push cash below zero", () => {
     // 10주 × 10,050원 = 100,500원 > 예수금 100,000원
     expect(
-      cashShortfallAfterTrade(account(100_000), session([task()]), "buy", 10, 10_050, NO_COST)
+      cashShortfallAfterTrade(account(100_000), session([task()]), "buy", 10, 10_050, NO_TAX)
     ).toBe(500);
   });
 
@@ -81,7 +81,7 @@ describe("cash shortfall (tradeCashPreview after < 0)", () => {
     });
     // 이미 50,000원 매수 → 남은 50,000원으로 10주 × 10,000원은 50,000원 모자람
     expect(
-      cashShortfallAfterTrade(account(100_000), session([done, task()]), "buy", 10, 10_000, NO_COST)
+      cashShortfallAfterTrade(account(100_000), session([done, task()]), "buy", 10, 10_000, NO_TAX)
     ).toBe(50_000);
   });
 
@@ -116,7 +116,7 @@ describe("cash shortfall (tradeCashPreview after < 0)", () => {
         "buy",
         10,
         10_000,
-        NO_COST
+        NO_TAX
       )
     ).toBe(0);
   });
@@ -130,32 +130,46 @@ describe("cash shortfall (tradeCashPreview after < 0)", () => {
         "buy",
         10,
         10_000,
-        NO_COST
+        NO_TAX
       )
     ).toBe(0);
+  });
+
+  it("does not let trades use cash held back from trading", () => {
+    // 예수금 100,000원 중 거래 가능 금액 70,000원 → 10주 × 10,000원은 30,000원 모자람
+    expect(
+      cashShortfallAfterTrade(
+        account(100_000),
+        session([task()], -30_000),
+        "buy",
+        10,
+        10_000,
+        NO_TAX
+      )
+    ).toBe(30_000);
   });
 
   it("re-checks a done trade with the new values instead of its old ones", () => {
     const recorded = task({ done: true, executedQuantity: 10, executedPrice: 10_000 });
     expect(
-      cashShortfallAfterTrade(account(100_000), session([recorded]), "buy", 10, 10_100, NO_COST)
+      cashShortfallAfterTrade(account(100_000), session([recorded]), "buy", 10, 10_100, NO_TAX)
     ).toBe(1_000);
   });
 });
 
 describe("tradeCashPreview", () => {
   it("shows cash before this trade and after it", () => {
-    expect(
-      tradeCashPreview(account(100_000), session([task()]), "buy", 5, 10_000, NO_COST)
-    ).toEqual({
-      before: 100_000,
-      after: 50_000,
-    });
+    expect(tradeCashPreview(account(100_000), session([task()]), "buy", 5, 10_000, NO_TAX)).toEqual(
+      {
+        before: 100_000,
+        after: 50_000,
+      }
+    );
   });
 
   it("lets cash after go below zero so the shortfall is visible", () => {
     expect(
-      tradeCashPreview(account(100_000), session([task()]), "buy", 10, 10_050, NO_COST).after
+      tradeCashPreview(account(100_000), session([task()]), "buy", 10, 10_050, NO_TAX).after
     ).toBe(-500);
   });
 
@@ -170,14 +184,7 @@ describe("tradeCashPreview", () => {
     const recorded = task({ done: true, executedQuantity: 3, executedPrice: 10_000 });
 
     expect(
-      tradeCashPreview(
-        account(100_000),
-        session([done, recorded], 5_000),
-        "buy",
-        1,
-        10_000,
-        NO_COST
-      )
+      tradeCashPreview(account(100_000), session([done, recorded], 5_000), "buy", 1, 10_000, NO_TAX)
     ).toEqual({ before: 85_000, after: 75_000 });
   });
 
@@ -198,7 +205,7 @@ describe("tradeCashPreview", () => {
       ],
     };
 
-    expect(tradeCashPreview(withHolding, session([sell]), "sell", 5, 10_000, NO_COST)).toEqual({
+    expect(tradeCashPreview(withHolding, session([sell]), "sell", 5, 10_000, NO_TAX)).toEqual({
       before: 0,
       after: 50_000,
     });
@@ -222,7 +229,7 @@ describe("tradeCashPreview with buy orders waiting to fill", () => {
       "buy",
       2,
       10_000,
-      NO_COST
+      NO_TAX
     );
     expect(preview).toEqual({ before: 70_000, after: 50_000 });
   });
@@ -235,7 +242,7 @@ describe("tradeCashPreview with buy orders waiting to fill", () => {
       "buy",
       3,
       10_000,
-      NO_COST
+      NO_TAX
     );
     expect(preview).toEqual({ before: 100_000, after: 70_000 });
   });
@@ -248,7 +255,7 @@ describe("tradeCashPreview with buy orders waiting to fill", () => {
       "buy",
       1,
       10_000,
-      NO_COST
+      NO_TAX
     );
     expect(preview.before).toBe(70_000);
   });
@@ -272,54 +279,53 @@ describe("rebalancingCashOutlook", () => {
   });
 
   it("is the account cash plus the cash deposit before any trade is done", () => {
-    const outlook = rebalancingCashOutlook(account(50_000), session([task()], 50_000), NO_COST);
+    const outlook = rebalancingCashOutlook(account(50_000), session([task()], 50_000), NO_TAX);
     expect(outlook.now).toBe(100_000);
   });
 
   it("includes completed trades at their executed quantity and price", () => {
     const done = sell({ done: true, executedQuantity: 3, executedPrice: 20_000 });
-    const outlook = rebalancingCashOutlook(withHolding(0), session([done, task()]), NO_COST);
+    const outlook = rebalancingCashOutlook(withHolding(0), session([done, task()]), NO_TAX);
     expect(outlook.now).toBe(60_000);
   });
 
   it("expects the remaining trades to follow the recommended quantity and start price", () => {
     // 지금 0 + 매도 10주 × 10,000 − 매수 10주 × 10,000
-    const outlook = rebalancingCashOutlook(withHolding(0), session([sell(), task()]), NO_COST);
+    const outlook = rebalancingCashOutlook(withHolding(0), session([sell(), task()]), NO_TAX);
     expect(outlook.expected).toBe(0);
   });
 
   it("can expect negative cash when the remaining buys cost more than is left", () => {
     const done = sell({ done: true, executedQuantity: 5, executedPrice: 10_000 });
-    const outlook = rebalancingCashOutlook(withHolding(0), session([done, task()]), NO_COST);
+    const outlook = rebalancingCashOutlook(withHolding(0), session([done, task()]), NO_TAX);
     expect(outlook.now).toBe(50_000);
     expect(outlook.expected).toBe(-50_000);
   });
 
   it("holds back buy orders waiting to fill from cash now", () => {
     const ordered = task({ orderedQuantity: 4, orderedPrice: 10_000 });
-    const outlook = rebalancingCashOutlook(account(100_000), session([ordered]), NO_COST);
+    const outlook = rebalancingCashOutlook(account(100_000), session([ordered]), NO_TAX);
     expect(outlook.now).toBe(60_000);
     expect(outlook.heldForOrders).toBe(40_000);
   });
 
   it("expects ordered trades to fill at their order quantity and price", () => {
     const ordered = task({ orderedQuantity: 4, orderedPrice: 10_000 });
-    const outlook = rebalancingCashOutlook(account(100_000), session([ordered]), NO_COST);
+    const outlook = rebalancingCashOutlook(account(100_000), session([ordered]), NO_TAX);
     expect(outlook.expected).toBe(60_000);
   });
 
   it("leaves out remaining trades whose price was unknown", () => {
     const unpriced = task({ price: null, quantity: null });
-    const outlook = rebalancingCashOutlook(account(30_000), session([unpriced]), NO_COST);
+    const outlook = rebalancingCashOutlook(account(30_000), session([unpriced]), NO_TAX);
     expect(outlook.expected).toBe(30_000);
   });
 });
 
-describe("trade costs in the cash preview and outlook", () => {
-  // 수수료 0.1% 계좌, 코스피 주식 — 매도는 수수료 0.1% + 거래세 0.05% + 농특세 0.15%
+describe("sell taxes in the cash preview and outlook", () => {
+  // 코스피 주식 — 매도하면 거래세 0.05% + 농특세 0.15%
   const withHolding = (cash: number): InvestmentItem => ({
     ...account(cash),
-    stockCommissionPercent: 0.1,
     holdings: [
       {
         id: "h",
@@ -333,32 +339,23 @@ describe("trade costs in the cash preview and outlook", () => {
     ],
   });
   const sell = task({ id: "sell", ticker: "005930", action: "매도" });
+  const taxes = sellTaxForTasks(() => "stock");
 
-  const costs = tradeCostForAccount(withHolding(0), () => "stock");
-
-  it("adds a sell's proceeds after commission and taxes", () => {
-    // 5주 × 10,000원 = 50,000원 − (50 + 25 + 75)
-    expect(tradeCashPreview(withHolding(0), session([sell]), "sell", 5, 10_000, costs).after).toBe(
-      49_850
+  it("adds a sell's proceeds after taxes", () => {
+    // 5주 × 10,000원 = 50,000원 − (25 + 75)
+    expect(tradeCashPreview(withHolding(0), session([sell]), "sell", 5, 10_000, taxes).after).toBe(
+      49_900
     );
   });
 
-  it("takes a buy's commission on top of its price", () => {
-    // 5주 × 10,000원 = 50,000원 + 수수료 50원
+  it("takes a buy at its price, with nothing on top", () => {
     expect(
-      tradeCashPreview(withHolding(100_000), session([task()]), "buy", 5, 10_000, costs).after
-    ).toBe(49_950);
+      tradeCashPreview(withHolding(100_000), session([task()]), "buy", 5, 10_000, taxes).after
+    ).toBe(50_000);
   });
 
-  it("holds back a buy order's commission along with its price", () => {
-    const ordered = task({ orderedQuantity: 3, orderedPrice: 10_000 });
-    expect(
-      rebalancingCashOutlook(withHolding(100_000), session([ordered]), costs).heldForOrders
-    ).toBe(30_030);
-  });
-
-  it("expects remaining sells to bring in their proceeds after costs", () => {
-    // 권장 10주 × 10,000원 = 100,000원 − (100 + 50 + 150)
-    expect(rebalancingCashOutlook(withHolding(0), session([sell]), costs).expected).toBe(99_700);
+  it("expects remaining sells to bring in their proceeds after taxes", () => {
+    // 권장 10주 × 10,000원 = 100,000원 − (50 + 150)
+    expect(rebalancingCashOutlook(withHolding(0), session([sell]), taxes).expected).toBe(99_800);
   });
 });

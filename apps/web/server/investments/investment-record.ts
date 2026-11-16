@@ -18,10 +18,8 @@ export type InvestmentFields = {
   currentValue: number;
   note: string;
   color: string;
-  /** 매매 수수료율 (%). 0 이상 100 미만, null 이면 기본값. */
-  stockCommissionPercent: number | null;
-  /** ETF·ETN 매매 수수료율 (%). 0 이상 100 미만, null 이면 주식 수수료율과 같다. */
-  etfCommissionPercent: number | null;
+  /** 매도 제비용률 (%). 0 이상 100 미만. */
+  sellCostPercent: number;
   records: Array<{ date: string; initialInvestment: number; currentValue: number }>;
   holdings: Array<{
     id: string;
@@ -44,9 +42,6 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const isText = (x: unknown): x is string => typeof x === "string";
 const isNumber = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x);
 const isUuid = (x: unknown): x is string => isText(x) && UUID_RE.test(x);
-/** 비율 (%) — null (정하지 않음) 이거나 0 이상 100 미만. */
-const isRateOrNull = (x: unknown): x is number | null =>
-  x === null || (isNumber(x) && x >= 0 && x < 100);
 const asObject = (x: unknown) =>
   x && typeof x === "object" ? (x as Record<string, unknown>) : null;
 
@@ -58,9 +53,8 @@ export function parseInvestmentFields(value: unknown): InvestmentFields | null {
   const rawRecords = v.records ?? [];
   const rawHoldings = v.holdings ?? [];
   const rawCash = v.cashItems ?? [];
-  // 수수료율은 나중에 추가된 필드라 없으면 null (기본값).
-  const stockCommissionPercent = v.stockCommissionPercent ?? null;
-  const etfCommissionPercent = v.etfCommissionPercent ?? null;
+  // 매도 제비용률은 나중에 추가된 필드라 없으면 0.
+  const sellCostPercent = v.sellCostPercent ?? 0;
   if (
     !isText(v.accountName) ||
     !isText(v.accountType) ||
@@ -69,8 +63,9 @@ export function parseInvestmentFields(value: unknown): InvestmentFields | null {
     !isNumber(v.currentValue) ||
     !isText(note) ||
     !isText(v.color) ||
-    !isRateOrNull(stockCommissionPercent) ||
-    !isRateOrNull(etfCommissionPercent) ||
+    !isNumber(sellCostPercent) ||
+    sellCostPercent < 0 ||
+    sellCostPercent >= 100 ||
     !Array.isArray(rawRecords) ||
     !Array.isArray(rawHoldings) ||
     !Array.isArray(rawCash)
@@ -139,8 +134,7 @@ export function parseInvestmentFields(value: unknown): InvestmentFields | null {
     currentValue: v.currentValue,
     note,
     color: v.color,
-    stockCommissionPercent,
-    etfCommissionPercent,
+    sellCostPercent,
     records,
     holdings,
     cashItems,
@@ -157,8 +151,7 @@ export function investmentFieldsToColumns(fields: InvestmentFields) {
     currentValue: toBigInt(fields.currentValue),
     note: fields.note,
     color: fields.color,
-    stockCommissionPercent: fields.stockCommissionPercent,
-    etfCommissionPercent: fields.etfCommissionPercent,
+    sellCostPercent: fields.sellCostPercent,
   };
 }
 
@@ -203,8 +196,7 @@ export function investmentRowToFields(
     currentValue: bigIntToNumber(row.currentValue),
     note: row.note,
     color: row.color,
-    stockCommissionPercent: row.stockCommissionPercent,
-    etfCommissionPercent: row.etfCommissionPercent,
+    sellCostPercent: row.sellCostPercent,
     records: records
       .slice()
       .sort((a, b) => b.date.getTime() - a.date.getTime())

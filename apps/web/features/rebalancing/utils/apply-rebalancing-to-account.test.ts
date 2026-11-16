@@ -1,7 +1,7 @@
 import type { InvestmentItem, StockHolding } from "@web/features/investments/types/types";
 import { describe, expect, it } from "vitest";
 import type { RebalancingSession, RebalancingTask } from "../types/types";
-import { applyRebalancingToAccount, tradeCostForAccount } from "./apply-rebalancing-to-account";
+import { applyRebalancingToAccount, sellTaxForTasks } from "./apply-rebalancing-to-account";
 
 function task(overrides: Partial<RebalancingTask> = {}): RebalancingTask {
   return {
@@ -65,7 +65,7 @@ function session(tasks: RebalancingTask[], cashDelta = 0): RebalancingSession {
 }
 
 const KRW = () => "KRW";
-const NO_COST = () => 0;
+const NO_TAX = () => 0;
 const stockType = () => "stock";
 const etfType = () => "etf";
 
@@ -75,7 +75,7 @@ describe("applyRebalancingToAccount", () => {
       account(),
       session([task()]),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     expect(result.holdings[0]?.quantity).toBe(12);
@@ -86,7 +86,7 @@ describe("applyRebalancingToAccount", () => {
       account(),
       session([task({ action: "매도", quantity: 3 })]),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     expect(result.holdings[0]?.quantity).toBe(7);
@@ -101,7 +101,7 @@ describe("applyRebalancingToAccount", () => {
       acc,
       session([task({ action: "매도", quantity: 5 })]),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     expect(result.account.holdings.map((h) => [h.id, h.quantity])).toEqual([
@@ -115,7 +115,7 @@ describe("applyRebalancingToAccount", () => {
       account(),
       session([task({ action: "매수", quantity: 5, executedQuantity: 3 })]),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     expect(result.account.holdings[0]!.quantity).toBe(13);
@@ -127,7 +127,7 @@ describe("applyRebalancingToAccount", () => {
       account(),
       session([task({ action: "매수", quantity: 2, executedQuantity: 2, executedPrice: 49_000 })]),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     expect(result.cashChange).toBe(-98_000);
@@ -138,7 +138,7 @@ describe("applyRebalancingToAccount", () => {
       account(),
       session([task({ action: "매도", quantity: 2, executedQuantity: 2, executedPrice: 51_000 })]),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     expect(result.cashChange).toBe(102_000);
@@ -149,7 +149,7 @@ describe("applyRebalancingToAccount", () => {
       account(),
       session([task({ price: null, quantity: null, executedQuantity: 3, executedPrice: 40_000 })]),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     expect(result.skipped).toEqual([]);
@@ -162,7 +162,7 @@ describe("applyRebalancingToAccount", () => {
       account(),
       session([task({ action: "매도", quantity: 15 })]),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     expect(result.holdings[0]?.quantity).toBe(0);
@@ -174,7 +174,7 @@ describe("applyRebalancingToAccount", () => {
       account(),
       session([task({ action: "매도", quantity: 15 })]),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     expect(result.cashChange).toBe(500_000);
@@ -185,7 +185,7 @@ describe("applyRebalancingToAccount", () => {
       account(),
       session([task({ id: "alloc-b", ticker: "000660", name: "SK하이닉스", quantity: 1 })]),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     expect(result.holdings[1]).toMatchObject({
@@ -208,7 +208,7 @@ describe("applyRebalancingToAccount", () => {
         300_000
       ),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     // +200,000 (매도) - 150,000 (매수) + 300,000 (투입)
@@ -216,12 +216,24 @@ describe("applyRebalancingToAccount", () => {
     expect(result.cashItems[0]?.amount).toBe(1_350_000);
   });
 
+  it("leaves cash held back from trading in the account", () => {
+    // 예수금 1,000,000원 중 거래 가능 금액을 900,000원으로 잡음 → 남겨 둔 100,000원은 빠지지 않는다
+    const { cashChange } = applyRebalancingToAccount(
+      account(),
+      session([task({ action: "매도", quantity: 1, price: 50_000 })], -100_000),
+      KRW,
+      NO_TAX
+    );
+
+    expect(cashChange).toBe(50_000);
+  });
+
   it("creates a 예수금 cash item when the account has none", () => {
     const { account: result } = applyRebalancingToAccount(
       account({ cashItems: [] }),
       session([task({ action: "매도", quantity: 1 })]),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     expect(result.cashItems).toEqual([
@@ -234,7 +246,7 @@ describe("applyRebalancingToAccount", () => {
       account({ cashItems: [{ id: "c1", label: "예수금", amount: 10_000 }] }),
       session([task({ quantity: 2, price: 50_000 })]),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     expect(result.cashItems[0]?.amount).toBe(0);
@@ -246,7 +258,7 @@ describe("applyRebalancingToAccount", () => {
       account({ cashItems: [{ id: "c1", label: "예수금", amount: 10_000 }] }),
       session([task({ quantity: 2, price: 50_000 })]),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     expect(cashShortfall).toBe(90_000);
@@ -257,7 +269,7 @@ describe("applyRebalancingToAccount", () => {
       account(),
       session([task({ quantity: 2, price: 50_000 })]),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     expect(cashShortfall).toBe(0);
@@ -270,7 +282,7 @@ describe("applyRebalancingToAccount", () => {
       account(),
       session([noPrice]),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     expect(skipped).toEqual([noPrice]);
@@ -285,7 +297,7 @@ describe("applyRebalancingToAccount", () => {
       account(),
       session([sell]),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     expect(skipped).toEqual([sell]);
@@ -297,7 +309,7 @@ describe("applyRebalancingToAccount", () => {
       account(),
       session([task({ done: false })]),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     expect(result.holdings[0]?.quantity).toBe(10);
@@ -313,7 +325,7 @@ describe("applyRebalancingToAccount changes", () => {
       account(),
       session([sell, buy]),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     expect(holdingChanges).toEqual([
@@ -327,7 +339,7 @@ describe("applyRebalancingToAccount changes", () => {
       account(),
       session([task({ action: "매도", quantity: 1, price: 50_000 })]),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     expect(cash).toEqual({ label: "예수금", before: 1_000_000, after: 1_050_000 });
@@ -338,85 +350,54 @@ describe("applyRebalancingToAccount changes", () => {
       account({ cashItems: [] }),
       session([task({ action: "매도", quantity: 1, price: 50_000 })]),
       KRW,
-      NO_COST
+      NO_TAX
     );
 
     expect(cash).toEqual({ label: "예수금", before: 0, after: 50_000 });
   });
 
-  describe("trade costs (commission and taxes)", () => {
-    it("takes the commission, transaction tax and rural tax out of a KOSPI stock sale", () => {
-      // 3주 × 50,000원 = 150,000원 → 수수료 0.015% 22원 + 거래세 0.05% 75원 + 농특세 0.15% 225원
-      const acc = account();
+  describe("sell taxes", () => {
+    it("takes the transaction tax and rural tax out of a KOSPI stock sale", () => {
+      // 3주 × 50,000원 = 150,000원 → 거래세 0.05% 75원 + 농특세 0.15% 225원
       const { cashChange } = applyRebalancingToAccount(
-        acc,
+        account(),
         session([task({ action: "매도", quantity: 3, price: 50_000 })]),
         KRW,
-        tradeCostForAccount(acc, stockType)
+        sellTaxForTasks(stockType)
       );
 
-      expect(cashChange).toBe(149_678);
+      expect(cashChange).toBe(149_700);
     });
 
-    it("takes only the commission when selling an ETF", () => {
-      // 150,000원 × 0.015% = 22.5원 → 22원
-      const acc = account();
+    it("takes nothing out of an ETF sale", () => {
       const { cashChange } = applyRebalancingToAccount(
-        acc,
+        account(),
         session([task({ action: "매도", quantity: 3, price: 50_000 })]),
         KRW,
-        tradeCostForAccount(acc, etfType)
+        sellTaxForTasks(etfType)
       );
 
-      expect(cashChange).toBe(149_978);
+      expect(cashChange).toBe(150_000);
     });
 
-    it("uses the account's ETF commission rate when selling an ETF", () => {
-      // ETF 우대 0.0042087%: 150,000원 → 6.31원 → 6원 (주식 요율 0.0036396% 이면 5원)
-      const acc = account({ stockCommissionPercent: 0.0036396, etfCommissionPercent: 0.0042087 });
+    it("taxes only the shares actually sold", () => {
+      // 보유 10주인데 15주 매도 기록 → 500,000원 → 거래세 250 + 농특세 750
       const { cashChange } = applyRebalancingToAccount(
-        acc,
-        session([task({ action: "매도", quantity: 3, price: 50_000 })]),
-        KRW,
-        tradeCostForAccount(acc, etfType)
-      );
-
-      expect(cashChange).toBe(149_994);
-    });
-
-    it("charges the cost only on the shares actually sold", () => {
-      // 보유 10주인데 15주 매도 기록 → 500,000원 → 수수료 75 + 거래세 250 + 농특세 750
-      const acc = account();
-      const { cashChange } = applyRebalancingToAccount(
-        acc,
+        account(),
         session([task({ action: "매도", quantity: 15, price: 50_000 })]),
         KRW,
-        tradeCostForAccount(acc, stockType)
+        sellTaxForTasks(stockType)
       );
 
-      expect(cashChange).toBe(498_925);
+      expect(cashChange).toBe(499_000);
     });
 
-    it("adds the commission, but no tax, to a buy", () => {
-      // 2주 × 50,000원 = 100,000원 + 수수료 15원
-      const acc = account();
+    it("does not tax buys", () => {
       const { cashChange } = applyRebalancingToAccount(
-        acc,
+        account(),
         session([task({ action: "매수", quantity: 2, price: 50_000 })]),
         KRW,
-        tradeCostForAccount(acc, stockType)
-      );
-
-      expect(cashChange).toBe(-100_015);
-    });
-
-    it("charges nothing on a buy in a commission-free account", () => {
-      const acc = account({ stockCommissionPercent: 0 });
-      const { cashChange } = applyRebalancingToAccount(
-        acc,
-        session([task({ action: "매수", quantity: 2, price: 50_000 })]),
-        KRW,
-        tradeCostForAccount(acc, stockType)
+        sellTaxForTasks(stockType)
       );
 
       expect(cashChange).toBe(-100_000);

@@ -1,10 +1,7 @@
 import type { ManagedStoreConfig } from "@web/lib/sync/managed-store-config";
 import type { InvestmentItem } from "../types/types";
 
-const isNum = (value: unknown): value is number =>
-  typeof value === "number" && Number.isFinite(value);
-const num = (value: unknown) => (isNum(value) ? value : 0);
-const numOrNull = (value: unknown) => (isNum(value) ? value : null);
+const num = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : 0);
 const text = (value: unknown) => (typeof value === "string" ? value : "");
 const list = (value: unknown) =>
   Array.isArray(value) ? (value as Array<Record<string, unknown>>) : [];
@@ -32,8 +29,7 @@ export const investmentsSyncConfig: ManagedStoreConfig<InvestmentItem> = {
     currentValue: num(item.currentValue),
     note: text(item.note),
     color: text(item.color),
-    stockCommissionPercent: numOrNull(item.stockCommissionPercent),
-    etfCommissionPercent: numOrNull(item.etfCommissionPercent),
+    sellCostPercent: num(item.sellCostPercent),
     records: (item.records ?? []).map((r) => ({
       date: text(r.date),
       initialInvestment: num(r.initialInvestment),
@@ -82,7 +78,6 @@ export const investmentsSyncConfig: ManagedStoreConfig<InvestmentItem> = {
     })),
     note: text(data.note),
     color: text(data.color),
-    stockCommissionPercent: numOrNull(data.stockCommissionPercent),
-    etfCommissionPercent: numOrNull(data.etfCommissionPercent),
+    sellCostPercent: num(data.sellCostPercent),
   }),
 };

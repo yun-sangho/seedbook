@@ -1,44 +1,38 @@
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import type { RebalancingSession, RebalancingTask } from "../types/types";
-import { applyRebalancingToAccount, type TradeCostFor } from "./apply-rebalancing-to-account";
+import { applyRebalancingToAccount, type SellTaxFor } from "./apply-rebalancing-to-account";
 import { rebalancingTaskStatus } from "./rebalancing-session";
 
 /**
  * 계좌에 반영할 때와 같은 계산(`applyRebalancingToAccount`)으로, 예수금 항목의 잔액을 0 으로
- * 자르기 전 값을 구한다. 완료한 매매(기록한 체결 가격)와 시작할 때 넣은 현금 투입/인출이 들어간다.
+ * 자르기 전 값을 구한다. 완료한 매매(기록한 체결 가격)와 시작할 때 넣은 돈이 들어간다. 거래 가능
+ * 금액을 예수금보다 적게 잡았으면 남겨 둔 돈은 계좌에는 남지만 매매에 쓸 수 없어 뺀다.
  */
 function rawCashAfter(
   account: InvestmentItem,
   session: RebalancingSession,
   tasks: RebalancingTask[],
-  tradeCostFor: TradeCostFor
+  sellTaxFor: SellTaxFor
 ): number {
   // 통화는 새 보유 종목을 만들 때만 쓰여 예수금 계산과 상관없다.
   const applied = applyRebalancingToAccount(
     account,
     { ...session, tasks },
     () => "KRW",
-    tradeCostFor
+    sellTaxFor
   );
-  return applied.cash.before + applied.cashChange;
+  return applied.cash.before + applied.cashChange + Math.min(0, session.cashDelta);
 }
 
 /**
- * 체결 전 매수 주문에 묶인 금액 (원, 수수료 포함) — 증권사의 주문가능금액처럼 예수금에서 미리
- * 뺀다. 매도 주문은 체결돼야 예수금이 들어오므로 묶지 않는다.
+ * 체결 전 매수 주문에 묶인 금액 (원) — 증권사의 주문가능금액처럼 예수금에서 미리 뺀다.
+ * 매도 주문은 체결돼야 예수금이 들어오므로 묶지 않는다.
  */
-function heldForBuyOrders(
-  tasks: RebalancingTask[],
-  tradeCostFor: TradeCostFor,
-  exceptTaskId?: string
-): number {
+function heldForBuyOrders(tasks: RebalancingTask[], exceptTaskId?: string): number {
   return tasks
     .filter((t) => t.id !== exceptTaskId && t.action === "매수")
     .filter((t) => rebalancingTaskStatus(t) === "ordered")
-    .reduce((sum, t) => {
-      const value = (t.orderedQuantity ?? 0) * (t.orderedPrice ?? 0);
-      return sum + value + tradeCostFor(t, value);
-    }, 0);
+    .reduce((sum, t) => sum + (t.orderedQuantity ?? 0) * (t.orderedPrice ?? 0), 0);
 }
 
 /**
@@ -56,15 +50,15 @@ export function tradeCashPreview(
   taskId: string,
   quantity: number,
   price: number,
-  tradeCostFor: TradeCostFor
+  sellTaxFor: SellTaxFor
 ): { before: number; after: number } {
   const without = session.tasks.map((t) => (t.id === taskId ? { ...t, done: false } : t));
-  const held = heldForBuyOrders(session.tasks, tradeCostFor, taskId);
-  const before = rawCashAfter(account, session, without, tradeCostFor) - held;
+  const held = heldForBuyOrders(session.tasks, taskId);
+  const before = rawCashAfter(account, session, without, sellTaxFor) - held;
   const withTrade = session.tasks.map((t) =>
     t.id === taskId ? { ...t, done: true, executedQuantity: quantity, executedPrice: price } : t
   );
-  return { before, after: rawCashAfter(account, session, withTrade, tradeCostFor) - held };
+  return { before, after: rawCashAfter(account, session, withTrade, sellTaxFor) - held };
 }
 
 export interface RebalancingCashOutlook {
@@ -89,7 +83,7 @@ export interface RebalancingCashOutlook {
 export function rebalancingCashOutlook(
   account: InvestmentItem,
   session: RebalancingSession,
-  tradeCostFor: TradeCostFor
+  sellTaxFor: SellTaxFor
 ): RebalancingCashOutlook {
   const planned = session.tasks.map((t) => {
     if (t.done) return t;
@@ -101,10 +95,10 @@ export function rebalancingCashOutlook(
       executedPrice: ordered ? t.orderedPrice : t.price,
     };
   });
-  const heldForOrders = heldForBuyOrders(session.tasks, tradeCostFor);
+  const heldForOrders = heldForBuyOrders(session.tasks);
   return {
-    now: rawCashAfter(account, session, session.tasks, tradeCostFor) - heldForOrders,
+    now: rawCashAfter(account, session, session.tasks, sellTaxFor) - heldForOrders,
     heldForOrders,
-    expected: rawCashAfter(account, session, planned, tradeCostFor),
+    expected: rawCashAfter(account, session, planned, sellTaxFor),
   };
 }

@@ -24,8 +24,7 @@ const item: InvestmentItem = {
   cashItems: [{ id: "c-1", label: "예수금", amount: 50 }],
   note: "",
   color: "#3b82f6",
-  stockCommissionPercent: 0.0036396,
-  etfCommissionPercent: 0.0042087,
+  sellCostPercent: 0.2,
 };
 
 describe("investmentsSyncConfig", () => {
@@ -35,16 +34,10 @@ describe("investmentsSyncConfig", () => {
     );
   });
 
-  it("reads an account without a commission rate as null (default rate)", () => {
-    const { stockCommissionPercent: _c, ...data } = investmentsSyncConfig.toData(item);
+  it("reads an account without a sell cost rate as 0", () => {
+    const { sellCostPercent: _s, ...data } = investmentsSyncConfig.toData(item);
 
-    expect(investmentsSyncConfig.fromData("acc-1", data).stockCommissionPercent).toBeNull();
-  });
-
-  it("keeps a zero commission rate instead of treating it as unset", () => {
-    const data = investmentsSyncConfig.toData({ ...item, stockCommissionPercent: 0 });
-
-    expect(investmentsSyncConfig.fromData("acc-1", data).stockCommissionPercent).toBe(0);
+    expect(investmentsSyncConfig.fromData("acc-1", data).sellCostPercent).toBe(0);
   });
 
   it("sends numbers typed mid-edit (NaN) as 0 so the change is not rejected", () => {

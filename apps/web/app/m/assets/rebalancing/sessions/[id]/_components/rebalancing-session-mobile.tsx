@@ -20,7 +20,7 @@ import {
 import { stockPriceKey } from "@web/features/investments/utils/use-stock-prices";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import type { RebalancingTask } from "@web/features/rebalancing/types/types";
-import { tradeCostForAccount } from "@web/features/rebalancing/utils/apply-rebalancing-to-account";
+import { sellTaxForTasks } from "@web/features/rebalancing/utils/apply-rebalancing-to-account";
 import {
   type RebalancingTaskSection,
   toggleCollapsedSection,
@@ -117,7 +117,7 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
   // 진행 중일 때만 — 완료한 기록은 아래 결과에 반영 전 → 후 예수금이 나온다. 계좌가 지워졌으면 모른다.
   const cash =
     !completed && account
-      ? rebalancingCashOutlook(account, session, tradeCostForAccount(account, securityTypeOf))
+      ? rebalancingCashOutlook(account, session, sellTaxForTasks(securityTypeOf))
       : null;
   const priceAsOf = summarizeRebalancingPriceAsOf(session.tasks);
   const groups = groupRebalancingTasks(session.tasks, leaving);
@@ -465,7 +465,8 @@ function CashOutlook({ cash, cashDelta }: { cash: RebalancingCashOutlook; cashDe
         {cashDelta !== 0 && (
           <>
             {" "}
-            · {cashDelta > 0 ? "현금 투입" : "현금 인출"} {numberToKorean(Math.abs(cashDelta))} 포함
+            · {cashDelta > 0 ? "새로 넣은 돈" : "남겨 둔 돈"} {numberToKorean(Math.abs(cashDelta))}{" "}
+            {cashDelta > 0 ? "포함" : "제외"}
           </>
         )}
       </p>
