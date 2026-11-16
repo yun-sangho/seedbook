@@ -7,10 +7,8 @@ import { useFlow } from "@stackflow/react";
 import { formatMoneyDraft } from "@web/components/mobile/input-format";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { snapToTick, stepByTick, tickSize } from "@web/features/investments/utils/krx-tick-size";
-import { type SellTax, sellTaxOf } from "@web/features/investments/utils/sell-tax";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import type { RebalancingTask, RebalancingTaskStatus } from "@web/features/rebalancing/types/types";
-import { sellTaxForTasks } from "@web/features/rebalancing/utils/apply-rebalancing-to-account";
 import {
   isRebalancingCompleted,
   rebalancingTaskStatus,
@@ -106,20 +104,10 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
   // 기록할 가격은 호가에 맞춘 값이다 — 금액과 예수금도 그 값으로 계산한다.
   const tradePrice = priceOk ? snapToTick(price, securityType) : null;
   const amount = quantityOk && tradePrice !== null ? Math.round(quantity * tradePrice) : null;
-  // 매도 세금 (매수에는 없다). 수수료는 계좌마다 달라 계산하지 않는다.
-  const sellTax =
-    task.action === "매도" && amount !== null ? sellTaxOf(task.market, securityType, amount) : null;
   // 계좌가 지워졌으면 예수금을 알 수 없어 확인하지 않는다.
   const cash =
     account && quantityOk && tradePrice !== null
-      ? tradeCashPreview(
-          account,
-          session,
-          task.id,
-          quantity,
-          tradePrice,
-          sellTaxForTasks(securityTypeOf)
-        )
+      ? tradeCashPreview(account, session, task.id, quantity, tradePrice)
       : null;
   const shortOfCash = cash !== null && cash.after < 0;
   const canSave = quantityOk && tradePrice !== null && !shortOfCash;
@@ -213,9 +201,6 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
         <SummaryRow label={`${task.action} 금액`}>
           {amount !== null ? `${formatWithCommas(amount)}원` : "-"}
         </SummaryRow>
-        {sellTax !== null && amount !== null && sellTax.total > 0 && (
-          <SellTaxRows amount={amount} tax={sellTax} />
-        )}
         {cash && (
           <SummaryRow label="주문가능금액">
             <span className="text-fg-neutral-muted font-normal">
@@ -355,32 +340,6 @@ function StepperField({
       </div>
       {hint && <p className="t3-regular text-fg-neutral-subtle mt-x2 tabular-nums">{hint}</p>}
     </div>
-  );
-}
-
-/** 매도 세금 — 증권거래세·농어촌특별세 (0% 인 줄은 뺀다) — 와 세금을 뺀 받는 돈. */
-function SellTaxRows({ amount, tax }: { amount: number; tax: SellTax }) {
-  return (
-    <>
-      {tax.transactionTaxPercent > 0 && (
-        <CostRow
-          label={`증권거래세 (${tax.transactionTaxPercent.toFixed(2)}%)`}
-          won={tax.transactionTax}
-        />
-      )}
-      {tax.ruralTaxPercent > 0 && (
-        <CostRow label={`농어촌특별세 (${tax.ruralTaxPercent.toFixed(2)}%)`} won={tax.ruralTax} />
-      )}
-      <SummaryRow label="받는 돈 (세금 차감)">{formatWithCommas(amount - tax.total)}원</SummaryRow>
-    </>
-  );
-}
-
-function CostRow({ label, won }: { label: string; won: number }) {
-  return (
-    <SummaryRow label={label}>
-      <span className="text-fg-neutral-muted font-normal">{formatWithCommas(won)}원</span>
-    </SummaryRow>
   );
 }
 

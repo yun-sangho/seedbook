@@ -20,7 +20,6 @@ import {
 import { stockPriceKey } from "@web/features/investments/utils/use-stock-prices";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import type { RebalancingTask } from "@web/features/rebalancing/types/types";
-import { sellTaxForTasks } from "@web/features/rebalancing/utils/apply-rebalancing-to-account";
 import {
   type RebalancingTaskSection,
   toggleCollapsedSection,
@@ -46,7 +45,6 @@ import {
   type RebalancingCashOutlook,
   rebalancingCashOutlook,
 } from "@web/features/rebalancing/utils/trade-cash-check";
-import { useTaskSecurityTypes } from "@web/features/rebalancing/utils/use-task-security-types";
 import { pushRebalancingCollapsedSections, pushRebalancingTaskSort } from "@web/lib/preferences";
 import { usePreferencesStore } from "@web/lib/preferences-store";
 import { cn } from "@web/lib/utils";
@@ -62,8 +60,6 @@ import { RebalancingResultSection } from "./rebalancing-result-section";
 
 /** 체크된 할 일이 남은 목록에 머무는 시간. globals.css 의 task-leave (지연 500 + 300ms) 와 맞춘다. */
 const TASK_LEAVE_MS = 800;
-
-const NO_TASKS: RebalancingTask[] = [];
 
 /**
  * 리밸런싱 할 일 체크리스트. 권장 수량은 시작할 때의 가격으로 고정된 스냅샷이라 시세가
@@ -96,8 +92,6 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
   const account = useInvestmentStore((s) =>
     s.investments.find((inv) => inv.id === session?.accountId)
   );
-  // 매도 세금은 종목 종류로 정한다 (ETF·ETN 은 증권거래세가 없다).
-  const securityTypeOf = useTaskSecurityTypes(session?.tasks ?? NO_TASKS);
   // 매매를 누르면 체결 수량·가격 입력 화면으로 간다 (남은 매매는 완료 기록, 완료한 매매는 수정/완료 취소).
   const openTrade = (taskId: string) => push("RebalancingTrade", { id: session?.id ?? "", taskId });
 
@@ -115,10 +109,7 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
 
   const completed = isRebalancingCompleted(session);
   // 진행 중일 때만 — 완료한 기록은 아래 결과에 반영 전 → 후 예수금이 나온다. 계좌가 지워졌으면 모른다.
-  const cash =
-    !completed && account
-      ? rebalancingCashOutlook(account, session, sellTaxForTasks(securityTypeOf))
-      : null;
+  const cash = !completed && account ? rebalancingCashOutlook(account, session) : null;
   const priceAsOf = summarizeRebalancingPriceAsOf(session.tasks);
   const groups = groupRebalancingTasks(session.tasks, leaving);
   // 평가액 = 지금 보유 수량 × 시작 시점 기준 가격 (가격이 고정된 체크리스트라 같은 기준을 쓴다).
