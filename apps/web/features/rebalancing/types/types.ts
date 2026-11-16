@@ -61,7 +61,10 @@ export interface RebalancingSession {
   accountName: string;
   portfolioId: string;
   portfolioName: string;
-  /** 시작할 때 입력한 현금 투입(+)/인출(-) 금액 (원) */
+  /**
+   * 시작할 때 정한 거래 가능 금액 − 계좌 예수금 (원). + 면 새로 넣은 돈, − 면 매매에 쓰지 않고 남겨
+   * 둔 돈 (계좌에서 빠지지 않는다).
+   */
   cashDelta: number;
   tasks: RebalancingTask[];
   startedAt: string; // ISO timestamp

@@ -34,10 +34,7 @@ import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { Badge } from "@web/seed-design/ui/badge";
 import { List, ListItem } from "@web/seed-design/ui/list";
-import { SegmentedControl, SegmentedControlItem } from "@web/seed-design/ui/segmented-control";
 import { formatWithCommas, numberToKorean, parseNumericString } from "@web/utils/number-format";
-
-type CashDirection = "in" | "out";
 
 const OTHER_HOLDING_COLOR = "#94a3b8";
 const CASH_COLOR = "#e2e8f0";
@@ -68,13 +65,6 @@ export function AccountRebalancingMobile({
   const { prices: allocationPrices, isLoading: allocationPricesLoading } =
     useStockPrices(allocationHoldings);
 
-  const [direction, setDirection] = useState<CashDirection>("in");
-  const [cashDraft, setCashDraft] = useState("");
-
-  const parsedCash = parseNumericString(cashDraft);
-  const cashAmount = Number.isFinite(parsedCash) ? parsedCash : 0;
-  const cashDelta = direction === "in" ? cashAmount : -cashAmount;
-
   const colors = useMemo(
     () => buildAllocationColors(portfolio.allocations.length),
     [portfolio.allocations.length]
@@ -90,6 +80,13 @@ export function AccountRebalancingMobile({
   const actual = useMemo(() => computeActualAllocation([account], prices), [account, prices]);
   // 예수금도 리밸런싱 대상 (목표 0원 — 목표 비중대로 모두 투자).
   const cashBalance = useMemo(() => sumCash(account), [account]);
+  // 거래 가능 금액 — 기본은 현금성 자산. 고치기 전(null)에는 현금성 자산을 따라간다. 수수료 등으로
+  // 남겨 둘 돈이 있으면 줄이고, 더 넣을 돈이 있으면 늘린다. 그 차이가 cashDelta 다.
+  const [tradableDraft, setTradableDraft] = useState<string | null>(null);
+  const tradableInput = tradableDraft ?? formatWithCommas(cashBalance);
+  const parsedTradable = parseNumericString(tradableInput);
+  const tradable = Number.isFinite(parsedTradable) ? parsedTradable : 0;
+  const cashDelta = tradable - cashBalance;
   const summary = useMemo(
     () =>
       computeRebalancingGap(
@@ -107,7 +104,7 @@ export function AccountRebalancingMobile({
     () => buildRebalancingTasks(summary, allocationPrices),
     [summary, allocationPrices]
   );
-  const isEmpty = actual.totalStockValue === 0 && cashBalance === 0 && cashDelta === 0;
+  const isEmpty = actual.totalStockValue === 0 && tradable === 0;
   const drift = useMemo(() => computeDriftAlert(summary, portfolio), [summary, portfolio]);
 
   return (
@@ -120,36 +117,35 @@ export function AccountRebalancingMobile({
           <OutsideHoldingsNotice holdings={outsideHoldings} blocking />
         </div>
       )}
-      <section className="flex flex-col gap-x3 px-x4 py-x4">
-        {/* 방향 선택을 제목 줄에 붙이고 입력 라벨을 생략해 세로 공간을 줄인다. */}
-        <div className="flex items-center gap-x2">
-          <h2 className="t5-bold flex-1">현금 투입 / 인출</h2>
-          <SegmentedControl
-            aria-label="현금 방향"
-            value={direction}
-            onValueChange={(value) => setDirection(value as CashDirection)}
-          >
-            <SegmentedControlItem value="in">투입</SegmentedControlItem>
-            <SegmentedControlItem value="out">인출</SegmentedControlItem>
-          </SegmentedControl>
-        </div>
+      <section className="flex flex-col gap-x2 px-x4 py-x4">
+        <h2 className="t5-bold">거래 가능 금액</h2>
         <MoneyField
-          ariaLabel={direction === "in" ? "투입 금액" : "인출 금액"}
-          value={cashDraft}
-          onValueChange={setCashDraft}
-          placeholder="0 (순수 리밸런싱)"
-          clearable
+          ariaLabel="거래 가능 금액"
+          value={tradableInput}
+          onValueChange={setTradableDraft}
         />
+        <p className="t3-regular text-fg-neutral-subtle">
+          현금성 자산 {formatWithCommas(cashBalance)}원
+          {tradable !== cashBalance && (
+            <>
+              {" · "}
+              <button
+                type="button"
+                className="text-fg-neutral-muted underline underline-offset-2"
+                onClick={() => setTradableDraft(null)}
+              >
+                현금성 자산으로
+              </button>
+            </>
+          )}
+        </p>
+        <p className="t3-regular text-fg-neutral-subtle">
+          수수료 등으로 남겨 둘 돈이 있으면 줄이고, 더 넣을 돈이 있으면 늘리세요.
+        </p>
       </section>
 
       <Divider />
 
-      <SummaryGrid
-        items={[
-          // 기준 금액(포트폴리오 종목 + 현금)은 계좌 총액과 헷갈려 보여주지 않는다.
-          { label: "주문가능금액", value: cashBalance },
-        ]}
-      />
       {!isEmpty && (
         <div className="pb-x4">
           <DriftRows drift={drift} summary={summary} colorMap={colorMap} rule={portfolio} />
@@ -160,7 +156,8 @@ export function AccountRebalancingMobile({
 
       {isEmpty ? (
         <p className="t4-regular text-fg-neutral-subtle px-x4 py-x6 text-center">
-          이 계좌에 보유 종목과 주문가능금액이 없습니다. 종목을 추가하거나 투입 금액을 입력하세요.
+          이 계좌에 보유 종목과 거래 가능 금액이 없습니다. 종목을 추가하거나 거래 가능 금액을
+          입력하세요.
         </p>
       ) : (
         <section className="py-x4">
@@ -357,7 +354,7 @@ function DriftRows({
                 />
                 <div className="min-w-0 flex-1">
                   <p className="t4-regular truncate">
-                    {isCash ? "주문가능금액" : row.name || "(미선택)"}
+                    {isCash ? "거래 가능 금액" : row.name || "(미선택)"}
                   </p>
                   <p className="t3-regular text-fg-neutral-subtle">
                     <PercentLine row={row} rule={rule} />
