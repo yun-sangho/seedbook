@@ -69,7 +69,7 @@ dev 사용자(`dev-user-v1`)의 계좌·포트폴리오는 **테스트 시나리
 
 **Storage & sync**: 로그인(카카오) 필수. 저장소 모드는 사용자가 고른다 — `local` (이 브라우저에만) / `cloud` (서버 동기화). 모드 전환은 덮어쓰지 않고 양쪽을 합친다 (`lib/storage-merge.ts`, 같은 항목은 로컬 우선). cloud 모드에서는:
 
-- 엔티티 동기화로 옮긴 store (`lib/sync/managed-stores.ts`, 현재 리밸런싱) 는 `/api/sync/mutations` · `/api/sync/pull` 로 바뀐 항목만 주고받는다. 자산은 본인만 수정하므로 **마지막 저장이 이긴다** (version 은 pull 중복 제거용). 삭제는 톰스톤(`deletedAt`). 로컬 변경은 저장 어댑터(`lib/hybrid-storage.ts` → `lib/sync/local-change-recorder.ts`)가 저장될 때마다 대기열에 기록하고, `EntitySyncRunner` 가 전송한다.
+- 엔티티 동기화로 옮긴 store (`lib/sync/managed-stores.ts`, 현재 투자·포트폴리오·리밸런싱) 는 `/api/sync/mutations` · `/api/sync/pull` 로 바뀐 항목만 주고받는다. 자산은 본인만 수정하므로 **마지막 저장이 이긴다** (version 은 pull 중복 제거용). 삭제는 톰스톤(`deletedAt`). 로컬 변경은 저장 어댑터(`lib/hybrid-storage.ts` → `lib/sync/local-change-recorder.ts`)가 저장될 때마다 대기열에 기록하고, `EntitySyncRunner` 가 전송한다.
 - 나머지 store 는 도메인 단위 envelope (`/api/storage/[key]` → `_translators/`) 로 저장한다.
 - 도메인을 엔티티 동기화로 옮길 때: 서버 `server/<domain>/` (record + `createEntityRepo`) 를 만들고 `server/sync/registry.ts` 의 `SYNC_ENTITIES`, 클라이언트 `features/<domain>/sync/` 설정을 `managed-stores.ts` · `synced-stores.ts` 에 등록한다. 테이블엔 `syncColumns()` 추가 (마이그레이션은 drizzle-kit 생성만).
 

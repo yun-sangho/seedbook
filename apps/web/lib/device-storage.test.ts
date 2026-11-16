@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createNativeDeviceStorage } from "./device-storage";
 import { migrateDeviceDatabase } from "./native/device-db/migrations";
-import type { SqlDriver } from "./native/device-db/sql-driver";
+import type { SqlDriver, SqlStatement } from "./native/device-db/sql-driver";
 import { createNodeSqliteDriver } from "./native/device-db/testing/node-sqlite-driver";
 
 const ACCOUNT = "11111111-1111-4111-8111-111111111111";
@@ -39,6 +39,27 @@ beforeEach(() => {
 
 function nativeStorage() {
   return createNativeDeviceStorage(async () => driver, window.localStorage);
+}
+
+/** 실제 SQLite 를 감싸 batch 호출을 기록하고, `failNext` 만큼 실패시킨다. */
+function recordingDriver(inner: SqlDriver) {
+  const batches: SqlStatement[][] = [];
+  const control = { failNext: 0 };
+  const wrapped: SqlDriver = {
+    query: inner.query,
+    batch: async (statements) => {
+      if (control.failNext > 0) {
+        control.failNext -= 1;
+        throw new Error("disk I/O error");
+      }
+      batches.push(statements);
+      await inner.batch(statements);
+    },
+  };
+  const writesTo = (table: string) =>
+    batches.filter((statements) => statements.some((s) => s.sql.includes(`INSERT INTO ${table}`)))
+      .length;
+  return { driver: wrapped, control, writesTo };
 }
 
 describe("createNativeDeviceStorage", () => {
@@ -161,6 +182,75 @@ describe("createNativeDeviceStorage", () => {
 
     const read = JSON.parse((await storage.readEnvelope("investment-storage")) as string);
     expect(read.state.investments[0].accountName).toBe("나중");
+  });
+
+  it("writes only the latest envelope when several are waiting for the same key", async () => {
+    const recording = recordingDriver(driver);
+    const storage = createNativeDeviceStorage(async () => recording.driver, window.localStorage);
+
+    void storage.writeEnvelope("investment-storage", investmentEnvelope("1"));
+    void storage.writeEnvelope("investment-storage", investmentEnvelope("2"));
+    void storage.writeEnvelope("investment-storage", investmentEnvelope("3"));
+    await storage.flush();
+
+    expect(recording.writesTo("investment_account")).toBe(1);
+    expect(await driver.query("SELECT accountName FROM investment_account")).toEqual([
+      { accountName: "3" },
+    ]);
+  });
+
+  it("does not rewrite the tables when the envelope did not change", async () => {
+    const recording = recordingDriver(driver);
+    const storage = createNativeDeviceStorage(async () => recording.driver, window.localStorage);
+    await storage.writeEnvelope("investment-storage", investmentEnvelope("계좌"));
+
+    await storage.writeEnvelope("investment-storage", investmentEnvelope("계좌"));
+
+    expect(recording.writesTo("investment_account")).toBe(1);
+  });
+
+  it("keeps a failed write and saves it on the next flush", async () => {
+    const recording = recordingDriver(driver);
+    const storage = createNativeDeviceStorage(async () => recording.driver, window.localStorage);
+    await storage.whenReady();
+    recording.control.failNext = 1;
+
+    storage.setItem("seedbook.app-lock", "on"); // 이 쓰기는 실패한다
+    await storage.flush();
+
+    expect(recording.control.failNext).toBe(0);
+    expect(await driver.query("SELECT value FROM device_kv")).toEqual([{ value: "on" }]);
+  });
+
+  it("reads back an envelope whose write failed instead of the older saved copy", async () => {
+    const recording = recordingDriver(driver);
+    const storage = createNativeDeviceStorage(async () => recording.driver, window.localStorage);
+    await storage.writeEnvelope("investment-storage", investmentEnvelope("예전"));
+    recording.control.failNext = 1;
+
+    await storage.writeEnvelope("investment-storage", investmentEnvelope("새"));
+
+    const read = JSON.parse((await storage.readEnvelope("investment-storage")) as string);
+    expect(read.state.investments[0].accountName).toBe("새");
+  });
+
+  it("retries a failed write on its own after a delay", async () => {
+    vi.useFakeTimers();
+    try {
+      const recording = recordingDriver(driver);
+      const storage = createNativeDeviceStorage(async () => recording.driver, window.localStorage);
+      await storage.whenReady();
+      recording.control.failNext = 1;
+
+      storage.setItem("seedbook.app-lock", "on");
+      await vi.advanceTimersByTimeAsync(0);
+      expect(await driver.query("SELECT value FROM device_kv")).toEqual([]);
+      await vi.advanceTimersByTimeAsync(2_000);
+
+      expect(await driver.query("SELECT value FROM device_kv")).toEqual([{ value: "on" }]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("clears every table and the in-memory state", async () => {
