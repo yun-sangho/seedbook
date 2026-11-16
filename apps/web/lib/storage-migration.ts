@@ -1,5 +1,6 @@
 "use client";
 
+import { getDeviceStorage } from "@web/lib/device-storage";
 import { CLOUD_STORE_KEYS, type CloudStoreKey } from "@web/lib/storage-mode";
 import { mergeEnvelopes, type PersistEnvelope } from "./storage-merge";
 import { clearEntitySyncState } from "./sync/managed-stores";
@@ -30,7 +31,7 @@ export type MigrationProgress = {
 export async function uploadAllToCloud(onProgress?: (p: MigrationProgress) => void): Promise<void> {
   for (let i = 0; i < CLOUD_STORE_KEYS.length; i += 1) {
     const key = CLOUD_STORE_KEYS[i]!;
-    const local = parseEnvelope(readLocalEnvelope(key));
+    const local = parseEnvelope(await readLocalEnvelope(key));
     if (local === null) {
       onProgress?.({ index: i, total: CLOUD_STORE_KEYS.length, key, phase: "skipped" });
       continue;
@@ -55,7 +56,8 @@ export async function uploadAllToCloud(onProgress?: (p: MigrationProgress) => vo
 }
 
 /**
- * 클라우드 → 로컬: 클라우드 envelope 를 로컬 envelope 와 합쳐 localStorage 에 쓴다.
+ * 클라우드 → 로컬: 클라우드 envelope 를 로컬 envelope 와 합쳐 이 기기 저장소에 쓴다
+ * (브라우저 localStorage, 네이티브 앱 SQLite).
  * 로컬 캐시에만 있는 항목 (아직 서버로 못 보낸 변경 포함) 도 남는다.
  */
 export async function downloadAllFromCloud(
@@ -66,8 +68,8 @@ export async function downloadAllFromCloud(
     onProgress?.({ index: i, total: CLOUD_STORE_KEYS.length, key, phase: "downloading" });
 
     const cloud = await fetchCloudEnvelope(key, "다운로드");
-    const merged = mergeEnvelopes(key, parseEnvelope(readLocalEnvelope(key)), cloud);
-    if (merged !== null) writeLocalEnvelope(key, JSON.stringify(merged));
+    const merged = mergeEnvelopes(key, parseEnvelope(await readLocalEnvelope(key)), cloud);
+    if (merged !== null) await writeLocalEnvelope(key, JSON.stringify(merged));
     onProgress?.({ index: i, total: CLOUD_STORE_KEYS.length, key, phase: "done" });
   }
   clearEntitySyncState();
@@ -113,24 +115,20 @@ function isEnvelope(value: unknown): value is PersistEnvelope {
  * 로컬에 아무 envelope 도 없는지 — 업로드를 아예 건너뛰어야 할지 판단할 때 사용.
  * (빈 스토어로 기존 클라우드 데이터를 덮어쓰는 사고를 방지.)
  */
-export function hasAnyLocalData(): boolean {
-  return CLOUD_STORE_KEYS.some((key) => readLocalEnvelope(key) !== null);
+export async function hasAnyLocalData(): Promise<boolean> {
+  for (const key of CLOUD_STORE_KEYS) {
+    if ((await readLocalEnvelope(key)) !== null) return true;
+  }
+  return false;
 }
 
-function readLocalEnvelope(key: CloudStoreKey): string | null {
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
+async function readLocalEnvelope(key: CloudStoreKey): Promise<string | null> {
+  return getDeviceStorage().readEnvelope(key);
 }
 
-function writeLocalEnvelope(key: CloudStoreKey, value: string): void {
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {
-    // 쓰기 실패는 무시 — 전환 자체는 계속 진행.
-  }
+async function writeLocalEnvelope(key: CloudStoreKey, value: string): Promise<void> {
+  // 쓰기 실패는 저장소가 삼킨다 — 전환 자체는 계속 진행.
+  await getDeviceStorage().writeEnvelope(key, value);
 }
 
 /**

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { authClient } from "@web/lib/auth-client";
 import { type DeleteAccountResult, deleteAccount } from "@web/lib/delete-account";
+import { getDeviceStorage } from "@web/lib/device-storage";
 
 /**
  * 회원 탈퇴 흐름 (모바일·데스크탑 공통). 성공하면 랜딩으로 이동하고, 세션이 오래돼
@@ -15,7 +16,8 @@ export function useDeleteAccount() {
   const confirmDelete = async () => {
     setPending(true);
     setOutcome(null);
-    const result = await deleteAccount(authClient, window.localStorage);
+    // 이 기기의 Seedbook 데이터 (브라우저 localStorage, 앱 SQLite) 를 비운다.
+    const result = await deleteAccount(authClient, getDeviceStorage());
     if (result === "deleted") {
       window.location.href = "/";
       return;

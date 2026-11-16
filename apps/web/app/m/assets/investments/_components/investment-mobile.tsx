@@ -13,6 +13,7 @@ import {
 } from "@web/features/investments/utils/sort-accounts";
 import { useLiveAccounts } from "@web/features/investments/utils/use-live-accounts";
 import { useLinkedPortfolioStatus } from "@web/features/portfolio/utils/use-linked-portfolio-status";
+import { getDeviceStorage } from "@web/lib/device-storage";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { ResultSection } from "@web/seed-design/ui/result-section";
 import { AccountSummaryCard } from "./account-summary-card";
@@ -21,13 +22,13 @@ import { ACCOUNT_SORT_OPTIONS, SortSheet, sortOptionLabel } from "./investment-s
 
 const ACCOUNT_SORT_KEY = "seedbook.mobile.accountSort";
 
-/** 계좌 정렬 선택은 기기별 편의 설정이라 localStorage 에만 둔다. */
+/** 계좌 정렬 선택은 기기별 편의 설정이라 기기 저장소에만 둔다. */
 function useAccountSort(): [AccountSortOption, (value: AccountSortOption) => void] {
   const [value, setValue] = useState<AccountSortOption>(DEFAULT_ACCOUNT_SORT_OPTION);
   useEffect(() => {
     try {
       // 없앤 "기본 순서"(default) 가 저장돼 있으면 기본값(평가액 높은 순)으로 읽는다.
-      setValue(normalizeAccountSortOption(window.localStorage.getItem(ACCOUNT_SORT_KEY)));
+      setValue(normalizeAccountSortOption(getDeviceStorage().getItem(ACCOUNT_SORT_KEY)));
     } catch {
       // 스토리지 접근 불가 — 기본값 유지
     }
@@ -35,7 +36,7 @@ function useAccountSort(): [AccountSortOption, (value: AccountSortOption) => voi
   const update = (next: AccountSortOption) => {
     setValue(next);
     try {
-      window.localStorage.setItem(ACCOUNT_SORT_KEY, next);
+      getDeviceStorage().setItem(ACCOUNT_SORT_KEY, next);
     } catch {
       // noop
     }

@@ -1,3 +1,5 @@
+import { getDeviceStorage, isNativeDeviceStorage } from "./device-storage";
+
 /**
  * 로컬스토리지의 number 기반 ID 를 UUID 문자열로 일괄 업그레이드 (투자 store).
  *
@@ -24,7 +26,7 @@ function safeParse(raw: string | null): UnknownRecord | null {
 
 function readEnvelope(key: string): UnknownRecord | null {
   try {
-    return safeParse(window.localStorage.getItem(key));
+    return safeParse(getDeviceStorage().getItem(key));
   } catch {
     return null;
   }
@@ -32,7 +34,7 @@ function readEnvelope(key: string): UnknownRecord | null {
 
 function writeEnvelope(key: string, envelope: UnknownRecord): void {
   try {
-    window.localStorage.setItem(key, JSON.stringify(envelope));
+    getDeviceStorage().setItem(key, JSON.stringify(envelope));
   } catch {
     // quota / private mode — 조용히 무시.
   }
@@ -81,16 +83,17 @@ function upgradeInvestmentEnvelope(envelope: UnknownRecord): boolean {
  * bootstrap 실행부. side-effect 로 import 해 한 번만 돌아간다.
  */
 export function upgradeLocalIdsIfNeeded(): void {
-  if (typeof window === "undefined") return;
+  // 앱(SQLite)에는 number ID 시절 데이터가 없다 — 브라우저 localStorage 만 업그레이드한다.
+  if (typeof window === "undefined" || isNativeDeviceStorage()) return;
   try {
-    if (window.localStorage.getItem(UPGRADE_FLAG)) return;
+    if (getDeviceStorage().getItem(UPGRADE_FLAG)) return;
 
     const investmentEnv = readEnvelope("investment-storage");
     if (investmentEnv && upgradeInvestmentEnvelope(investmentEnv)) {
       writeEnvelope("investment-storage", investmentEnv);
     }
 
-    window.localStorage.setItem(UPGRADE_FLAG, "1");
+    getDeviceStorage().setItem(UPGRADE_FLAG, "1");
   } catch (err) {
     // 업그레이드 실패 — 플래그를 기록하지 않아 다음 로드에 재시도한다.
     // 사용자에게 보이는 에러는 없지만 콘솔엔 남긴다.

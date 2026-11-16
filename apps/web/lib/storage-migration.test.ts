@@ -35,13 +35,13 @@ function jsonResponse(body: unknown, status = 200): Response {
 describe("hasAnyLocalData", () => {
   beforeEach(() => window.localStorage.clear());
 
-  it("빈 localStorage 에선 false", () => {
-    expect(hasAnyLocalData()).toBe(false);
+  it("빈 localStorage 에선 false", async () => {
+    expect(await hasAnyLocalData()).toBe(false);
   });
 
-  it("아무 cloud key 라도 있으면 true", () => {
+  it("아무 cloud key 라도 있으면 true", async () => {
     window.localStorage.setItem("investment-storage", '{"state":{}}');
-    expect(hasAnyLocalData()).toBe(true);
+    expect(await hasAnyLocalData()).toBe(true);
   });
 });
 

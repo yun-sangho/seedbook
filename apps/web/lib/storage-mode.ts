@@ -1,10 +1,12 @@
+import { getDeviceStorage } from "./device-storage";
+
 /**
  * 사용자 선택 저장소 모드의 동기(sync) 접근자.
  *
  * 이 모듈은 의도적으로 Zustand persist 를 사용하지 않는다. 6 개의 자산 store
  * 들이 자기 자신의 hydration 이 시작될 때 "어느 backend 로부터 읽어야 하는가"
  * 를 알아야 하는데, 그 시점에 또 다른 persist store 가 하이드레이션 중이면
- * chicken-and-egg 가 되기 때문이다. 따라서 localStorage 에 직접 키 하나만
+ * chicken-and-egg 가 되기 때문이다. 따라서 기기 저장소(`device-storage.ts`)에 직접 키 하나만
  * 쓰고 읽는다.
  */
 
@@ -35,7 +37,7 @@ export function isCloudStoreKey(value: string): value is CloudStoreKey {
 export function getStorageMode(): StorageMode {
   if (typeof window === "undefined") return "local";
   try {
-    const raw = window.localStorage.getItem(STORAGE_MODE_KEY);
+    const raw = getDeviceStorage().getItem(STORAGE_MODE_KEY);
     return raw === "cloud" ? "cloud" : "local";
   } catch {
     // Safari 프라이빗 모드 등 localStorage 접근 실패
@@ -51,7 +53,7 @@ export function getStorageMode(): StorageMode {
 export function setStorageMode(mode: StorageMode): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(STORAGE_MODE_KEY, mode);
+    getDeviceStorage().setItem(STORAGE_MODE_KEY, mode);
   } catch {
     // 쓰기 실패는 묵인 — 호출자가 reload 전에 감지 가능한 방법이 없으므로
     // 조용히 무시하고 모드 전환만 포기한다.

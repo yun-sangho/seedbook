@@ -1,6 +1,7 @@
 import { investmentsSyncConfig } from "@web/features/investments/sync/investments-sync-config";
 import { portfolioSyncConfig } from "@web/features/portfolio/sync/portfolio-sync-config";
 import { rebalancingSyncConfig } from "@web/features/rebalancing/sync/rebalancing-sync-config";
+import { getDeviceStorage } from "@web/lib/device-storage";
 import type { ManagedStoreConfig } from "./managed-store-config";
 
 /**
@@ -31,7 +32,7 @@ export function getManagedStoreConfig(key: string): ManagedStoreConfig<{ id: str
 export function clearEntitySyncState(): void {
   for (const config of Object.values(SYNC_MANAGED_STORES)) {
     try {
-      window.localStorage.removeItem(config.metaKey);
+      getDeviceStorage().removeItem(config.metaKey);
     } catch {
       // noop
     }
