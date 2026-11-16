@@ -153,27 +153,36 @@ function parseCommissionDraft(
     : { valid: false };
 }
 
-/** 계좌 이름 / 매매 수수료율 / 색상 / 삭제. */
+const draftOfRate = (percent: number | null | undefined) =>
+  typeof percent === "number" ? String(percent) : "";
+
+/** 계좌 이름 / 매매 수수료율 (주식, ETF·ETN) / 색상 / 삭제. */
 export function AccountSettingsSheet({
   open,
   onOpenChange,
   item,
   onRename,
-  onCommissionPercentChange,
+  onCommissionRatesChange,
   onColorChange,
   onDelete,
 }: SheetProps & {
   item: InvestmentItem;
   onRename: (name: string) => void;
-  onCommissionPercentChange: (percent: number | null) => void;
+  onCommissionRatesChange: (rates: {
+    stockCommissionPercent: number | null;
+    etfCommissionPercent: number | null;
+  }) => void;
   onColorChange: (color: string) => void;
   onDelete: () => void;
 }) {
   const [name, setName] = useState(item.accountName);
-  const [commissionDraft, setCommissionDraft] = useState(() =>
-    typeof item.commissionPercent === "number" ? String(item.commissionPercent) : ""
-  );
-  const commission = parseCommissionDraft(commissionDraft);
+  const [stockDraft, setStockDraft] = useState(() => draftOfRate(item.stockCommissionPercent));
+  const [etfDraft, setEtfDraft] = useState(() => draftOfRate(item.etfCommissionPercent));
+  const stock = parseCommissionDraft(stockDraft);
+  const etf = parseCommissionDraft(etfDraft);
+  // ETF·ETN 칸을 비우면 주식 수수료율을 쓴다 — 그 값을 placeholder 로 보여 준다.
+  const etfFallback =
+    stock.valid && stock.percent !== null ? stock.percent : DEFAULT_COMMISSION_PERCENT;
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
@@ -190,18 +199,29 @@ export function AccountSettingsSheet({
                 <TextFieldInput placeholder="계좌 이름" />
               </TextField>
               <TextField
-                label="매매 수수료율"
-                value={commissionDraft}
-                onValueChange={({ value }) => setCommissionDraft(sanitizePercentDraft(value))}
+                label="주식 수수료율"
+                value={stockDraft}
+                onValueChange={({ value }) => setStockDraft(sanitizePercentDraft(value))}
                 suffix="%"
-                invalid={!commission.valid}
-                errorMessage={commission.valid ? undefined : "100% 미만으로 입력해 주세요"}
-                description={`우대 수수료 등 이 계좌의 증권사 수수료율이에요 (유관기관 제비용 포함). 비워 두면 ${DEFAULT_COMMISSION_PERCENT}% 로 계산해요. 매도할 때의 세금 — 주식 0.20% (코스피는 증권거래세 0.05% + 농어촌특별세 0.15%), ETF·ETN 은 없음 — 은 수수료와 따로 자동으로 계산해요.`}
+                invalid={!stock.valid}
+                errorMessage={stock.valid ? undefined : "100% 미만으로 입력해 주세요"}
+                description={`우대 수수료 등 이 계좌의 국내 주식 매매 수수료율이에요 (유관기관 제비용 포함). 비워 두면 ${DEFAULT_COMMISSION_PERCENT}% 로 계산해요.`}
               >
                 <TextFieldInput
                   inputMode="decimal"
                   placeholder={String(DEFAULT_COMMISSION_PERCENT)}
                 />
+              </TextField>
+              <TextField
+                label="ETF·ETN 수수료율"
+                value={etfDraft}
+                onValueChange={({ value }) => setEtfDraft(sanitizePercentDraft(value))}
+                suffix="%"
+                invalid={!etf.valid}
+                errorMessage={etf.valid ? undefined : "100% 미만으로 입력해 주세요"}
+                description="우대 수수료는 ETF·ETN 이 주식과 다른 경우가 많아요 (예: 주식 0.0036396%, ETF·ETN 0.0042087%). 비워 두면 주식 수수료율을 써요. 매도할 때의 세금 — 코스피 주식은 증권거래세 0.05% + 농어촌특별세 0.15%, 코스닥 0.20%, ETF·ETN 은 없음 — 은 수수료와 따로 자동으로 계산해요."
+              >
+                <TextFieldInput inputMode="decimal" placeholder={String(etfFallback)} />
               </TextField>
               <div>
                 <p className="t4-medium text-fg-neutral mb-x2">색상</p>
@@ -229,10 +249,16 @@ export function AccountSettingsSheet({
           <BottomSheetFooter>
             <SheetActions
               onSave={() => {
-                if (!commission.valid) return;
+                if (!stock.valid || !etf.valid) return;
                 onRename(name);
-                if (commission.percent !== (item.commissionPercent ?? null)) {
-                  onCommissionPercentChange(commission.percent);
+                if (
+                  stock.percent !== (item.stockCommissionPercent ?? null) ||
+                  etf.percent !== (item.etfCommissionPercent ?? null)
+                ) {
+                  onCommissionRatesChange({
+                    stockCommissionPercent: stock.percent,
+                    etfCommissionPercent: etf.percent,
+                  });
                 }
                 onOpenChange(false);
               }}

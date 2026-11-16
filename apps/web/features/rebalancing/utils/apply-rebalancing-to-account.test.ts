@@ -371,9 +371,9 @@ describe("applyRebalancingToAccount changes", () => {
       expect(cashChange).toBe(149_978);
     });
 
-    it("uses the account's own commission rate", () => {
-      // 우대 0.0036396%: 150,000원 → 5.46원 → 5원
-      const acc = account({ commissionPercent: 0.0036396 });
+    it("uses the account's ETF commission rate when selling an ETF", () => {
+      // ETF 우대 0.0042087%: 150,000원 → 6.31원 → 6원 (주식 요율 0.0036396% 이면 5원)
+      const acc = account({ stockCommissionPercent: 0.0036396, etfCommissionPercent: 0.0042087 });
       const { cashChange } = applyRebalancingToAccount(
         acc,
         session([task({ action: "매도", quantity: 3, price: 50_000 })]),
@@ -381,7 +381,7 @@ describe("applyRebalancingToAccount changes", () => {
         tradeCostForAccount(acc, etfType)
       );
 
-      expect(cashChange).toBe(149_995);
+      expect(cashChange).toBe(149_994);
     });
 
     it("charges the cost only on the shares actually sold", () => {
@@ -411,7 +411,7 @@ describe("applyRebalancingToAccount changes", () => {
     });
 
     it("charges nothing on a buy in a commission-free account", () => {
-      const acc = account({ commissionPercent: 0 });
+      const acc = account({ stockCommissionPercent: 0 });
       const { cashChange } = applyRebalancingToAccount(
         acc,
         session([task({ action: "매수", quantity: 2, price: 50_000 })]),

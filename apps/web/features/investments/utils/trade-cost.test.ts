@@ -9,16 +9,33 @@ const buy = (market: string, securityType: string | null) =>
 
 describe("commissionPercentOf", () => {
   it("uses the default rate when the account has none", () => {
-    expect(commissionPercentOf(defaultAccount)).toBe(0.015);
+    expect(commissionPercentOf(defaultAccount, "stock")).toBe(0.015);
+    expect(commissionPercentOf(defaultAccount, "etf")).toBe(0.015);
   });
 
-  it("uses the account's own rate, even when it is zero", () => {
-    expect(commissionPercentOf({ commissionPercent: 0.0036 })).toBe(0.0036);
-    expect(commissionPercentOf({ commissionPercent: 0 })).toBe(0);
+  it("uses the account's stock rate for stocks, even when it is zero", () => {
+    expect(commissionPercentOf({ stockCommissionPercent: 0.0036396 }, "stock")).toBe(0.0036396);
+    expect(commissionPercentOf({ stockCommissionPercent: 0 }, "stock")).toBe(0);
   });
 
-  it("falls back to the default for a null rate", () => {
-    expect(commissionPercentOf({ commissionPercent: null })).toBe(0.015);
+  it("uses the account's ETF rate for ETFs and ETNs", () => {
+    const account = { stockCommissionPercent: 0.0036396, etfCommissionPercent: 0.0042087 };
+    expect(commissionPercentOf(account, "etf")).toBe(0.0042087);
+    expect(commissionPercentOf(account, "etn")).toBe(0.0042087);
+    expect(commissionPercentOf(account, "stock")).toBe(0.0036396);
+  });
+
+  it("falls back to the stock rate for ETFs when no ETF rate is set", () => {
+    expect(commissionPercentOf({ stockCommissionPercent: 0.0036396 }, "etf")).toBe(0.0036396);
+  });
+
+  it("treats a stock of unknown type with the stock rate", () => {
+    const account = { stockCommissionPercent: 0.01, etfCommissionPercent: 0.02 };
+    expect(commissionPercentOf(account, null)).toBe(0.01);
+  });
+
+  it("falls back to the default for null rates", () => {
+    expect(commissionPercentOf({ stockCommissionPercent: null }, "stock")).toBe(0.015);
   });
 });
 
@@ -41,6 +58,13 @@ describe("sellTaxRates", () => {
     const none = { transactionTaxPercent: 0, ruralTaxPercent: 0 };
     expect(sellTaxRates("KOSPI", "etf")).toEqual(none);
     expect(sellTaxRates("KOSPI", "etn")).toEqual(none);
+  });
+
+  it("charges a KONEX stock 0.10% transaction tax", () => {
+    expect(sellTaxRates("KONEX", "stock")).toEqual({
+      transactionTaxPercent: 0.1,
+      ruralTaxPercent: 0,
+    });
   });
 
   it("taxes a stock of unknown type like a stock", () => {
@@ -81,7 +105,7 @@ describe("tradeCostOf", () => {
 
   it("uses the account's preferential commission but keeps the tax", () => {
     // 우대 0.0036396%: 1,000,000원 → 36원. 거래세 2,000원은 그대로
-    const account = { commissionPercent: 0.0036396 };
+    const account = { stockCommissionPercent: 0.0036396 };
     expect(tradeCostOf(account, sell("KOSDAQ", "stock"), 1_000_000)).toMatchObject({
       commission: 36,
       transactionTax: 2_000,
@@ -92,6 +116,17 @@ describe("tradeCostOf", () => {
   it("drops fractions of a won from each part separately", () => {
     // 12,345원: 수수료 1.85 → 1, 거래세 6.17 → 6, 농특세 18.51 → 18
     expect(tradeCostOf(defaultAccount, sell("KOSPI", "stock"), 12_345).total).toBe(25);
+  });
+
+  it("charges an ETF sale the account's ETF rate and no tax", () => {
+    // 우대 ETF 0.0042087%: 10,000,000원 → 420.87 → 420원
+    const account = { stockCommissionPercent: 0.0036396, etfCommissionPercent: 0.0042087 };
+    expect(tradeCostOf(account, sell("KOSPI", "etf"), 10_000_000)).toMatchObject({
+      commission: 420,
+      transactionTax: 0,
+      ruralTax: 0,
+      total: 420,
+    });
   });
 
   it("costs nothing for a zero amount", () => {

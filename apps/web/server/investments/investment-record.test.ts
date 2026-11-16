@@ -9,7 +9,8 @@ const valid = {
   currentValue: 1_200_000,
   note: "",
   color: "#3b82f6",
-  commissionPercent: 0.0036,
+  stockCommissionPercent: 0.0036396,
+  etfCommissionPercent: 0.0042087,
   records: [{ date: "2026-11-01", initialInvestment: 1_000_000, currentValue: 1_200_000 }],
   holdings: [
     {
@@ -43,19 +44,33 @@ describe("parseInvestmentFields", () => {
   });
 
   it("treats a missing commission rate as null (accounts saved before the field existed)", () => {
-    const { commissionPercent: _c, ...rest } = valid;
+    const { stockCommissionPercent: _c, ...rest } = valid;
 
-    expect(parseInvestmentFields(rest)?.commissionPercent).toBeNull();
+    expect(parseInvestmentFields(rest)?.stockCommissionPercent).toBeNull();
   });
 
   it("accepts a zero commission rate (commission-free accounts)", () => {
-    expect(parseInvestmentFields({ ...valid, commissionPercent: 0 })?.commissionPercent).toBe(0);
+    expect(
+      parseInvestmentFields({ ...valid, stockCommissionPercent: 0 })?.stockCommissionPercent
+    ).toBe(0);
   });
 
   it("rejects a commission rate below 0, at 100% and above, or not a number", () => {
-    expect(parseInvestmentFields({ ...valid, commissionPercent: -0.1 })).toBeNull();
-    expect(parseInvestmentFields({ ...valid, commissionPercent: 100 })).toBeNull();
-    expect(parseInvestmentFields({ ...valid, commissionPercent: "0.01" })).toBeNull();
+    expect(parseInvestmentFields({ ...valid, stockCommissionPercent: -0.1 })).toBeNull();
+    expect(parseInvestmentFields({ ...valid, stockCommissionPercent: 100 })).toBeNull();
+    expect(parseInvestmentFields({ ...valid, stockCommissionPercent: "0.01" })).toBeNull();
+  });
+
+  it("keeps the ETF commission rate separate, null meaning the stock rate", () => {
+    const { etfCommissionPercent: _e, ...rest } = valid;
+
+    expect(parseInvestmentFields(valid)?.etfCommissionPercent).toBe(0.0042087);
+    expect(parseInvestmentFields(rest)?.etfCommissionPercent).toBeNull();
+  });
+
+  it("rejects an ETF commission rate outside 0 to under 100%", () => {
+    expect(parseInvestmentFields({ ...valid, etfCommissionPercent: -1 })).toBeNull();
+    expect(parseInvestmentFields({ ...valid, etfCommissionPercent: 100 })).toBeNull();
   });
 
   it("allows fractional holding quantities", () => {

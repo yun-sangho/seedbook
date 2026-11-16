@@ -49,8 +49,13 @@ export interface InvestmentItem {
   note: string;
   color: string; // 차트 표시 색상
   /**
-   * 증권사 매매 수수료율 (%) — 매수·매도 모두 붙는다 (예: 우대 0.0036396). 없거나 null 이면 기본값
-   * (`DEFAULT_COMMISSION_PERCENT`). 세금은 종목으로 정해지므로 넣지 않는다 (`tradeCostOf`).
+   * 국내 주식 매매 수수료율 (%) — 매수·매도 모두 붙는다 (예: 우대 0.0036396). 없거나 null 이면
+   * 기본값 (`DEFAULT_COMMISSION_PERCENT`). 세금은 종목으로 정해지므로 넣지 않는다 (`tradeCostOf`).
    */
-  commissionPercent?: number | null;
+  stockCommissionPercent?: number | null;
+  /**
+   * ETF·ETN 매매 수수료율 (%) — 우대 요율은 유관기관 제비용 차이로 주식과 다른 경우가 많다
+   * (예: 0.0042087). 없거나 null 이면 주식 수수료율과 같다.
+   */
+  etfCommissionPercent?: number | null;
 }

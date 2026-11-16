@@ -30,7 +30,8 @@ type InvestmentFixture = {
   currentValue: number;
   note?: string;
   color: string;
-  commissionPercent?: number | null;
+  stockCommissionPercent?: number | null;
+  etfCommissionPercent?: number | null;
   records?: { date: string; initialInvestment: number; currentValue: number }[];
   holdings?: {
     id: string;
@@ -142,7 +143,8 @@ async function writeFixture(tx: Tx, userId: string, fixture: UserDataFixture, no
       currentValue: BigInt(inv.currentValue),
       note: inv.note ?? "",
       color: inv.color,
-      commissionPercent: inv.commissionPercent ?? null,
+      stockCommissionPercent: inv.stockCommissionPercent ?? null,
+      etfCommissionPercent: inv.etfCommissionPercent ?? null,
       portfolioId: links.get(inv.id) ?? null,
     };
     await tx

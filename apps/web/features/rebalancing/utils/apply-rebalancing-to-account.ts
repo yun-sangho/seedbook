@@ -1,6 +1,6 @@
 import type { CashItem, InvestmentItem, StockHolding } from "@web/features/investments/types/types";
 import type { SecurityType } from "@web/features/investments/utils/krx-tick-size";
-import { tradeCostOf } from "@web/features/investments/utils/trade-cost";
+import { type CommissionRates, tradeCostOf } from "@web/features/investments/utils/trade-cost";
 import { stockPriceKey } from "@web/features/investments/utils/use-stock-prices";
 import type { RebalancingSession, RebalancingTask } from "../types/types";
 import { executedPriceOf, executedQuantityOf } from "./rebalancing-session";
@@ -11,11 +11,11 @@ const DEFAULT_CASH_LABEL = "예수금";
 export type TradeCostFor = (task: RebalancingTask, amount: number) => number;
 
 /**
- * 이 계좌에서 매매할 때의 수수료·세금 (`tradeCostOf`). 수수료는 계좌의 수수료율, 세금은 매도할
+ * 이 계좌에서 매매할 때의 수수료·세금 (`tradeCostOf`). 수수료는 계좌의 상품별 수수료율, 세금은 매도할
  * 때만 시장과 종목 종류(`securityTypeFor`, 모르면 null)로 정한다 — ETF·ETN 은 거래세가 없다.
  */
 export function tradeCostForAccount(
-  account: Pick<InvestmentItem, "commissionPercent">,
+  account: CommissionRates,
   securityTypeFor: (task: RebalancingTask) => SecurityType
 ): TradeCostFor {
   return (task, amount) =>

@@ -1,0 +1,2 @@
+ALTER TABLE "seedbook"."investment_account" ADD COLUMN "stockCommissionPercent" double precision;--> statement-breakpoint
+ALTER TABLE "seedbook"."investment_account" ADD COLUMN "etfCommissionPercent" double precision;

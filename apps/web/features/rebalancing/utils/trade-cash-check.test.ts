@@ -319,7 +319,7 @@ describe("trade costs in the cash preview and outlook", () => {
   // 수수료 0.1% 계좌, 코스피 주식 — 매도는 수수료 0.1% + 거래세 0.05% + 농특세 0.15%
   const withHolding = (cash: number): InvestmentItem => ({
     ...account(cash),
-    commissionPercent: 0.1,
+    stockCommissionPercent: 0.1,
     holdings: [
       {
         id: "h",

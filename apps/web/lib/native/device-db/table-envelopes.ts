@@ -148,7 +148,8 @@ type AccountRow = {
   note: string;
   color: string;
   sellCostPercent: number;
-  commissionPercent: number | null;
+  stockCommissionPercent: number | null;
+  etfCommissionPercent: number | null;
   portfolioId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -252,13 +253,15 @@ async function investmentStatements(driver: SqlDriver, state: State): Promise<Sq
     const columns = investmentFieldsToColumns(fields);
     statements.push({
       sql: `INSERT INTO investment_account (id, accountName, accountType, currency, initialInvestment,
-              currentValue, note, color, commissionPercent, portfolioId, createdAt, updatedAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              currentValue, note, color, stockCommissionPercent, etfCommissionPercent, portfolioId,
+              createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET accountName = excluded.accountName,
               accountType = excluded.accountType, currency = excluded.currency,
               initialInvestment = excluded.initialInvestment, currentValue = excluded.currentValue,
               note = excluded.note, color = excluded.color,
-              commissionPercent = excluded.commissionPercent, portfolioId = excluded.portfolioId,
+              stockCommissionPercent = excluded.stockCommissionPercent,
+              etfCommissionPercent = excluded.etfCommissionPercent, portfolioId = excluded.portfolioId,
               updatedAt = excluded.updatedAt`,
       params: [
         id,
@@ -269,7 +272,8 @@ async function investmentStatements(driver: SqlDriver, state: State): Promise<Sq
         Number(columns.currentValue),
         columns.note,
         columns.color,
-        columns.commissionPercent,
+        columns.stockCommissionPercent,
+        columns.etfCommissionPercent,
         linkedPortfolio.get(id) ?? null,
         createdAt.get(id) ?? now,
         now,
