@@ -167,6 +167,26 @@ export const verification = seedbook.table("verification", {
   updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" }),
 });
 
+/**
+ * 생체 인증 로그인 기기 자격 증명 (네이티브 앱). 앱이 Keychain/Keystore 에 생체 인증으로 잠가 둔
+ * 토큰의 해시만 둔다 — 토큰 원문은 서버에 남기지 않는다. 기능을 끄거나 오래 쓰지 않으면 행을
+ * 지운다 (`apps/web/server/device-credentials/`).
+ */
+export const deviceCredential = seedbook.table(
+  "device_credential",
+  {
+    id: text("id").primaryKey(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    tokenHash: text("tokenHash").notNull(),
+    userAgent: text("userAgent"),
+    createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull(),
+    lastUsedAt: timestamp("lastUsedAt", { precision: 3, mode: "date" }).notNull(),
+  },
+  (t) => [index("device_credential_userId_idx").on(t.userId)]
+);
+
 // ─── Investments ────────────────────────────────────────────────────────────
 
 export const investmentAccount = seedbook.table(
