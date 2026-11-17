@@ -12,8 +12,10 @@ import {
 import { Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 import { AppLockSettingItem } from "@web/components/mobile/app-lock";
+import { BiometricLoginSettingItem } from "@web/components/mobile/biometric-login";
 import { DeleteAccountDialog } from "@web/components/mobile/delete-account-dialog";
 import { authClient, useSession } from "@web/lib/auth-client";
+import { markSignedOut } from "@web/lib/native/biometric-login";
 import { type InstallMode, needsSeparateStorageNotice } from "@web/lib/pwa-install";
 import { getStorageMode } from "@web/lib/storage-mode";
 import {
@@ -92,6 +94,7 @@ export function MobileMoreSheet({
                 />
               )}
               <AppLockSettingItem />
+              <BiometricLoginSettingItem />
               <ListButtonItem
                 prefix={<Icon svg={<IconGearLine />} />}
                 title="설정"
@@ -105,6 +108,9 @@ export function MobileMoreSheet({
                 prefix={<Icon svg={<IconArrowLeftBracketRightLine />} />}
                 title="로그아웃"
                 onClick={async () => {
+                  // 로그인 화면이 생체 인증 프롬프트를 곧바로 다시 띄우지 않게 한다. signOut 이
+                  // 끝나면 바로 로그인 화면이 그려지므로 그 전에 남긴다.
+                  markSignedOut(window.sessionStorage);
                   await authClient.signOut();
                   window.location.reload();
                 }}
