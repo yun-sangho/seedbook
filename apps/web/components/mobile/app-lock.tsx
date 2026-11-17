@@ -3,33 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { IconLockLine } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
+import { useBiometryLabel } from "@web/hooks/use-biometry-label";
 import { getDeviceStorage } from "@web/lib/device-storage";
 import { isAppLockEnabled, setAppLockEnabled, shouldLockOnReturn } from "@web/lib/native/app-lock";
-import {
-  availableBiometryLabel,
-  BIOMETRY_WITH_RO,
-  type BiometryName,
-  verifyBiometric,
-} from "@web/lib/native/biometric";
+import { BIOMETRY_WITH_RO, verifyBiometric } from "@web/lib/native/biometric";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { ListButtonItem } from "@web/seed-design/ui/list";
 
 const UNLOCK_REASON = "자산 정보를 보려면 잠금을 해제하세요";
-
-/** 이 기기에서 쓸 수 있는 생체 인증 이름. 브라우저·미지원 기기면 null. */
-function useBiometryLabel(): BiometryName | null {
-  const [label, setLabel] = useState<BiometryName | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    availableBiometryLabel().then((value) => {
-      if (!cancelled) setLabel(value);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  return label;
-}
 
 /**
  * 앱 잠금 화면. 네이티브 앱에서 잠금을 켰을 때만 동작한다 — 앱을 새로 열거나 백그라운드에

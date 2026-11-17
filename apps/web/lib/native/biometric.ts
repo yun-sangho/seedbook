@@ -1,5 +1,7 @@
 "use client";
 
+import { type BiometricVault, classifyBiometricError } from "./biometric-login";
+
 /**
  * 네이티브 앱(Capacitor) 생체 인증 래퍼. Capacitor 는 server.url 로 띄운 원격 페이지에도
  * 네이티브 브리지를 주입하므로 웹 번들에서 플러그인을 바로 부른다. 브라우저·SSR 에서는
@@ -59,4 +61,65 @@ export async function verifyBiometric(reason: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * 생체 인증 로그인 토큰을 담는 Keychain (iOS) / Keystore (Android) 금고. 네이티브 앱이 아니면 null.
+ * `BIOMETRY_CURRENT_SET`: 하드웨어가 꺼낼 때마다 생체 인증을 강제하고, 지문·얼굴이 새로 등록되면
+ * 항목이 무효가 된다 (남이 자기 지문을 추가해 로그인하는 것을 막는다). 흐름은 `biometric-login.ts`.
+ */
+export async function createBiometricVault(): Promise<BiometricVault | null> {
+  const native = await nativeBiometric();
+  if (!native) return null;
+  const { plugin } = native;
+  const { Capacitor } = await import("@capacitor/core");
+  const { AccessControl } = await import("@capgo/capacitor-native-biometric");
+  // 자격 증명의 키. 운영·로컬 서버의 토큰이 섞이지 않게 접속한 호스트로 나눈다.
+  const server = window.location.host;
+  // Android 플러그인은 기본으로 한 번만 틀려도 끝낸다 — 시스템 기본처럼 몇 번 다시 대 볼 수 있게.
+  // (iOS 는 OS 가 시도 횟수를 관리해 무시된다.)
+  const maxAttempts = 5;
+
+  return {
+    platform: Capacitor.getPlatform() === "android" ? "android" : "ios",
+    verify: (reason) => verifyBiometric(reason),
+    save: async ({ credentialId, token }) => {
+      try {
+        await plugin.setCredentials({
+          server,
+          username: credentialId,
+          password: token,
+          accessControl: AccessControl.BIOMETRY_CURRENT_SET,
+          title: "생체 인증 로그인 켜기",
+          negativeButtonText: "취소",
+          maxAttempts,
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    read: async (reason) => {
+      try {
+        const credential = await plugin.getSecureCredentials({
+          server,
+          reason,
+          title: "Seedbook 로그인",
+          negativeButtonText: "취소",
+          maxAttempts,
+        });
+        return { ok: true, credentialId: credential.username, token: credential.password };
+      } catch (error) {
+        return { ok: false, failure: classifyBiometricError(error) };
+      }
+    },
+    exists: async () => (await plugin.isCredentialsSaved({ server })).isSaved,
+    remove: async () => {
+      try {
+        await plugin.deleteCredentials({ server });
+      } catch {
+        // 지울 항목이 없으면 거절한다 — 이미 지워진 것과 같다.
+      }
+    },
+  };
 }
