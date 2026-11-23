@@ -36,8 +36,9 @@ Web 은 **호스트에서** `pnpm dev` 로 직접 띄운다 (Next.js + turbopack
 |                                | web      | DB (dev / test:db)                         |
 | ------------------------------ | -------- | ------------------------------------------ |
 | 슬롯 0 (메인 체크아웃)         | 3001     | `seedbook` / `seedbook_test` (기존 그대로) |
-| 슬롯 N (링크된 워크트리, 1..9) | 3001+10N | `seedbook_sN` / `seedbook_sN_test`         |
+| 슬롯 N (링크된 워크트리, 1..9) | 4001+10N | `seedbook_sN` / `seedbook_sN_test`         |
 
+- 슬롯 N 의 web 포트는 4000번대(4011..4091)다. 3000번대는 다른 개발 서비스(teum 의 3000+10N·3001+10N·3002+10N)와 겹친다. 슬롯 0 은 카카오 Redirect URI 때문에 3001 그대로.
 - 슬롯 DB 는 같은 dev postgres 컨테이너 안의 DB 다. 컨테이너·compose 프로젝트를 슬롯마다 따로 띄우지 않고, stock-crawler 는 메인 DB 에만 붙는다 (슬롯 DB 의 종목·가격은 시드 fixture 그대로).
 - `pnpm dev`, `pnpm --filter @seedbook/web test:db`, `pnpm db:seed:reset` 이 슬롯을 따른다. 링크된 워크트리에서 처음 실행하면 **빈 슬롯을 자동 배정**(다른 워크트리가 쓰는 슬롯과 web 포트가 이미 쓰이는 슬롯은 건너뜀)해 워크트리 루트의 `.worktree-slot` (gitignore) 에 `SEEDBOOK_SLOT=N` 을 쓰고, 메인 체크아웃의 로컬 환경 파일(루트·`apps/*`·`packages/*` 의 `.env.local` 등, 심링크는 심링크로)이 없으면 복사한다.
 - 슬롯 N 에는 `PORT`, `DATABASE_URL` (`127.0.0.1:5432/seedbook_sN`), `TEST_DATABASE_URL` (`…/seedbook_sN_test`), `BETTER_AUTH_URL=http://localhost:<port>` 를 넣는다. 이미 설정된 환경변수는 덮어쓰지 않는다.
@@ -154,7 +155,7 @@ DB 마이그레이션은 stock-crawler 이미지 entrypoint (`apps/stock-crawler
 - 데이터 backfill / 정리 같은 데이터 변경은 마이그레이션에 넣지 않는다. `packages/database/scripts/` 에 멱등 스크립트로 만들고 `package.json` 에 `db:backfill:*` 스크립트로 등록한다 (예: `db:backfill:account-portfolio`). 배포 후 `docker compose exec stock-crawler pnpm --filter @seedbook/database db:backfill:<name>` 로 실행.
 - 생성 결과가 의도와 다르면 파일을 고치지 말고 `schema.ts` 를 고친 뒤, 아직 배포 전인 해당 마이그레이션(sql + snapshot + journal entry)을 지우고 다시 생성한다.
 
-Local dev: `pnpm docker:dev` 로 인프라(postgres + stock-crawler) 를 띄우고, 별도 터미널에서 `pnpm dev` 로 web 을 호스트에서 실행한다. DB 만 필요하면 `pnpm db:dev:up`. 링크된 워크트리에서는 `pnpm dev` 가 슬롯 포트(3001+10N)와 슬롯 DB(`seedbook_sN`, 없으면 만들고 시드)로 뜬다 (위 "Dev topology" 의 "워크트리 슬롯" 참조).
+Local dev: `pnpm docker:dev` 로 인프라(postgres + stock-crawler) 를 띄우고, 별도 터미널에서 `pnpm dev` 로 web 을 호스트에서 실행한다. DB 만 필요하면 `pnpm db:dev:up`. 링크된 워크트리에서는 `pnpm dev` 가 슬롯 포트(4001+10N)와 슬롯 DB(`seedbook_sN`, 없으면 만들고 시드)로 뜬다 (위 "Dev topology" 의 "워크트리 슬롯" 참조).
 
 ## Shell Command Rules
 

@@ -2,14 +2,17 @@
 // vitest 로 검증한다 (apps/web/test/worktree/worktree-lib.test.ts).
 //
 //   슬롯 0 = 메인 체크아웃: web :3001, DB seedbook / seedbook_test (기존 그대로)
-//   슬롯 N = 링크된 워크트리 (1..9): web :3001+10N, 같은 dev postgres 안 DB seedbook_sN / seedbook_sN_test
+//   슬롯 N = 링크된 워크트리 (1..9): web :4001+10N (3000번대는 다른 프로젝트(teum)의 슬롯 포트와 겹친다), 같은 dev postgres 안 DB seedbook_sN / seedbook_sN_test
 
 import { sep } from "node:path";
 
 /** 워크트리 루트의 슬롯 파일 (gitignore). 내용은 `SEEDBOOK_SLOT=N` */
 export const SLOT_FILE = ".worktree-slot";
 export const MAX_SLOT = 9;
-export const BASE_WEB_PORT = 3001;
+/** 슬롯 0. 카카오 OAuth Redirect URI 가 이 포트로 등록돼 있다 */
+export const MAIN_WEB_PORT = 3001;
+/** 슬롯 N 은 4001+10N (4011..4091) */
+export const SLOT_WEB_PORT_BASE = 4001;
 export const PG_HOST = "127.0.0.1";
 export const PG_PORT = 5432;
 /** docker-compose.dev.yml 의 기본 계정 */
@@ -20,7 +23,7 @@ const SLOT_DATABASE = /^seedbook_s(\d+)(_test)?$/;
 
 /** @param {number} slot */
 export function webPort(slot) {
-  return BASE_WEB_PORT + 10 * slot;
+  return slot === 0 ? MAIN_WEB_PORT : SLOT_WEB_PORT_BASE + 10 * slot;
 }
 
 /** @param {number} slot */

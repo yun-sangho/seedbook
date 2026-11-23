@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 워크트리 병렬 개발용 슬롯. 워크트리마다 슬롯 번호 N 하나로 web 포트와 DB 를 나눈다.
 //   슬롯 0 = 메인 체크아웃: web :3001, DB seedbook / seedbook_test (기존 그대로)
-//   슬롯 N = 링크된 워크트리 (1..9): web :3001+10N, 같은 dev postgres 컨테이너 안 DB seedbook_sN / seedbook_sN_test
+//   슬롯 N = 링크된 워크트리 (1..9): web :4001+10N, 같은 dev postgres 컨테이너 안 DB seedbook_sN / seedbook_sN_test
 // 슬롯은 워크트리 루트의 .worktree-slot (gitignore) 에 `SEEDBOOK_SLOT=N` 으로 둔다. 순수 로직은 worktree-lib.mjs.
 //
 // 사용:

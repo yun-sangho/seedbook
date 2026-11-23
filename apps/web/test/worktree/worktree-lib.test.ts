@@ -20,9 +20,9 @@ describe("webPort", () => {
     expect(webPort(0)).toBe(3001);
   });
 
-  it("moves 10 ports per slot", () => {
-    expect(webPort(1)).toBe(3011);
-    expect(webPort(9)).toBe(3091);
+  it("puts slots in the 4000s, 10 ports apart, clear of other projects' 3000s", () => {
+    expect(webPort(1)).toBe(4011);
+    expect(webPort(9)).toBe(4091);
   });
 });
 
@@ -61,12 +61,12 @@ describe("pickSlot", () => {
   });
 
   it("skips slots whose web port is already taken", () => {
-    expect(pickSlot({ used: new Set([1]), portFree: (port) => port !== 3021 })).toBe(3);
+    expect(pickSlot({ used: new Set([1]), portFree: (port) => port !== 4021 })).toBe(3);
   });
 
   it("returns null when every slot is used or busy", () => {
     const used = new Set([1, 2, 3, 4, 5, 6, 7, 8]);
-    expect(pickSlot({ used, portFree: (port) => port !== 3091 })).toBeNull();
+    expect(pickSlot({ used, portFree: (port) => port !== 4091 })).toBeNull();
   });
 });
 
@@ -78,10 +78,10 @@ describe("slotEnv", () => {
   it("points a slot at its own databases and auth URL", () => {
     expect(slotEnv(2, {})).toEqual({
       SEEDBOOK_SLOT: "2",
-      PORT: "3021",
+      PORT: "4021",
       DATABASE_URL: "postgresql://seedbook:seedbook@127.0.0.1:5432/seedbook_s2",
       TEST_DATABASE_URL: "postgresql://seedbook:seedbook@127.0.0.1:5432/seedbook_s2_test",
-      BETTER_AUTH_URL: "http://localhost:3021",
+      BETTER_AUTH_URL: "http://localhost:4021",
     });
   });
 
@@ -94,7 +94,7 @@ describe("slotEnv", () => {
     const env = slotEnv(2, { DATABASE_URL: "postgresql://elsewhere/db", PORT: "4000" });
     expect(env.DATABASE_URL).toBeUndefined();
     expect(env.PORT).toBeUndefined();
-    expect(env.BETTER_AUTH_URL).toBe("http://localhost:3021");
+    expect(env.BETTER_AUTH_URL).toBe("http://localhost:4021");
   });
 
   it("uses POSTGRES_USER / POSTGRES_PASSWORD when set", () => {
@@ -195,7 +195,7 @@ describe("isAgentProcess", () => {
   });
 
   it("lets dev servers be stopped", () => {
-    expect(isAgentProcess("node ../../scripts/worktree.mjs env web next dev --port 3011")).toBe(
+    expect(isAgentProcess("node ../../scripts/worktree.mjs env web next dev --port 4011")).toBe(
       false
     );
     expect(isAgentProcess("next-server (v16.4.6)")).toBe(false);
