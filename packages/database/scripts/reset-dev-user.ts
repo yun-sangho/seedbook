@@ -1,8 +1,10 @@
 /**
  * dev 사용자 데이터를 테스트 시나리오(`seed-data/user-data.json`)로 되돌린다.
  *
- * 실행: 루트에서 `pnpm db:seed:reset` — dev stock-crawler 이미지로 일회용 컨테이너를 띄워 돌린다
- * (컨테이너의 DATABASE_URL 이 dev postgres 를 가리킨다). postgres 가 떠 있어야 한다 (`pnpm db:dev:up`).
+ * 실행: 루트에서 `pnpm db:seed:reset` (`scripts/worktree.mjs db-reset`). 메인 체크아웃(슬롯 0)은 dev
+ * stock-crawler 이미지로 일회용 컨테이너를 띄워 돌리고 (컨테이너의 DATABASE_URL 이 dev postgres 를 가리킨다),
+ * 링크된 워크트리(슬롯 N)는 호스트 tsx 로 슬롯 DB (`seedbook_sN`) 를 대상으로 돌린다.
+ * postgres 가 떠 있어야 한다 (`pnpm db:dev:up`).
  *
  * 계좌·포트폴리오·리밸런싱·개인 설정을 시나리오로 바꾼다 (`resetDevUserData`). 로컬 DB
  * (localhost / 127.0.0.1 / 도커의 postgres) 에서만 돈다 — 원격 DB 를 가리키면 거절한다.

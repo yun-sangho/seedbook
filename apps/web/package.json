@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3001",
+    "dev": "node ../../scripts/worktree.mjs env web 'next dev --port $PORT'",
     "build": "next build && serwist build",
     "start": "next start",
     "check-types": "next typegen && tsc --noEmit",
@@ -12,7 +12,7 @@
     "format:check": "biome check --linter-enabled=false",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:db": "vitest run --config vitest.db.config.ts",
+    "test:db": "node ../../scripts/worktree.mjs env test-db 'vitest run --config vitest.db.config.ts'",
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"

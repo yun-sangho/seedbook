@@ -25,7 +25,7 @@
     "dev": {
       "cache": false,
       "persistent": true,
-      "passThroughEnv": ["NEXT_DEV_ALLOWED_ORIGINS"]
+      "passThroughEnv": ["NEXT_DEV_ALLOWED_ORIGINS", "SEEDBOOK_SLOT", "PORT", "DATABASE_URL"]
     },
     "format": {
       "outputs": []
