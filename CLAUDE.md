@@ -88,7 +88,7 @@ dev 사용자(`dev-user-v1`)의 계좌·포트폴리오는 **테스트 시나리
 - 나머지 store 는 도메인 단위 envelope (`/api/storage/[key]` → `_translators/`) 로 저장한다.
 - 도메인을 엔티티 동기화로 옮길 때: 서버 `server/<domain>/` (record + `createEntityRepo`) 를 만들고 `server/sync/registry.ts` 의 `SYNC_ENTITIES`, 클라이언트 `features/<domain>/sync/` 설정을 `managed-stores.ts` · `synced-stores.ts` 에 등록한다. 테이블엔 `syncColumns()` 추가 (마이그레이션은 drizzle-kit 생성만).
 
-**네이티브 앱 저장소**: 기기 데이터는 `lib/device-storage.ts` 를 거친다 (브라우저 localStorage, 앱은 SQLite — 앱에서는 localStorage 를 쓰지 않는다). 직접 `window.localStorage` 를 쓰지 말고 `getDeviceStorage()` / `createDeviceStateStorage()` 를 쓴다. 앱 SQLite 의 자산 테이블은 서버 스키마와 같은 모양이라, **서버의 자산 테이블(`investment_account` 등) 컬럼을 바꾸면 `lib/native/device-db/migrations.ts` 에 새 버전을 추가**한다 (`migrations.test.ts` 가 어긋나면 실패).
+**네이티브 앱 저장소**: 기기 데이터는 `lib/device-storage.ts` 를 거친다 (브라우저 localStorage, 앱은 SQLite — 앱에서는 localStorage 를 쓰지 않는다). 직접 `window.localStorage` 를 쓰지 말고 `getDeviceStorage()` / `createDeviceStateStorage()` 를 쓴다. **계정 데이터(자산·동기화 대기열·저장소 모드·개인 설정)는 `lib/account-storage.ts` 의 `accountStorage` / `createAccountStateStorage()` 로만** 읽고 쓰고, 그 API 요청은 `accountFetch` 로 보낸다 — 계정별 자리로 나뉘고, 세션이 확인되기 전에는 비어 있다 (첫 계정은 원래 키·테이블, 그 밖의 계정은 `seedbook.account.<userId>.` 접두사). 앱 SQLite 의 자산 테이블은 서버 스키마와 같은 모양이라, **서버의 자산 테이블(`investment_account` 등) 컬럼을 바꾸면 `lib/native/device-db/migrations.ts` 에 새 버전을 추가**한다 (`migrations.test.ts` 가 어긋나면 실패).
 
 ## Domain Rules
 
