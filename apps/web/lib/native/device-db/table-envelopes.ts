@@ -617,6 +617,14 @@ export async function removeTableEnvelope(driver: SqlDriver, key: string): Promi
       { sql: "DELETE FROM rebalancing" },
       { sql: "DELETE FROM user_list_order WHERE domain = ?", params: [REBALANCING_LIST] },
     ]);
+  } else if (key === PREFERENCES_KEY) {
+    // 저장소 모드는 같은 행의 다른 키라 남긴다.
+    await driver.batch([
+      {
+        sql: `UPDATE user_preference SET holdingsSortOption = 'evalDesc',
+              rebalancingTaskSort = 'nameDesc', rebalancingCollapsedSections = '[]'`,
+      },
+    ]);
   }
 }
 

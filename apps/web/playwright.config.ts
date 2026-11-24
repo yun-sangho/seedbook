@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 3001;
+const PORT = 4001;
 const BASE_URL = `http://localhost:${PORT}`;
 
 export default defineConfig({

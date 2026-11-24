@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { render, waitFor } from "@testing-library/react";
+import { activateAccount } from "@web/lib/account-storage";
 import { usePreferencesStore } from "@web/lib/preferences-store";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PreferencesSync } from "./preferences-sync";
@@ -12,6 +13,10 @@ function serverSort(sort: string) {
     async () => new Response(JSON.stringify({ rebalancingTaskSort: sort }), { status: 200 })
   );
 }
+
+beforeEach(async () => {
+  await activateAccount("u1");
+});
 
 describe("PreferencesSync", () => {
   beforeEach(() => {

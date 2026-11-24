@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build & Dev Commands
 
 ```bash
-pnpm dev                              # Start dev server (Next.js on :3001 with turbopack)
+pnpm dev                              # Start dev server (Next.js on :4001 with turbopack)
 pnpm build                            # Production build (runs format:check first)
 pnpm lint                             # Biome lint (warnings fail)
 pnpm check-types                      # TypeScript type checking
@@ -25,9 +25,9 @@ Requires Node >= 24 (LTS, `.nvmrc`), pnpm 8.
 
 ### Dev topology
 
-Web 은 **호스트에서** `pnpm dev` 로 직접 띄운다 (Next.js + turbopack, port 3001). Docker 안에서는 `postgres` + `stock-crawler` 만 띄운다 — Docker for Mac (VirtioFS) 의 bind mount fs-event 전파 이슈로 컨테이너 내부 turbopack HMR 이 변경을 자주 놓치기 때문.
+Web 은 **호스트에서** `pnpm dev` 로 직접 띄운다 (Next.js + turbopack, port 4001). Docker 안에서는 `postgres` + `stock-crawler` 만 띄운다 — Docker for Mac (VirtioFS) 의 bind mount fs-event 전파 이슈로 컨테이너 내부 turbopack HMR 이 변경을 자주 놓치기 때문.
 
-- 호스트 `pnpm dev` → `localhost:3001` 에서 서비스 (링크된 워크트리는 아래 슬롯 포트)
+- 호스트 `pnpm dev` → `localhost:4001` 에서 서비스 (링크된 워크트리는 아래 슬롯 포트)
 - 컨테이너 postgres → `127.0.0.1:5432` 노출, 호스트 dev 가 그대로 접속
 - DB 접근: `docker compose -f docker-compose.dev.yml exec postgres psql -U seedbook` (슬롯 DB 는 `-d seedbook_sN`)
 
@@ -35,16 +35,16 @@ Web 은 **호스트에서** `pnpm dev` 로 직접 띄운다 (Next.js + turbopack
 
 |                                | web      | DB (dev / test:db)                         |
 | ------------------------------ | -------- | ------------------------------------------ |
-| 슬롯 0 (메인 체크아웃)         | 3001     | `seedbook` / `seedbook_test` (기존 그대로) |
+| 슬롯 0 (메인 체크아웃)         | 4001     | `seedbook` / `seedbook_test` (기존 그대로) |
 | 슬롯 N (링크된 워크트리, 1..9) | 4001+10N | `seedbook_sN` / `seedbook_sN_test`         |
 
-- 슬롯 N 의 web 포트는 4000번대(4011..4091)다. 3000번대는 다른 개발 서비스(teum 의 3000+10N·3001+10N·3002+10N)와 겹친다. 슬롯 0 은 카카오 Redirect URI 때문에 3001 그대로.
+- web 포트는 4000번대(슬롯 0 은 4001, 슬롯 N 은 4011..4091)다. 3000번대는 다른 개발 서비스(teum 의 3000+10N·3001+10N·3002+10N)와 겹친다. 운영 컨테이너의 web 포트는 3001 이다 (아래 "Deployment").
 - 슬롯 DB 는 같은 dev postgres 컨테이너 안의 DB 다. 컨테이너·compose 프로젝트를 슬롯마다 따로 띄우지 않고, stock-crawler 는 메인 DB 에만 붙는다 (슬롯 DB 의 종목·가격은 시드 fixture 그대로).
 - `pnpm dev`, `pnpm --filter @seedbook/web test:db`, `pnpm db:seed:reset` 이 슬롯을 따른다. 링크된 워크트리에서 처음 실행하면 **빈 슬롯을 자동 배정**(다른 워크트리가 쓰는 슬롯과 web 포트가 이미 쓰이는 슬롯은 건너뜀)해 워크트리 루트의 `.worktree-slot` (gitignore) 에 `SEEDBOOK_SLOT=N` 을 쓰고, 메인 체크아웃의 로컬 환경 파일(루트·`apps/*`·`packages/*` 의 `.env.local` 등, 심링크는 심링크로)이 없으면 복사한다.
 - 슬롯 N 에는 `PORT`, `DATABASE_URL` (`127.0.0.1:5432/seedbook_sN`), `TEST_DATABASE_URL` (`…/seedbook_sN_test`), `BETTER_AUTH_URL=http://localhost:<port>` 를 넣는다. 이미 설정된 환경변수는 덮어쓰지 않는다.
 - `pnpm dev` 는 시작할 때 슬롯 DB 를 준비한다: postgres 가 안 떠 있으면 `pnpm db:dev:up` 과 같은 명령으로 띄우고, DB 가 없으면 만들고, drizzle 마이그레이션을 적용하고(매번), 종목이 비어 있으면 `db:seed` (fixture + dev 사용자 시나리오) 를 돌린다. `db:seed:reset` 은 슬롯 N 에서는 호스트 tsx 로 슬롯 DB 만 리셋한다 (슬롯 0 은 기존처럼 crawler 컨테이너에서).
 - `pnpm wt:info` (슬롯·URL·DB, 없으면 배정) / `pnpm wt:down` (이 워크트리의 dev 서버 종료 + 슬롯 DB 2개 drop + 슬롯 반납, 워크트리를 지우기 전에) / `pnpm wt:gc [--dry-run]` (살아 있는 워크트리가 쥐지 않은 `seedbook_s*` DB 와, 없어진 워크트리 경로(`~/.herdr/worktrees/seedbook/*`)를 cwd 로 쥔 node 프로세스를 정리. 슬롯 0·메인 체크아웃·살아 있는 워크트리는 건드리지 않는다. 메인 세션이 `hwt rm` 뒤 메인 체크아웃에서 돌린다). 새 슬롯을 배정할 때도 주인 없는 슬롯 DB 를 먼저 치운다.
-- **슬롯 N 에서 로그인**: 카카오 OAuth Redirect URI 는 `:3001` 만 등록돼 있어 카카오 로그인이 안 된다. 로그인 화면의 "개발용 빠른 로그인 (카카오 우회)" (`/api/auth/dev-login`, dev 사용자) 로 QA 한다. localhost 쿠키는 포트를 가리지 않으므로 데스크탑 브라우저에서 `/m` 을 보려면 `seedbook.view=mobile` 쿠키를 둔다. 새 포트는 새 origin 이라 저장 위치가 local 로 시작한다 — 시드 시나리오를 보려면 설정에서 "클라우드에 저장" 을 고른다.
+- **슬롯 N 에서 로그인**: 카카오 OAuth Redirect URI 는 메인 `:4001` 과 슬롯 1~3 (`:4011`·`:4021`·`:4031`) 을 등록해 카카오 로그인이 된다. 슬롯 4~9 는 등록하지 않아 카카오 로그인이 안 된다. 카카오 로그인이 안 되는 슬롯은 로그인 화면의 "개발용 빠른 로그인 (카카오 우회)" (`/api/auth/dev-login`, dev 사용자) 로 QA 한다. localhost 쿠키는 포트를 가리지 않으므로 데스크탑 브라우저에서 `/m` 을 보려면 `seedbook.view=mobile` 쿠키를 둔다. 새 포트는 새 origin 이라 저장 위치가 local 로 시작한다 — 시드 시나리오를 보려면 설정에서 "클라우드에 저장" 을 고른다.
 
 ### DB seed (capture/replay)
 
@@ -88,7 +88,7 @@ dev 사용자(`dev-user-v1`)의 계좌·포트폴리오는 **테스트 시나리
 - 나머지 store 는 도메인 단위 envelope (`/api/storage/[key]` → `_translators/`) 로 저장한다.
 - 도메인을 엔티티 동기화로 옮길 때: 서버 `server/<domain>/` (record + `createEntityRepo`) 를 만들고 `server/sync/registry.ts` 의 `SYNC_ENTITIES`, 클라이언트 `features/<domain>/sync/` 설정을 `managed-stores.ts` · `synced-stores.ts` 에 등록한다. 테이블엔 `syncColumns()` 추가 (마이그레이션은 drizzle-kit 생성만).
 
-**네이티브 앱 저장소**: 기기 데이터는 `lib/device-storage.ts` 를 거친다 (브라우저 localStorage, 앱은 SQLite — 앱에서는 localStorage 를 쓰지 않는다). 직접 `window.localStorage` 를 쓰지 말고 `getDeviceStorage()` / `createDeviceStateStorage()` 를 쓴다. 앱 SQLite 의 자산 테이블은 서버 스키마와 같은 모양이라, **서버의 자산 테이블(`investment_account` 등) 컬럼을 바꾸면 `lib/native/device-db/migrations.ts` 에 새 버전을 추가**한다 (`migrations.test.ts` 가 어긋나면 실패).
+**네이티브 앱 저장소**: 기기 데이터는 `lib/device-storage.ts` 를 거친다 (브라우저 localStorage, 앱은 SQLite — 앱에서는 localStorage 를 쓰지 않는다). 직접 `window.localStorage` 를 쓰지 말고 `getDeviceStorage()` / `createDeviceStateStorage()` 를 쓴다. **계정 데이터(자산·동기화 대기열·저장소 모드·개인 설정)는 `lib/account-storage.ts` 의 `accountStorage` / `createAccountStateStorage()` 로만** 읽고 쓰고, 그 API 요청은 `accountFetch` 로 보낸다 — 계정별 자리로 나뉘고, 세션이 확인되기 전에는 비어 있다 (첫 계정은 원래 키·테이블, 그 밖의 계정은 `seedbook.account.<userId>.` 접두사). 앱 SQLite 의 자산 테이블은 서버 스키마와 같은 모양이라, **서버의 자산 테이블(`investment_account` 등) 컬럼을 바꾸면 `lib/native/device-db/migrations.ts` 에 새 버전을 추가**한다 (`migrations.test.ts` 가 어긋나면 실패).
 
 ## Domain Rules
 
@@ -104,7 +104,7 @@ DB integration tests (`*.db.test.ts`, e.g. storage translators) run against real
 
 ### QA (구현 완료 후 필수)
 
-구현이 끝나면 테스트 통과와 별개로 **ego-lite 브라우저(`ego-browser` 스킬)로 로컬 환경에서 직접 QA 한다.** 호스트에서 `pnpm dev` (+ 필요하면 `pnpm db:dev:up` / `pnpm docker:dev`) 로 띄운 자기 슬롯 포트(`pnpm wt:info`, 메인 체크아웃은 `localhost:3001`)에 접속해 바뀐 화면·흐름을 실제로 조작하고 결과를 확인한다. 모바일 화면(`/m/...`)을 바꿨다면 모바일 뷰포트로 확인한다. 링크된 워크트리에서는 카카오 로그인이 안 되니 "개발용 빠른 로그인" 으로 들어간다 (위 "워크트리 슬롯" 참조). QA 하지 못했다면 (로그인 불가, 데이터 없음 등) 그 사실과 이유를 명시한다.
+구현이 끝나면 테스트 통과와 별개로 **ego-lite 브라우저(`ego-browser` 스킬)로 로컬 환경에서 직접 QA 한다.** 호스트에서 `pnpm dev` (+ 필요하면 `pnpm db:dev:up` / `pnpm docker:dev`) 로 띄운 자기 슬롯 포트(`pnpm wt:info`, 메인 체크아웃은 `localhost:4001`)에 접속해 바뀐 화면·흐름을 실제로 조작하고 결과를 확인한다. 모바일 화면(`/m/...`)을 바꿨다면 모바일 뷰포트로 확인한다. 슬롯 1~3 은 카카오 로그인이나 "개발용 빠른 로그인", 슬롯 4~9 는 카카오 로그인이 안 되니 "개발용 빠른 로그인" 으로 들어간다 (위 "워크트리 슬롯" 참조). QA 하지 못했다면 (로그인 불가, 데이터 없음 등) 그 사실과 이유를 명시한다.
 
 ## Git workflow (작업 완료 후 커밋·PR)
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { getDeviceStorage } from "@web/lib/device-storage";
+import { accountFetch, accountStorage } from "@web/lib/account-storage";
 import { CLOUD_STORE_KEYS, type CloudStoreKey } from "@web/lib/storage-mode";
 import { mergeEnvelopes, type PersistEnvelope } from "./storage-merge";
 import { clearEntitySyncState } from "./sync/managed-stores";
@@ -41,7 +41,7 @@ export async function uploadAllToCloud(onProgress?: (p: MigrationProgress) => vo
     const cloud = await fetchCloudEnvelope(key, "업로드");
     const merged = mergeEnvelopes(key, local, cloud);
 
-    const res = await fetch(`/api/storage/${encodeURIComponent(key)}`, {
+    const res = await accountFetch(`/api/storage/${encodeURIComponent(key)}`, {
       method: "PUT",
       credentials: "include",
       headers: { "content-type": "application/json" },
@@ -79,7 +79,7 @@ async function fetchCloudEnvelope(
   key: CloudStoreKey,
   action: "업로드" | "다운로드"
 ): Promise<PersistEnvelope | null> {
-  const res = await fetch(`/api/storage/${encodeURIComponent(key)}`, {
+  const res = await accountFetch(`/api/storage/${encodeURIComponent(key)}`, {
     method: "GET",
     credentials: "include",
   });
@@ -123,12 +123,12 @@ export async function hasAnyLocalData(): Promise<boolean> {
 }
 
 async function readLocalEnvelope(key: CloudStoreKey): Promise<string | null> {
-  return getDeviceStorage().readEnvelope(key);
+  return accountStorage.readEnvelope(key);
 }
 
 async function writeLocalEnvelope(key: CloudStoreKey, value: string): Promise<void> {
   // 쓰기 실패는 저장소가 삼킨다 — 전환 자체는 계속 진행.
-  await getDeviceStorage().writeEnvelope(key, value);
+  await accountStorage.writeEnvelope(key, value);
 }
 
 /**

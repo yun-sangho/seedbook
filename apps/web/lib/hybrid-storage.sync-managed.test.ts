@@ -25,6 +25,8 @@ const sessionRow = {
 async function loadCloudStorage() {
   localStorage.setItem("seedbook.storageMode", "cloud");
   vi.resetModules();
+  const { activateAccount } = await import("./account-storage");
+  await activateAccount("u1");
   const mod = await import("./hybrid-storage");
   return mod.createHybridStorage;
 }

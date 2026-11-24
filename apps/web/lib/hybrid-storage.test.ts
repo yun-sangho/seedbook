@@ -1,7 +1,13 @@
 import { useSyncStatusStore } from "@web/features/settings/stores/sync-status-store";
+import { __resetAccountForTests, activateAccount } from "@web/lib/account-storage";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createHybridStorage } from "./hybrid-storage";
 import { STORAGE_MODE_KEY, setStorageMode } from "./storage-mode";
+
+beforeEach(async () => {
+  __resetAccountForTests();
+  await activateAccount("u");
+});
 
 /**
  * 하이브리드 스토리지 어댑터는 두 가지 모드를 지원한다:
