@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Icon, PrefixIcon } from "@seed-design/react";
-import { AppleLogo, useAppleSignInEnabled } from "@web/components/apple-sign-in-button";
+import { Icon } from "@seed-design/react";
+import { AppleSignInActionButton } from "@web/components/apple-sign-in-action-button";
 import { BiometricSignInButton } from "@web/components/biometric-sign-in-button";
 import { useSocialSignIn } from "@web/hooks/use-social-sign-in";
 import {
@@ -27,7 +27,6 @@ export function LoginScreen() {
     loginErrorMessage(new URLSearchParams(window.location.search).get(LOGIN_ERROR_PARAM))
   );
   const { pendingProvider, failed, signIn } = useSocialSignIn(returnPath);
-  const appleEnabled = useAppleSignInEnabled();
   const [devPending, setDevPending] = useState(false);
   const [devFailed, setDevFailed] = useState(false);
 
@@ -84,18 +83,12 @@ export function LoginScreen() {
           >
             카카오로 로그인
           </ActionButton>
-          {appleEnabled && (
-            <ActionButton
-              variant="neutralSolid"
-              size="large"
-              loading={pendingProvider === "apple"}
-              disabled={busy && pendingProvider !== "apple"}
-              onClick={() => signIn("apple")}
-            >
-              <PrefixIcon svg={<AppleLogo />} />
-              Apple로 로그인
-            </ActionButton>
-          )}
+          <AppleSignInActionButton
+            size="large"
+            loading={pendingProvider === "apple"}
+            disabled={busy && pendingProvider !== "apple"}
+            onClick={() => signIn("apple")}
+          />
           {isDevEnv && (
             <ActionButton
               variant="neutralOutline"
