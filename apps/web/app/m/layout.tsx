@@ -1,10 +1,12 @@
 import "@seed-design/css/base.css";
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { AuthGate } from "@web/components/auth-gate";
 import { HydrationGate } from "@web/components/hydration-gate";
 import { AppLockOverlay } from "@web/components/mobile/app-lock";
 import { BiometricLoginOffer } from "@web/components/mobile/biometric-login";
 import { SeedColorScheme } from "@web/components/mobile/seed-color-scheme";
+import { CSP_NONCE_HEADER } from "@web/lib/csp";
 import { iosStartupImages } from "@web/lib/ios-splash";
 import { MobileStack } from "./_stack/mobile-stack";
 
@@ -37,10 +39,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default function MobileLayout({ children }: { children: React.ReactNode }) {
+export default async function MobileLayout({ children }: { children: React.ReactNode }) {
+  const nonce = (await headers()).get(CSP_NONCE_HEADER) ?? undefined;
   return (
     <>
-      <SeedColorScheme />
+      <SeedColorScheme nonce={nonce} />
       <HydrationGate>
         <AuthGate>
           {/* 화면은 스택이 URL 을 보고 그린다. children(페이지)은 경로만 받아주는 빈 페이지. */}

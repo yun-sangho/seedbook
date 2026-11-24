@@ -12,7 +12,8 @@ import { useLayoutEffect } from "react";
  */
 const INLINE_SCRIPT = `(function(){try{var d=document.documentElement;var m=window.matchMedia("(prefers-color-scheme: dark)");d.setAttribute("data-seed-color-mode","system");d.setAttribute("data-seed-user-color-scheme",m.matches?"dark":"light");}catch(e){}})();`;
 
-export function SeedColorScheme() {
+/** `nonce`: CSP nonce (`lib/csp.ts`). 없으면 인라인 스크립트가 막힌다. */
+export function SeedColorScheme({ nonce }: { nonce?: string }) {
   useLayoutEffect(() => {
     const root = document.documentElement;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
@@ -29,6 +30,13 @@ export function SeedColorScheme() {
     };
   }, []);
 
-  // biome-ignore lint/security/noDangerouslySetInnerHtml: 첫 페인트 전에 색 모드를 정하는 고정 인라인 스크립트 (사용자 입력 없음).
-  return <script dangerouslySetInnerHTML={{ __html: INLINE_SCRIPT }} />;
+  // 브라우저는 nonce 속성 값을 DOM 에서 숨긴다 (nonce hiding) — 하이드레이션 불일치 경고를 끈다.
+  return (
+    <script
+      nonce={nonce}
+      suppressHydrationWarning
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: 첫 페인트 전에 색 모드를 정하는 고정 인라인 스크립트 (사용자 입력 없음).
+      dangerouslySetInnerHTML={{ __html: INLINE_SCRIPT }}
+    />
+  );
 }
