@@ -39,10 +39,10 @@ pnpm --filter @seedbook/mobile open:android
 로컬 dev 서버로 띄우기 — 기기에서 본 호스트 주소를 쓴다:
 
 ```bash
-CAP_SERVER_URL=http://localhost:3001 pnpm mobile:sync   # iOS 시뮬레이터
-adb reverse tcp:3001 tcp:3001 && \
-  CAP_SERVER_URL=http://localhost:3001 pnpm mobile:sync # Android 에뮬레이터·USB 기기
-CAP_SERVER_URL=http://<맥 LAN IP>:3001 pnpm mobile:sync # 같은 Wi-Fi 의 실기기
+CAP_SERVER_URL=http://localhost:4001 pnpm mobile:sync   # iOS 시뮬레이터
+adb reverse tcp:4001 tcp:4001 && \
+  CAP_SERVER_URL=http://localhost:4001 pnpm mobile:sync # Android 에뮬레이터·USB 기기
+CAP_SERVER_URL=http://<맥 LAN IP>:4001 pnpm mobile:sync # 같은 Wi-Fi 의 실기기
 ```
 
 `localhost` 가 아닌 http 주소(`10.0.2.2`, LAN IP)는 보안 컨텍스트가 아니라 `crypto.randomUUID` 가

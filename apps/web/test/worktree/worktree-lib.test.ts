@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatSlotFile,
+  hasKakaoRedirect,
   isAgentProcess,
   isLocalEnvFile,
   isOrphanCwd,
@@ -16,13 +17,23 @@ import {
 const allFree = () => true;
 
 describe("webPort", () => {
-  it("keeps 3001 for the main checkout (slot 0)", () => {
-    expect(webPort(0)).toBe(3001);
+  it("uses 4001 for the main checkout (slot 0)", () => {
+    expect(webPort(0)).toBe(4001);
   });
 
   it("puts slots in the 4000s, 10 ports apart, clear of other projects' 3000s", () => {
     expect(webPort(1)).toBe(4011);
     expect(webPort(9)).toBe(4091);
+  });
+});
+
+describe("hasKakaoRedirect", () => {
+  it("covers the main checkout and slots 1 to 3", () => {
+    expect([0, 1, 2, 3].map(hasKakaoRedirect)).toEqual([true, true, true, true]);
+  });
+
+  it("leaves slots 4 to 9 to the dev login", () => {
+    expect([4, 9].map(hasKakaoRedirect)).toEqual([false, false]);
   });
 });
 
@@ -72,7 +83,7 @@ describe("pickSlot", () => {
 
 describe("slotEnv", () => {
   it("gives slot 0 only the port, leaving the database to .env.local", () => {
-    expect(slotEnv(0, {})).toEqual({ SEEDBOOK_SLOT: "0", PORT: "3001" });
+    expect(slotEnv(0, {})).toEqual({ SEEDBOOK_SLOT: "0", PORT: "4001" });
   });
 
   it("points a slot at its own databases and auth URL", () => {
