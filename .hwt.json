@@ -1,0 +1,30 @@
+{
+  "mainSession": true,
+  "lang": "ko",
+  "setup": "pnpm install",
+  "mergeApproval": {
+    "maxLines": 400,
+    "paths": [
+      "packages/database/migrations/**",
+      "packages/database/src/**",
+      "packages/database/scripts/**",
+      "apps/web/lib/sync/**",
+      "apps/web/server/sync/**",
+      "apps/web/lib/storage-merge.ts",
+      "apps/web/lib/hybrid-storage.ts",
+      "apps/web/lib/native/device-db/**",
+      "apps/web/features/portfolio/utils/compute-rebalancing-gap.ts",
+      "apps/web/app/api/auth/**",
+      "apps/web/lib/auth*",
+      "apps/web/lib/apple-auth.ts",
+      ".github/workflows/**",
+      "docker-compose*.yml",
+      "**/Dockerfile",
+      "apps/stock-crawler/entrypoint.sh",
+      "scripts/worktree*.mjs",
+      "CLAUDE.md",
+      ".claude/rules/**",
+      ".hwt.json"
+    ]
+  }
+}

@@ -51,8 +51,6 @@ dist/
 .worktree-setup.log
 .worktree-setup.log/
 
-.worktrees/
-
 # 워크트리 슬롯 (scripts/worktree.mjs)
 .worktree-slot
 
