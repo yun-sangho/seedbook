@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { AuthGate } from "@web/components/auth-gate";
 import { HydrationGate } from "@web/components/hydration-gate";
 import { AppLockOverlay } from "@web/components/mobile/app-lock";
+import { BiometricLoginOffer } from "@web/components/mobile/biometric-login";
 import { SeedColorScheme } from "@web/components/mobile/seed-color-scheme";
 import { iosStartupImages } from "@web/lib/ios-splash";
 import { MobileStack } from "./_stack/mobile-stack";
@@ -47,6 +48,8 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
           {children}
           {/* 네이티브 앱에서 앱 잠금을 켰을 때만 그려진다. */}
           <AppLockOverlay />
+          {/* 로그인 직후 한 번, 생체 인증 로그인을 켤지 묻는다 (네이티브 앱). */}
+          <BiometricLoginOffer />
         </AuthGate>
       </HydrationGate>
     </>

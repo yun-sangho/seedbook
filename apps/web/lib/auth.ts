@@ -1,5 +1,6 @@
 import { db, schema } from "@seedbook/database";
 import { createAppleClientSecret, readAppleConfig } from "@web/lib/apple-auth";
+import { deviceCredentialPlugin } from "@web/server/device-credentials/device-credential-plugin";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
@@ -48,6 +49,8 @@ export const auth = betterAuth({
         }
       : {}),
   },
+  // 네이티브 앱 생체 인증 로그인 (`server/device-credentials/`).
+  plugins: [deviceCredentialPlugin({ db })],
   // Apple 은 콜백을 appleid.apple.com 에서 form_post 로 보낸다.
   ...(appleConfig ? { trustedOrigins: ["https://appleid.apple.com"] } : {}),
 });

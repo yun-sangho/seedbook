@@ -1,12 +1,17 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { AppleSignInButton } from "@web/components/apple-sign-in-button";
+import {
+  BiometricSignInButton,
+  sessionStorageOrNull,
+} from "@web/components/biometric-sign-in-button";
 import { EntitySyncRunner } from "@web/components/entity-sync-runner";
 import { PreferencesSync } from "@web/components/preferences-sync";
 import { StorageModeSync } from "@web/components/storage-mode-sync";
 import { Button } from "@web/components/ui/button";
 import { authClient, useSession } from "@web/lib/auth-client";
+import { clearSignedOutMark } from "@web/lib/native/biometric-login";
 import { LogIn } from "lucide-react";
 
 // Next.js 가 빌드 타임에 치환하므로 클라이언트 번들에서도 사용 가능.
@@ -33,6 +38,14 @@ async function signInWithDevBypass(callbackURL: string) {
 export function AuthGate({ children }: { children: ReactNode }) {
   const { data: session, isPending } = useSession();
   const callbackURL = CALLBACK_URL;
+  const signedIn = Boolean(session?.user);
+
+  // 다시 로그인했으면 "방금 로그아웃함" 표시를 지워, 다음에 로그인 화면이 뜰 때 생체 인증
+  // 프롬프트를 자동으로 띄운다 (`BiometricSignInButton`).
+  useEffect(() => {
+    const storage = signedIn ? sessionStorageOrNull() : null;
+    if (storage) clearSignedOutMark(storage);
+  }, [signedIn]);
 
   if (isPending) {
     // better-auth 세션 조회 중에는 공백만 띄운다 (HydrationGate 가 이미 로딩 UI
@@ -60,6 +73,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
           <p className="text-sm text-muted-foreground">서비스를 이용하려면 로그인해 주세요.</p>
         </div>
         <div className="flex flex-col gap-2 w-full">
+          {/* 네이티브 앱에서 생체 인증 로그인을 켜 둔 기기에서만 보인다. */}
+          <BiometricSignInButton callbackURL={callbackURL} />
           <Button
             onClick={() =>
               authClient.signIn.social({
