@@ -35,6 +35,9 @@ importers:
       '@capgo/capacitor-native-biometric':
         specifier: 8.9.1
         version: 8.9.1(@capacitor/core@8.6.0)
+      '@seedbook/native-plugins':
+        specifier: workspace:*
+        version: link:../../packages/native-plugins
     devDependencies:
       '@capacitor/cli':
         specifier: 8.6.0
@@ -255,6 +258,8 @@ importers:
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+
+  packages/native-plugins: {}
 
   packages/tailwind-config:
     devDependencies:

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- IconDot3HorizontalFill (@karrotmarket/react-monochrome-icon, Apache-2.0) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M 4.15 10.151 C 3.128 10.151 2.3 10.979 2.3 12.001 C 2.3 13.023 3.128 13.851 4.15 13.851 C 5.172 13.851 6 13.023 6 12.001 C 6 10.979 5.172 10.151 4.15 10.151 Z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M 12 10.151 C 10.978 10.151 10.15 10.979 10.15 12.001 C 10.15 13.023 10.978 13.851 12 13.851 C 13.022 13.851 13.85 13.023 13.85 12.001 C 13.85 10.979 13.022 10.151 12 10.151 Z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M 19.85 10.15 C 18.829 10.15 18 10.979 18 12 C 18 13.022 18.829 13.85 19.85 13.85 C 20.872 13.85 21.7 13.022 21.7 12 C 21.7 10.979 20.872 10.15 19.85 10.15 Z" />
+</vector>

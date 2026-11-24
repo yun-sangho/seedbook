@@ -1,25 +1,15 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
-import {
-  IconArrowUpArrowDownFill,
-  IconArrowUpArrowDownLine,
-  IconBarchartSquareFill,
-  IconBarchartSquareLine,
-  IconDot3HorizontalLine,
-  IconHouseFill,
-  IconHouseLine,
-  IconLinechartUpXaxisFill,
-  IconLinechartUpXaxisLine,
-} from "@karrotmarket/react-monochrome-icon";
-import { Icon, VStack } from "@seed-design/react";
+import { VStack } from "@seed-design/react";
 import { AppBar as SeedAppBar } from "@seed-design/stackflow";
 import { useActivity } from "@stackflow/react";
+import { AppTabBar, TAB_BAR_CONTENT_INSET } from "@web/components/mobile/app-tab-bar";
 import { HeaderActionSlotContext } from "@web/components/mobile/header-action";
 import { MobileMoreSheet } from "@web/components/mobile/mobile-more-sheet";
 import { ProfileButton, ProfileSheet } from "@web/components/mobile/profile-menu";
 import { usePwaInstall } from "@web/hooks/use-pwa-install";
-import { cn } from "@web/lib/utils";
+import type { TabBarItem } from "@web/lib/native/tab-bar";
 import {
   AppBar,
   AppBarBackButton,
@@ -31,37 +21,21 @@ import { AppScreen, AppScreenContent } from "@web/seed-design/ui/app-screen";
 import type { TabActivityName } from "./stackflow";
 import { useSwitchTab } from "./use-switch-tab";
 
-const TAB_BAR_HEIGHT = "56px";
+const TABS: (TabBarItem & { key: TabActivityName })[] = [
+  { key: "HomeTab", label: "홈", icon: "house" },
+  { key: "AccountsTab", label: "계좌", icon: "linechart" },
+  { key: "RebalancingTab", label: "리밸런싱", icon: "arrows" },
+  { key: "PortfolioTab", label: "포트폴리오", icon: "barchart" },
+];
 
-const TABS: {
-  name: TabActivityName;
-  label: string;
-  icon: ReactNode;
-  activeIcon: ReactNode;
-}[] = [
-  { name: "HomeTab", label: "홈", icon: <IconHouseLine />, activeIcon: <IconHouseFill /> },
-  {
-    name: "AccountsTab",
-    label: "계좌",
-    icon: <IconLinechartUpXaxisLine />,
-    activeIcon: <IconLinechartUpXaxisFill />,
-  },
-  {
-    name: "RebalancingTab",
-    label: "리밸런싱",
-    icon: <IconArrowUpArrowDownLine />,
-    activeIcon: <IconArrowUpArrowDownFill />,
-  },
-  {
-    name: "PortfolioTab",
-    label: "포트폴리오",
-    icon: <IconBarchartSquareLine />,
-    activeIcon: <IconBarchartSquareFill />,
-  },
+/** 탭 4개 + 더보기 (화면이 아니라 시트를 연다). */
+const TAB_BAR_ITEMS: TabBarItem[] = [
+  ...TABS,
+  { key: "more", label: "더보기", icon: "more", action: true },
 ];
 
 export function tabLabel(name: TabActivityName): string {
-  return TABS.find((t) => t.name === name)?.label ?? "Seedbook";
+  return TABS.find((tab) => tab.key === name)?.label ?? "Seedbook";
 }
 
 /**
@@ -69,7 +43,8 @@ export function tabLabel(name: TabActivityName): string {
  * 다른 화면에서 push 된 경우(예: 리밸런싱 상세 → 포트폴리오)는 일반 상세처럼 뒤로가기를 단다.
  */
 export function TabScreen({ name, children }: { name: TabActivityName; children: ReactNode }) {
-  const { isRoot } = useActivity();
+  const { isRoot, isTop } = useActivity();
+  const switchTab = useSwitchTab();
   const [profileOpen, setProfileOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const { mode: installMode, install, isIOS, isNativeApp } = usePwaInstall();
@@ -88,10 +63,8 @@ export function TabScreen({ name, children }: { name: TabActivityName; children:
       <AppScreenContent>
         <div
           style={{
-            // 하단 탭바 + 홈 인디케이터만큼 여백.
-            paddingBottom: isRoot
-              ? `calc(${TAB_BAR_HEIGHT} + var(--seed-safe-area-bottom))`
-              : "var(--seed-safe-area-bottom)",
+            // 하단 탭바(홈 인디케이터 포함)만큼 여백.
+            paddingBottom: isRoot ? TAB_BAR_CONTENT_INSET : "var(--seed-safe-area-bottom)",
           }}
         >
           {children}
@@ -99,7 +72,16 @@ export function TabScreen({ name, children }: { name: TabActivityName; children:
       </AppScreenContent>
       {isRoot && (
         <>
-          <BottomTabBar current={name} onMore={() => setMoreOpen(true)} />
+          <AppTabBar
+            items={TAB_BAR_ITEMS}
+            current={name}
+            active={isTop}
+            onSelect={(key) => {
+              const tab = TABS.find((t) => t.key === key);
+              if (tab) switchTab(tab.key);
+              else setMoreOpen(true);
+            }}
+          />
           <ProfileSheet open={profileOpen} onOpenChange={setProfileOpen} />
           <MobileMoreSheet
             open={moreOpen}
@@ -112,52 +94,6 @@ export function TabScreen({ name, children }: { name: TabActivityName; children:
         </>
       )}
     </AppScreen>
-  );
-}
-
-function BottomTabBar({ current, onMore }: { current: TabActivityName; onMore: () => void }) {
-  const switchTab = useSwitchTab();
-  return (
-    <nav
-      aria-label="주 메뉴"
-      className="bg-bg-layer-default border-stroke-neutral-subtle absolute inset-x-0 bottom-0 border-t"
-      // 앱 스크린의 콘텐츠 레이어보다 위 (AppBar 와 같은 층).
-      style={{ paddingBottom: "var(--seed-safe-area-bottom)", zIndex: "var(--z-index-app-bar)" }}
-    >
-      <ul className="flex" style={{ height: TAB_BAR_HEIGHT }}>
-        {TABS.map((tab) => {
-          const active = tab.name === current;
-          return (
-            <li key={tab.name} className="flex-1">
-              <button
-                type="button"
-                aria-current={active ? "page" : undefined}
-                onClick={() => {
-                  if (!active) switchTab(tab.name);
-                }}
-                className={cn(
-                  "t2-medium flex h-full w-full flex-col items-center justify-center gap-x1",
-                  active ? "text-fg-neutral" : "text-fg-neutral-subtle"
-                )}
-              >
-                <Icon svg={active ? tab.activeIcon : tab.icon} size="x6" />
-                {tab.label}
-              </button>
-            </li>
-          );
-        })}
-        <li className="flex-1">
-          <button
-            type="button"
-            onClick={onMore}
-            className="t2-medium text-fg-neutral-subtle flex h-full w-full flex-col items-center justify-center gap-x1"
-          >
-            <Icon svg={<IconDot3HorizontalLine />} size="x6" />
-            더보기
-          </button>
-        </li>
-      </ul>
-    </nav>
   );
 }
 

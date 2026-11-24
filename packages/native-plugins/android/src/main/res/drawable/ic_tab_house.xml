@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- IconHouseFill (@karrotmarket/react-monochrome-icon, Apache-2.0) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:fillType="evenOdd"
+        android:pathData="M 13.509 2.188 C 12.585 1.614 11.415 1.614 10.491 2.188 L 2.791 6.971 C 1.951 7.493 1.439 8.412 1.439 9.401 V 19.5 C 1.439 21.19 2.81 22.56 4.5 22.56 H 8.172 C 8.758 22.56 9.233 22.085 9.233 21.5 V 16.653 C 9.233 15.132 10.462 13.883 12.005 13.868 C 13.521 13.87 14.768 15.112 14.768 16.653 V 21.5 C 14.768 22.085 15.242 22.56 15.828 22.56 H 19.5 C 21.191 22.56 22.561 21.19 22.561 19.5 V 9.401 C 22.561 8.412 22.05 7.493 21.209 6.971 L 13.509 2.188 Z" />
+</vector>
