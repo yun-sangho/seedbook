@@ -2,14 +2,15 @@ import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { Article, Text } from "@seed-design/react";
 import { COMPANY } from "@web/lib/company";
+import { effectiveDateLabel } from "@web/lib/legal-documents";
 import { SiteHeader } from "../_components/site-header";
 
 export const metadata: Metadata = {
   title: "개인정보처리방침 - Seedbook",
 };
 
-/** 시행일. 내용을 바꾸면 함께 갱신한다. */
-const EFFECTIVE_DATE = "2026년 11월 25일";
+/** 시행일. 내용을 바꾸면 `lib/legal-documents.ts` 의 버전을 함께 갱신한다. */
+const EFFECTIVE_DATE = effectiveDateLabel("privacy");
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -52,6 +53,7 @@ export default function PrivacyPage() {
                   이용자가 직접 입력한 정보: 투자 계좌 이름·종류, 보유 종목과 수량·금액, 포트폴리오
                   목표 비중, 리밸런싱 기록, 서비스 설정
                 </li>
+                <li>약관 동의 기록: 동의한 문서, 버전, 동의 시각</li>
                 <li>
                   서비스 이용 과정에서 자동 생성되는 정보: 로그인 세션, 접속 IP 주소, 브라우저·기기
                   정보(User-Agent)

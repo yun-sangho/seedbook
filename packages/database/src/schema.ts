@@ -187,6 +187,24 @@ export const deviceCredential = seedbook.table(
   (t) => [index("device_credential_userId_idx").on(t.userId)]
 );
 
+/**
+ * 약관·개인정보 동의 기록. 문서의 버전마다 한 행이라 개정 뒤 다시 동의해도 이전 기록이 남는다.
+ * 현재 버전은 `apps/web/lib/legal-documents.ts`. IP·기기 정보는 두지 않는다.
+ */
+export const userConsent = seedbook.table(
+  "user_consent",
+  {
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    // "terms" | "privacy"
+    document: text("document").notNull(),
+    version: text("version").notNull(),
+    agreedAt: timestamp("agreedAt", { precision: 3, mode: "date" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.document, t.version], name: "user_consent_pkey" })]
+);
+
 // ─── Investments ────────────────────────────────────────────────────────────
 
 export const investmentAccount = seedbook.table(

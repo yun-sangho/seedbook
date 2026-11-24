@@ -5,6 +5,7 @@ import { Icon } from "@seed-design/react";
 import { AppleSignInActionButton } from "@web/components/apple-sign-in-action-button";
 import { BiometricSignInButton } from "@web/components/biometric-sign-in-button";
 import { useSocialSignIn } from "@web/hooks/use-social-sign-in";
+import { LEGAL_DOCUMENTS } from "@web/lib/legal-documents";
 import {
   LOGIN_ERROR_PARAM,
   LOGIN_FAILED_MESSAGE,
@@ -103,12 +104,13 @@ export function LoginScreen() {
         </div>
       </div>
 
-      <a
-        href="/privacy"
-        className="t3-regular text-fg-neutral-subtle self-center underline underline-offset-4"
-      >
-        개인정보처리방침
-      </a>
+      <div className="t3-regular text-fg-neutral-subtle flex justify-center gap-x4">
+        {LEGAL_DOCUMENTS.map(({ id, title, href }) => (
+          <a key={id} href={href} className="underline underline-offset-4">
+            {title}
+          </a>
+        ))}
+      </div>
     </main>
   );
 }

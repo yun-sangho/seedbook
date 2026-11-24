@@ -2,6 +2,7 @@
 
 import { type ReactNode, useEffect, useState } from "react";
 import { sessionStorageOrNull } from "@web/components/biometric-sign-in-button";
+import { ConsentGate } from "@web/components/consent-gate";
 import { EntitySyncRunner } from "@web/components/entity-sync-runner";
 import { LoginScreen } from "@web/components/login-screen";
 import { PreferencesSync } from "@web/components/preferences-sync";
@@ -50,12 +51,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   if (session?.user) {
     return (
-      <>
+      <ConsentGate key={session.user.id}>
         <StorageModeSync />
         <PreferencesSync />
         <EntitySyncRunner />
         {children}
-      </>
+      </ConsentGate>
     );
   }
 
