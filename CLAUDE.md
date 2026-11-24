@@ -27,9 +27,24 @@ Requires Node >= 24 (LTS, `.nvmrc`), pnpm 8.
 
 Web 은 **호스트에서** `pnpm dev` 로 직접 띄운다 (Next.js + turbopack, port 3001). Docker 안에서는 `postgres` + `stock-crawler` 만 띄운다 — Docker for Mac (VirtioFS) 의 bind mount fs-event 전파 이슈로 컨테이너 내부 turbopack HMR 이 변경을 자주 놓치기 때문.
 
-- 호스트 `pnpm dev` → `localhost:3001` 에서 서비스
+- 호스트 `pnpm dev` → `localhost:3001` 에서 서비스 (링크된 워크트리는 아래 슬롯 포트)
 - 컨테이너 postgres → `127.0.0.1:5432` 노출, 호스트 dev 가 그대로 접속
-- DB 접근: `docker compose -f docker-compose.dev.yml exec postgres psql -U seedbook`
+- DB 접근: `docker compose -f docker-compose.dev.yml exec postgres psql -U seedbook` (슬롯 DB 는 `-d seedbook_sN`)
+
+**워크트리 슬롯** — 여러 워크트리에서 동시에 개발할 수 있게 dev 서버 포트와 DB 를 슬롯 번호 N 으로 나눈다 (`scripts/worktree.mjs`, 순수 로직·테스트는 `scripts/worktree-lib.mjs` · `apps/web/test/worktree/`).
+
+|                                | web      | DB (dev / test:db)                         |
+| ------------------------------ | -------- | ------------------------------------------ |
+| 슬롯 0 (메인 체크아웃)         | 3001     | `seedbook` / `seedbook_test` (기존 그대로) |
+| 슬롯 N (링크된 워크트리, 1..9) | 4001+10N | `seedbook_sN` / `seedbook_sN_test`         |
+
+- 슬롯 N 의 web 포트는 4000번대(4011..4091)다. 3000번대는 다른 개발 서비스(teum 의 3000+10N·3001+10N·3002+10N)와 겹친다. 슬롯 0 은 카카오 Redirect URI 때문에 3001 그대로.
+- 슬롯 DB 는 같은 dev postgres 컨테이너 안의 DB 다. 컨테이너·compose 프로젝트를 슬롯마다 따로 띄우지 않고, stock-crawler 는 메인 DB 에만 붙는다 (슬롯 DB 의 종목·가격은 시드 fixture 그대로).
+- `pnpm dev`, `pnpm --filter @seedbook/web test:db`, `pnpm db:seed:reset` 이 슬롯을 따른다. 링크된 워크트리에서 처음 실행하면 **빈 슬롯을 자동 배정**(다른 워크트리가 쓰는 슬롯과 web 포트가 이미 쓰이는 슬롯은 건너뜀)해 워크트리 루트의 `.worktree-slot` (gitignore) 에 `SEEDBOOK_SLOT=N` 을 쓰고, 메인 체크아웃의 로컬 환경 파일(루트·`apps/*`·`packages/*` 의 `.env.local` 등, 심링크는 심링크로)이 없으면 복사한다.
+- 슬롯 N 에는 `PORT`, `DATABASE_URL` (`127.0.0.1:5432/seedbook_sN`), `TEST_DATABASE_URL` (`…/seedbook_sN_test`), `BETTER_AUTH_URL=http://localhost:<port>` 를 넣는다. 이미 설정된 환경변수는 덮어쓰지 않는다.
+- `pnpm dev` 는 시작할 때 슬롯 DB 를 준비한다: postgres 가 안 떠 있으면 `pnpm db:dev:up` 과 같은 명령으로 띄우고, DB 가 없으면 만들고, drizzle 마이그레이션을 적용하고(매번), 종목이 비어 있으면 `db:seed` (fixture + dev 사용자 시나리오) 를 돌린다. `db:seed:reset` 은 슬롯 N 에서는 호스트 tsx 로 슬롯 DB 만 리셋한다 (슬롯 0 은 기존처럼 crawler 컨테이너에서).
+- `pnpm wt:info` (슬롯·URL·DB, 없으면 배정) / `pnpm wt:down` (이 워크트리의 dev 서버 종료 + 슬롯 DB 2개 drop + 슬롯 반납, 워크트리를 지우기 전에) / `pnpm wt:gc [--dry-run]` (살아 있는 워크트리가 쥐지 않은 `seedbook_s*` DB 와, 없어진 워크트리 경로(`~/.herdr/worktrees/seedbook/*`)를 cwd 로 쥔 node 프로세스를 정리. 슬롯 0·메인 체크아웃·살아 있는 워크트리는 건드리지 않는다. 메인 세션이 `hwt rm` 뒤 메인 체크아웃에서 돌린다). 새 슬롯을 배정할 때도 주인 없는 슬롯 DB 를 먼저 치운다.
+- **슬롯 N 에서 로그인**: 카카오 OAuth Redirect URI 는 `:3001` 만 등록돼 있어 카카오 로그인이 안 된다. 로그인 화면의 "개발용 빠른 로그인 (카카오 우회)" (`/api/auth/dev-login`, dev 사용자) 로 QA 한다. localhost 쿠키는 포트를 가리지 않으므로 데스크탑 브라우저에서 `/m` 을 보려면 `seedbook.view=mobile` 쿠키를 둔다. 새 포트는 새 origin 이라 저장 위치가 local 로 시작한다 — 시드 시나리오를 보려면 설정에서 "클라우드에 저장" 을 고른다.
 
 ### DB seed (capture/replay)
 
@@ -85,21 +100,44 @@ dev 사용자(`dev-user-v1`)의 계좌·포트폴리오는 **테스트 시나리
 
 Vitest with jsdom and globals. Tests live alongside source as `*.test.ts`. Focus on calculation correctness (valuation, rebalancing gaps, sync state transitions) and edge cases (empty holdings, missing prices, cash-only accounts).
 
-DB integration tests (`*.db.test.ts`, e.g. storage translators) run against real Postgres via `test:db` (`vitest.db.config.ts`), and are excluded from the default `test` run. They use a separate `seedbook_test` database on the local dev postgres (override with `TEST_DATABASE_URL`; the name must end in `_test`). Global setup applies the drizzle migrations; each test creates its own user via `openTestDb().createTestUser()` and rows are cleaned up by cascade.
+DB integration tests (`*.db.test.ts`, e.g. storage translators) run against real Postgres via `test:db` (`vitest.db.config.ts`), and are excluded from the default `test` run. They use a separate `seedbook_test` database on the local dev postgres — `seedbook_sN_test` in a linked worktree (slot N, see "워크트리 슬롯") — (override with `TEST_DATABASE_URL`; the name must end in `_test`). Global setup applies the drizzle migrations; each test creates its own user via `openTestDb().createTestUser()` and rows are cleaned up by cascade.
 
 ### QA (구현 완료 후 필수)
 
-구현이 끝나면 테스트 통과와 별개로 **ego-lite 브라우저(`ego-browser` 스킬)로 로컬 환경에서 직접 QA 한다.** 호스트에서 `pnpm dev` (+ 필요하면 `pnpm db:dev:up` / `pnpm docker:dev`) 로 띄운 `localhost:3001` 에 접속해 바뀐 화면·흐름을 실제로 조작하고 결과를 확인한다. 모바일 화면(`/m/...`)을 바꿨다면 모바일 뷰포트로 확인한다. QA 하지 못했다면 (로그인 불가, 데이터 없음 등) 그 사실과 이유를 명시한다.
+구현이 끝나면 테스트 통과와 별개로 **ego-lite 브라우저(`ego-browser` 스킬)로 로컬 환경에서 직접 QA 한다.** 호스트에서 `pnpm dev` (+ 필요하면 `pnpm db:dev:up` / `pnpm docker:dev`) 로 띄운 자기 슬롯 포트(`pnpm wt:info`, 메인 체크아웃은 `localhost:3001`)에 접속해 바뀐 화면·흐름을 실제로 조작하고 결과를 확인한다. 모바일 화면(`/m/...`)을 바꿨다면 모바일 뷰포트로 확인한다. 링크된 워크트리에서는 카카오 로그인이 안 되니 "개발용 빠른 로그인" 으로 들어간다 (위 "워크트리 슬롯" 참조). QA 하지 못했다면 (로그인 불가, 데이터 없음 등) 그 사실과 이유를 명시한다.
 
 ## Git workflow (작업 완료 후 커밋·PR)
 
-사용자는 Herdr 모바일 앱으로 원격 지시하는 경우가 많다. 확인 질문 없이 끝까지 진행한다.
+사용자는 Herdr 모바일 앱으로 원격 지시하는 경우가 많다. 확인 질문 없이 끝까지 진행한다. 다만 그 작업 안에서만 필요한 결정(구현 방식·문구·테스트 범위)이 막히면 짐작하지 말고 자기 화면에서 사용자에게 직접 묻는다 (아래 "작업 방식").
 
 - 작업이 끝나면 (테스트·lint·타입 통과, 필요한 QA 완료) **묻지 않고 커밋한다.** 하나의 논리적 변경 = 한 커밋. 메시지는 기존 형식 (`feat(web): ...`, `fix(...)`, `chore: ...`, `test(...)`, 영어 명령형) 을 따른다.
 - `main` 에서 작업 중이면 커밋 전에 브랜치를 만든다 (`feat/…`, `fix/…`, `chore/…`).
 - 커밋 후 브랜치를 `origin` 에 push 하고 `gh pr create` 로 PR 을 연다. PR 본문에 변경 요약, 테스트 결과, QA 여부(못 했으면 이유)를 적는다.
-- **`main` 에 직접 push, force push, PR 머지는 하지 않는다** — `main` push 는 곧 프로덕션 배포다. 머지는 사용자가 한다.
+- 작업 세션은 CI 가 통과하면 `hwt mq add --pr <n> "요약"` 으로 머지를 요청하고 머지될 때까지 기다린다. **머지는 메인 세션이 머지 큐에서 한다** (`.hwt.json` 의 `mergeApproval` 에 걸리면 사용자 승인 뒤). 작업 세션은 PR 을 머지하지 않는다.
+- **`main` 에 직접 push, force push 는 하지 않는다** — `main` push 는 곧 프로덕션 배포다.
 - 커밋하지 않을 때: 작업이 실패했거나 미완성일 때, 사용자가 "커밋하지 마" 라고 했을 때. 이 경우 그 이유를 보고한다.
+
+## 작업 방식: 메인 세션이 워크트리를 나눠 맡긴다
+
+여러 에이전트 세션이 동시에 돈다. 공통 규칙(메인 세션·작업 세션 역할, 장부·편지함 `hwt tell`·`hwt note`, 태스크, 머지 큐 `hwt mq`)은 **`hwt` 스킬의 "메인 세션 작업 방식"** 을 따른다 (Claude Code 는 스킬을 먼저 로드, 명령은 PATH 의 `hwt`). 아래는 seedbook 전용 내용만 둔다. 설정은 루트 `.hwt.json` (`mainSession`, `setup: pnpm install`, `mergeApproval`).
+
+- **메인 세션**: 메인 체크아웃의 에이전트. 메인 체크아웃 파일을 직접 고치지 않고, 태스크를 판단해 워크트리 + 작업 세션에 맡기고, 머지·배포 확인·정리를 한다.
+- **작업 세션**: 자기 워크트리 안에서만 일한다. 메인 체크아웃·다른 워크트리를 고치지 않고, 워크트리를 만들거나 지우지 않고, 머지하지 않는다. 메인에게는 `hwt tell "[…] …"` 로만 보낸다.
+- **작업 목록은 hwt 장부(`hwt task`)뿐이다.** 레포 안에 작업 목록 문서(tasks.md 등)를 두지 않는다. 남은 작업은 `hwt task ls --all` · `hwt status` 로 본다.
+
+**워크트리는 `hwt` 로만** 만들고 지운다. 위치는 `~/.herdr/worktrees/seedbook/<브랜치>` (Herdr 앱의 New worktree 와 같은 규칙). `EnterWorktree` · `.claude/worktrees/` · 직접 `git worktree add` 는 쓰지 않는다. `hwt new` · `hwt rm` 은 메인 체크아웃에서만 돈다 — 작업 워크트리에서 부르면 거부되는데 정상이다. 워크트리가 더 필요하면 작업 세션은 `hwt tell "[워크트리 요청] …"`. 새 워크트리의 dev 포트·DB 는 위 "워크트리 슬롯" 이 알아서 나눈다.
+
+- **태스크 판단** (seedbook 기준, `hwt task decide`): 아래면 `now` 대신 `after:<브랜치>`
+  - 둘 다 DB 스키마(`packages/database/src`)·마이그레이션을 바꿈 — drizzle 마이그레이션 번호·스냅샷이 겹친다
+  - 둘 다 `apps/web/lib/sync` · `apps/web/server/sync` 를 고침
+  - 같은 `/m` 화면 흐름을 고침
+  - 둘 다 `CLAUDE.md` · `.claude/rules` 를 고침
+- **작업 세션 완료 조건**: 테스트·lint·타입 통과 + QA (자기 슬롯 포트, 개발용 빠른 로그인) → 커밋·push → PR → CI 통과 → `hwt mq add --pr <n> "요약"` → 머지될 때까지 살아서 기다린다. 직접 머지하지 않는다. `returned` (리베이스 요청)·`failed` (배포 실패) 가 오면 같은 워크트리에서 고친다.
+- **머지·배포 확인** (메인 세션, 머지 큐): `mergeApproval` (스키마·마이그레이션·DB 스크립트, 동기화·저장소 병합, 앱 SQLite, 리밸런싱 계산, 인증, 배포·인프라, 워크트리 슬롯 스크립트, 공용 규칙 문서, 400줄 초과) 에 걸리면 사용자 승인 뒤 머지한다.
+  1. `gh pr merge <n> --squash`
+  2. `verifying`: 머지 커밋의 "Build & Deploy" run 을 찾아 끝까지 본다 — `gh run list --workflow deploy.yml --commit <sha>` → `gh run watch <id> --exit-status`. 성공하면 `curl -sS -o /dev/null -w '%{http_code}' https://seedbook.boogie.ing` 가 200 인지 확인한다. 빌드 대상이 없는 변경(문서 등, 위 "배포 흐름")도 run 성공만 확인한다.
+  3. 실패하면 `failed` 로 두고 `gh run view <id> --log-failed` 를 작업 세션에 넘긴다 (`hwt send`). 작업 세션이 같은 워크트리에서 고침 PR 을 올려 다시 `mq add`.
+- **정리** (메인 세션, 배포 확인 통과 뒤): 그 워크트리 `git status` 가 깨끗하고 커밋이 머지됐는지, 다른 에이전트 터미널이 일하고 있지 않은지 확인한 뒤 `hwt rm <브랜치> -D --kill-agents` + `git push origin --delete <브랜치>` + 메인 체크아웃에서 `pnpm wt:gc` (지운 워크트리의 슬롯 DB·dev 서버 프로세스 정리). 커밋 안 한 변경을 버리는 `-f` 는 사용자가 허락했을 때만.
 
 ## Conventions
 
@@ -140,7 +178,7 @@ DB 마이그레이션은 stock-crawler 이미지 entrypoint (`apps/stock-crawler
 - 데이터 backfill / 정리 같은 데이터 변경은 마이그레이션에 넣지 않는다. `packages/database/scripts/` 에 멱등 스크립트로 만들고 `package.json` 에 `db:backfill:*` 스크립트로 등록한다 (예: `db:backfill:account-portfolio`). 배포 후 `docker compose exec stock-crawler pnpm --filter @seedbook/database db:backfill:<name>` 로 실행.
 - 생성 결과가 의도와 다르면 파일을 고치지 말고 `schema.ts` 를 고친 뒤, 아직 배포 전인 해당 마이그레이션(sql + snapshot + journal entry)을 지우고 다시 생성한다.
 
-Local dev: `pnpm docker:dev` 로 인프라(postgres + stock-crawler) 를 띄우고, 별도 터미널에서 `pnpm dev` 로 web 을 호스트에서 실행한다. DB 만 필요하면 `pnpm db:dev:up`. 워크트리별 자동 격리 지원 (위 "Dev topology" 참조).
+Local dev: `pnpm docker:dev` 로 인프라(postgres + stock-crawler) 를 띄우고, 별도 터미널에서 `pnpm dev` 로 web 을 호스트에서 실행한다. DB 만 필요하면 `pnpm db:dev:up`. 링크된 워크트리에서는 `pnpm dev` 가 슬롯 포트(4001+10N)와 슬롯 DB(`seedbook_sN`, 없으면 만들고 시드)로 뜬다 (위 "Dev topology" 의 "워크트리 슬롯" 참조).
 
 ## Shell Command Rules
 
