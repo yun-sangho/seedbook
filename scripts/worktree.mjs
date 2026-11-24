@@ -457,7 +457,7 @@ async function info() {
   if (slot !== 0) {
     console.log(
       hasKakaoRedirect(slot)
-        ? `  로그인    카카오 Redirect URI 가 :${port} 로 등록돼 있다 (로그인은 미확인). 안 되면 로그인 화면의 "개발용 빠른 로그인 (카카오 우회)" (dev-login) 을 쓴다`
+        ? `  로그인    카카오 로그인 (Redirect URI :${port} 등록됨) 또는 로그인 화면의 "개발용 빠른 로그인 (카카오 우회)" (dev-login)`
         : `  로그인    카카오 Redirect URI 에 :${port} 가 없어 로그인 화면의 "개발용 빠른 로그인 (카카오 우회)" (dev-login) 을 쓴다`
     );
   }
