@@ -6,7 +6,7 @@ import { AppleSignInActionButton } from "@web/components/apple-sign-in-action-bu
 import { authClient, useSession } from "@web/lib/auth-client";
 import { ActionButton, type ActionButtonProps } from "@web/seed-design/ui/action-button";
 
-/** 놓이는 자리별 모양. 강조 버튼은 본문에만 두고 헤더는 약하게 둔다 (`/m` 과 같은 neutral 계열). */
+/** 놓이는 자리별 로그인 버튼 모양. 로그인 뒤의 "내 자산 보기" 는 어디서나 brand 로 강조한다. */
 const PLACEMENT_PROPS = {
   header: { variant: "neutralWeak", size: "small" },
   hero: { variant: "neutralSolid", size: "large" },
@@ -27,7 +27,7 @@ export function LandingCta({ placement }: { placement: keyof typeof PLACEMENT_PR
 
   if (session?.user) {
     return (
-      <ActionButton {...buttonProps} asChild>
+      <ActionButton {...buttonProps} variant="brandSolid" asChild>
         <a href="/assets">
           내 자산 보기
           <SuffixIcon svg={<IconArrowRightLine />} />
@@ -37,7 +37,7 @@ export function LandingCta({ placement }: { placement: keyof typeof PLACEMENT_PR
   }
 
   return (
-    <div className="flex flex-col justify-center gap-x2 sm:flex-row">
+    <div className="flex flex-col gap-x2 sm:flex-row">
       <ActionButton
         {...buttonProps}
         onClick={() =>

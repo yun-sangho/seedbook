@@ -5,7 +5,7 @@ import { Sprout } from "lucide-react";
 export function SiteBrand() {
   return (
     <HStack gap="x2" align="center">
-      <Icon svg={<Sprout aria-hidden />} size="x5" color="fg.informative" />
+      <Icon svg={<Sprout aria-hidden />} size="x5" color="fg.brand" />
       <Text textStyle="t5Bold">Seedbook</Text>
     </HStack>
   );

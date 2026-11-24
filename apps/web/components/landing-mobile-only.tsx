@@ -12,7 +12,7 @@ import { Callout } from "@web/seed-design/ui/callout";
  */
 export function LandingMobileOnly({ host }: { host: string }) {
   return (
-    <VStack align="center" gap="x3">
+    <VStack align="flex-start" gap="x3">
       <Callout
         tone="neutral"
         prefixIcon={<IconMobileLine />}
@@ -23,9 +23,8 @@ export function LandingMobileOnly({ host }: { host: string }) {
         }
       />
       <ActionButton
-        variant="ghost"
-        size="small"
-        color="fg.neutralMuted"
+        variant="brandSolid"
+        size="large"
         onClick={() => {
           setViewOverride("mobile");
           window.location.href = "/assets";
