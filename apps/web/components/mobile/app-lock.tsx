@@ -68,6 +68,7 @@ export function AppLockOverlay() {
       role="dialog"
       aria-modal="true"
       aria-label="앱 잠금"
+      data-covers-tab-bar=""
       className="bg-bg-layer-default fixed inset-0 z-[1000] flex flex-col items-center justify-center gap-x4 p-x6 text-center"
     >
       <Icon svg={<IconLockLine />} size="x10" />

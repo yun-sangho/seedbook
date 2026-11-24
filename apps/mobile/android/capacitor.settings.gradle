@@ -7,3 +7,6 @@ project(':capacitor-community-sqlite').projectDir = new File('../../../node_modu
 
 include ':capgo-capacitor-native-biometric'
 project(':capgo-capacitor-native-biometric').projectDir = new File('../../../node_modules/.pnpm/@capgo+capacitor-native-biometric@8.9.1_@capacitor+core@8.6.0/node_modules/@capgo/capacitor-native-biometric/android')
+
+include ':seedbook-native-plugins'
+project(':seedbook-native-plugins').projectDir = new File('../../../packages/native-plugins/android')

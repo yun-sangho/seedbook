@@ -14,7 +14,8 @@
     "@capacitor/android": "8.6.0",
     "@capacitor/core": "8.6.0",
     "@capacitor/ios": "8.6.0",
-    "@capgo/capacitor-native-biometric": "8.9.1"
+    "@capgo/capacitor-native-biometric": "8.9.1",
+    "@seedbook/native-plugins": "workspace:*"
   },
   "devDependencies": {
     "@capacitor/cli": "8.6.0"
