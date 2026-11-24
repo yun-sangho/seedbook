@@ -212,6 +212,7 @@ export default async function HomePage() {
             ))}
           </dl>
           <HStack>
+            <FooterLink href="/terms">이용약관</FooterLink>
             <FooterLink href="/privacy">개인정보처리방침</FooterLink>
           </HStack>
           <Text as="p" textStyle="t3Regular" color="fg.neutralSubtle">

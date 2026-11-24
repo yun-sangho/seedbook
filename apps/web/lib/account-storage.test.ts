@@ -59,6 +59,32 @@ afterEach(() => {
 });
 
 describe.each(["web", "native"] as const)("account storage (%s)", (platform) => {
+  it("leaves ownerless data for the next account when a new account declines", async () => {
+    const seed = await launch(null, platform);
+    await seed.device.writeEnvelope("investment-storage", envelope("예전 계좌"));
+    await seed.device.flush();
+
+    const declined = await launch("new-user", platform);
+    await declined.releaseAccountSlot();
+
+    const next = await launch("next-user", platform);
+    expect(nameIn(await next.accountStorage.readEnvelope("investment-storage"))).toBe("예전 계좌");
+  });
+
+  it("does not release another account's data when a new account declines", async () => {
+    const a = await launch("user-a", platform);
+    await a.accountStorage.writeEnvelope("investment-storage", envelope("A의 계좌"));
+    await a.device.flush();
+
+    const declined = await launch("new-user", platform);
+    await declined.releaseAccountSlot();
+
+    const next = await launch("next-user", platform);
+    expect(await next.accountStorage.readEnvelope("investment-storage")).toBeNull();
+    const back = await launch("user-a", platform);
+    expect(nameIn(await back.accountStorage.readEnvelope("investment-storage"))).toBe("A의 계좌");
+  });
+
   it("keeps every kind of account data apart and returns it to its owner", async () => {
     const a = await launch("user-a", platform);
     await a.accountStorage.writeEnvelope("investment-storage", envelope("A의 계좌"));
