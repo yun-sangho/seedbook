@@ -17,6 +17,7 @@ describe("buildBackup", () => {
         portfolios: [portfolio("p1", ["acc-1"], "2026-11-01T00:00:00.000Z")],
         rebalancingSessions: [session],
       },
+      "tag-a",
       new Date("2026-11-08T00:00:00.000Z")
     );
 
@@ -26,17 +27,21 @@ describe("buildBackup", () => {
       rebalancingSessions: [session],
       exportedAt: "2026-11-08T00:00:00.000Z",
       version: "2.0",
+      accountTag: "tag-a",
     });
   });
 });
 
 describe("parseBackup", () => {
   it("restores every section of a current backup", () => {
-    const backup = buildBackup({
-      investments: [investment],
-      portfolios: [portfolio("p1", ["acc-1"], "2026-11-01T00:00:00.000Z")],
-      rebalancingSessions: [session],
-    });
+    const backup = buildBackup(
+      {
+        investments: [investment],
+        portfolios: [portfolio("p1", ["acc-1"], "2026-11-01T00:00:00.000Z")],
+        rebalancingSessions: [session],
+      },
+      "tag-a"
+    );
 
     expect(parseBackup(backup)).toEqual({
       ok: true,
@@ -45,6 +50,7 @@ describe("parseBackup", () => {
         portfolios: [portfolio("p1", ["acc-1"], "2026-11-01T00:00:00.000Z")],
         rebalancingSessions: [session],
       },
+      accountTag: "tag-a",
     });
   });
 
@@ -56,7 +62,11 @@ describe("parseBackup", () => {
       version: "1.0",
     };
 
-    expect(parseBackup(old)).toEqual({ ok: true, data: { investments: [investment] } });
+    expect(parseBackup(old)).toEqual({
+      ok: true,
+      data: { investments: [investment] },
+      accountTag: null,
+    });
   });
 
   it("keeps each account in only one portfolio", () => {
@@ -86,7 +96,7 @@ describe("parseBackup", () => {
   it("ignores a section that is not a list", () => {
     const backup = { investments: "broken", exportedAt: "2026-11-08", version: "2.0" };
 
-    expect(parseBackup(backup)).toEqual({ ok: true, data: {} });
+    expect(parseBackup(backup)).toEqual({ ok: true, data: {}, accountTag: null });
   });
 });
 

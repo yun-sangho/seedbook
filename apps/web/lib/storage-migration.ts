@@ -2,7 +2,7 @@
 
 import { accountFetch, accountStorage } from "@web/lib/account-storage";
 import { CLOUD_STORE_KEYS, type CloudStoreKey } from "@web/lib/storage-mode";
-import { mergeEnvelopes, type PersistEnvelope } from "./storage-merge";
+import { itemIds, mergeEnvelopes, type PersistEnvelope } from "./storage-merge";
 import { clearEntitySyncState } from "./sync/managed-stores";
 
 /**
@@ -75,9 +75,17 @@ export async function downloadAllFromCloud(
   clearEntitySyncState();
 }
 
+/** 서버에 이 계정의 것으로 있는 항목(계좌·포트폴리오·리밸런싱)의 id. 저장소 모드와 상관없다. */
+export async function fetchCloudItemIds(): Promise<Set<string>> {
+  const ids = await Promise.all(
+    CLOUD_STORE_KEYS.map(async (key) => itemIds(key, await fetchCloudEnvelope(key, "확인")))
+  );
+  return new Set(ids.flat());
+}
+
 async function fetchCloudEnvelope(
   key: CloudStoreKey,
-  action: "업로드" | "다운로드"
+  action: "업로드" | "다운로드" | "확인"
 ): Promise<PersistEnvelope | null> {
   const res = await accountFetch(`/api/storage/${encodeURIComponent(key)}`, {
     method: "GET",

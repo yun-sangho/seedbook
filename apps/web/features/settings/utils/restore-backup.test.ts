@@ -39,4 +39,16 @@ describe("restoreBackupSections", () => {
     expect(usePortfolioStore.getState().portfolios).toEqual([portfolio("current-portfolio")]);
     expect(useRebalancingStore.getState().sessions).toEqual([session("current-session")]);
   });
+
+  it("relinks current data to restored accounts whose ids changed", () => {
+    usePortfolioStore.setState({
+      portfolios: [{ ...portfolio("current-portfolio"), accountIds: ["acc-1", "other"] }],
+    });
+
+    restoreBackupSections({ investments: [account("new-acc")] }, new Map([["acc-1", "new-acc"]]));
+
+    expect(usePortfolioStore.getState().portfolios[0]!.accountIds).toEqual(["new-acc", "other"]);
+    expect(useRebalancingStore.getState().sessions[0]!.accountId).toBe("new-acc");
+    expect(useRebalancingStore.getState().sessions[0]!.id).toBe("current-session");
+  });
 });
