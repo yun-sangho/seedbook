@@ -1,4 +1,4 @@
-import { getDeviceStorage } from "./device-storage";
+import { accountFetch, accountStorage } from "./account-storage";
 
 /**
  * 사용자 선택 저장소 모드의 동기(sync) 접근자.
@@ -37,7 +37,7 @@ export function isCloudStoreKey(value: string): value is CloudStoreKey {
 export function getStorageMode(): StorageMode {
   if (typeof window === "undefined") return "local";
   try {
-    const raw = getDeviceStorage().getItem(STORAGE_MODE_KEY);
+    const raw = accountStorage.getItem(STORAGE_MODE_KEY);
     return raw === "cloud" ? "cloud" : "local";
   } catch {
     // Safari 프라이빗 모드 등 localStorage 접근 실패
@@ -53,7 +53,7 @@ export function getStorageMode(): StorageMode {
 export function setStorageMode(mode: StorageMode): void {
   if (typeof window === "undefined") return;
   try {
-    getDeviceStorage().setItem(STORAGE_MODE_KEY, mode);
+    accountStorage.setItem(STORAGE_MODE_KEY, mode);
   } catch {
     // 쓰기 실패는 묵인 — 호출자가 reload 전에 감지 가능한 방법이 없으므로
     // 조용히 무시하고 모드 전환만 포기한다.
@@ -70,7 +70,7 @@ export function setStorageMode(mode: StorageMode): void {
 export async function pushStorageModeToServer(mode: StorageMode): Promise<void> {
   if (typeof window === "undefined") return;
   try {
-    await fetch("/api/me/storage-mode", {
+    await accountFetch("/api/me/storage-mode", {
       method: "PUT",
       credentials: "include",
       headers: { "content-type": "application/json" },

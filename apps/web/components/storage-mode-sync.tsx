@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+import { accountFetch } from "@web/lib/account-storage";
 import { useSession } from "@web/lib/auth-client";
 import { downloadAllFromCloud, uploadAllToCloud } from "@web/lib/storage-migration";
 import { getStorageMode, type StorageMode, setStorageMode } from "@web/lib/storage-mode";
@@ -16,27 +17,21 @@ import { getStorageMode, type StorageMode, setStorageMode } from "@web/lib/stora
  *   - 서버에 행이 없음 → 서버 응답 "local" 이 default. 로컬도 local 이면 무동작.
  *
  * 인증 없으면 (=로그아웃 상태) fetch 자체를 시도하지 않는다. 세션이 바뀔 때마다
- * (로그인/로그아웃/계정 전환) 한 번씩만 동기화 — 동일 userId 재진입은 ref 로 차단.
+ * (로그인/로그아웃) 한 번씩만 동기화한다. 개발 모드 StrictMode 는 effect 를 두 번 돌리는데, 첫 실행은
+ * 정리(cancelled)되고 두 번째가 끝까지 간다.
  */
 export function StorageModeSync() {
   const { data: session, isPending } = useSession();
-  // 같은 userId 에 대해 sync 가 두 번 돌지 않도록 마지막으로 동기화한 userId 를 기억.
-  const syncedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (isPending) return;
     const userId = session?.user?.id ?? null;
-    if (!userId) {
-      syncedUserIdRef.current = null;
-      return;
-    }
-    if (syncedUserIdRef.current === userId) return;
-    syncedUserIdRef.current = userId;
+    if (!userId) return;
 
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch("/api/me/storage-mode", { credentials: "include" });
+        const res = await accountFetch("/api/me/storage-mode", { credentials: "include" });
         if (!res.ok) return;
         const body = (await res.json()) as { storageMode?: unknown };
         const serverMode = body.storageMode === "cloud" ? "cloud" : "local";

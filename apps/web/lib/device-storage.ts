@@ -23,6 +23,9 @@ import {
  *   - `readEnvelope` / `writeEnvelope`: Zustand persist envelope. 자산 store 는 서버와 같은 모양의
  *     테이블(`native/device-db/table-envelopes.ts`), 나머지(시세 캐시)는 `device_kv`.
  *
+ * 계정 데이터(자산·동기화 대기열·저장소 모드·개인 설정)는 여기를 직접 쓰지 말고 계정별로 나누는
+ * `account-storage.ts` 를 쓴다.
+ *
  * 앱의 첫 읽기 전에 `whenReady()` 를 기다려야 한다. persist store 는 storage 가 기다리고,
  * 화면은 `HydrationGate` 가 그 store 들을 기다리므로 그 안의 컴포넌트는 따로 기다릴 필요가 없다.
  */
@@ -33,6 +36,8 @@ export interface DeviceStorage {
   readEnvelope: (key: string) => string | null | Promise<string | null>;
   writeEnvelope: (key: string, value: string) => void | Promise<void>;
   removeEnvelope: (key: string) => void | Promise<void>;
+  /** `getItem` 으로 읽을 수 있는 키 목록 (네이티브의 자산 테이블은 빠진다). */
+  keys: () => string[];
   /** 이 기기의 Seedbook 데이터를 모두 지운다 (회원 탈퇴). */
   clear: () => void | Promise<void>;
   isReady: () => boolean;
@@ -55,6 +60,13 @@ function safe<T>(fn: () => T, fallback: T): T {
   }
 }
 
+function storageKeys(storage: LegacyStorage): string[] {
+  return safe(
+    () => Array.from({ length: storage.length }, (_, i) => storage.key(i)),
+    [] as Array<string | null>
+  ).filter((key): key is string => key !== null);
+}
+
 function createBrowserStorage(storage: LegacyStorage): DeviceStorage {
   const getItem = (key: string) => safe(() => storage.getItem(key), null);
   const setItem = (key: string, value: string) =>
@@ -67,6 +79,7 @@ function createBrowserStorage(storage: LegacyStorage): DeviceStorage {
     readEnvelope: getItem,
     writeEnvelope: setItem,
     removeEnvelope: removeItem,
+    keys: () => storageKeys(storage),
     clear: () => safe(() => storage.clear(), undefined),
     isReady: () => true,
     whenReady: () => Promise.resolve(),
@@ -122,11 +135,7 @@ async function moveLegacyStorage(
   legacy: LegacyStorage,
   memory: Map<string, string>
 ): Promise<void> {
-  const keys = safe(
-    () => Array.from({ length: legacy.length }, (_, i) => legacy.key(i)),
-    [] as Array<string | null>
-  ).filter((key): key is string => key !== null);
-  for (const key of keys) {
+  for (const key of storageKeys(legacy)) {
     const value = safe(() => legacy.getItem(key), null);
     if (value === null) continue;
     if (isTableEnvelopeKey(key)) {
@@ -283,6 +292,7 @@ export function createNativeDeviceStorage(
       if (!isTableEnvelopeKey(key)) memory.delete(key);
       return enqueue(key, null);
     },
+    keys: () => (usingFallback ? fallback.keys() : [...memory.keys()]),
     clear: async () => {
       memory.clear();
       pending.clear();
@@ -306,6 +316,7 @@ const serverStorage: DeviceStorage = {
   readEnvelope: () => null,
   writeEnvelope: () => undefined,
   removeEnvelope: () => undefined,
+  keys: () => [],
   clear: () => undefined,
   isReady: () => true,
   whenReady: () => Promise.resolve(),
@@ -348,7 +359,7 @@ export function afterDeviceStorageReady<T>(fn: () => T | PromiseLike<T>): T | Pr
 }
 
 /**
- * 저장소 모드와 상관없이 이 기기에만 두는 persist store (시세 캐시, 개인 설정 캐시) 의
+ * 계정과 무관하게 이 기기에만 두는 persist store (시세 캐시) 의
  * `StateStorage`. `createJSONStorage(() => createDeviceStateStorage())` 로 쓴다.
  */
 export function createDeviceStateStorage(): StateStorage {

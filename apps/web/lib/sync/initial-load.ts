@@ -1,3 +1,4 @@
+import { accountFetch } from "@web/lib/account-storage";
 import { emptySyncMeta } from "./entity-sync-core";
 import { mergePullResponse } from "./entity-sync-engine";
 import type { ManagedStoreConfig } from "./managed-store-config";
@@ -38,7 +39,7 @@ let fullPull: Promise<Parameters<typeof mergePullResponse>[3] | null> | null = n
 function fetchFullPull() {
   fullPull ??= (async () => {
     try {
-      const res = await fetch("/api/sync/pull", { credentials: "include" });
+      const res = await accountFetch("/api/sync/pull", { credentials: "include" });
       return res.ok ? await res.json() : null;
     } catch {
       return null;

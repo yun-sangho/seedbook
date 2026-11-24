@@ -9,7 +9,7 @@ import {
   isRebalancingTaskSort,
   type RebalancingTaskSort,
 } from "@web/features/rebalancing/utils/sort-rebalancing-tasks";
-import { createDeviceStateStorage } from "@web/lib/device-storage";
+import { createAccountStateStorage } from "@web/lib/account-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -44,7 +44,7 @@ export const usePreferencesStore = create<PreferencesState>()(
     }),
     {
       name: "seedbook.preferences",
-      storage: createJSONStorage(() => createDeviceStateStorage()),
+      storage: createJSONStorage(() => createAccountStateStorage()),
       version: 1,
       partialize: (state) => ({
         rebalancingTaskSort: state.rebalancingTaskSort,
