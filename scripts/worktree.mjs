@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // 워크트리 병렬 개발용 슬롯. 워크트리마다 슬롯 번호 N 하나로 web 포트와 DB 를 나눈다.
-//   슬롯 0 = 메인 체크아웃: web :3001, DB seedbook / seedbook_test (기존 그대로)
+//   슬롯 0 = 메인 체크아웃: web :4001, DB seedbook / seedbook_test (기존 그대로)
 //   슬롯 N = 링크된 워크트리 (1..9): web :4001+10N, 같은 dev postgres 컨테이너 안 DB seedbook_sN / seedbook_sN_test
 // 슬롯은 워크트리 루트의 .worktree-slot (gitignore) 에 `SEEDBOOK_SLOT=N` 으로 둔다. 순수 로직은 worktree-lib.mjs.
 //
@@ -35,6 +35,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   databaseUrl,
   formatSlotFile,
+  hasKakaoRedirect,
   isAgentProcess,
   isLocalEnvFile,
   isOrphanCwd,
@@ -455,7 +456,9 @@ async function info() {
   console.log(`  test DB  ${db.test}  (pnpm --filter @seedbook/web test:db)`);
   if (slot !== 0) {
     console.log(
-      '  로그인    카카오 Redirect URI 가 :3001 뿐이라 로그인 화면의 "개발용 빠른 로그인 (카카오 우회)" (dev-login) 을 쓴다'
+      hasKakaoRedirect(slot)
+        ? `  로그인    카카오 Redirect URI 가 :${port} 로 등록돼 있다 (로그인은 미확인). 안 되면 로그인 화면의 "개발용 빠른 로그인 (카카오 우회)" (dev-login) 을 쓴다`
+        : `  로그인    카카오 Redirect URI 에 :${port} 가 없어 로그인 화면의 "개발용 빠른 로그인 (카카오 우회)" (dev-login) 을 쓴다`
     );
   }
 }
