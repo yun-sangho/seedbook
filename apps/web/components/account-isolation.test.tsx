@@ -202,7 +202,12 @@ beforeEach(() => {
   server = fakeServer();
   reload = vi.fn();
   vi.stubGlobal("fetch", server.fetch);
-  vi.stubGlobal("location", { reload, href: "" } as unknown as Location);
+  vi.stubGlobal("location", {
+    reload,
+    href: "",
+    pathname: "/assets",
+    search: "",
+  } as unknown as Location);
 });
 
 afterEach(() => {
@@ -296,7 +301,7 @@ describe("before the session is known", () => {
     localStorage.setItem("investment-storage", envelope("A의 계좌"));
     const page = await openPage(SIGNED_OUT);
 
-    expect(page.text()).toContain("로그인이 필요합니다");
+    expect(page.text()).toContain("Seedbook 로그인");
     expect(page.store.getState().investments).toEqual([]);
     expect(localStorage.getItem("investment-storage")).toBe(envelope("A의 계좌"));
   });

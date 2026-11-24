@@ -1,5 +1,6 @@
 import { db, schema } from "@seedbook/database";
 import { createAppleClientSecret, readAppleConfig } from "@web/lib/apple-auth";
+import { DEFAULT_RETURN_PATH } from "@web/lib/login-flow";
 import { deviceCredentialPlugin } from "@web/server/device-credentials/device-credential-plugin";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -49,6 +50,9 @@ export const auth = betterAuth({
         }
       : {}),
   },
+  // 시작할 때 준 `errorCallbackURL` 을 알 수 없는 실패(만료된 state 등)도 better-auth 의 영어 오류
+  // 페이지 대신 로그인 화면으로 보낸다. `?error=` 를 로그인 화면이 안내로 바꾼다.
+  onAPIError: { errorURL: DEFAULT_RETURN_PATH },
   // 네이티브 앱 생체 인증 로그인 (`server/device-credentials/`).
   plugins: [deviceCredentialPlugin({ db })],
   // Apple 은 콜백을 appleid.apple.com 에서 form_post 로 보낸다.
