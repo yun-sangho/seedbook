@@ -17,13 +17,24 @@ export type BackupSections = {
   rebalancingSessions: RebalancingSession[];
 };
 
-export type Backup = BackupSections & { exportedAt: string; version: string };
+export type Backup = BackupSections & {
+  exportedAt: string;
+  version: string;
+  /** 내보낸 계정의 표시 (`backupAccountTag`). 이 필드가 생기기 전의 백업에는 없다. */
+  accountTag: string;
+};
 
-export function buildBackup(sections: BackupSections, now = new Date()): Backup {
-  return { ...sections, exportedAt: now.toISOString(), version: BACKUP_VERSION };
+export function buildBackup(
+  sections: BackupSections,
+  accountTag: string,
+  now = new Date()
+): Backup {
+  return { ...sections, exportedAt: now.toISOString(), version: BACKUP_VERSION, accountTag };
 }
 
-export type ParsedBackup = { ok: true; data: Partial<BackupSections> } | { ok: false };
+export type ParsedBackup =
+  | { ok: true; data: Partial<BackupSections>; accountTag: string | null }
+  | { ok: false };
 
 export function parseBackup(value: unknown): ParsedBackup {
   if (!value || typeof value !== "object") return { ok: false };
@@ -39,7 +50,8 @@ export function parseBackup(value: unknown): ParsedBackup {
   if (Array.isArray(v.rebalancingSessions)) {
     data.rebalancingSessions = v.rebalancingSessions as RebalancingSession[];
   }
-  return { ok: true, data };
+  const accountTag = typeof v.accountTag === "string" ? v.accountTag : null;
+  return { ok: true, data, accountTag };
 }
 
 /** 내보내기 파일 이름. 날짜는 내보낸 시각의 UTC 날짜. */
