@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getSession } = vi.hoisted(() => ({ getSession: vi.fn() }));
+const { getSession, hasRequiredConsents } = vi.hoisted(() => ({
+  getSession: vi.fn(),
+  hasRequiredConsents: vi.fn(),
+}));
+vi.mock("@seedbook/database", () => ({ db: {} }));
+vi.mock("@web/server/consents/consents", () => ({ hasRequiredConsents }));
 vi.mock("@web/lib/auth", () => ({ auth: { api: { getSession } } }));
 
-const { resolveUserId } = await import("./auth-server");
+const { resolveSessionUserId, resolveUserId } = await import("./auth-server");
 
 const request = (account?: string) =>
   new Request("http://localhost/api", {
@@ -11,7 +16,10 @@ const request = (account?: string) =>
   });
 
 describe("resolveUserId", () => {
-  beforeEach(() => getSession.mockReset().mockResolvedValue({ user: { id: "user-b" } }));
+  beforeEach(() => {
+    getSession.mockReset().mockResolvedValue({ user: { id: "user-b" } });
+    hasRequiredConsents.mockReset().mockResolvedValue(true);
+  });
 
   it("returns the session user when the request does not say whose it is", async () => {
     expect(await resolveUserId(request())).toBe("user-b");
@@ -29,5 +37,21 @@ describe("resolveUserId", () => {
     getSession.mockResolvedValue(null);
 
     expect(await resolveUserId(request("user-a"))).toBeNull();
+  });
+
+  it("refuses a user who has not agreed to the current documents", async () => {
+    hasRequiredConsents.mockResolvedValue(false);
+
+    expect(await resolveUserId(request())).toBeNull();
+  });
+
+  it("identifies that user for the consent API itself", async () => {
+    hasRequiredConsents.mockResolvedValue(false);
+
+    expect(await resolveSessionUserId(request())).toBe("user-b");
+  });
+
+  it("refuses a stale tab on the consent API too", async () => {
+    expect(await resolveSessionUserId(request("user-a"))).toBeNull();
   });
 });

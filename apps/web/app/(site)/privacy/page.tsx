@@ -2,14 +2,15 @@ import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { Article, Text } from "@seed-design/react";
 import { COMPANY } from "@web/lib/company";
+import { effectiveDateLabel } from "@web/lib/legal-documents";
 import { SiteHeader } from "../_components/site-header";
 
 export const metadata: Metadata = {
   title: "개인정보처리방침 - Seedbook",
 };
 
-/** 시행일. 내용을 바꾸면 함께 갱신한다. */
-const EFFECTIVE_DATE = "2026년 11월 25일";
+/** 시행일. 내용을 바꾸면 `lib/legal-documents.ts` 의 버전을 함께 갱신한다. */
+const EFFECTIVE_DATE = effectiveDateLabel("privacy");
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (

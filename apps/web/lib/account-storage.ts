@@ -214,6 +214,21 @@ async function clearAccountData(): Promise<void> {
 }
 
 /**
+ * 동의를 거부해 방금 만든 계정이 지워질 때: 이 계정이 자리의 주인이라는 표시만 지우고 자리를
+ * 닫는다. 데이터는 남긴다 — 새 계정은 동의 전에 아무것도 쓰지 않으므로 기본 자리에 있는 것은 주인을
+ * 모르던 예전 데이터이고, 표시를 두면 없어진 계정의 것이 되어 아무도 볼 수 없다.
+ */
+export async function releaseAccountSlot(): Promise<void> {
+  const device = getDeviceStorage();
+  const mine = slot;
+  settle(null, null);
+  if (!mine) return;
+  const marker = `${mine.prefix}${DEVICE_OWNER_KEY}`;
+  if (device.getItem(marker) === mine.userId) device.removeItem(marker);
+  await device.flush();
+}
+
+/**
  * 계정 데이터를 주고받는 요청. 이 페이지의 계정을 알려, 다른 탭에서 계정이 바뀐 뒤(쿠키는 새
  * 계정)에는 서버가 거절하게 한다.
  */

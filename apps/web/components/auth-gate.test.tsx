@@ -25,6 +25,12 @@ describe("AuthGate", () => {
   beforeEach(() => {
     mockUseSession.mockReset();
     mockSignInSocial.mockReset();
+    // 동의 확인만 답하고 나머지 API 는 실패시킨다.
+    vi.stubGlobal("fetch", async (url: string) =>
+      url === "/api/me/consents"
+        ? Response.json({ agreed: true })
+        : new Response(null, { status: 503 })
+    );
     mockSignInSocial.mockResolvedValue({ data: {}, error: null });
     window.localStorage.clear();
     window.history.replaceState(null, "", "/assets");
@@ -49,7 +55,7 @@ describe("AuthGate", () => {
 
   it.each<StorageMode>(["local", "cloud"])(
     "renders children when a session exists in %s mode",
-    (mode) => {
+    async (mode) => {
       setStorageMode(mode);
       mockUseSession.mockReturnValue({
         data: { user: { id: "u-1" } },
@@ -62,7 +68,7 @@ describe("AuthGate", () => {
         </AuthGate>
       );
 
-      expect(screen.getByText("앱 콘텐츠")).toBeInTheDocument();
+      expect(await screen.findByText("앱 콘텐츠")).toBeInTheDocument();
       expect(screen.queryByRole("heading", { name: "Seedbook 로그인" })).not.toBeInTheDocument();
     }
   );

@@ -117,6 +117,13 @@ export function MobileMoreSheet({
               />
               <ListButtonItem
                 prefix={<Icon svg={<IconDocumentLine />} />}
+                title="이용약관"
+                onClick={() => {
+                  window.location.href = "/terms";
+                }}
+              />
+              <ListButtonItem
+                prefix={<Icon svg={<IconDocumentLine />} />}
                 title="개인정보처리방침"
                 onClick={() => {
                   window.location.href = "/privacy";

@@ -66,6 +66,7 @@ function fakeServer() {
       return json({ storageMode: user.mode });
     }
     if (url.startsWith("/api/me/preferences")) return json({});
+    if (url.startsWith("/api/me/consents")) return json({ agreed: true });
     if (url.startsWith("/api/storage/investment-storage")) {
       if (method === "PUT") {
         user.accounts = new Map(body.data.state.investments.map((i: { id: string }) => [i.id, i]));

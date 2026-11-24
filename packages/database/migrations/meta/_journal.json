@@ -127,6 +127,13 @@
       "when": 1794840154990,
       "tag": "0017_mean_cloak",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795536294825,
+      "tag": "0018_sloppy_shinobi_shaw",
+      "breakpoints": true
     }
   ]
 }
