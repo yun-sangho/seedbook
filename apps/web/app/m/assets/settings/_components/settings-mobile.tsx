@@ -22,7 +22,9 @@ import {
   buildBackup,
   parseBackup,
 } from "@web/features/settings/utils/data-backup";
+import { assignDemoDataIds } from "@web/features/settings/utils/demo-data";
 import { restoreBackupSections } from "@web/features/settings/utils/restore-backup";
+import { getActiveAccount } from "@web/lib/account-storage";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
   AlertDialogAction,
@@ -76,13 +78,13 @@ export function SettingsMobile() {
   const showError = (description: string) =>
     setDataDialog({ kind: "message", title: "불러오지 못했어요", description });
 
-  const askRestore = (raw: unknown, source: "file" | "demo") => {
+  const askFileRestore = (raw: unknown) => {
     const parsed = parseBackup(raw);
     if (!parsed.ok) {
       showError("Seedbook 에서 내보낸 데이터 파일이 아니에요.");
       return;
     }
-    setDataDialog({ kind: "confirm-restore", source, data: parsed.data });
+    setDataDialog({ kind: "confirm-restore", source: "file", data: parsed.data });
   };
 
   const exportData = () => {
@@ -105,7 +107,7 @@ export function SettingsMobile() {
     if (!file) return;
     file
       .text()
-      .then((text) => askRestore(JSON.parse(text), "file"))
+      .then((text) => askFileRestore(JSON.parse(text)))
       .catch((error: unknown) => {
         console.error(error);
         showError("파일을 읽지 못했어요. 내보낸 JSON 파일인지 확인해 주세요.");
@@ -116,7 +118,12 @@ export function SettingsMobile() {
     try {
       const res = await fetch(DEMO_DATA_URL, { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      askRestore(await res.json(), "demo");
+      const parsed = parseBackup(await res.json());
+      if (!parsed.ok) throw new Error("invalid demo data file");
+      const userId = getActiveAccount();
+      if (!userId) throw new Error("no active account");
+      const data = await assignDemoDataIds(parsed.data, userId);
+      setDataDialog({ kind: "confirm-restore", source: "demo", data });
     } catch (error) {
       console.error(error);
       showError("데모 데이터를 받지 못했어요. 잠시 뒤 다시 시도해 주세요.");
