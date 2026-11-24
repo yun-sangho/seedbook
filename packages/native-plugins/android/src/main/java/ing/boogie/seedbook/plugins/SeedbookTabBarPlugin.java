@@ -76,22 +76,6 @@ public class SeedbookTabBarPlugin extends Plugin {
     /** 키보드가 뜨면 탭바가 그 위로 따라 올라오지 않게 숨긴다 */
     private boolean imeVisible = false;
 
-    @Override
-    public void load() {
-        // 새 페이지(로그아웃 뒤 로그인 화면, 약관 등)를 열면 이전 페이지의 탭바를 내린다.
-        // 탭바가 필요한 페이지는 다시 setState 를 부른다.
-        getBridge()
-            .addWebViewListener(
-                new WebViewListener() {
-                    @Override
-                    public void onPageStarted(WebView webView) {
-                        wantVisible = false;
-                        applyVisibility();
-                    }
-                }
-            );
-    }
-
     @PluginMethod
     public void configure(PluginCall call) {
         JSArray items = call.getArray("items", new JSArray());
@@ -200,6 +184,7 @@ public class SeedbookTabBarPlugin extends Plugin {
         );
         params.gravity = Gravity.BOTTOM;
         parent.addView(nav, params);
+        hideOnPageStart();
 
         // insets 리스너는 BottomNavigationView 의 바닥 여백 처리·Capacitor SystemBars 와 겹치므로 쓰지 않고,
         // 레이아웃이 바뀔 때 키보드 표시 여부만 본다.
@@ -213,6 +198,24 @@ public class SeedbookTabBarPlugin extends Plugin {
                 imeVisible = ime;
                 applyVisibility();
             });
+    }
+
+    /**
+     * 새 페이지(로그아웃 뒤 로그인 화면, 약관 동의 등)를 열면 이전 페이지의 탭바를 내린다.
+     * 탭바가 필요한 페이지는 다시 setState 를 부른다.
+     * load() 에서 등록하면 안 된다 — Bridge 가 플러그인을 load 한 뒤 리스너 목록을 통째로 바꾼다.
+     */
+    private void hideOnPageStart() {
+        getBridge()
+            .addWebViewListener(
+                new WebViewListener() {
+                    @Override
+                    public void onPageStarted(WebView webView) {
+                        wantVisible = false;
+                        applyVisibility();
+                    }
+                }
+            );
     }
 
     /** 탭바 높이(바닥 시스템 바 여백 포함)를 CSS px 로 돌려준다. 레이아웃이 끝난 뒤 잰다. */
