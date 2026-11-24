@@ -4,7 +4,7 @@
 // 이 import 가 store 파일보다 앞서 실행되도록 hybrid-storage 가 소유한다.
 import "./local-id-upgrade";
 import type { StateStorage } from "zustand/middleware";
-import { afterDeviceStorageReady, getDeviceStorage } from "./device-storage";
+import { accountStorage, afterAccountReady } from "./account-storage";
 import { getStorageMode, type StorageMode } from "./storage-mode";
 import { loadManagedStoreFromServer } from "./sync/initial-load";
 import { recordPersistedChange } from "./sync/local-change-recorder";
@@ -24,7 +24,8 @@ import { getManagedStoreConfig } from "./sync/managed-stores";
  *         전송은 `EntitySyncRunner` 가 맡는다.
  *
  * 모드는 **처음 쓸 때 한 번만** 읽고 고정한다. 런타임 전환은 페이지 리로드로 강제한다.
- * 앱은 SQLite 가 준비된 뒤에야 저장된 모드를 알 수 있어 모듈 초기화 시점에는 읽지 않는다.
+ * 로그인 사용자가 정해진 뒤에야 그 계정의 모드를 알 수 있어 모듈 초기화 시점에는 읽지 않는다
+ * (`account-storage.ts`, 로그아웃 상태면 읽기는 비어 있고 쓰기는 버린다).
  */
 
 let mode: StorageMode | null = null;
@@ -35,7 +36,7 @@ function currentMode(): StorageMode {
 }
 
 function createModeStorage(key: string): StateStorage {
-  const store = getDeviceStorage();
+  const store = accountStorage;
   const managed = currentMode() === "cloud" ? getManagedStoreConfig(key) : null;
   // local 모드 — 또는 동기화 설정이 없는 store 는 이 기기에만 저장한다.
   if (!managed) {
@@ -90,8 +91,8 @@ export function createHybridStorage(key: string): StateStorage {
     return inner;
   };
   return {
-    getItem: (name) => afterDeviceStorageReady<string | null>(() => resolve().getItem(name)),
-    setItem: (name, value) => afterDeviceStorageReady(() => resolve().setItem(name, value)),
-    removeItem: (name) => afterDeviceStorageReady(() => resolve().removeItem(name)),
+    getItem: (name) => afterAccountReady<string | null>(() => resolve().getItem(name)),
+    setItem: (name, value) => afterAccountReady(() => resolve().setItem(name, value)),
+    removeItem: (name) => afterAccountReady(() => resolve().removeItem(name)),
   };
 }

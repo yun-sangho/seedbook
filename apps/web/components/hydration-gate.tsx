@@ -1,11 +1,18 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useSyncExternalStore } from "react";
+import {
+  activateAccount,
+  getActiveAccount,
+  subscribeActiveAccount,
+} from "@web/lib/account-storage";
+import { useSession } from "@web/lib/auth-client";
 import { useAllStoresHydrated } from "@web/lib/zustand-hydration";
 import { Loader2 } from "lucide-react";
 
 /**
- * 모든 persist store 가 하이드레이션을 마친 뒤에만 자식을 렌더한다.
+ * 로그인한 계정의 저장 자리를 열고(`account-storage.ts`), 모든 persist store 가 하이드레이션을
+ * 마친 뒤에만 자식을 렌더한다. 계정을 알기 전에는 store 가 하이드레이션하지 않는다.
  *
  * 왜 필요한가:
  *   - 기존 manager 컴포넌트들이 `state.length === 0` 로 빈 상태를 분기하는데,
@@ -19,8 +26,18 @@ import { Loader2 } from "lucide-react";
  */
 export function HydrationGate({ children }: { children: ReactNode }) {
   const hydrated = useAllStoresHydrated();
+  const { data: session, isPending } = useSession();
+  const userId: string | null = session?.user?.id ?? null;
+  const account = useSyncExternalStore(subscribeActiveAccount, getActiveAccount, () => undefined);
 
-  if (!hydrated) {
+  useEffect(() => {
+    if (!isPending) void activateAccount(userId);
+  }, [isPending, userId]);
+
+  // 세션의 계정과 store 에 든 데이터의 계정이 다르면 (다른 탭에서 계정 전환 등) 새로고침될 때까지 가린다.
+  const isOtherAccount = userId !== null && account !== userId;
+
+  if (!hydrated || isOtherAccount) {
     return (
       <div
         role="status"

@@ -1,3 +1,4 @@
+import { __resetAccountForTests, activateAccount } from "@web/lib/account-storage";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   downloadAllFromCloud,
@@ -31,6 +32,11 @@ function jsonResponse(body: unknown, status = 200): Response {
     headers: { "content-type": "application/json" },
   });
 }
+
+beforeEach(async () => {
+  __resetAccountForTests();
+  await activateAccount("u");
+});
 
 describe("hasAnyLocalData", () => {
   beforeEach(() => window.localStorage.clear());

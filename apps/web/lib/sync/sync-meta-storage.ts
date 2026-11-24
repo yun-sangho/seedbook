@@ -1,4 +1,4 @@
-import { getDeviceStorage } from "@web/lib/device-storage";
+import { accountStorage } from "@web/lib/account-storage";
 import type { SyncMeta } from "./entity-sync-core";
 
 /**
@@ -9,7 +9,7 @@ export type StoredMeta = { userId: string; meta: SyncMeta };
 
 export function readSyncMeta(metaKey: string): StoredMeta | null {
   try {
-    const raw = getDeviceStorage().getItem(metaKey);
+    const raw = accountStorage.getItem(metaKey);
     return raw ? (JSON.parse(raw) as StoredMeta) : null;
   } catch {
     return null;
@@ -18,7 +18,7 @@ export function readSyncMeta(metaKey: string): StoredMeta | null {
 
 export function writeSyncMeta(metaKey: string, stored: StoredMeta): void {
   try {
-    getDeviceStorage().setItem(metaKey, JSON.stringify(stored));
+    accountStorage.setItem(metaKey, JSON.stringify(stored));
   } catch {
     // quota / private mode — 다음 pull 이 서버 기준으로 다시 맞춘다.
   }

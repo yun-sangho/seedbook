@@ -1,4 +1,5 @@
 import { render, waitFor } from "@testing-library/react";
+import { __resetAccountForTests, activateAccount } from "@web/lib/account-storage";
 import { STORAGE_MODE_KEY } from "@web/lib/storage-mode";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StorageModeSync } from "./storage-mode-sync";
@@ -14,6 +15,11 @@ vi.mock("@web/lib/storage-migration", () => ({ uploadAllToCloud, downloadAllFrom
 vi.mock("@web/lib/auth-client", () => ({
   useSession: () => mockUseSession(),
 }));
+
+beforeEach(async () => {
+  __resetAccountForTests();
+  await activateAccount("u-1");
+});
 
 /**
  * StorageModeSync 는 로그인된 사용자 한 명에 대해 한 번만 서버 preference 를

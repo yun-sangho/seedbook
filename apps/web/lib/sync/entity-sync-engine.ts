@@ -1,4 +1,5 @@
 import { useSyncStatusStore } from "@web/features/settings/stores/sync-status-store";
+import { accountFetch } from "@web/lib/account-storage";
 import {
   applyMutationResults,
   buildMutations,
@@ -63,7 +64,7 @@ export function mergePullResponse<T extends { id: string }>(
 }
 
 // 엔진들이 같은 함수를 써야 아래 pull 공유(키: fetch 함수 + URL)가 동작한다.
-const defaultFetch: typeof fetch = (...args) => fetch(...args);
+const defaultFetch = accountFetch;
 
 type PullResult =
   | { kind: "ok"; body: PullResponse }

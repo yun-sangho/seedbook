@@ -1,3 +1,4 @@
+import { __resetAccountForTests, activateAccount } from "@web/lib/account-storage";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type EntitySyncHandle, startEntitySync } from "./entity-sync-engine";
 import { recordPersistedChange } from "./local-change-recorder";
@@ -66,6 +67,11 @@ function fakeServer(handlers: {
   });
   return { calls, fetchFn };
 }
+
+beforeEach(async () => {
+  __resetAccountForTests();
+  await activateAccount("u1");
+});
 
 describe("startEntitySync", () => {
   let handle: EntitySyncHandle | null = null;

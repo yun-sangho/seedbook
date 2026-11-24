@@ -6,6 +6,7 @@ import {
   isRebalancingTaskSort,
   type RebalancingTaskSort,
 } from "@web/features/rebalancing/utils/sort-rebalancing-tasks";
+import { accountFetch } from "@web/lib/account-storage";
 
 export interface AccountPreferences {
   rebalancingTaskSort?: RebalancingTaskSort;
@@ -18,7 +19,7 @@ export interface AccountPreferences {
  */
 export async function fetchPreferences(): Promise<AccountPreferences | null> {
   try {
-    const res = await fetch("/api/me/preferences", { credentials: "include" });
+    const res = await accountFetch("/api/me/preferences", { credentials: "include" });
     if (!res.ok) return null;
     const body = (await res.json()) as {
       rebalancingTaskSort?: unknown;
@@ -39,7 +40,7 @@ export async function fetchPreferences(): Promise<AccountPreferences | null> {
 /** 설정 일부를 계정에 저장한다. 실패는 조용히 넘긴다 — 이 기기에는 이미 반영돼 있다. */
 async function pushPreferences(changes: AccountPreferences): Promise<void> {
   try {
-    await fetch("/api/me/preferences", {
+    await accountFetch("/api/me/preferences", {
       method: "PUT",
       credentials: "include",
       headers: { "content-type": "application/json" },

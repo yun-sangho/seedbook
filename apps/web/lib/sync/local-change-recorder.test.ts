@@ -1,3 +1,4 @@
+import { __resetAccountForTests, activateAccount } from "@web/lib/account-storage";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { onLocalChange, recordPersistedChange, withoutRecording } from "./local-change-recorder";
 import type { ManagedStoreConfig } from "./managed-store-config";
@@ -17,6 +18,11 @@ const config: ManagedStoreConfig<Item> = {
 };
 
 const envelope = (items: Item[]) => JSON.stringify({ state: { items }, version: 1 });
+
+beforeEach(async () => {
+  __resetAccountForTests();
+  await activateAccount("u1");
+});
 
 describe("recordPersistedChange", () => {
   beforeEach(() => localStorage.clear());
