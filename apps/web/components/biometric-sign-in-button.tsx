@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button } from "@web/components/ui/button";
 import { useBiometricLoginDeps } from "@web/hooks/use-biometric-login-deps";
 import { useBiometryLabel } from "@web/hooks/use-biometry-label";
 import { BIOMETRY_WITH_RO, type BiometryName } from "@web/lib/native/biometric";
@@ -11,6 +10,7 @@ import {
   type SignInResult,
   signInWithBiometricLogin,
 } from "@web/lib/native/biometric-login";
+import { ActionButton } from "@web/seed-design/ui/action-button";
 
 function failureMessage(result: SignInResult, label: BiometryName): string | null {
   switch (result) {
@@ -75,12 +75,12 @@ export function BiometricSignInButton({ callbackURL }: { callbackURL: string }) 
   return (
     <>
       {enrolled && (
-        <Button onClick={signIn} disabled={pending}>
+        <ActionButton variant="neutralSolid" size="large" onClick={signIn} loading={pending}>
           {BIOMETRY_WITH_RO[biometryLabel]} 로그인
-        </Button>
+        </ActionButton>
       )}
       {message && (
-        <p role="alert" className="text-sm text-muted-foreground">
+        <p role="alert" className="t4-regular text-fg-neutral-muted text-center break-keep">
           {message}
         </p>
       )}

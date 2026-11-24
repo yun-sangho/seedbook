@@ -10,6 +10,8 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
+    // SEED 컴포넌트는 자기 CSS 를 import 한다 — Node 가 직접 읽지 못해 Vite 로 변환한다.
+    server: { deps: { inline: [/@seed-design\//] } },
     include: ["**/*.{test,spec}.{js,jsx,ts,tsx}"],
     // .next/standalone/** is excluded because Next.js's file tracer copies
     // workspace source (including *.test.ts) into that directory, and vitest

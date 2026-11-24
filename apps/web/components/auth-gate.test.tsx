@@ -25,23 +25,26 @@ describe("AuthGate", () => {
   beforeEach(() => {
     mockUseSession.mockReset();
     mockSignInSocial.mockReset();
+    mockSignInSocial.mockResolvedValue({ data: {}, error: null });
     window.localStorage.clear();
+    window.history.replaceState(null, "", "/assets");
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("renders nothing while the session is pending", () => {
+  it("shows a loading status while the session is pending", () => {
     mockUseSession.mockReturnValue({ data: null, isPending: true });
 
-    const { container } = render(
+    render(
       <AuthGate>
         <div>앱 콘텐츠</div>
       </AuthGate>
     );
 
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.queryByText("앱 콘텐츠")).not.toBeInTheDocument();
   });
 
   it.each<StorageMode>(["local", "cloud"])(
@@ -60,9 +63,7 @@ describe("AuthGate", () => {
       );
 
       expect(screen.getByText("앱 콘텐츠")).toBeInTheDocument();
-      expect(
-        screen.queryByRole("heading", { name: "로그인이 필요합니다" })
-      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: "Seedbook 로그인" })).not.toBeInTheDocument();
     }
   );
 
@@ -78,7 +79,7 @@ describe("AuthGate", () => {
         </AuthGate>
       );
 
-      expect(screen.getByRole("heading", { name: "로그인이 필요합니다" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Seedbook 로그인" })).toBeInTheDocument();
       expect(screen.queryByText("앱 콘텐츠")).not.toBeInTheDocument();
     }
   );
@@ -113,7 +114,19 @@ describe("AuthGate", () => {
     expect(mockSignInSocial).toHaveBeenCalledWith({
       provider: "kakao",
       callbackURL: "/assets",
+      errorCallbackURL: "/assets",
     });
+  });
+
+  it("keeps the login screen and its error while the session is checked again", () => {
+    window.history.replaceState(null, "", "/assets?error=access_denied");
+    mockUseSession.mockReturnValue({ data: null, isPending: false });
+    const { rerender } = render(<AuthGate>앱 콘텐츠</AuthGate>);
+
+    mockUseSession.mockReturnValue({ data: null, isPending: true });
+    rerender(<AuthGate>앱 콘텐츠</AuthGate>);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("로그인을 취소했어요");
   });
 
   it("does not render the dev-bypass button outside of NODE_ENV=development", () => {
