@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- IconBarchartSquareFill (@karrotmarket/react-monochrome-icon, Apache-2.0) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:fillType="evenOdd"
+        android:pathData="M 2 4.8 C 2 3.254 3.254 2 4.8 2 H 19.2 C 20.746 2 22 3.254 22 4.8 V 19.2 C 22 20.746 20.746 22 19.2 22 H 4.8 C 3.254 22 2 20.746 2 19.2 V 4.8 Z M 17 8 C 17 7.448 16.552 7 16 7 C 15.448 7 15 7.448 15 8 V 16 C 15 16.552 15.448 17 16 17 C 16.552 17 17 16.552 17 16 L 17 8 Z M 9 10.405 C 9 9.852 8.552 9.405 8 9.405 C 7.448 9.405 7 9.852 7 10.405 V 16 C 7 16.552 7.448 17 8 17 C 8.552 17 9 16.552 9 16 V 10.405 Z M 12.994 12.5 C 12.994 11.948 12.546 11.5 11.994 11.5 C 11.442 11.5 10.994 11.948 10.994 12.5 V 16 C 10.994 16.552 11.442 17 11.994 17 C 12.546 17 12.994 16.552 12.994 16 V 12.5 Z" />
+</vector>

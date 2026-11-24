@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- IconArrowUpArrowDownFill (@karrotmarket/react-monochrome-icon, Apache-2.0) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M 6.401 3 C 6.731 3 7.047 3.136 7.274 3.377 L 11.274 7.623 C 11.728 8.105 11.706 8.865 11.224 9.319 C 10.742 9.774 9.982 9.751 9.528 9.269 L 7.601 7.224 V 19.8 C 7.601 20.462 7.063 21 6.401 21 C 5.738 21 5.2 20.462 5.2 19.8 V 7.224 L 3.274 9.269 C 2.819 9.751 2.06 9.774 1.577 9.319 C 1.095 8.865 1.073 8.105 1.528 7.623 L 5.527 3.377 C 5.753 3.136 6.07 3 6.401 3 Z" />
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M 17.6 3 C 18.262 3 18.8 3.538 18.8 4.2 V 16.776 L 20.727 14.73 C 21.181 14.249 21.941 14.226 22.423 14.68 C 22.905 15.134 22.927 15.895 22.473 16.377 L 18.474 20.623 C 18.247 20.864 17.93 21 17.6 21 C 17.269 21 16.954 20.863 16.727 20.623 L 12.727 16.377 C 12.273 15.895 12.295 15.135 12.777 14.681 C 13.259 14.226 14.018 14.248 14.473 14.73 L 16.4 16.775 V 4.2 C 16.4 3.538 16.937 3 17.6 3 Z" />
+</vector>

@@ -89,6 +89,18 @@ adb exec-out run-as ing.boogie.seedbook cat databases/seedbookSQLite.db > app.db
 sqlite3 app.db "select id, accountName, portfolioId from investment_account;"
 ```
 
+## 하단 탭바
+
+앱은 네이티브 탭바(iOS `UITabBar`, Android `BottomNavigationView`), 브라우저·PWA·플러그인이 없는 구버전
+앱은 웹 탭바(SEED Bottom Navigation)를 쓴다. 항목·선택·표시는 웹이 정하고 네이티브는 그대로 그린다.
+
+- 플러그인 `SeedbookTabBar`: `packages/native-plugins` (`cap sync` 가 등록한다)
+- 브리지: `apps/web/lib/native/tab-bar.ts` / 화면: `apps/web/components/mobile/app-tab-bar.tsx`
+- 네이티브 탭바는 WebView 위에 있어 웹 시트·다이얼로그가 열리면 내린다. SEED 가 아닌 전체 화면
+  (앱 잠금)은 `data-covers-tab-bar` 를 단다.
+- 아이콘(`TabIcon`)을 더하면 브리지 타입, 웹 `ICONS`, iOS `symbol`, Android `iconRes` + drawable 을 같이
+  고친다. 모르는 아이콘을 받은 구버전 앱은 기본 아이콘을 그린다.
+
 ## 확인이 필요한 것 (실기기)
 
 - **카카오 로그인**: 앱 안 WebView 에서 카카오 계정(ID/비밀번호) 로그인은 같은 도메인 쿠키로 세션이
