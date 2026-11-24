@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 /** 시행일. 내용을 바꾸면 함께 갱신한다. */
-const EFFECTIVE_DATE = "2026년 11월 15일";
+const EFFECTIVE_DATE = "2026년 11월 25일";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
