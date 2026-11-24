@@ -156,6 +156,58 @@ export function isOrphanCwd(cwd, { base, goneWorktrees, exists }) {
   return !exists(root);
 }
 
+/**
+ * 포트를 듣는 프로세스를 이 체크아웃 것과 남의 것으로 나눈다. cwd 를 품은 가장 안쪽 워크트리가 이 체크아웃일 때만
+ * 자기 것이다 (메인 체크아웃 안에 놓인 다른 워크트리는 남의 것). cwd 를 모르면 남의 것으로 본다
+ * @template {{ cwd: string | null }} T
+ * @param {T[]} listeners
+ * @param {{ root: string, worktrees: string[] }} context 모두 realpath
+ * @returns {{ own: T[], foreign: T[] }}
+ */
+export function partitionListeners(listeners, { root, worktrees }) {
+  const nested = worktrees.filter((dir) => dir !== root && isUnder(dir, root));
+  /** @param {T} listener */
+  const isOwn = ({ cwd }) =>
+    cwd !== null && isUnder(cwd, root) && !nested.some((dir) => isUnder(cwd, dir));
+  return {
+    own: listeners.filter(isOwn),
+    foreign: listeners.filter((listener) => !isOwn(listener)),
+  };
+}
+
+/** `pnpm dev` 래퍼 자신. 같은 문자열을 인자로 품은 `sh -c node …worktree.mjs` 는 아니다 */
+const DEV_WRAPPER_ARGS = /^(\S*\/)?node\s+\S*scripts\/worktree\.mjs\s+env\s+web(\s|$)/;
+
+/** 래퍼 감시 프로세스의 명령줄에 넣는 표시 */
+export const WATCHDOG_MARKER = "/*seedbook-dev-watchdog*/";
+
+/**
+ * 듣는 프로세스를 끄려면 함께 끝내야 할 pid. `pnpm dev` 래퍼 아래에 있으면 래퍼와 그 자손 전부, 아니면 듣는
+ * 프로세스와 그 자손. 래퍼 위(pnpm·셸·에이전트)와 `isOwn` 이 아닌 프로세스는 넣지 않는다.
+ * 감시 프로세스도 뺀다 — 래퍼가 SIGKILL 되면 남은 자식 그룹을 치우고 스스로 끝난다
+ * @param {number[]} listenerPids
+ * @param {Map<number, { ppid: number, args: string }>} table
+ * @param {{ isOwn: (pid: number) => boolean }} options
+ * @returns {number[]}
+ */
+export function stopTargets(listenerPids, table, { isOwn }) {
+  /** @param {number} listener */
+  const findRoot = (listener) => {
+    const seen = new Set();
+    for (let pid = listener; pid > 1 && !seen.has(pid); pid = table.get(pid)?.ppid ?? 0) {
+      seen.add(pid);
+      if (DEV_WRAPPER_ARGS.test(table.get(pid)?.args ?? "") && isOwn(pid)) return pid;
+    }
+    return listener;
+  };
+  const tree = new Set(listenerPids.map(findRoot));
+  // Set 은 도는 중에 넣은 값도 이어서 돈다 — 자손을 끝까지 따라간다
+  for (const parent of tree) {
+    for (const [pid, { ppid }] of table) if (ppid === parent) tree.add(pid);
+  }
+  return [...tree].filter((pid) => isOwn(pid) && !table.get(pid)?.args.includes(WATCHDOG_MARKER));
+}
+
 /** 에이전트 (claude, codex) 와 그 MCP 서버 (`@playwright/mcp` 등) */
 const AGENT_ARGS = /(^|[\s/])(claude|codex)(\s|$)|(^|[\s/@_-])mcp([\s/@_-]|$)/;
 

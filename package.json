@@ -25,6 +25,7 @@
     "docker:prod": "docker compose pull && docker compose up -d --remove-orphans",
     "mobile:sync": "pnpm --filter @seedbook/mobile sync",
     "wt:info": "node scripts/worktree.mjs info",
+    "wt:stop": "node scripts/worktree.mjs stop",
     "wt:down": "node scripts/worktree.mjs down",
     "wt:gc": "node scripts/worktree.mjs gc"
   },

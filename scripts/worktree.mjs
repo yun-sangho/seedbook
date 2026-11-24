@@ -8,6 +8,7 @@
 //   node scripts/worktree.mjs env <web|test-db> '<command>'  # apps/web 의 dev·test:db 가 쓰는 래퍼
 //   pnpm db:seed:reset      슬롯 DB 의 dev 사용자를 시나리오로 되돌린다 (슬롯 0 은 기존처럼 crawler 컨테이너에서)
 //   pnpm wt:info            이 워크트리의 슬롯·URL·DB (없으면 배정)
+//   pnpm wt:stop            이 워크트리 슬롯의 web 포트를 듣는 dev 서버만 끈다 (DB·슬롯은 그대로)
 //   pnpm wt:down            이 워크트리의 dev 서버를 끄고 슬롯 DB 2개를 지운 뒤 슬롯 반납
 //   pnpm wt:gc [--dry-run]  살아 있는 워크트리가 쥐지 않은 seedbook_s* DB 와, 지워진 워크트리 경로를
 //                           cwd 로 쥔 node 프로세스를 정리 (메인 세션이 hwt rm 뒤 메인 체크아웃에서)
@@ -44,10 +45,13 @@ import {
   orphanSlotDatabases,
   parseSlotFile,
   parseWorktreeList,
+  partitionListeners,
   pickSlot,
   SLOT_FILE,
   slotDatabases,
   slotEnv,
+  stopTargets,
+  WATCHDOG_MARKER,
   webPort,
 } from "./worktree-lib.mjs";
 
@@ -111,11 +115,15 @@ function canListen(port, host) {
   });
 }
 
+async function portFree(port) {
+  return (await canListen(port, "127.0.0.1")) && (await canListen(port, "0.0.0.0"));
+}
+
 async function freePorts() {
   const free = new Set();
   for (let slot = 1; slot <= MAX_SLOT; slot++) {
     const port = webPort(slot);
-    if ((await canListen(port, "127.0.0.1")) && (await canListen(port, "0.0.0.0"))) free.add(port);
+    if (await portFree(port)) free.add(port);
   }
   return free;
 }
@@ -156,12 +164,16 @@ async function withSlotLock(fn) {
   }
 }
 
-/** SEEDBOOK_SLOT 환경변수 → 슬롯 파일 → (링크된 워크트리면) 새로 배정 → 메인 체크아웃이면 0 */
-async function ensureSlot() {
+/** SEEDBOOK_SLOT 환경변수 → 슬롯 파일 → 메인 체크아웃이면 0. 아직 배정되지 않은 링크된 워크트리는 null */
+function currentSlot() {
   if (process.env.SEEDBOOK_SLOT !== undefined) return Number(process.env.SEEDBOOK_SLOT);
-  const slot = readSlot(ROOT);
+  return readSlot(ROOT) ?? (isLinkedWorktree() ? null : 0);
+}
+
+/** 이 워크트리의 슬롯. 없으면 새로 배정한다 */
+async function ensureSlot() {
+  const slot = currentSlot();
   if (slot !== null) return slot;
-  if (!isLinkedWorktree()) return 0;
   // 잠금을 기다리는 동안 다른 프로세스가 배정했으면 그 슬롯을 쓴다
   return withSlotLock(async () => readSlot(ROOT) ?? (await assignSlot()));
 }
@@ -361,7 +373,7 @@ function envForSlot(slot) {
 // 프로세스를 따로 둔다. 감시는 래퍼와 파이프(감시의 stdin) 하나만 잇고, 래퍼가 어떻게 끝나든 커널이 파이프를
 // 닫으면 EOF 를 받아 자식 그룹을 SIGTERM → 유예 뒤 SIGKILL 하고 끝난다 (~/project/teum/scripts/worktree.mjs 와 같다)
 const TERM_GRACE_MS = 5_000;
-const WATCHDOG = `const g=-+process.argv[1],k=s=>{try{process.kill(g,s);return 1}catch{}};process.stdin.on("error",()=>{}).on("close",()=>{if(!k("SIGTERM"))process.exit();const t=Date.now(),i=setInterval(()=>{if(!k(0))process.exit();if(Date.now()-t>${TERM_GRACE_MS * 2}){k("SIGKILL");process.exit()}},200)}).resume()`;
+const WATCHDOG = `${WATCHDOG_MARKER}const g=-+process.argv[1],k=s=>{try{process.kill(g,s);return 1}catch{}};process.stdin.on("error",()=>{}).on("close",()=>{if(!k("SIGTERM"))process.exit();const t=Date.now(),i=setInterval(()=>{if(!k(0))process.exit();if(Date.now()-t>${TERM_GRACE_MS * 2}){k("SIGKILL");process.exit()}},200)}).resume()`;
 
 function startWatchdog(pgid) {
   const watchdog = spawn(process.execPath, ["-e", WATCHDOG, String(pgid)], {
@@ -560,7 +572,7 @@ async function terminate(procs) {
 
 function describe(p) {
   const args = p.args.length > 160 ? `${p.args.slice(0, 157)}...` : p.args;
-  return `  ${p.pid}  ${args}\n        cwd ${p.cwd}`;
+  return `  ${p.pid}  ${args}\n        cwd ${p.cwd ?? "(알 수 없음)"}`;
 }
 
 async function stopWorktreeProcesses() {
@@ -569,6 +581,72 @@ async function stopWorktreeProcesses() {
   if (procs.length === 0) return;
   log(`이 워크트리에서 도는 프로세스를 끈다:\n${procs.map(describe).join("\n")}`);
   await terminate(procs);
+}
+
+/** TCP 포트를 듣는 pid. 다른 사용자의 프로세스는 안 보일 수 있다 */
+function listenerPids(port) {
+  try {
+    const out = execFileSync("lsof", ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    return out.split("\n").filter(Boolean).map(Number);
+  } catch (error) {
+    if (error.status === 1) return []; // 듣는 프로세스가 없다
+    throw new Error(`포트 ${port} 를 듣는 프로세스를 찾지 못했다: ${error.message}`);
+  }
+}
+
+function realpathOr(path) {
+  try {
+    return realpathSync(path);
+  } catch {
+    return path; // 디렉터리가 없어진 워크트리
+  }
+}
+
+/** 이 슬롯의 web 포트를 듣는, cwd 가 이 체크아웃 안인 프로세스만 끈다. 남의 프로세스는 알리고 실패한다 */
+async function stop() {
+  const slot = currentSlot();
+  if (slot === null) {
+    log("배정된 슬롯이 없다. 끌 dev 서버가 없다");
+    return;
+  }
+  const port = webPort(slot);
+  const pids = listenerPids(port);
+  if (pids.length === 0) {
+    if (!(await portFree(port))) {
+      throw new Error(`포트 ${port} 가 쓰이고 있지만 듣는 프로세스를 볼 수 없어 끄지 않는다`);
+    }
+    log(`slot ${slot}: web :${port} 은 이미 꺼져 있다`);
+    return;
+  }
+  const table = processTable();
+  const cwds = new Map(processCwds().map((p) => [p.pid, p.cwd]));
+  const context = { root: realpathSync(ROOT), worktrees: worktreePaths().map(realpathOr) };
+  const toProc = (pid) => ({
+    pid,
+    cwd: cwds.get(pid) ?? null,
+    args: table.get(pid)?.args ?? "(알 수 없음)",
+  });
+  const { own, foreign } = partitionListeners(pids.map(toProc), context);
+  if (foreign.length) {
+    throw new Error(
+      `포트 ${port} 를 이 워크트리 밖의 프로세스가 듣고 있어 아무것도 끄지 않는다:\n${foreign.map(describe).join("\n")}`
+    );
+  }
+  const skip = selfAndAncestors(table);
+  const isOwn = (pid) =>
+    !skip.has(pid) && partitionListeners([toProc(pid)], context).own.length === 1;
+  const targets = stopTargets(
+    own.map((p) => p.pid),
+    table,
+    { isOwn }
+  ).map(toProc);
+  log(`slot ${slot}: web :${port} 을 끈다:\n${targets.map(describe).join("\n")}`);
+  await terminate(targets);
+  if (listenerPids(port).length) throw new Error(`포트 ${port} 를 아직 듣는 프로세스가 있다`);
+  log(`web :${port} 을 껐다 (DB·슬롯은 그대로)`);
 }
 
 /** hwt 가 워크트리를 두는 곳 (~/.herdr/worktrees/<repo>) */
@@ -662,11 +740,12 @@ try {
   if (command === "env") await run(rest[0], rest.slice(1).join(" "));
   else if (command === "db-reset") await dbReset();
   else if (command === "info") await info();
+  else if (command === "stop") await stop();
   else if (command === "down") await down();
   else if (command === "gc") await gc({ dryRun: rest.includes("--dry-run") });
   else {
     console.error(
-      "usage: worktree.mjs <env <web|test-db> <command> | db-reset | info | down | gc [--dry-run]>"
+      "usage: worktree.mjs <env <web|test-db> <command> | db-reset | info | stop | down | gc [--dry-run]>"
     );
     process.exit(2);
   }

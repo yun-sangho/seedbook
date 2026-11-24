@@ -8,9 +8,12 @@ import {
   orphanSlotDatabases,
   parseSlotFile,
   parseWorktreeList,
+  partitionListeners,
   pickSlot,
   slotDatabases,
   slotEnv,
+  stopTargets,
+  WATCHDOG_MARKER,
   webPort,
 } from "../../../../scripts/worktree-lib.mjs";
 
@@ -210,5 +213,94 @@ describe("isAgentProcess", () => {
       false
     );
     expect(isAgentProcess("next-server (v16.4.6)")).toBe(false);
+  });
+});
+
+describe("partitionListeners", () => {
+  const main = "/home/me/project/seedbook";
+  const mine = "/home/me/.herdr/worktrees/seedbook/feat-a";
+  const nested = `${main}/.worktrees/feat-b`;
+  const worktrees = [main, mine, nested];
+  const at = (cwd: string | null) => ({ pid: 1, cwd });
+
+  it("owns a listener whose cwd is the checkout or inside it", () => {
+    const listeners = [at(mine), at(`${mine}/apps/web`)];
+    expect(partitionListeners(listeners, { root: mine, worktrees })).toEqual({
+      own: listeners,
+      foreign: [],
+    });
+  });
+
+  it("treats another worktree, another project and a sibling name prefix as foreign", () => {
+    const listeners = [at(`${main}/apps/web`), at("/home/me/project/teum"), at(`${mine}-2/apps`)];
+    expect(partitionListeners(listeners, { root: mine, worktrees })).toEqual({
+      own: [],
+      foreign: listeners,
+    });
+  });
+
+  it("treats a listener with an unknown cwd as foreign", () => {
+    const listeners = [at(null)];
+    expect(partitionListeners(listeners, { root: mine, worktrees }).foreign).toEqual(listeners);
+  });
+
+  it("does not let the main checkout own a worktree nested inside it", () => {
+    const listeners = [at(`${nested}/apps/web`), at(`${main}/apps/web`)];
+    const { own, foreign } = partitionListeners(listeners, { root: main, worktrees });
+    expect(own).toEqual([listeners[1]]);
+    expect(foreign).toEqual([listeners[0]]);
+  });
+});
+
+describe("stopTargets", () => {
+  const wrapper = "node ../../scripts/worktree.mjs env web next dev --port $PORT";
+  const table = new Map([
+    [10, { ppid: 1, args: "claude" }],
+    [20, { ppid: 10, args: "node /bin/pnpm dev" }],
+    [25, { ppid: 20, args: `sh -c ${wrapper}` }],
+    [30, { ppid: 25, args: `/usr/bin/${wrapper}` }],
+    [40, { ppid: 30, args: "/bin/sh -c next dev --port $PORT" }],
+    [50, { ppid: 40, args: "node next dev --port 4011" }],
+    [60, { ppid: 50, args: "next-server (v16)" }],
+    [70, { ppid: 60, args: "node postcss.js" }],
+    [80, { ppid: 10, args: "node /mcp/server.js" }],
+  ]);
+  const all = () => true;
+  const sorted = (pids: number[]) => [...pids].sort((a, b) => a - b);
+
+  it("takes the whole tree under the pnpm dev wrapper, but not pnpm or the agent above it", () => {
+    expect(sorted(stopTargets([60], table, { isOwn: all }))).toEqual([30, 40, 50, 60, 70]);
+  });
+
+  it("leaves the wrapper's watchdog alive so it can clean up after a SIGKILL", () => {
+    const watched = new Map([
+      ...table,
+      [90, { ppid: 30, args: `/usr/bin/node -e ${WATCHDOG_MARKER}const g=1 40` }],
+    ]);
+    expect(stopTargets([60], watched, { isOwn: all })).not.toContain(90);
+  });
+
+  it("takes only the listener and its descendants when there is no wrapper", () => {
+    const bare = new Map([...table, [30, { ppid: 25, args: "node something-else.js" }]]);
+    expect(sorted(stopTargets([60], bare, { isOwn: all }))).toEqual([60, 70]);
+  });
+
+  it("leaves processes outside the checkout alone", () => {
+    expect(sorted(stopTargets([60], table, { isOwn: (pid) => pid !== 70 }))).toEqual([
+      30, 40, 50, 60,
+    ]);
+    expect(sorted(stopTargets([60], table, { isOwn: (pid) => pid !== 30 }))).toEqual([60, 70]);
+  });
+
+  it("does not repeat a pid when several listeners share a wrapper", () => {
+    expect(sorted(stopTargets([60, 70], table, { isOwn: all }))).toEqual([30, 40, 50, 60, 70]);
+  });
+
+  it("stops at a ppid cycle instead of looping", () => {
+    const cycle = new Map([
+      [5, { ppid: 6, args: "a" }],
+      [6, { ppid: 5, args: "b" }],
+    ]);
+    expect(sorted(stopTargets([5], cycle, { isOwn: all }))).toEqual([5, 6]);
   });
 });
