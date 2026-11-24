@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Button } from "@web/components/ui/button";
+import { ActionButton } from "@web/seed-design/ui/action-button";
 
 /** 다시 시도 버튼 + 연결이 돌아오면 자동 새로고침. */
 export function RetryWhenOnline() {
@@ -11,5 +11,9 @@ export function RetryWhenOnline() {
     return () => window.removeEventListener("online", reload);
   }, []);
 
-  return <Button onClick={() => window.location.reload()}>다시 시도</Button>;
+  return (
+    <ActionButton variant="neutralSolid" onClick={() => window.location.reload()}>
+      다시 시도
+    </ActionButton>
+  );
 }
