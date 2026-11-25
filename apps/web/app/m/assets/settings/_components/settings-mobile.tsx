@@ -16,6 +16,7 @@ import {
   type SwitchDirection,
   useStorageModeSwitch,
 } from "@web/features/settings/hooks/use-storage-mode-switch";
+import { backupAccountTag, resolveBackupIds } from "@web/features/settings/utils/backup-ids";
 import {
   type BackupSections,
   backupFileName,
@@ -25,6 +26,7 @@ import {
 import { assignDemoDataIds } from "@web/features/settings/utils/demo-data";
 import { restoreBackupSections } from "@web/features/settings/utils/restore-backup";
 import { getActiveAccount } from "@web/lib/account-storage";
+import { fetchCloudItemIds } from "@web/lib/storage-migration";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
   AlertDialogAction,
@@ -62,7 +64,12 @@ const SWITCH_COPY: Record<
 /** 데이터 가져오기·데모 데이터의 확인과 결과 안내. */
 type DataDialog =
   | { kind: "closed" }
-  | { kind: "confirm-restore"; source: "file" | "demo"; data: Partial<BackupSections> }
+  | {
+      kind: "confirm-restore";
+      source: "file" | "demo";
+      data: Partial<BackupSections>;
+      newIds?: ReadonlyMap<string, string>;
+    }
   | { kind: "message"; title: string; description: string; reloadOnClose?: boolean };
 
 /** 더보기 → 설정. 저장소 모드 전환과 데이터 백업 (예전 PC 관리 화면). */
@@ -78,17 +85,32 @@ export function SettingsMobile() {
   const showError = (description: string) =>
     setDataDialog({ kind: "message", title: "불러오지 못했어요", description });
 
-  const askFileRestore = (raw: unknown) => {
+  const askFileRestore = async (raw: unknown) => {
     const parsed = parseBackup(raw);
     if (!parsed.ok) {
       showError("Seedbook 에서 내보낸 데이터 파일이 아니에요.");
       return;
     }
-    setDataDialog({ kind: "confirm-restore", source: "file", data: parsed.data });
+    try {
+      const userId = getActiveAccount();
+      if (!userId) throw new Error("no active account");
+      const { data, newIds } = await resolveBackupIds(parsed, userId, {
+        fetchOwnIds: fetchCloudItemIds,
+      });
+      setDataDialog({ kind: "confirm-restore", source: "file", data, newIds });
+    } catch (error) {
+      console.error(error);
+      showError("파일을 확인하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.");
+    }
   };
 
-  const exportData = () => {
-    const backup = buildBackup({ investments, portfolios, rebalancingSessions });
+  const exportData = async () => {
+    const userId = getActiveAccount();
+    if (!userId) return;
+    const backup = buildBackup(
+      { investments, portfolios, rebalancingSessions },
+      await backupAccountTag(userId)
+    );
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -130,8 +152,8 @@ export function SettingsMobile() {
     }
   };
 
-  const confirmRestore = (data: Partial<BackupSections>) => {
-    restoreBackupSections(data);
+  const confirmRestore = (data: Partial<BackupSections>, newIds?: ReadonlyMap<string, string>) => {
+    restoreBackupSections(data, newIds);
     setDataDialog({
       kind: "message",
       title: "데이터를 불러왔어요",
@@ -233,7 +255,7 @@ export function SettingsMobile() {
                     variant="neutralSolid"
                     size="large"
                     flexGrow
-                    onClick={() => confirmRestore(dataDialog.data)}
+                    onClick={() => confirmRestore(dataDialog.data, dataDialog.newIds)}
                   >
                     덮어쓰기
                   </ActionButton>

@@ -548,6 +548,8 @@ export const userPreference = seedbook.table("user_preference", {
   // 사용자가 선택한 저장소 모드 ("local" | "cloud"). 로그인 시 클라이언트가 이 값을
   // 받아 localStorage 와 동기화한다. 기본 "local" 이라 기존 행도 안전.
   storageMode: text("storageMode").notNull().default("local"),
+  // 사용자가 저장소 모드를 직접 고른 시각. null 이면 로그인 뒤 저장 방식 선택 화면을 보여 준다.
+  storageModeChosenAt: timestamp("storageModeChosenAt", { precision: 3, mode: "date" }),
 });
 
 export const userListOrder = seedbook.table(

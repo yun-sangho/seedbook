@@ -31,6 +31,11 @@ function unionBy(local: Row[], cloud: Row[], key: string): Row[] {
   return [...local, ...cloud.filter((r) => !seen.has(r[key]))];
 }
 
+export function itemIds(storeKey: CloudStoreKey, envelope: PersistEnvelope | null): string[] {
+  const { field, key } = LIST_FIELDS[storeKey];
+  return asRows(envelope?.state[field]).map((row) => String(row[key]));
+}
+
 export function mergeEnvelopes(
   storeKey: CloudStoreKey,
   local: PersistEnvelope | null,
