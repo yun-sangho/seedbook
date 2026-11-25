@@ -10,6 +10,8 @@ node_modules
 
 # testing
 coverage
+# 실패한 단위 테스트 기록 (apps/web/test/failure-log)
+.vitest-failures/
 
 # next.js
 .next/
