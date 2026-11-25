@@ -56,6 +56,11 @@ export function isNativeAppUserAgent(userAgent: string | undefined): boolean {
   return userAgent?.includes(NATIVE_APP_UA_MARKER) ?? false;
 }
 
+/** iPad 앱은 UA 가 Mac 처럼 보일 수 있어, 앱 중 Android 가 아닌 것을 iOS 앱으로 본다. */
+export function isIosAppUserAgent(userAgent: string | undefined): boolean {
+  return isNativeAppUserAgent(userAgent) && !userAgent?.includes("Android");
+}
+
 export function resolveDeviceKind(input: {
   deviceType: string | undefined;
   userAgent?: string;
