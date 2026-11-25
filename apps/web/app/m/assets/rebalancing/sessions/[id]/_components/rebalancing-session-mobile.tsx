@@ -9,6 +9,7 @@ import {
   SortSheet,
   sortOptionLabel,
 } from "@web/app/m/assets/investments/_components/investment-sheets";
+import { BottomAction } from "@web/components/mobile/bottom-action";
 import { ConfirmDialog } from "@web/components/mobile/confirm-dialog";
 import { HeaderAction } from "@web/components/mobile/header-action";
 import { PriceAsOfSummaryBanner, PriceBanner } from "@web/components/mobile/price-as-of-banner";
@@ -17,13 +18,14 @@ import {
   describePriceAsOf,
   type PriceAsOfSummary,
 } from "@web/features/investments/utils/price-as-of";
-import { stockPriceKey } from "@web/features/investments/utils/use-stock-prices";
+import { RebalancingProgressBar } from "@web/features/rebalancing/components/rebalancing-progress-bar";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import type { RebalancingTask } from "@web/features/rebalancing/types/types";
 import {
   type RebalancingTaskSection,
   toggleCollapsedSection,
 } from "@web/features/rebalancing/utils/collapsed-sections";
+import { holdingQuantityFor } from "@web/features/rebalancing/utils/holding-quantity";
 import { priceAgeWarning } from "@web/features/rebalancing/utils/price-age";
 import { summarizeRebalancingPriceAsOf } from "@web/features/rebalancing/utils/rebalancing-price-as-of";
 import {
@@ -51,7 +53,7 @@ import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { Badge } from "@web/seed-design/ui/badge";
 import { Callout } from "@web/seed-design/ui/callout";
-import { List, ListButtonItem } from "@web/seed-design/ui/list";
+import { List, ListButtonItem, ListItem } from "@web/seed-design/ui/list";
 import { ResultSection } from "@web/seed-design/ui/result-section";
 import { formatWithCommas, numberToKorean } from "@web/utils/number-format";
 import { CompleteRebalancingSheet } from "./complete-rebalancing-sheet";
@@ -63,7 +65,7 @@ const TASK_LEAVE_MS = 800;
 
 /**
  * 리밸런싱 할 일 체크리스트. 권장 수량은 시작할 때의 가격으로 고정된 스냅샷이라 시세가
- * 바뀌어도 그대로다. 종목별 매도/매수를 하나씩 체크하고, 모두 마치면 "리밸런싱 완료하기"로
+ * 바뀌어도 그대로다. 종목별 매도/매수를 하나씩 체크하고, 모두 마치면 하단에 고정된 "리밸런싱 완료하기"로
  * 완료 기록을 남긴다 (원하면 계좌에도 반영).
  */
 export function RebalancingSessionMobile({ id }: { id: string }) {
@@ -72,6 +74,7 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
   const { pop, push } = useFlow();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const topRef = useRef<HTMLDivElement>(null);
   const leaving = useLeavingTasks(session?.tasks);
   const [sortOpen, setSortOpen] = useState(false);
   // 정렬은 개인 설정 — 계정에 저장되어 어느 기기에서든 이어진다.
@@ -114,9 +117,7 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
   const groups = groupRebalancingTasks(session.tasks, leaving);
   // 평가액 = 지금 보유 수량 × 시작 시점 기준 가격 (가격이 고정된 체크리스트라 같은 기준을 쓴다).
   const holdingQuantity = (task: RebalancingTask) =>
-    (account?.holdings ?? [])
-      .filter((h) => stockPriceKey(h.market, h.ticker) === stockPriceKey(task.market, task.ticker))
-      .reduce((sum, h) => sum + h.quantity, 0);
+    holdingQuantityFor(account?.holdings ?? [], task);
   const sectionTasks = {
     pending: sortRebalancingTasks(groups.pending, sort, holdingQuantity),
     ordered: sortRebalancingTasks(groups.ordered, sort, holdingQuantity),
@@ -125,20 +126,33 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
   const { done, total } = rebalancingProgress(session);
   const remaining = total - done;
   const canComplete = canCompleteRebalancing(session);
+  const readyToComplete = canComplete && remaining === 0;
   const stopped = isRebalancingStopped(session);
 
   return (
-    <div className="pb-x4">
+    <div ref={topRef} className="pb-x4">
       {/* 권장 수량을 계산한 시작 시점 시세의 기준 시각 — 지금 시세가 아니다. */}
       {priceAsOf ? (
         <SnapshotPriceBanner summary={priceAsOf} live={!completed} />
       ) : (
         <PriceBanner title="가격 기준 시각이 기록되지 않았어요" />
       )}
-      {cash && <CashOutlook cash={cash} cashDelta={session.cashDelta} />}
+      {cash && (
+        <CashOutlook cash={cash} cashDelta={session.cashDelta} hasRemaining={remaining > 0} />
+      )}
+      {!completed && (
+        <div className="px-x4 pb-x4">
+          <p className="t3-regular text-fg-neutral-muted">
+            {remaining > 0
+              ? `남은 매매 ${remaining}건 · 종목을 눌러 주문과 체결을 기록하세요.`
+              : "모든 매매를 마쳤어요. 아래에서 리밸런싱을 완료하세요."}
+          </p>
+          <RebalancingProgressBar done={done} total={total} />
+        </div>
+      )}
 
       {completed && (
-        <div className="px-x4 pb-x4">
+        <div className="px-x4 py-x4">
           {stopped ? (
             <Callout
               tone="neutral"
@@ -162,7 +176,7 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
       <section className="py-x4">
         <div className="flex items-center px-x4">
           <h2 className="t5-bold flex-1">
-            리밸런싱 추천 종목{" "}
+            {completed ? "매매 내역" : "리밸런싱 추천 종목"}{" "}
             <span className="text-fg-neutral-subtle tabular-nums">{total}건</span>
           </h2>
           {/* 어떤 정렬이든 매도가 매수보다 먼저 나온다. */}
@@ -176,16 +190,6 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
             <Icon svg={<IconChevronDownSmallLine />} />
           </ActionButton>
         </div>
-        {groups.pending.length === 0 && groups.ordered.length === 0 && (
-          <div className="flex flex-col items-center gap-x2 px-x4 py-x6">
-            <p className="t4-regular text-fg-neutral-subtle">모든 매매를 마쳤어요.</p>
-            {canComplete && (
-              <ActionButton variant="ghost" size="small" onClick={() => setCompleting(true)}>
-                리밸런싱 완료하기
-              </ActionButton>
-            )}
-          </div>
-        )}
 
         {/* 상태별 섹션 — 주문 전 → 주문 중 → 체결됨 순으로 내려가며 하나씩 끝내 간다. 빈 섹션은 숨긴다. */}
         {SECTIONS.map(({ key, title }) => {
@@ -201,7 +205,7 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
                 onClick={() => toggleSection(key)}
               >
                 <h3 className="t4-bold flex-1">
-                  {title}{" "}
+                  {completed ? ENDED_LABEL[key] : title}{" "}
                   <span className="text-fg-neutral-subtle tabular-nums">
                     {groups[key].length}건
                   </span>
@@ -217,18 +221,30 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
                 </span>
               </button>
               {!collapsed && (
-                <TaskList tasks={tasks} leaving={leaving} disabled={completed} onOpen={openTrade} />
+                <TaskList tasks={tasks} leaving={leaving} ended={completed} onOpen={openTrade} />
               )}
             </div>
           );
         })}
       </section>
 
-      {/* 모든 매매를 마쳤으면 위 "모든 매매를 마쳤어요" 아래의 완료 버튼을 쓴다. */}
+      {/* 다 끝냈으면 완료가 주된 다음 행동 — 하단에 고정한다. 남았으면 종료는 보조 행동이다. */}
+      {readyToComplete && (
+        <BottomAction>
+          <ActionButton size="large" className="w-full" onClick={() => setCompleting(true)}>
+            리밸런싱 완료하기
+          </ActionButton>
+        </BottomAction>
+      )}
       {canComplete && remaining > 0 && (
         <div className="px-x4 pt-x2">
-          <ActionButton size="large" className="w-full" onClick={() => setCompleting(true)}>
-            리밸런싱 종료하기
+          <ActionButton
+            variant="neutralWeak"
+            size="large"
+            className="w-full"
+            onClick={() => setCompleting(true)}
+          >
+            남은 {remaining}건을 두고 종료하기
           </ActionButton>
         </div>
       )}
@@ -240,7 +256,13 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
         value={sort}
         onChange={setSort}
       />
-      <CompleteRebalancingSheet session={session} open={completing} onOpenChange={setCompleting} />
+      <CompleteRebalancingSheet
+        session={session}
+        open={completing}
+        onOpenChange={setCompleting}
+        // 완료 안내와 결과가 맨 위에 나온다.
+        onCompleted={() => topRef.current?.scrollIntoView()}
+      />
 
       <HeaderAction>
         <ActionButton
@@ -257,7 +279,9 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
         onOpenChange={setConfirmingDelete}
         title="이 리밸런싱을 삭제할까요?"
         description={
-          completed ? "완료 기록에서 사라집니다." : "체크한 진행 상황이 함께 사라집니다."
+          completed
+            ? "완료 기록에서 사라집니다. 계좌에 반영한 내용은 그대로예요."
+            : "기록한 주문과 체결이 함께 사라지고, 계좌에는 반영되지 않아요."
         }
         onConfirm={() => {
           removeRebalancing(session.id);
@@ -283,12 +307,12 @@ function SnapshotPriceBanner({ summary, live }: { summary: PriceAsOfSummary; liv
 function TaskList({
   tasks,
   leaving,
-  disabled,
+  ended,
   onOpen,
 }: {
   tasks: RebalancingTask[];
   leaving: ReadonlyMap<string, RebalancingTaskGroup>;
-  disabled: boolean;
+  ended: boolean;
   onOpen: (taskId: string) => void;
 }) {
   return (
@@ -299,7 +323,7 @@ function TaskList({
           task={task}
           // 방금 주문·체결했으면 바뀐 모습을 보여준 뒤 접히며 빠지고, 다음 그룹으로 옮겨진다.
           leaving={leaving.has(task.id)}
-          disabled={disabled}
+          ended={ended}
           onOpen={() => onOpen(task.id)}
         />
       ))}
@@ -311,41 +335,44 @@ function TaskList({
 function TaskRow({
   task,
   leaving,
-  disabled,
+  ended,
   onOpen,
 }: {
   task: RebalancingTask;
   leaving: boolean;
-  disabled: boolean;
+  ended: boolean;
   onOpen: () => void;
 }) {
+  const content = {
+    // 대기 → 주문 → 체결 중 어디인지를 맨 앞에 — 체크 하나로는 주문과 체결을 구분할 수 없다.
+    prefix: <TaskStatusBadge task={task} ended={ended} />,
+    title: <span>{task.name || task.ticker || "(미선택)"}</span>,
+    detail: <TaskDetail task={task} />,
+    // 무엇을 몇 주, 주당 얼마에 — 방향 배지와 수량을 한 줄에, 그 아래 주당 가격을 두고 오른쪽
+    // 정렬해 종목마다 수량·가격이 같은 세로선에 놓이게 한다. 좁은 화면(360px 미만)에서는 배지를 윗줄로 올린다.
+    suffix: (
+      <span className="flex flex-col items-end gap-[2px]">
+        <span className="flex items-center gap-x2 max-[359px]:flex-col max-[359px]:items-end max-[359px]:gap-[2px]">
+          {/* 권장은 아직 주문하기 전에만 — 주문·체결한 뒤에는 실제로 한 매매라 방향만 적는다. */}
+          <Badge tone={task.action === "매수" ? "positive" : "critical"} variant="outline">
+            {rebalancingTaskStatus(task) === "pending" ? `${task.action} 권장` : task.action}
+          </Badge>
+          <TaskQuantity task={task} />
+        </span>
+        <TaskPrice task={task} />
+      </span>
+    ),
+  };
+  // 완료된 기록은 계좌에 반영됐을 수 있어 매매를 바꾸지 않는다 — 흐리게 하지 않고 읽기만 한다.
+  if (ended) return <ListItem {...content} />;
   return (
     <ListButtonItem
+      {...content}
       // 체결한 매매도 흐리게·취소선 없이 그대로 보여준다 — 상태는 앞의 배지가 알려 준다.
       rootProps={{
         className: cn(leaving && "animate-task-leave overflow-hidden motion-reduce:animate-none"),
       }}
-      // 대기 → 주문 → 체결 중 어디인지를 맨 앞에 — 체크 하나로는 주문과 체결을 구분할 수 없다.
-      prefix={<TaskStatusBadge task={task} />}
-      title={<span>{task.name || task.ticker || "(미선택)"}</span>}
-      detail={<TaskDetail task={task} />}
-      // 무엇을 몇 주, 주당 얼마에 — 방향 배지와 수량을 한 줄에, 그 아래 주당 가격을 두고 오른쪽
-      // 정렬해 종목마다 수량·가격이 같은 세로선에 놓이게 한다.
-      suffix={
-        <span className="flex flex-col items-end gap-[2px]">
-          <span className="flex items-center gap-x2">
-            {/* 권장은 아직 주문하기 전에만 — 주문·체결한 뒤에는 실제로 한 매매라 방향만 적는다. */}
-            <Badge tone={task.action === "매수" ? "positive" : "critical"} variant="outline">
-              {rebalancingTaskStatus(task) === "pending" ? `${task.action} 권장` : task.action}
-            </Badge>
-            <TaskQuantity task={task} />
-          </span>
-          <TaskPrice task={task} />
-        </span>
-      }
       onClick={onOpen}
-      // 완료된 기록은 계좌에 반영됐을 수 있어 매매를 바꾸지 않는다.
-      disabled={disabled}
     />
   );
 }
@@ -359,11 +386,19 @@ const STATUS_BADGE: Record<
   filled: { label: "체결됨", tone: "positive" },
 };
 
-function TaskStatusBadge({ task }: { task: RebalancingTask }) {
-  const { label, tone } = STATUS_BADGE[rebalancingTaskStatus(task)];
+/** 끝난 리밸런싱에서는 "주문 전·주문 중" 이 앞으로 할 일처럼 보이지 않게 부른다. */
+const ENDED_LABEL: Record<RebalancingTaskSection, string> = {
+  pending: "안 함",
+  ordered: "체결 안 됨",
+  filled: "체결됨",
+};
+
+function TaskStatusBadge({ task, ended }: { task: RebalancingTask; ended: boolean }) {
+  const status = rebalancingTaskStatus(task);
+  const { label, tone } = STATUS_BADGE[status];
   return (
     <Badge tone={tone} variant="weak">
-      {label}
+      {ended ? ENDED_LABEL[status] : label}
     </Badge>
   );
 }
@@ -438,7 +473,32 @@ function useLeavingTasks(
  * 매매하면서 가장 자주 보는 건 남은 예수금 — 다음 매수를 할 수 있는지가 여기서 갈린다.
  * 지금 예수금(완료한 매매 반영)을 크게, 남은 매매를 권장대로 다 하면 남을 예수금을 함께 보여준다.
  */
-function CashOutlook({ cash, cashDelta }: { cash: RebalancingCashOutlook; cashDelta: number }) {
+function CashOutlook({
+  cash,
+  cashDelta,
+  hasRemaining,
+}: {
+  cash: RebalancingCashOutlook;
+  cashDelta: number;
+  hasRemaining: boolean;
+}) {
+  const expected = (
+    <>
+      남은 매매 다 하면{" "}
+      <span className={cn("t3-bold", cash.expected < 0 ? "text-fg-critical" : "text-fg-neutral")}>
+        {formatSignedWon(cash.expected)}
+      </span>
+    </>
+  );
+  const held =
+    cash.heldForOrders > 0
+      ? `매수 주문 ${formatWithCommas(Math.round(cash.heldForOrders))}원 묶임`
+      : null;
+  const delta =
+    cashDelta !== 0
+      ? `${cashDelta > 0 ? "새로 넣은 돈" : "남겨 둔 돈"} ${numberToKorean(Math.abs(cashDelta))} ${cashDelta > 0 ? "포함" : "제외"}`
+      : null;
+  const notes = [held, delta].filter((note) => note !== null);
   return (
     <section className="px-x4 py-x4">
       <p className="t3-regular text-fg-neutral-muted">남은 주문가능금액</p>
@@ -446,21 +506,15 @@ function CashOutlook({ cash, cashDelta }: { cash: RebalancingCashOutlook; cashDe
         {formatSignedWon(cash.now)}
       </p>
       <p className="t3-regular text-fg-neutral-subtle mt-x1 tabular-nums">
-        남은 매매 다 하면{" "}
-        <span className={cn("t3-bold", cash.expected < 0 ? "text-fg-critical" : "text-fg-neutral")}>
-          {formatSignedWon(cash.expected)}
-        </span>
-        {cash.heldForOrders > 0 && (
-          <> · 매수 주문 {formatWithCommas(Math.round(cash.heldForOrders))}원 묶임</>
-        )}
-        {cashDelta !== 0 && (
-          <>
-            {" "}
-            · {cashDelta > 0 ? "새로 넣은 돈" : "남겨 둔 돈"} {numberToKorean(Math.abs(cashDelta))}{" "}
-            {cashDelta > 0 ? "포함" : "제외"}
-          </>
-        )}
+        {hasRemaining && expected}
+        {hasRemaining && notes.length > 0 && " · "}
+        {notes.join(" · ")}
       </p>
+      {hasRemaining && cash.expected < 0 && (
+        <p className="t3-regular text-fg-critical mt-x1">
+          이대로면 금액이 모자라요. 매수 수량을 줄여서 기록하세요.
+        </p>
+      )}
     </section>
   );
 }

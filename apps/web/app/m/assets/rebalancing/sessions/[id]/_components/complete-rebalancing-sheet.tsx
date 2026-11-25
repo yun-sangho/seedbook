@@ -14,7 +14,10 @@ import {
 } from "@web/features/rebalancing/utils/apply-rebalancing-to-account";
 import { formatQuantityChange } from "@web/features/rebalancing/utils/format-quantity-change";
 import { computeRebalancingResult } from "@web/features/rebalancing/utils/rebalancing-result";
-import { executedPriceOf } from "@web/features/rebalancing/utils/rebalancing-session";
+import {
+  executedPriceOf,
+  rebalancingTaskStatus,
+} from "@web/features/rebalancing/utils/rebalancing-session";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
   BottomSheetBody,
@@ -39,10 +42,13 @@ export function CompleteRebalancingSheet({
   session,
   open,
   onOpenChange,
+  onCompleted,
 }: {
   session: RebalancingSession;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** 완료·종료를 기록한 뒤. */
+  onCompleted?: () => void;
 }) {
   const account = useInvestmentStore((s) =>
     s.investments.find((inv) => inv.id === session.accountId)
@@ -67,9 +73,15 @@ export function CompleteRebalancingSheet({
 
   const canApply = preview !== null;
   const uncheckedCount = session.tasks.filter((t) => !t.done).length;
+  const orderedCount = session.tasks.filter((t) => rebalancingTaskStatus(t) === "ordered").length;
   // 남은 매매가 있으면 "완료"가 아니라 "종료"다.
   const stopping = uncheckedCount > 0;
   const willApply = canApply && applyToAccount;
+
+  // 반영할 변화가 있을 때만 버튼에 반영 여부를 적는다.
+  const hasChanges =
+    preview !== null &&
+    (preview.holdingChanges.length > 0 || preview.cash.before !== preview.cash.after);
 
   const submit = () => {
     if (willApply && preview) {
@@ -96,6 +108,7 @@ export function CompleteRebalancingSheet({
       completeRebalancing(session.id);
     }
     onOpenChange(false);
+    onCompleted?.();
   };
 
   return (
@@ -108,7 +121,11 @@ export function CompleteRebalancingSheet({
           {stopping && (
             <Callout
               tone="warning"
-              description={`남은 매매 ${uncheckedCount}건은 하지 않은 것으로 기록되고, 계좌에도 반영되지 않아요.`}
+              description={`남은 매매 ${uncheckedCount}건은 하지 않은 것으로 기록되고, 계좌에도 반영되지 않아요.${
+                orderedCount > 0
+                  ? ` 주문 중인 ${orderedCount}건은 증권사 앱에서 따로 취소해 주세요.`
+                  : ""
+              }`}
               className="mb-x4"
             />
           )}
@@ -125,7 +142,7 @@ export function CompleteRebalancingSheet({
                 <ApplyPreview holdingChanges={preview.holdingChanges} cash={preview.cash} />
               ) : (
                 <p className="t4-regular text-fg-neutral-muted mt-x2">
-                  계좌는 그대로 두고 기록만 남겨요.
+                  계좌는 그대로 두고 기록만 남겨요. 나중에 이 기록을 계좌에 반영할 수는 없어요.
                 </p>
               )}
               {applyToAccount && preview.skipped.length > 0 && (
@@ -143,7 +160,8 @@ export function CompleteRebalancingSheet({
         </BottomSheetBody>
         <BottomSheetFooter>
           <ActionButton size="large" className="w-full" onClick={submit}>
-            {stopping ? "종료" : "완료"}
+            {hasChanges && (applyToAccount ? "계좌에 반영하고 " : "기록만 남기고 ")}
+            {stopping ? "종료하기" : "완료하기"}
           </ActionButton>
         </BottomSheetFooter>
       </BottomSheetContent>
@@ -178,12 +196,12 @@ function ApplyPreview({
             label={change.task.name || change.task.ticker}
             aside={
               <span className={delta > 0 ? "text-fg-positive" : "text-fg-critical"}>
-                {formatQuantityChange(delta)}
+                {formatQuantityChange(delta)}주
               </span>
             }
             before={`${formatWithCommas(change.before)}주`}
             after={`${formatWithCommas(change.after)}주`}
-            price={price !== null ? `${formatWithCommas(price)}원` : undefined}
+            price={price !== null ? `체결가 ${formatWithCommas(price)}원` : undefined}
           />
         );
       })}

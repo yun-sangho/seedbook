@@ -9,6 +9,8 @@ import { useInvestmentStore } from "@web/features/investments/stores/investment-
 import { snapToTick, stepByTick, tickSize } from "@web/features/investments/utils/krx-tick-size";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import type { RebalancingTask, RebalancingTaskStatus } from "@web/features/rebalancing/types/types";
+import { affordableQuantity } from "@web/features/rebalancing/utils/affordable-quantity";
+import { holdingQuantityFor } from "@web/features/rebalancing/utils/holding-quantity";
 import {
   isRebalancingCompleted,
   rebalancingTaskStatus,
@@ -17,6 +19,7 @@ import { tradeCashPreview } from "@web/features/rebalancing/utils/trade-cash-che
 import { useTaskSecurityTypes } from "@web/features/rebalancing/utils/use-task-security-types";
 import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
+import { Callout } from "@web/seed-design/ui/callout";
 import { ResultSection } from "@web/seed-design/ui/result-section";
 import { TextField, TextFieldInput } from "@web/seed-design/ui/text-field";
 import { formatWithCommas, parseNumericString } from "@web/utils/number-format";
@@ -111,6 +114,13 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
       : null;
   const shortOfCash = cash !== null && cash.after < 0;
   const canSave = quantityOk && tradePrice !== null && !shortOfCash;
+  // 매수가 모자랄 때 지금 살 수 있는 최대 수량.
+  const affordable =
+    shortOfCash && task.action === "매수" && tradePrice !== null
+      ? affordableQuantity(cash.before, tradePrice)
+      : 0;
+  const held = account ? holdingQuantityFor(account.holdings ?? [], task) : null;
+  const oversold = task.action === "매도" && held !== null && quantityOk && quantity > held;
   const differs = quantityOk && task.quantity !== null && quantity !== task.quantity;
   const setPrice = (next: number) => setPriceDraft(formatWithCommas(next));
 
@@ -212,6 +222,30 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
           </SummaryRow>
         )}
       </dl>
+
+      {oversold && (
+        <Callout
+          tone="warning"
+          description={`보유한 ${formatWithCommas(held)}주보다 많아요. 보유 수량까지만 계좌에 반영돼요.`}
+        />
+      )}
+      {cash && shortOfCash && (
+        <div className="flex flex-col items-start gap-x2">
+          <p className="t4-regular text-fg-critical tabular-nums">
+            주문가능금액이 {formatWithCommas(Math.abs(Math.round(cash.after)))}원 모자라 기록할 수
+            없어요. 매도를 먼저 체결하거나 수량을 줄여 주세요.
+          </p>
+          {affordable > 0 && (
+            <ActionButton
+              variant="neutralWeak"
+              size="small"
+              onClick={() => setQuantityDraft(formatWithCommas(affordable))}
+            >
+              살 수 있는 {formatWithCommas(affordable)}주로 바꾸기
+            </ActionButton>
+          )}
+        </div>
+      )}
 
       <div className="flex gap-x2">
         {status === "pending" && (

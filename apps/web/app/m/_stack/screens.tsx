@@ -5,6 +5,7 @@ import { VStack } from "@seed-design/react";
 import { AppBar as SeedAppBar } from "@seed-design/stackflow";
 import { useActivity } from "@stackflow/react";
 import { AppTabBar, TAB_BAR_CONTENT_INSET } from "@web/components/mobile/app-tab-bar";
+import { BottomActionSlotContext } from "@web/components/mobile/bottom-action";
 import { HeaderActionSlotContext } from "@web/components/mobile/header-action";
 import { MobileMoreSheet } from "@web/components/mobile/mobile-more-sheet";
 import { ProfileButton, ProfileSheet } from "@web/components/mobile/profile-menu";
@@ -130,6 +131,7 @@ interface DetailScreenProps {
  */
 export function DetailScreen({ title, subtitle, dotColor, children }: DetailScreenProps) {
   const [actionSlot, setActionSlot] = useState<HTMLElement | null>(null);
+  const [bottomSlot, setBottomSlot] = useState<HTMLElement | null>(null);
 
   return (
     <AppScreen>
@@ -158,7 +160,17 @@ export function DetailScreen({ title, subtitle, dotColor, children }: DetailScre
       </AppBar>
       <AppScreenContent>
         <HeaderActionSlotContext.Provider value={actionSlot}>
-          <div style={{ paddingBottom: "var(--seed-safe-area-bottom)" }}>{children}</div>
+          <BottomActionSlotContext.Provider value={bottomSlot}>
+            <div className="group flex min-h-full flex-col">
+              <div className="min-w-0 flex-1">{children}</div>
+              {/* 비어 있으면 안전 영역 여백만, 입력 중에는 키보드 위를 가리지 않게 고정하지 않는다. */}
+              <div
+                ref={setBottomSlot}
+                className="bg-bg-layer-default sticky bottom-0 z-10 empty:static group-has-[input:focus]:static"
+                style={{ paddingBottom: "var(--seed-safe-area-bottom)" }}
+              />
+            </div>
+          </BottomActionSlotContext.Provider>
         </HeaderActionSlotContext.Provider>
       </AppScreenContent>
     </AppScreen>
