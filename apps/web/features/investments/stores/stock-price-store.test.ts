@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PRICE_CACHE_TTL_MS } from "../utils/stock-price-cache";
-import { __resetStockPriceStoreForTests, useStockPriceStore } from "./stock-price-store";
+import {
+  __resetStockPriceStoreForTests,
+  PRICE_REQUEST_TIMEOUT_MS,
+  useStockPriceStore,
+} from "./stock-price-store";
 
 const NOW = new Date("2024-01-15T10:00:00Z").getTime();
 
@@ -245,5 +249,59 @@ describe("useStockPriceStore persistence", () => {
     };
 
     expect(migrate(v1, 1)).toEqual({ entries: {} });
+  });
+});
+
+describe("useStockPriceStore.refreshPrices", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    __resetStockPriceStoreForTests();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it("asks the server again even when a missing price is still fresh in the cache", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(priceResponse([{ market: "KOSPI", ticker: "005930", close: 70000 }]));
+    useStockPriceStore.setState({
+      entries: { "KOSPI:005930": { point: null, fetchedAt: NOW - 1000 } },
+    });
+
+    useStockPriceStore.getState().refreshPrices(["KOSPI:005930"]);
+    await vi.runAllTimersAsync();
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(useStockPriceStore.getState().entries["KOSPI:005930"]?.point?.close).toBe(70000);
+  });
+
+  it("does not send a second request while one is in flight", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(priceResponse([]));
+
+    useStockPriceStore.getState().refreshPrices(["KOSPI:005930"]);
+    useStockPriceStore.getState().refreshPrices(["KOSPI:005930"]);
+    await vi.runAllTimersAsync();
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("turns a request that never answers into an error so the user can retry", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(new Error("timeout")));
+        })
+    );
+
+    useStockPriceStore.getState().ensurePrices(["KOSPI:005930"]);
+    await vi.advanceTimersByTimeAsync(PRICE_REQUEST_TIMEOUT_MS + 10);
+
+    const state = useStockPriceStore.getState();
+    expect(state.errors["KOSPI:005930"]).toBeTruthy();
+    expect(state.inFlight).toEqual({});
   });
 });

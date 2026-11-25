@@ -29,7 +29,12 @@ interface StockPriceState {
   /** 마지막 요청이 실패한 key → 메시지. 영속화하지 않는다. */
   errors: Record<string, string>;
   ensurePrices: (keys: readonly string[]) => void;
+  /** 캐시가 신선해도 ("시세 없음" 포함) 다시 묻는다. 사용자가 직접 다시 확인할 때 쓴다. */
+  refreshPrices: (keys: readonly string[]) => void;
 }
+
+/** 이보다 오래 답이 없으면 실패로 본다 — "불러오는 중" 에 갇히지 않고 다시 확인할 수 있게. */
+export const PRICE_REQUEST_TIMEOUT_MS = 15 * 1000;
 
 // 같은 커밋에서 여러 effect 가 부르는 요청을 한 번에 보내기 위한 큐.
 const queued = new Set<string>();
@@ -47,13 +52,20 @@ function toQueryItem(key: string) {
 }
 
 async function requestPrices(keys: string[]): Promise<PriceApiResponse> {
-  const res = await fetch("/api/stocks/prices", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ items: keys.map(toQueryItem) }),
-  });
-  if (!res.ok) throw new Error(`prices failed: ${res.status}`);
-  return (await res.json()) as PriceApiResponse;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PRICE_REQUEST_TIMEOUT_MS);
+  try {
+    const res = await fetch("/api/stocks/prices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: keys.map(toQueryItem) }),
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`prices failed: ${res.status}`);
+    return (await res.json()) as PriceApiResponse;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export const useStockPriceStore = create<StockPriceState>()(
@@ -95,25 +107,29 @@ export const useStockPriceStore = create<StockPriceState>()(
         }
       };
 
+      const enqueue = (toFetch: string[]) => {
+        if (toFetch.length === 0) return;
+        const { inFlight, errors } = get();
+        const nextInFlight = { ...inFlight };
+        for (const key of toFetch) {
+          queued.add(key);
+          nextInFlight[key] = true;
+        }
+        set({ inFlight: nextInFlight, errors: omitKeys(errors, toFetch) });
+
+        if (flushTimer === null) flushTimer = setTimeout(() => void flush(), 0);
+      };
+
+      const busyKeys = () => new Set([...Object.keys(get().inFlight), ...queued]);
+
       return {
         entries: {},
         inFlight: {},
         errors: {},
-        ensurePrices: (keys) => {
-          const { entries, inFlight, errors } = get();
-          const busy = new Set([...Object.keys(inFlight), ...queued]);
-          const toFetch = selectKeysToFetch(keys, entries, busy, Date.now());
-          if (toFetch.length === 0) return;
-
-          const nextInFlight = { ...inFlight };
-          for (const key of toFetch) {
-            queued.add(key);
-            nextInFlight[key] = true;
-          }
-          set({ inFlight: nextInFlight, errors: omitKeys(errors, toFetch) });
-
-          if (flushTimer === null) flushTimer = setTimeout(() => void flush(), 0);
-        },
+        ensurePrices: (keys) =>
+          enqueue(selectKeysToFetch(keys, get().entries, busyKeys(), Date.now())),
+        // 빈 캐시로 고르면 요청 중인 것만 빠진다.
+        refreshPrices: (keys) => enqueue(selectKeysToFetch(keys, {}, busyKeys(), Date.now())),
       };
     },
     {

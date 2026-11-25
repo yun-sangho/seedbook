@@ -1,12 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { IconChevronRightLine, IconPlusLine } from "@karrotmarket/react-monochrome-icon";
 import { Divider, Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { describePriceAsOf } from "@web/features/investments/utils/price-as-of";
 import { RebalancingProgressBar } from "@web/features/rebalancing/components/rebalancing-progress-bar";
+import {
+  type RebalancingHomeTab,
+  useRebalancingHomeTab,
+} from "@web/features/rebalancing/stores/rebalancing-home-tab-store";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import type { RebalancingSession } from "@web/features/rebalancing/types/types";
 import { formatRebalancingDate } from "@web/features/rebalancing/utils/format-rebalancing-date";
@@ -28,8 +32,6 @@ import { ResultSection } from "@web/seed-design/ui/result-section";
 
 const FALLBACK_DOT_COLOR = "#cbd5e1";
 
-type Tab = "in-progress" | "completed";
-
 /**
  * 하단 탭 "리밸런싱": 진행 중인 리밸런싱(할 일 목록)과 완료 기록을 탭으로 나눠 보여준다.
  * "새 리밸런싱" 으로 들어가면 계좌를 골라 권장 매매를 계산하고 시작할 수 있다.
@@ -37,7 +39,8 @@ type Tab = "in-progress" | "completed";
 export function RebalancingHomeMobile() {
   const sessions = useRebalancingStore((s) => s.sessions);
   const { push } = useFlow();
-  const [tab, setTab] = useState<Tab>("in-progress");
+  const tab = useRebalancingHomeTab((s) => s.tab);
+  const setTab = useRebalancingHomeTab((s) => s.setTab);
 
   const { inProgress, completed } = useMemo(() => {
     const active: RebalancingSession[] = [];
@@ -66,7 +69,7 @@ export function RebalancingHomeMobile() {
     <div className="pb-x4">
       <ChipTabsRoot
         value={tab}
-        onValueChange={(value) => setTab(value as Tab)}
+        onValueChange={(value) => setTab(value as RebalancingHomeTab)}
         variant="neutralSolid"
         size="medium"
         className="pt-x4"
