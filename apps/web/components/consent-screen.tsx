@@ -5,6 +5,7 @@ import { sessionStorageOrNull } from "@web/components/biometric-sign-in-button";
 import { DeleteAccountDialog } from "@web/components/mobile/delete-account-dialog";
 import { authClient } from "@web/lib/auth-client";
 import { declineConsent, submitConsent } from "@web/lib/consent-client";
+import { reloadApp } from "@web/lib/device-storage";
 import { LEGAL_DOCUMENTS, type LegalDocumentId } from "@web/lib/legal-documents";
 import { markSignedOut } from "@web/lib/native/biometric-login";
 import { ActionButton } from "@web/seed-design/ui/action-button";
@@ -51,7 +52,7 @@ export function ConsentScreen({ newSignUp }: { newSignUp: boolean }) {
       return;
     }
     // 동의 전에는 서버가 데이터를 주지 않았으므로 처음부터 다시 불러온다 (개정됐으면 다시 묻는다).
-    window.location.reload();
+    await reloadApp();
   };
 
   const decline = async () => {
@@ -66,7 +67,7 @@ export function ConsentScreen({ newSignUp }: { newSignUp: boolean }) {
     const storage = sessionStorageOrNull();
     if (storage) markSignedOut(storage);
     await authClient.signOut().catch(() => {});
-    window.location.reload();
+    await reloadApp();
   };
 
   return (

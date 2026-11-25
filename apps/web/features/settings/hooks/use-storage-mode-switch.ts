@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { reloadApp } from "@web/lib/device-storage";
 import {
   CLOUD_STORE_LABELS,
   downloadAllFromCloud,
@@ -12,7 +13,7 @@ import {
   getStorageMode,
   pushStorageModeToServer,
   type StorageMode,
-  setStorageMode,
+  saveStorageMode,
 } from "@web/lib/storage-mode";
 
 export type SwitchDirection = "to-cloud" | "to-local";
@@ -39,9 +40,9 @@ export function useStorageModeSwitch() {
   }, []);
 
   async function finish(next: StorageMode) {
-    setStorageMode(next);
+    if (!(await saveStorageMode(next))) throw new Error("이 기기에 저장하지 못했어요");
     await pushStorageModeToServer(next);
-    window.location.reload();
+    await reloadApp();
   }
 
   async function run(direction: SwitchDirection) {
@@ -65,7 +66,7 @@ export function useStorageModeSwitch() {
   async function request(next: StorageMode) {
     if (next === mode) return;
     if (next === "cloud" && !(await hasAnyLocalData())) {
-      await finish("cloud");
+      await run("to-cloud");
       return;
     }
     setState({ kind: "confirm", direction: next === "cloud" ? "to-cloud" : "to-local" });

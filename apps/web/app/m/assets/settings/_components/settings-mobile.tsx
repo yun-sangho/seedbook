@@ -26,6 +26,7 @@ import {
 import { assignDemoDataIds } from "@web/features/settings/utils/demo-data";
 import { restoreBackupSections } from "@web/features/settings/utils/restore-backup";
 import { getActiveAccount } from "@web/lib/account-storage";
+import { flushDeviceStorage } from "@web/lib/device-storage";
 import { fetchCloudItemIds } from "@web/lib/storage-migration";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
@@ -162,8 +163,12 @@ export function SettingsMobile() {
     });
   };
 
-  const closeDataDialog = () => {
+  const closeDataDialog = async () => {
     if (dataDialog.kind === "message" && dataDialog.reloadOnClose) {
+      if (!(await flushDeviceStorage())) {
+        showError("이 기기에 저장하지 못했어요. 저장 공간을 확인해 주세요.");
+        return;
+      }
       window.location.reload();
       return;
     }
