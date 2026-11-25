@@ -1,5 +1,6 @@
 import type { CashItem, InvestmentItem, StockHolding } from "@web/features/investments/types/types";
 import { stockPriceKey } from "@web/features/investments/utils/use-stock-prices";
+import { sumCash } from "@web/features/portfolio/utils/linked-portfolio-status";
 import type { RebalancingSession, RebalancingTask } from "../types/types";
 import { executedPriceOf, executedQuantityOf } from "./rebalancing-session";
 
@@ -13,10 +14,10 @@ export interface AppliedRebalancing {
   skipped: RebalancingTask[];
   /** 반영한 매매별 보유 수량 변화 (할 일 순서). 새로 산 종목은 before 0 */
   holdingChanges: HoldingChange[];
-  /** 예수금이 반영되는 현금 항목의 잔액 변화. 항목이 없었으면 before 0 */
+  /** 현금 전체 합(모든 현금 항목)의 변화. 항목이 없었으면 before 0 */
   cash: CashChange;
   /**
-   * 예수금이 모자란 금액 (원, 0 이상). 반영할 때는 예수금을 0 아래로 내리지 않으므로 이만큼이
+   * 현금 전체 합이 모자란 금액 (원, 0 이상). 반영할 때는 현금 항목을 0 아래로 내리지 않으므로 이만큼이
    * 사라진다 — 매매를 기록할 때 이 값이 0 보다 크면 막는다.
    */
   cashShortfall: number;
@@ -29,7 +30,6 @@ export interface HoldingChange {
 }
 
 export interface CashChange {
-  label: string;
   before: number;
   after: number;
 }
@@ -44,8 +44,9 @@ export interface CashChange {
  * - 예수금은 실제 체결 가격(`executedPriceOf`, 기록 전이면 시작 시점 가격) × 수량으로 매도 금액을
  *   더하고 매수 금액을 뺀다 (세금·수수료는 계산하지 않는다). 시작할 때
  *   정한 거래 가능 금액이 예수금보다 많았으면 (`cashDelta` > 0) 그만큼 새로 넣은 돈이라 더하고,
- *   적었으면 거래에 쓰지 않고 남겨 둔 돈이라 그대로 둔다. 첫 "예수금" 항목(없으면 첫 현금 항목, 그것도 없으면 새로 만듦)에
- *   반영하며 0 아래로 내려가지 않는다.
+ *   적었으면 거래에 쓰지 않고 남겨 둔 돈이라 그대로 둔다.
+ *   늘어난 돈은 첫 "예수금" 항목(없으면 첫 현금 항목, 그것도 없으면 새로 만듦)에 더하고, 줄어든 돈은
+ *   그 항목부터 빼고 모자라면 나머지 항목에서 순서대로 뺀다. 항목은 0 아래로 내려가지 않는다.
  */
 export function applyRebalancingToAccount(
   account: InvestmentItem,
@@ -116,7 +117,7 @@ export function applyRebalancingToAccount(
   }
 
   cashChange = Math.round(cashChange);
-  const { cashItems, cash, shortfall } = applyCashChange(account.cashItems, cashChange);
+  const { cashItems, cash, shortfall } = applyCashChange(account, cashChange);
   return {
     account: { ...account, holdings, cashItems },
     cashChange,
@@ -133,27 +134,40 @@ function sumQuantity(holdings: StockHolding[], key: string): number {
     .reduce((sum, h) => sum + h.quantity, 0);
 }
 
+/**
+ * 현금 변화를 항목에 나눠 반영한다. "예수금" 항목(없으면 첫 항목)부터 반영하고, 그 항목으로
+ * 모자란 금액은 나머지 항목에서 순서대로 뺀다.
+ */
 function applyCashChange(
-  cashItems: CashItem[],
+  account: InvestmentItem,
   change: number
 ): { cashItems: CashItem[]; cash: CashChange; shortfall: number } {
-  const target =
-    cashItems.find((c) => c.label === DEFAULT_CASH_LABEL) ?? (cashItems[0] as CashItem | undefined);
-  const before = target?.amount ?? 0;
-  const after = Math.max(0, before + change);
+  const { cashItems } = account;
+  const before = sumCash(account);
+  const cash = { before, after: Math.max(0, before + change) };
   const shortfall = Math.max(0, -(before + change));
-  const cash = { label: target?.label ?? DEFAULT_CASH_LABEL, before, after };
 
   if (change === 0) return { cashItems, cash, shortfall };
-  if (!target) {
+  const primary = cashItems.find((c) => c.label === DEFAULT_CASH_LABEL) ?? cashItems[0];
+  if (!primary) {
     return {
-      cashItems: [{ id: crypto.randomUUID(), label: DEFAULT_CASH_LABEL, amount: after }],
+      cashItems: [{ id: crypto.randomUUID(), label: DEFAULT_CASH_LABEL, amount: cash.after }],
       cash,
       shortfall,
     };
   }
+
+  const amounts = new Map<CashItem, number>();
+  let remaining = change;
+  for (const item of [primary, ...cashItems.filter((c) => c !== primary)]) {
+    if (remaining === 0) break;
+    const balance = (item.amount || 0) + remaining;
+    amounts.set(item, Math.max(0, balance));
+    // 이 항목으로 모자란 금액만 다음 항목으로 넘긴다.
+    remaining = Math.min(0, balance);
+  }
   return {
-    cashItems: cashItems.map((c) => (c.id === target.id ? { ...c, amount: after } : c)),
+    cashItems: cashItems.map((c) => ({ ...c, amount: amounts.get(c) ?? c.amount })),
     cash,
     shortfall,
   };

@@ -1,6 +1,7 @@
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import { describe, expect, it } from "vitest";
 import type { RebalancingSession, RebalancingTask } from "../types/types";
+import { affordableQuantity } from "./affordable-quantity";
 import { rebalancingCashOutlook, tradeCashPreview } from "./trade-cash-check";
 
 /** 예수금이 모자라는 금액 — 0 보다 크면 매매 입력 화면이 완료를 막는다. */
@@ -276,5 +277,49 @@ describe("rebalancingCashOutlook", () => {
     const unpriced = task({ price: null, quantity: null });
     const outlook = rebalancingCashOutlook(account(30_000), session([unpriced]));
     expect(outlook.expected).toBe(30_000);
+  });
+});
+
+describe("cash checks with several cash items", () => {
+  const multi = (): InvestmentItem => ({
+    ...account(0),
+    cashItems: [
+      { id: "c1", label: "예수금", amount: 100 },
+      { id: "c2", label: "CMA", amount: 900 },
+    ],
+  });
+
+  it("counts every cash item as available now", () => {
+    expect(rebalancingCashOutlook(multi(), session([])).now).toBe(1_000);
+  });
+
+  it("expects buys to spend the total cash", () => {
+    const buy = task({ quantity: 1, price: 1_000 });
+    expect(rebalancingCashOutlook(multi(), session([buy])).expected).toBe(0);
+  });
+
+  it("allows a buy that needs more than the 예수금 item", () => {
+    expect(tradeCashPreview(multi(), session([task()]), "buy", 1, 1_000)).toEqual({
+      before: 1_000,
+      after: 0,
+    });
+  });
+
+  it("does not let trades use cash held back from the total", () => {
+    expect(cashShortfallAfterTrade(multi(), session([task()], -300), "buy", 1, 1_000)).toBe(300);
+  });
+
+  it("adds newly deposited cash to the total", () => {
+    expect(rebalancingCashOutlook(multi(), session([], 500)).now).toBe(1_500);
+  });
+
+  it("holds back buy orders from the total", () => {
+    const ordered = task({ orderedQuantity: 1, orderedPrice: 400 });
+    expect(rebalancingCashOutlook(multi(), session([ordered])).now).toBe(600);
+  });
+
+  it("affords as many shares as the total cash covers", () => {
+    const { before } = tradeCashPreview(multi(), session([task()]), "buy", 20, 100);
+    expect(affordableQuantity(before, 100)).toBe(10);
   });
 });

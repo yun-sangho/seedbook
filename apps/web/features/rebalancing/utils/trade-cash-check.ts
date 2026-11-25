@@ -4,8 +4,8 @@ import { applyRebalancingToAccount } from "./apply-rebalancing-to-account";
 import { rebalancingTaskStatus } from "./rebalancing-session";
 
 /**
- * 계좌에 반영할 때와 같은 계산(`applyRebalancingToAccount`)으로, 예수금 항목의 잔액을 0 으로
- * 자르기 전 값을 구한다. 완료한 매매(기록한 체결 가격)와 시작할 때 넣은 돈이 들어간다. 거래 가능
+ * 계좌에 반영할 때와 같은 계산(`applyRebalancingToAccount`)으로, 현금 전체 합(모든 현금 항목)을
+ * 0 으로 자르기 전 값으로 구한다. 완료한 매매(기록한 체결 가격)와 시작할 때 넣은 돈이 들어간다. 거래 가능
  * 금액을 예수금보다 적게 잡았으면 남겨 둔 돈은 계좌에는 남지만 매매에 쓸 수 없어 뺀다.
  */
 function rawCashAfter(
