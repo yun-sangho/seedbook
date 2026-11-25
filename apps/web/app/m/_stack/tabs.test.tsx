@@ -51,6 +51,16 @@ vi.mock("@web/hooks/use-pwa-install", () => ({
 Element.prototype.animate = () =>
   ({ finished: Promise.resolve(), cancel: () => {}, finish: () => {} }) as unknown as Animation;
 
+// `resetModules` 뒤에도 SEED 는 실제 모듈을 한 번만 쓴다 (mock 결과는 초기화되지 않는다). 그러지 않으면
+// 테스트마다 앱과 무관한 모듈 수백 개를 다시 불러와, CPU 가 바쁠 때 제한 시간을 넘긴다.
+vi.mock("@seed-design/react", (importOriginal) => importOriginal());
+
+// `open` 이 테스트마다 다시 불러올 모듈을 미리 한 번 불러 둔다. 그러지 않으면 화면 전체의 첫 로딩이 첫
+// 테스트의 5초 제한 안에서 돌아, CPU 가 바쁠 때 시간을 넘긴다. 시간을 넘긴 테스트는 뒤에서 이어져
+// 다음 테스트와 겹치고, 나머지 테스트도 함께 실패한다.
+await import("./stackflow");
+await import("./stack-control");
+
 type Modules = {
   Stack: typeof StackView;
   control: typeof import("./stack-control");
