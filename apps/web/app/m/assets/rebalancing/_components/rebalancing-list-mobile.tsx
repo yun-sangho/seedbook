@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { IconChevronRightLine } from "@karrotmarket/react-monochrome-icon";
 import { Divider, Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
-import { useSwitchTab } from "@web/app/m/_stack/use-switch-tab";
+import { switchTab } from "@web/app/m/_stack/stack-control";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { useLiveAccounts } from "@web/features/investments/utils/use-live-accounts";
 import {
@@ -40,7 +40,6 @@ export function RebalancingListMobile() {
   const busyAccountIds = useMemo(() => inProgressAccountIds(sessions), [sessions]);
   const statusFor = useLinkedPortfolioStatus();
   const { push } = useFlow();
-  const switchTab = useSwitchTab();
 
   const groups = useMemo(
     () =>
@@ -58,7 +57,7 @@ export function RebalancingListMobile() {
           description="투자 계좌를 추가하고 포트폴리오에 연결하면 계좌별로 리밸런싱할 수 있어요."
           primaryActionProps={{
             children: "계좌 탭으로 이동",
-            onClick: () => switchTab("AccountsTab"),
+            onClick: () => switchTab("investments"),
           }}
         />
       </div>

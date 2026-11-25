@@ -1,6 +1,7 @@
 "use client";
 
 import { useFlow } from "@stackflow/react";
+import { tabParams } from "@web/app/m/_stack/tabs";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import { ResultSection } from "@web/seed-design/ui/result-section";
@@ -38,7 +39,7 @@ export function RebalancingDetailMobile({ id }: { id: string }) {
           description="포트폴리오의 적용 계좌에 이 계좌를 추가하면 목표 비중대로 리밸런싱할 수 있어요."
           primaryActionProps={{
             children: "포트폴리오로 이동",
-            onClick: () => push("PortfolioTab", {}),
+            onClick: () => push("Tabs", tabParams("portfolio")),
           }}
         />
       </div>

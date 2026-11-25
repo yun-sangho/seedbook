@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { StaticActivityComponentType } from "@stackflow/react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
@@ -15,25 +16,20 @@ import { RebalancingDetailMobile } from "../assets/rebalancing/[id]/_components/
 import { RebalancingSessionMobile } from "../assets/rebalancing/sessions/[id]/_components/rebalancing-session-mobile";
 import { TradeEntryMobile } from "../assets/rebalancing/sessions/[id]/_components/trade-entry-mobile";
 import { SettingsMobile } from "../assets/settings/_components/settings-mobile";
-import { DetailScreen, TabScreen } from "./screens";
+import { DetailScreen, TabsScreen } from "./screens";
+import { type TabKey, type TabsParams, tabOf } from "./tabs";
 
-export const HomeTabActivity: StaticActivityComponentType<"HomeTab"> = () => (
-  <TabScreen name="HomeTab">
-    <HomeMobile />
-  </TabScreen>
-);
+/** 탭마다 같은 엘리먼트를 써서, 탭을 바꿀 때 다른 탭 화면이 다시 그려지지 않게 한다. */
+const TAB_SCREENS: Record<TabKey, ReactNode> = {
+  home: <HomeMobile />,
+  investments: <InvestmentMobile />,
+  rebalancing: <RebalancingHomeMobile />,
+  portfolio: <PortfolioListMobile />,
+};
 
-export const AccountsTabActivity: StaticActivityComponentType<"AccountsTab"> = () => (
-  <TabScreen name="AccountsTab">
-    <InvestmentMobile />
-  </TabScreen>
-);
-
-export const RebalancingTabActivity: StaticActivityComponentType<"RebalancingTab"> = () => (
-  <TabScreen name="RebalancingTab">
-    <RebalancingHomeMobile />
-  </TabScreen>
-);
+export function TabsActivity({ params }: { params: TabsParams }) {
+  return <TabsScreen current={tabOf(params)} screens={TAB_SCREENS} />;
+}
 
 /** 새 리밸런싱: 계좌를 골라 계좌 리밸런싱 계산(`RebalancingDetail`)으로 들어간다. */
 export const RebalancingNewActivity: StaticActivityComponentType<"RebalancingNew"> = () => (
@@ -42,14 +38,8 @@ export const RebalancingNewActivity: StaticActivityComponentType<"RebalancingNew
   </DetailScreen>
 );
 
-export const PortfolioTabActivity: StaticActivityComponentType<"PortfolioTab"> = () => (
-  <TabScreen name="PortfolioTab">
-    <PortfolioListMobile />
-  </TabScreen>
-);
-
 /** 계좌 상세와 리밸런싱 상세는 계좌 단위라 같은 제목(계좌명·색·유형)을 쓴다. */
-function AccountScreen({ id, children }: { id: string; children: React.ReactNode }) {
+function AccountScreen({ id, children }: { id: string; children: ReactNode }) {
   // 계좌 객체 자체를 고른다 (새 객체를 만들지 않아 리렌더가 안정적).
   const account = useInvestmentStore((s) => s.investments.find((inv) => inv.id === id));
   return (
