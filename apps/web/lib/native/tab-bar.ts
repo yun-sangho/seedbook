@@ -1,5 +1,7 @@
 "use client";
 
+import { COVER_ATTRIBUTE, isOverlayOpen } from "./overlay";
+
 /**
  * 네이티브 하단 탭바 브리지 (Capacitor `SeedbookTabBar`, `packages/native-plugins`).
  *
@@ -61,9 +63,6 @@ interface NativeTabBarDeps {
 const PLUGIN_NAME = "SeedbookTabBar";
 /** 네이티브 탭바가 가리는 높이. 웹 탭바일 때는 없다 (쓰는 쪽이 기본값을 준다). */
 const INSET_VAR = "--app-tab-bar-inset";
-/** SEED 시트·다이얼로그는 열려 있는 동안만 `data-open` 을 단다. SEED 가 아닌 전체 화면은 직접 표시한다. */
-const COVER_ATTRIBUTE = "data-covers-tab-bar";
-const OVERLAY_SELECTOR = `[role="dialog"][data-open], [role="alertdialog"][data-open], [${COVER_ATTRIBUTE}]`;
 const COLOR_SCHEME_ATTRIBUTE = "data-seed-user-color-scheme";
 
 export function createNativeTabBar({ isAvailable, loadPlugin }: NativeTabBarDeps): NativeTabBar {
@@ -106,7 +105,7 @@ export function createNativeTabBar({ isAvailable, loadPlugin }: NativeTabBarDeps
     if (request) lastSelected = request.selected;
     const state: NativeTabBarState = {
       selected: lastSelected,
-      visible: request !== undefined && document.querySelector(OVERLAY_SELECTOR) === null,
+      visible: request !== undefined && !isOverlayOpen(),
       dark: document.documentElement.getAttribute(COLOR_SCHEME_ATTRIBUTE) === "dark",
     };
     const signature = JSON.stringify(state);
