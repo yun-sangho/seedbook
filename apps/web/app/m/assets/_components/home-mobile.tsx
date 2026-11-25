@@ -14,6 +14,8 @@ import { useInvestmentStore } from "@web/features/investments/stores/investment-
 import { summarizeAccounts } from "@web/features/investments/utils/summarize-accounts";
 import { useLiveAccounts } from "@web/features/investments/utils/use-live-accounts";
 import { useLinkedPortfolioStatus } from "@web/features/portfolio/utils/use-linked-portfolio-status";
+import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
+import { inProgressAccountIds } from "@web/features/rebalancing/utils/rebalancing-session";
 import {
   ChipTabsContent,
   ChipTabsList,
@@ -42,10 +44,18 @@ export function HomeMobile() {
   const liveInvestments = useLiveAccounts(investments);
   const totals = useMemo(() => summarizeAccounts(liveInvestments), [liveInvestments]);
 
+  const sessions = useRebalancingStore((s) => s.sessions);
+  const busyAccountIds = useMemo(() => inProgressAccountIds(sessions), [sessions]);
   // 연결된 포트폴리오 기준으로 리밸런싱이 필요한 계좌 (계좌 목록 순서대로).
   const accountsNeedingRebalance = useMemo(
-    () => investments.filter((inv) => statusFor(inv.id)?.state === "needs-rebalancing"),
-    [investments, statusFor]
+    () =>
+      investments.filter(
+        (inv) =>
+          statusFor(inv.id)?.state === "needs-rebalancing" &&
+          // 이미 진행 중인 계좌는 다시 시작하라고 하지 않는다.
+          !busyAccountIds.has(inv.id)
+      ),
+    [investments, statusFor, busyAccountIds]
   );
 
   if (investments.length === 0) {

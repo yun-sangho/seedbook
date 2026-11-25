@@ -92,7 +92,7 @@ export function RebalancingHomeMobile() {
       </ChipTabsRoot>
       <Divider />
       <div className="flex justify-center pt-x4">
-        <ActionButton variant="ghost" size="medium" onClick={startNew}>
+        <ActionButton variant="neutralWeak" size="medium" onClick={startNew}>
           <Icon svg={<IconPlusLine />} />새 리밸런싱
         </ActionButton>
       </div>
@@ -143,6 +143,7 @@ function SessionRow({
   const completed = isRebalancingCompleted(session);
   const stopped = isRebalancingStopped(session);
   const sellCount = session.tasks.filter((t) => t.action === "매도").length;
+  const readyToComplete = !completed && total > 0 && done === total;
   const buyCount = total - sellCount;
 
   return (
@@ -163,6 +164,11 @@ function SessionRow({
             <p className="t5-bold min-w-0 truncate">
               {account?.accountName || session.accountName || "이름 없는 계좌"}
             </p>
+            {readyToComplete && (
+              <Badge tone="brand" variant="solid" className="shrink-0">
+                완료하기
+              </Badge>
+            )}
             {completed && (
               <Badge tone={stopped ? "warning" : "positive"} variant="weak" className="shrink-0">
                 {stopped ? "종료" : "완료"}
@@ -176,6 +182,11 @@ function SessionRow({
               : inProgressBasisLabel(session)}
           </p>
           {!completed && <RebalancingProgressBar done={done} total={total} />}
+          {readyToComplete && (
+            <p className="t3-medium text-fg-brand mt-x1">
+              모든 매매를 마쳤어요. 눌러서 리밸런싱을 완료하세요.
+            </p>
+          )}
         </div>
         <Icon svg={<IconChevronRightLine />} size="x5" color="fg.neutralSubtle" />
       </button>

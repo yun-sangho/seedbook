@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Divider } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
+import { BottomAction } from "@web/components/mobile/bottom-action";
 import { MoneyField } from "@web/components/mobile/money-field";
 import { PriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
 import type { InvestmentItem, StockHolding } from "@web/features/investments/types/types";
@@ -33,6 +34,7 @@ import { findInProgressForAccount } from "@web/features/rebalancing/utils/rebala
 import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { Badge } from "@web/seed-design/ui/badge";
+import { Callout } from "@web/seed-design/ui/callout";
 import { List, ListItem } from "@web/seed-design/ui/list";
 import { formatWithCommas, numberToKorean, parseNumericString } from "@web/utils/number-format";
 
@@ -105,6 +107,10 @@ export function AccountRebalancingMobile({
     [summary, allocationPrices]
   );
   const isEmpty = actual.totalStockValue === 0 && tradable === 0;
+  // 시세를 모르면 보유해도 0원으로 계산돼 권장 매매가 크게 틀릴 수 있다.
+  const unpriced = allocationPricesLoading
+    ? []
+    : portfolio.allocations.filter((a) => !allocationPrices.has(stockPriceKey(a.market, a.ticker)));
   const drift = useMemo(() => computeDriftAlert(summary, portfolio), [summary, portfolio]);
 
   return (
@@ -115,6 +121,15 @@ export function AccountRebalancingMobile({
       {outsideHoldings.length > 0 && (
         <div className="px-x4 pt-x4">
           <OutsideHoldingsNotice holdings={outsideHoldings} blocking />
+        </div>
+      )}
+      {unpriced.length > 0 && (
+        <div className="px-x4 pt-x4">
+          <Callout
+            tone="warning"
+            title="시세를 모르는 종목이 있어요"
+            description={`${unpriced.map((a) => a.name || a.ticker).join(", ")}. 현재 금액을 알 수 없어 권장 매매가 정확하지 않을 수 있어요. 잠시 뒤 다시 확인해 주세요.`}
+          />
         </div>
       )}
       <section className="flex flex-col gap-x2 px-x4 py-x4">
@@ -175,8 +190,6 @@ export function AccountRebalancingMobile({
         </section>
       )}
 
-      <Divider />
-
       <StartRebalancingSection
         account={account}
         portfolio={portfolio}
@@ -224,30 +237,45 @@ function StartRebalancingSection({
 }) {
   const inProgress = useRebalancingStore((s) => findInProgressForAccount(s.sessions, account.id));
   const startRebalancing = useRebalancingStore((s) => s.startRebalancing);
-  const { replace } = useFlow();
+  const { replace, push } = useFlow();
 
   const disabledReason = startDisabledReason(tasks, pricesLoading, hasOutsideHoldings);
 
   if (inProgress) {
     return (
-      <section className="flex flex-col gap-x2 px-x4 py-x4">
+      <BottomAction>
         <p className="t3-regular text-fg-neutral-subtle">
           이 계좌에 진행 중인 리밸런싱이 있어요. 먼저 마치거나 삭제한 뒤 새로 시작할 수 있어요.
         </p>
         <ActionButton
           size="large"
-          variant="neutralWeak"
           className="w-full"
           onClick={() => replace("RebalancingSession", { id: inProgress.id })}
         >
           진행 중인 리밸런싱 보기
         </ActionButton>
-      </section>
+      </BottomAction>
+    );
+  }
+
+  if (hasOutsideHoldings) {
+    return (
+      <BottomAction>
+        <p className="t3-regular text-fg-neutral-subtle">{disabledReason}</p>
+        <ActionButton
+          size="large"
+          variant="neutralSolid"
+          className="w-full"
+          onClick={() => push("AccountDetail", { id: account.id })}
+        >
+          계좌에서 종목 정리하기
+        </ActionButton>
+      </BottomAction>
     );
   }
 
   return (
-    <section className="flex flex-col gap-x2 px-x4 py-x4">
+    <BottomAction>
       {disabledReason && <p className="t3-regular text-fg-neutral-subtle">{disabledReason}</p>}
       <ActionButton
         size="large"
@@ -268,7 +296,7 @@ function StartRebalancingSection({
       >
         리밸런싱 시작
       </ActionButton>
-    </section>
+    </BottomAction>
   );
 }
 
