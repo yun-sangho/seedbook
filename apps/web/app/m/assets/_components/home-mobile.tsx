@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 import {
-  IconChevronRightSmallLine,
+  IconArrowClockwiseCircularFill,
+  IconCheckmarkCircleFill,
   IconExclamationmarkCircleFill,
 } from "@karrotmarket/react-monochrome-icon";
-import { Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
+import { switchTab } from "@web/app/m/_stack/stack-control";
 import { AddAccountSheet } from "@web/app/m/assets/investments/_components/add-account-sheet";
 import { HoldingsPriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
 import { profitToneClass } from "@web/components/mobile/profit-tone";
@@ -14,8 +15,11 @@ import { useInvestmentStore } from "@web/features/investments/stores/investment-
 import { summarizeAccounts } from "@web/features/investments/utils/summarize-accounts";
 import { useLiveAccounts } from "@web/features/investments/utils/use-live-accounts";
 import { useLinkedPortfolioStatus } from "@web/features/portfolio/utils/use-linked-portfolio-status";
+import { useRebalancingHomeTab } from "@web/features/rebalancing/stores/rebalancing-home-tab-store";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
+import { inProgressBanner } from "@web/features/rebalancing/utils/in-progress-banner";
 import { inProgressAccountIds } from "@web/features/rebalancing/utils/rebalancing-session";
+import { ActionableCallout } from "@web/seed-design/ui/callout";
 import {
   ChipTabsContent,
   ChipTabsList,
@@ -58,6 +62,21 @@ export function HomeMobile() {
     [investments, statusFor, busyAccountIds]
   );
 
+  const resumeBanner = useMemo(
+    () => inProgressBanner(sessions, new Map(investments.map((inv) => [inv.id, inv.accountName]))),
+    [sessions, investments]
+  );
+  const showInProgressList = useRebalancingHomeTab((s) => s.setTab);
+
+  const resume = () => {
+    if (resumeBanner?.sessionId) {
+      push("RebalancingSession", { id: resumeBanner.sessionId });
+      return;
+    }
+    showInProgressList("in-progress");
+    switchTab("rebalancing");
+  };
+
   if (investments.length === 0) {
     return (
       <div className="flex min-h-[60dvh] flex-col">
@@ -76,7 +95,7 @@ export function HomeMobile() {
   }
 
   const [firstNeeding] = accountsNeedingRebalance;
-  const bannerText = `${accountsNeedingRebalance.map((inv) => inv.accountName).join(", ")} 리밸런싱이 필요해요`;
+  const needingNames = accountsNeedingRebalance.map((inv) => inv.accountName).join(", ");
 
   return (
     <div className="pb-x4">
@@ -92,22 +111,38 @@ export function HomeMobile() {
         </p>
       </section>
 
-      {firstNeeding && (
-        <div className="px-x4 pb-x4">
-          <button
-            type="button"
-            // 계좌 하나면 바로 그 계좌의 리밸런싱으로, 여러 개면 새 리밸런싱에서 고른다.
-            onClick={() =>
-              accountsNeedingRebalance.length === 1
-                ? push("RebalancingDetail", { id: firstNeeding.id })
-                : push("RebalancingNew", {})
-            }
-            className="bg-bg-warning-weak text-fg-warning active:bg-bg-warning-weak-pressed rounded-r3 flex w-full items-center gap-x2 px-x4 py-x3 text-left"
-          >
-            <Icon svg={<IconExclamationmarkCircleFill />} size="x5" />
-            <span className="t4-bold min-w-0 flex-1">{bannerText}</span>
-            <Icon svg={<IconChevronRightSmallLine />} size="x4" />
-          </button>
+      {/* 하던 일(이어가기)이 새로 시작할 일보다 먼저다. 같은 계좌가 두 배너에 함께 나오지 않는다. */}
+      {(resumeBanner || firstNeeding) && (
+        <div className="flex flex-col gap-x2 px-x4 pb-x4">
+          {resumeBanner && (
+            <ActionableCallout
+              tone={resumeBanner.readyToComplete ? "positive" : "informative"}
+              prefixIcon={
+                resumeBanner.readyToComplete ? (
+                  <IconCheckmarkCircleFill />
+                ) : (
+                  <IconArrowClockwiseCircularFill />
+                )
+              }
+              title={resumeBanner.title}
+              description={resumeBanner.description}
+              onClick={resume}
+            />
+          )}
+          {firstNeeding && (
+            <ActionableCallout
+              tone="warning"
+              prefixIcon={<IconExclamationmarkCircleFill />}
+              title="리밸런싱이 필요해요"
+              description={needingNames}
+              // 계좌 하나면 바로 그 계좌의 리밸런싱으로, 여러 개면 새 리밸런싱에서 고른다.
+              onClick={() =>
+                accountsNeedingRebalance.length === 1
+                  ? push("RebalancingDetail", { id: firstNeeding.id })
+                  : push("RebalancingNew", {})
+              }
+            />
+          )}
         </div>
       )}
 
