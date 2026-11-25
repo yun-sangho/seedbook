@@ -101,6 +101,16 @@ sqlite3 app.db "select id, accountName, portfolioId from investment_account;"
 - 아이콘(`TabIcon`)을 더하면 브리지 타입, 웹 `ICONS`, iOS `symbol`, Android `iconRes` + drawable 을 같이
   고친다. 모르는 아이콘을 받은 구버전 앱은 기본 아이콘을 그린다.
 
+## 상태바·배경 (라이트/다크)
+
+앱은 시스템 테마를 따른다 (앱 안 테마 설정은 없다). 상태바 글자색과 WebView 배경은 네이티브가 정하고 웹은
+관여하지 않는다 — 바꾸면 **앱을 다시 배포**해야 한다.
+
+- iOS: `SceneDelegate.swift` 의 `MainViewController`. 배경은 `AppBackground.colorset`.
+- Android: `MainActivity.java`. 배경은 `values/`·`values-night/app_background.xml`. 켜진 채 테마가 바뀌면 상태바
+  글자색을 다시 맞춘다 (Capacitor SystemBars 8.6.0 이 시작 때 테마로 굳힌다).
+- `capacitor.config.ts` 에 고정 `backgroundColor` 를 넣지 않는다.
+
 ## Android 시스템 뒤로가기
 
 `@capacitor/app` 의 `backButton` 을 웹이 받는다 (`apps/web/lib/native/system-back.ts`): 열린 시트·다이얼로그

@@ -17,7 +17,8 @@ const config: CapacitorConfig = {
   appName: "Seedbook",
   webDir: "www",
   appendUserAgent: "SeedbookApp/1",
-  backgroundColor: "#ffffff",
+  // backgroundColor 는 쓰지 않는다 — 고정색이라 다크 모드에서 흰색이 비친다 (iOS 상태바 뒤, 첫 로딩).
+  // 배경은 네이티브가 시스템 테마에 맞춰 정한다 (SceneDelegate.swift, MainActivity.java).
   server: {
     url: serverUrl,
     cleartext: serverUrl.startsWith("http://"),
