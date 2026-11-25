@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { reloadApp } from "@web/lib/device-storage";
 import { applyStorageChoice } from "@web/lib/storage-choice";
 import type { StorageMode } from "@web/lib/storage-mode";
 import { ActionButton } from "@web/seed-design/ui/action-button";
@@ -53,7 +54,7 @@ export function StorageChoiceScreen({ current, onDone }: StorageChoiceScreenProp
     setFailed(false);
     const result = await applyStorageChoice(current, selected);
     if (result === "open") onDone();
-    else if (result === "reload") window.location.reload();
+    else if (result === "reload") await reloadApp();
     else {
       setPending(false);
       setFailed(true);

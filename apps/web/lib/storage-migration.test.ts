@@ -117,6 +117,25 @@ describe("uploadAllToCloud", () => {
     expect(sent.state.investments.map((d: { id: string }) => d.id)).toEqual(["local", "cloud"]);
   });
 
+  it("로컬에 항목이 없으면 클라우드 데이터를 다시 쓰지 않는다 (새 기기 첫 로그인)", async () => {
+    window.localStorage.setItem(
+      "investment-storage",
+      JSON.stringify({ state: { investments: [], holdingsSortOption: "evalDesc" }, version: 6 })
+    );
+    const calls = mockFetch(() =>
+      jsonResponse({
+        data: {
+          state: { investments: [{ id: "cloud" }], holdingsSortOption: "nameAsc" },
+          version: 4,
+        },
+      })
+    );
+
+    await uploadAllToCloud();
+
+    expect(calls.filter((c) => c.init?.method === "PUT")).toEqual([]);
+  });
+
   it("전환 뒤 이전 클라우드 세션의 동기화 대기열을 비운다", async () => {
     window.localStorage.setItem(
       "seedbook.sync.rebalancing",

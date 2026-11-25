@@ -3,8 +3,9 @@
 import { useEffect } from "react";
 import { accountFetch } from "@web/lib/account-storage";
 import { useSession } from "@web/lib/auth-client";
+import { reloadApp } from "@web/lib/device-storage";
 import { downloadAllFromCloud, uploadAllToCloud } from "@web/lib/storage-migration";
-import { getStorageMode, type StorageMode, setStorageMode } from "@web/lib/storage-mode";
+import { getStorageMode, saveStorageMode } from "@web/lib/storage-mode";
 
 /**
  * 로그인된 사용자의 user_preference.storageMode 를 localStorage 와 동기화한다.
@@ -45,8 +46,8 @@ export function StorageModeSync() {
           if (serverMode === "cloud") await uploadAllToCloud();
           else await downloadAllFromCloud();
           if (cancelled) return;
-          setStorageMode(serverMode satisfies StorageMode);
-          window.location.reload();
+          // 저장하지 못했으면 새로고침하지 않는다 — 다음에 앱을 열 때 다시 시도한다.
+          if (await saveStorageMode(serverMode)) await reloadApp();
         }
       } catch {
         // 네트워크 오류 / 합치기 실패는 무시 — 모드는 그대로 두고 다음 마운트에서 다시 시도.

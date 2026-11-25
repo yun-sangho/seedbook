@@ -26,7 +26,8 @@ export type MigrationProgress = {
 
 /**
  * 로컬 → 클라우드: 로컬 envelope 를 클라우드 envelope 와 합쳐 `PUT` 한다.
- * 로컬에 없는 key 는 건드리지 않는다 (클라우드 데이터가 그대로 남음).
+ * 로컬에 없거나 항목이 하나도 없는 key 는 건드리지 않는다 — 올릴 것이 없는데 클라우드 목록을 다시
+ * 쓰면 그 사이 다른 기기에서 더한 항목이나 보유 종목 정렬 설정을 덮을 수 있다.
  */
 export async function uploadAllToCloud(onProgress?: (p: MigrationProgress) => void): Promise<void> {
   for (let i = 0; i < CLOUD_STORE_KEYS.length; i += 1) {
@@ -39,6 +40,10 @@ export async function uploadAllToCloud(onProgress?: (p: MigrationProgress) => vo
     onProgress?.({ index: i, total: CLOUD_STORE_KEYS.length, key, phase: "uploading" });
 
     const cloud = await fetchCloudEnvelope(key, "업로드");
+    if (cloud !== null && itemIds(key, local).length === 0) {
+      onProgress?.({ index: i, total: CLOUD_STORE_KEYS.length, key, phase: "skipped" });
+      continue;
+    }
     const merged = mergeEnvelopes(key, local, cloud);
 
     const res = await accountFetch(`/api/storage/${encodeURIComponent(key)}`, {

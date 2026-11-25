@@ -222,6 +222,46 @@ describe("createNativeDeviceStorage", () => {
     expect(await driver.query("SELECT value FROM device_kv")).toEqual([{ value: "on" }]);
   });
 
+  it("reports whether every waiting write was saved", async () => {
+    const recording = recordingDriver(driver);
+    const storage = createNativeDeviceStorage(async () => recording.driver, window.localStorage);
+    await storage.whenReady();
+    recording.control.failNext = 2;
+
+    storage.setItem("seedbook.app-lock", "on");
+
+    expect(await storage.flush()).toBe(false);
+    expect(await storage.flush()).toBe(true);
+  });
+
+  it("saves a value that goes back to the old one while another write is in flight", async () => {
+    let release: () => void = () => undefined;
+    let gate: Promise<void> = Promise.resolve();
+    const storage = createNativeDeviceStorage(
+      async () => ({
+        query: driver.query,
+        batch: async (statements) => {
+          await gate;
+          await driver.batch(statements);
+        },
+      }),
+      window.localStorage
+    );
+    storage.setItem("seedbook.app-lock", "off");
+    await storage.flush();
+    gate = new Promise((resolve) => {
+      release = resolve;
+    });
+    storage.setItem("seedbook.app-lock", "on");
+    await new Promise((resolve) => setTimeout(resolve, 0)); // "on" 저장이 시작됨
+
+    storage.setItem("seedbook.app-lock", "off");
+    release();
+    await storage.flush();
+
+    expect(await driver.query("SELECT value FROM device_kv")).toEqual([{ value: "off" }]);
+  });
+
   it("reads back an envelope whose write failed instead of the older saved copy", async () => {
     const recording = recordingDriver(driver);
     const storage = createNativeDeviceStorage(async () => recording.driver, window.localStorage);
