@@ -7,6 +7,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * 서버(세션 쿠키로 사용자를 가린다)만 가짜를 쓴다.
  */
 
+// `openPage` 가 페이지마다 다시 불러올 모듈을 미리 한 번 불러 둔다. 그러지 않으면 화면 전체의 첫 로딩
+// (대부분 변환)이 첫 테스트의 5초 제한 안에서 돌아, CPU 가 바쁠 때 시간을 넘긴다. 시간을 넘긴 테스트는
+// 멈추지 않고 뒤에서 이어져 다음 테스트와 act() 가 겹치고, 나머지 테스트도 함께 실패한다.
+vi.mock("@web/lib/auth-client", () => ({ authClient: {}, useSession: () => PENDING }));
+await import("./hydration-gate");
+await import("./auth-gate");
+await import("@web/features/investments/stores/investment-store");
+
 type SessionState = { data: { user: { id: string } } | null; isPending: boolean };
 
 const session = (userId: string): SessionState => ({
