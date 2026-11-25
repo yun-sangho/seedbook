@@ -19,12 +19,20 @@ const sharp = require(require.resolve("sharp", { paths: [require.resolve("next")
 
 const SOURCE = path.join(webDir, "public/android-chrome-512x512.png");
 const BACKGROUND = "#ffffff";
+// iOS 다크 스플래시. AppBackground.colorset 다크와 같다.
+const DARK_BACKGROUND = "#16171b";
 
 /** width×height 캔버스 가운데에 로고를 (짧은 변 × ratio) 크기로 얹는다. */
-async function compose(relativeDest, width, height, ratio, { opaque = true } = {}) {
+async function compose(
+  relativeDest,
+  width,
+  height,
+  ratio,
+  { opaque = true, base = BACKGROUND } = {}
+) {
   const logoSize = Math.round(Math.min(width, height) * ratio);
   const logo = await sharp(SOURCE).resize(logoSize, logoSize).toBuffer();
-  const background = opaque ? BACKGROUND : { r: 0, g: 0, b: 0, alpha: 0 };
+  const background = opaque ? base : { r: 0, g: 0, b: 0, alpha: 0 };
   let image = sharp({ create: { width, height, channels: 4, background } }).composite([
     {
       input: logo,
@@ -33,7 +41,7 @@ async function compose(relativeDest, width, height, ratio, { opaque = true } = {
     },
   ]);
   // App Store 아이콘은 알파 채널이 있으면 거절된다.
-  if (opaque) image = image.flatten({ background: BACKGROUND }).removeAlpha();
+  if (opaque) image = image.flatten({ background: base }).removeAlpha();
   await image.png({ compressionLevel: 9 }).toFile(path.join(mobileDir, relativeDest));
   console.log("wrote", relativeDest);
 }
@@ -47,7 +55,9 @@ await compose(
 );
 // iOS 스플래시(LaunchScreen): 정사각 2732 를 화면 높이에 맞춰 자르므로 20% (폰에서 ~170pt).
 for (const name of ["splash-2732x2732.png", "splash-2732x2732-1.png", "splash-2732x2732-2.png"]) {
-  await compose(`ios/App/App/Assets.xcassets/Splash.imageset/${name}`, 2732, 2732, 0.2);
+  const dest = `ios/App/App/Assets.xcassets/Splash.imageset/${name}`;
+  await compose(dest, 2732, 2732, 0.2);
+  await compose(dest.replace(".png", "-dark.png"), 2732, 2732, 0.2, { base: DARK_BACKGROUND });
 }
 
 const RES = "android/app/src/main/res";

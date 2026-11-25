@@ -8,7 +8,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         window = UIWindow(windowScene: windowScene)
-        window?.rootViewController = CAPBridgeViewController()
+        window?.rootViewController = MainViewController()
         window?.makeKeyAndVisible()
 
         SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)
@@ -20,5 +20,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
         SceneDelegateProxy.shared.scene(scene, continue: userActivity)
+    }
+}
+
+/// WebView 배경을 시스템 테마에 맞춘다. 스크롤 가장자리 효과(iOS 26+)가 이 색을 상태바 뒤에 비춘다.
+class MainViewController: CAPBridgeViewController {
+    override func capacitorDidLoad() {
+        let background = UIColor(named: "AppBackground")
+        webView?.backgroundColor = background
+        webView?.scrollView.backgroundColor = background
     }
 }
