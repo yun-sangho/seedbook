@@ -134,6 +134,13 @@
       "when": 1795536294825,
       "tag": "0018_sloppy_shinobi_shaw",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795563860177,
+      "tag": "0019_bumpy_lady_deathstrike",
+      "breakpoints": true
     }
   ]
 }

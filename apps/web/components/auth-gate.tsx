@@ -5,7 +5,9 @@ import { sessionStorageOrNull } from "@web/components/biometric-sign-in-button";
 import { ConsentGate } from "@web/components/consent-gate";
 import { EntitySyncRunner } from "@web/components/entity-sync-runner";
 import { LoginScreen } from "@web/components/login-screen";
+import { AppLockOverlay } from "@web/components/mobile/app-lock";
 import { PreferencesSync } from "@web/components/preferences-sync";
+import { StorageChoiceGate } from "@web/components/storage-choice-gate";
 import { StorageModeSync } from "@web/components/storage-mode-sync";
 import { useSession } from "@web/lib/auth-client";
 import { clearSignedOutMark } from "@web/lib/native/biometric-login";
@@ -15,7 +17,10 @@ import { Loader2 } from "lucide-react";
  * 세션이 없으면 앱 콘텐츠 대신 로그인 화면을 강제 노출한다.
  *
  * 이 게이트는 저장 모드(local / cloud)와 무관하다. 로그인하지 않은 사용자는
- * 어떤 경로에서도 앱을 사용할 수 없다. 로그인 이후 저장 위치 선택은 더보기 → 설정에서 한다.
+ * 어떤 경로에서도 앱을 사용할 수 없다.
+ *
+ * 로그인 뒤 순서: 약관 동의 → 저장 방식 선택(계정마다 한 번) → 앱. 저장 방식을 고르는 동안에는
+ * 동기화를 시작하지 않는다. 앱 잠금은 저장 방식 선택 화면까지 가린다.
  */
 export function AuthGate({ children }: { children: ReactNode }) {
   const { data: session, isPending } = useSession();
@@ -52,10 +57,14 @@ export function AuthGate({ children }: { children: ReactNode }) {
   if (session?.user) {
     return (
       <ConsentGate key={session.user.id}>
-        <StorageModeSync />
-        <PreferencesSync />
-        <EntitySyncRunner />
-        {children}
+        <StorageChoiceGate>
+          <StorageModeSync />
+          <PreferencesSync />
+          <EntitySyncRunner />
+          {children}
+        </StorageChoiceGate>
+        {/* 네이티브 앱에서 앱 잠금을 켰을 때만 그려진다. */}
+        <AppLockOverlay />
       </ConsentGate>
     );
   }

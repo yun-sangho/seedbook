@@ -7,7 +7,7 @@ import {
 } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
-import { useSwitchTab } from "@web/app/m/_stack/use-switch-tab";
+import { AddAccountSheet } from "@web/app/m/assets/investments/_components/add-account-sheet";
 import { HoldingsPriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
 import { profitToneClass } from "@web/components/mobile/profit-tone";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
@@ -35,8 +35,8 @@ export function HomeMobile() {
   const investments = useInvestmentStore((s) => s.investments);
   const statusFor = useLinkedPortfolioStatus();
   const { push } = useFlow();
-  const switchTab = useSwitchTab();
   const [tab, setTab] = useState<Tab>("holdings");
+  const [addOpen, setAddOpen] = useState(false);
 
   // 저장된 평가금액이 아니라 지금 시세로 다시 계산한 금액을 보여준다 (계좌 상세와 같은 값).
   const liveInvestments = useLiveAccounts(investments);
@@ -53,12 +53,14 @@ export function HomeMobile() {
       <div className="flex min-h-[60dvh] flex-col">
         <ResultSection
           title="투자 계좌가 없어요"
-          description="계좌 탭에서 첫 투자 계좌를 추가하고 자산의 성장을 추적해보세요."
-          primaryActionProps={{
-            children: "계좌 탭으로 이동",
-            onClick: () => switchTab("AccountsTab"),
+          description="첫 투자 계좌를 추가하고 자산의 성장을 추적해보세요."
+          primaryActionProps={{ children: "투자 계좌 추가", onClick: () => setAddOpen(true) }}
+          secondaryActionProps={{
+            children: "설정에서 데모 데이터 불러오기",
+            onClick: () => push("Settings", {}),
           }}
         />
+        <AddAccountSheet open={addOpen} onOpenChange={setAddOpen} />
       </div>
     );
   }

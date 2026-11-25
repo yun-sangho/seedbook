@@ -114,6 +114,10 @@ export const DEVICE_MIGRATIONS: DeviceMigration[] = [
       )`,
     ],
   },
+  {
+    version: 2,
+    statements: ["ALTER TABLE user_preference ADD COLUMN storageModeChosenAt TEXT"],
+  },
 ];
 
 const CREATE_MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS device_schema_migration (

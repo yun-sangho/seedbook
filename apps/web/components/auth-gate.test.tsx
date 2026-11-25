@@ -73,6 +73,29 @@ describe("AuthGate", () => {
     }
   );
 
+  it("asks for the storage mode after consent and before the app, without starting sync", async () => {
+    const urls: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      urls.push(url);
+      return url === "/api/me/consents"
+        ? Response.json({ agreed: true })
+        : Response.json({ storageMode: "cloud", chosen: false, inUse: true });
+    });
+    mockUseSession.mockReturnValue({ data: { user: { id: "u-1" } }, isPending: false });
+
+    render(
+      <AuthGate>
+        <div>앱 콘텐츠</div>
+      </AuthGate>
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "저장 방식을 확인해 주세요" })
+    ).toBeInTheDocument();
+    expect(screen.queryByText("앱 콘텐츠")).not.toBeInTheDocument();
+    expect(urls).toEqual(["/api/me/consents", "/api/me/storage-mode"]);
+  });
+
   it.each<StorageMode>(["local", "cloud"])(
     "renders the login screen when there is no session in %s mode",
     (mode) => {

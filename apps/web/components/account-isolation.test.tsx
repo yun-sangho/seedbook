@@ -63,7 +63,7 @@ function fakeServer() {
     const body = init?.body ? JSON.parse(String(init.body)) : null;
     if (url.startsWith("/api/me/storage-mode")) {
       if (method === "PUT") user.mode = body.storageMode;
-      return json({ storageMode: user.mode });
+      return json({ storageMode: user.mode, chosen: true, inUse: true });
     }
     if (url.startsWith("/api/me/preferences")) return json({});
     if (url.startsWith("/api/me/consents")) return json({ agreed: true });
