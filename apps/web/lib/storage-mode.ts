@@ -1,4 +1,5 @@
 import { accountFetch, accountStorage } from "./account-storage";
+import { flushDeviceStorage } from "./device-storage";
 
 /**
  * 사용자 선택 저장소 모드의 동기(sync) 접근자.
@@ -47,8 +48,9 @@ export function getStorageMode(): StorageMode {
 
 /**
  * 저장소 모드를 설정한다. **rehydration 을 트리거하지 않는다.** 호출자는
- * 이어서 `window.location.reload()` 를 호출해 모든 store 를 새 backend 로부터
- * 재하이드레이션해야 한다 (hot swap 은 race condition 때문에 v1 범위에서 제외).
+ * 이어서 새로고침해 모든 store 를 새 backend 로부터 재하이드레이션해야 한다
+ * (hot swap 은 race condition 때문에 v1 범위에서 제외). 앱에서는 저장이 비동기라, 새로고침할
+ * 호출자는 `saveStorageMode` 를 쓴다.
  */
 export function setStorageMode(mode: StorageMode): void {
   if (typeof window === "undefined") return;
@@ -58,6 +60,19 @@ export function setStorageMode(mode: StorageMode): void {
     // 쓰기 실패는 묵인 — 호출자가 reload 전에 감지 가능한 방법이 없으므로
     // 조용히 무시하고 모드 전환만 포기한다.
   }
+}
+
+/**
+ * 저장소 모드를 바꾸고 기기에 실제로 저장될 때까지 기다린다. **true 일 때만 새로고침한다** —
+ * 저장되지 않은 채 새로고침하면 예전 모드로 다시 열려 전환(합치기·새로고침)이 되풀이된다.
+ * 실패하면 원래 모드로 되돌리고 false.
+ */
+export async function saveStorageMode(mode: StorageMode): Promise<boolean> {
+  const previous = getStorageMode();
+  setStorageMode(mode);
+  if ((await flushDeviceStorage()) && getStorageMode() === mode) return true;
+  setStorageMode(previous);
+  return false;
 }
 
 /**

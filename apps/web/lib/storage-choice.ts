@@ -1,6 +1,6 @@
 import { accountFetch } from "./account-storage";
 import { downloadAllFromCloud, uploadAllToCloud } from "./storage-migration";
-import { type StorageMode, setStorageMode } from "./storage-mode";
+import { type StorageMode, saveStorageMode } from "./storage-mode";
 
 const STORAGE_MODE_URL = "/api/me/storage-mode";
 
@@ -60,6 +60,5 @@ export async function applyStorageChoice(
     return "failed";
   }
   if (!switching) return "open";
-  setStorageMode(next);
-  return "reload";
+  return (await saveStorageMode(next)) ? "reload" : "failed";
 }

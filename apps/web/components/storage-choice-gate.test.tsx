@@ -188,6 +188,17 @@ describe("StorageChoiceGate", () => {
     expect(app()).not.toBeInTheDocument();
   });
 
+  it("does not reload when this device could not save the mode", async () => {
+    await open();
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("quota", "QuotaExceededError");
+    });
+    await choose(CLOUD);
+    vi.restoreAllMocks();
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(reload).not.toHaveBeenCalled();
+  });
+
   it("reloads to follow a choice made meanwhile on another device", async () => {
     put = () => new Response(null, { status: 409 });
     await open();

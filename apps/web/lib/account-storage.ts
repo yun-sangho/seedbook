@@ -5,7 +5,12 @@ import { portfolioSyncConfig } from "@web/features/portfolio/sync/portfolio-sync
 import { rebalancingSyncConfig } from "@web/features/rebalancing/sync/rebalancing-sync-config";
 import type { StateStorage } from "zustand/middleware";
 import { ACCOUNT_HEADER } from "./account-header";
-import { afterDeviceStorageReady, type DeviceStorage, getDeviceStorage } from "./device-storage";
+import {
+  afterDeviceStorageReady,
+  type DeviceStorage,
+  getDeviceStorage,
+  reloadApp,
+} from "./device-storage";
 import {
   BIOMETRIC_LOGIN_STORAGE_KEY,
   readBiometricLoginEnrollment,
@@ -130,7 +135,7 @@ export async function activateAccount(userId: string | null): Promise<void> {
   await activation;
   if (userId === null || userId === account) return;
   settle(null, null);
-  window.location.reload();
+  await reloadApp();
 }
 
 /** 저장소와 로그인 사용자가 모두 정해진 뒤 `fn` 을 부른다. 이미 정해졌으면 동기로 끝난다. */

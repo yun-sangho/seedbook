@@ -164,6 +164,23 @@ describe("StorageModeSync", () => {
     expect(window.localStorage.getItem(STORAGE_MODE_KEY)).toBe("local");
   });
 
+  it("모드를 기기에 저장하지 못하면 새로고침하지 않는다 (무한 새로고침 방지)", async () => {
+    mockUseSession.mockReturnValue({ data: { user: { id: "u-1" } }, isPending: false });
+    const reload = stubLocationReload();
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("quota", "QuotaExceededError");
+    });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ storageMode: "cloud" }), { status: 200 })
+    );
+
+    render(<StorageModeSync />);
+
+    await waitFor(() => expect(uploadAllToCloud).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(reload).not.toHaveBeenCalled();
+  });
+
   it("합치기에 실패하면 모드를 바꾸지 않는다 (데이터를 잃지 않도록)", async () => {
     window.localStorage.setItem(STORAGE_MODE_KEY, "local");
     mockUseSession.mockReturnValue({ data: { user: { id: "u-1" } }, isPending: false });

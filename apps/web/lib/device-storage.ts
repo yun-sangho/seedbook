@@ -42,8 +42,8 @@ export interface DeviceStorage {
   clear: () => void | Promise<void>;
   isReady: () => boolean;
   whenReady: () => Promise<void>;
-  /** 대기 중인 SQLite 쓰기가 끝날 때까지 기다린다. */
-  flush: () => Promise<void>;
+  /** 대기 중인 SQLite 쓰기가 끝날 때까지 기다린다. 모두 저장했으면 true, 남았으면 false. */
+  flush: () => Promise<boolean>;
 }
 
 type LegacyStorage = Pick<
@@ -83,7 +83,7 @@ function createBrowserStorage(storage: LegacyStorage): DeviceStorage {
     clear: () => safe(() => storage.clear(), undefined),
     isReady: () => true,
     whenReady: () => Promise.resolve(),
-    flush: () => Promise.resolve(),
+    flush: () => Promise.resolve(true),
   };
 }
 
@@ -223,6 +223,8 @@ export function createNativeDeviceStorage(
     await opened;
     for (const [key, value] of pending) {
       pending.delete(key);
+      // 저장하는 동안에는 저장된 값을 모른다 — 그 사이 이전 값으로 되돌리는 쓰기를 건너뛰면 안 된다.
+      written.delete(key);
       if (!driver) {
         saveToFallback(key, value);
         continue;
@@ -305,7 +307,10 @@ export function createNativeDeviceStorage(
     },
     isReady: () => ready,
     whenReady: () => opened,
-    flush: drain,
+    flush: async () => {
+      await drain();
+      return pending.size === 0;
+    },
   };
 }
 
@@ -320,7 +325,7 @@ const serverStorage: DeviceStorage = {
   clear: () => undefined,
   isReady: () => true,
   whenReady: () => Promise.resolve(),
-  flush: () => Promise.resolve(),
+  flush: () => Promise.resolve(true),
 };
 
 let current: DeviceStorage | null = null;
@@ -343,6 +348,32 @@ export function getDeviceStorage(): DeviceStorage {
     current = createBrowserStorage(window.localStorage);
   }
   return current;
+}
+
+/** 네이티브 쪽이 답하지 않아도 화면이 멈추지 않게, 저장을 기다리는 최대 시간. */
+const FLUSH_TIMEOUT_MS = 10_000;
+
+/** 대기 중인 쓰기를 모두 저장했으면 true. 실패했거나 너무 오래 걸리면 false. */
+export async function flushDeviceStorage(): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<boolean>((resolve) => {
+    timer = setTimeout(() => resolve(false), FLUSH_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([getDeviceStorage().flush(), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * 대기 중인 쓰기를 저장한 뒤 새로고침한다. 앱의 쓰기는 하나씩 네이티브로 보내므로, 기다리지 않고
+ * 새로고침하면 뒤에 줄 선 값이 사라진다. 저장에 실패해도 새로고침은 한다 — 저장됐을 때만
+ * 새로고침해야 하면 `flushDeviceStorage()` 의 결과를 본다.
+ */
+export async function reloadApp(): Promise<void> {
+  await flushDeviceStorage();
+  window.location.reload();
 }
 
 /** 네이티브 앱 저장소를 쓰는지 (예전 브라우저 데이터 업그레이드 같은 브라우저 전용 작업을 건너뛸 때). */
