@@ -6,6 +6,7 @@ import { useFlow } from "@stackflow/react";
 import { BottomAction } from "@web/components/mobile/bottom-action";
 import { MoneyField } from "@web/components/mobile/money-field";
 import { PriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
+import { useStockPriceStore } from "@web/features/investments/stores/stock-price-store";
 import type { InvestmentItem, StockHolding } from "@web/features/investments/types/types";
 import { stockPriceKey, useStockPrices } from "@web/features/investments/utils/use-stock-prices";
 import type { PortfolioItem } from "@web/features/portfolio/types/types";
@@ -26,15 +27,21 @@ import {
 import { driftPercent, formatDriftPercent } from "@web/features/portfolio/utils/drift-percent";
 import { sumCash } from "@web/features/portfolio/utils/linked-portfolio-status";
 import { OutsideHoldingsNotice } from "@web/features/rebalancing/components/outside-holdings-notice";
+import { UnpricedStocksNotice } from "@web/features/rebalancing/components/unpriced-stocks-notice";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import type { RebalancingTask } from "@web/features/rebalancing/types/types";
 import { buildRebalancingTasks } from "@web/features/rebalancing/utils/build-rebalancing-tasks";
 import { holdingsOutsidePortfolio } from "@web/features/rebalancing/utils/holdings-outside-portfolio";
 import { findInProgressForAccount } from "@web/features/rebalancing/utils/rebalancing-session";
+import {
+  findUnpricedStocks,
+  type RebalancingStartBlock,
+  rebalancingStartBlock,
+  type UnpricedStock,
+} from "@web/features/rebalancing/utils/start-block";
 import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { Badge } from "@web/seed-design/ui/badge";
-import { Callout } from "@web/seed-design/ui/callout";
 import { List, ListItem } from "@web/seed-design/ui/list";
 import { formatWithCommas, numberToKorean, parseNumericString } from "@web/utils/number-format";
 
@@ -64,8 +71,7 @@ export function AccountRebalancingMobile({
     () => portfolio.allocations.map(allocationAsHolding),
     [portfolio.allocations]
   );
-  const { prices: allocationPrices, isLoading: allocationPricesLoading } =
-    useStockPrices(allocationHoldings);
+  const { prices: allocationPrices } = useStockPrices(allocationHoldings);
 
   const colors = useMemo(
     () => buildAllocationColors(portfolio.allocations.length),
@@ -107,10 +113,17 @@ export function AccountRebalancingMobile({
     [summary, allocationPrices]
   );
   const isEmpty = actual.totalStockValue === 0 && tradable === 0;
-  // 시세를 모르면 보유해도 0원으로 계산돼 권장 매매가 크게 틀릴 수 있다.
-  const unpriced = allocationPricesLoading
-    ? []
-    : portfolio.allocations.filter((a) => !allocationPrices.has(stockPriceKey(a.market, a.ticker)));
+  // 시세를 모르면 보유해도 0원으로 계산돼 권장 매매가 크게 틀린다 — 시작을 막고 계산도 보이지 않는다.
+  const priceEntries = useStockPriceStore((s) => s.entries);
+  const priceErrors = useStockPriceStore((s) => s.errors);
+  const unpriced = useMemo(
+    () => findUnpricedStocks(portfolio.allocations, { entries: priceEntries, errors: priceErrors }),
+    [portfolio.allocations, priceEntries, priceErrors]
+  );
+  const pricesKnown = unpriced.length === 0;
+  const hasInProgress = useRebalancingStore(
+    (s) => findInProgressForAccount(s.sessions, account.id) !== undefined
+  );
   const drift = useMemo(() => computeDriftAlert(summary, portfolio), [summary, portfolio]);
 
   return (
@@ -123,13 +136,9 @@ export function AccountRebalancingMobile({
           <OutsideHoldingsNotice holdings={outsideHoldings} blocking />
         </div>
       )}
-      {unpriced.length > 0 && (
+      {unpriced.some((stock) => stock.reason !== "loading") && (
         <div className="px-x4 pt-x4">
-          <Callout
-            tone="warning"
-            title="시세를 모르는 종목이 있어요"
-            description={`${unpriced.map((a) => a.name || a.ticker).join(", ")}. 현재 금액을 알 수 없어 권장 매매가 정확하지 않을 수 있어요. 잠시 뒤 다시 확인해 주세요.`}
-          />
+          <UnpricedStocksNotice stocks={unpriced} blocking={!hasInProgress} />
         </div>
       )}
       <section className="flex flex-col gap-x2 px-x4 py-x4">
@@ -161,33 +170,41 @@ export function AccountRebalancingMobile({
 
       <Divider />
 
-      {!isEmpty && (
-        <div className="pb-x4">
-          <DriftRows drift={drift} summary={summary} colorMap={colorMap} rule={portfolio} />
-        </div>
-      )}
+      {pricesKnown ? (
+        <>
+          {!isEmpty && (
+            <div className="pb-x4">
+              <DriftRows drift={drift} summary={summary} colorMap={colorMap} rule={portfolio} />
+            </div>
+          )}
 
-      <Divider />
+          <Divider />
 
-      {isEmpty ? (
-        <p className="t4-regular text-fg-neutral-subtle px-x4 py-x6 text-center">
-          이 계좌에 보유 종목과 거래 가능 금액이 없습니다. 종목을 추가하거나 거래 가능 금액을
-          입력하세요.
-        </p>
+          {isEmpty ? (
+            <p className="t4-regular text-fg-neutral-subtle px-x4 py-x6 text-center">
+              이 계좌에 보유 종목과 거래 가능 금액이 없습니다. 종목을 추가하거나 거래 가능 금액을
+              입력하세요.
+            </p>
+          ) : (
+            <section className="py-x4">
+              <div className="flex items-center gap-x2 px-x4 pb-x3">
+                <h2 className="t5-bold">권장 매매</h2>
+              </div>
+              <SummaryGrid
+                className="pt-0"
+                items={[
+                  { label: "총 매수", value: summary.totalBuyValue, tone: "buy" },
+                  { label: "총 매도", value: summary.totalSellValue, tone: "sell" },
+                ]}
+              />
+              <TradeRows tasks={tasks} colorMap={colorMap} />
+            </section>
+          )}
+        </>
       ) : (
-        <section className="py-x4">
-          <div className="flex items-center gap-x2 px-x4 pb-x3">
-            <h2 className="t5-bold">권장 매매</h2>
-          </div>
-          <SummaryGrid
-            className="pt-0"
-            items={[
-              { label: "총 매수", value: summary.totalBuyValue, tone: "buy" },
-              { label: "총 매도", value: summary.totalSellValue, tone: "sell" },
-            ]}
-          />
-          <TradeRows tasks={tasks} colorMap={colorMap} />
-        </section>
+        <p className="t4-regular text-fg-neutral-subtle px-x4 py-x6 text-center">
+          종목 시세를 모두 알아야 이격과 권장 매매를 계산할 수 있어요.
+        </p>
       )}
 
       <StartRebalancingSection
@@ -195,7 +212,7 @@ export function AccountRebalancingMobile({
         portfolio={portfolio}
         summary={summary}
         tasks={tasks}
-        pricesLoading={allocationPricesLoading}
+        unpriced={unpriced}
         hasOutsideHoldings={outsideHoldings.length > 0}
       />
     </div>
@@ -223,15 +240,15 @@ function StartRebalancingSection({
   portfolio,
   summary,
   tasks,
-  pricesLoading,
+  unpriced,
   hasOutsideHoldings,
 }: {
   account: InvestmentItem;
   portfolio: PortfolioItem;
   summary: RebalancingSummary;
   tasks: RebalancingTask[];
-  /** 시세를 받는 중이면 시작을 막는다 — 가격·기준 시각 없이 할 일이 스냅샷되지 않도록. */
-  pricesLoading: boolean;
+  /** 시세를 모르는 (받는 중 포함) 종목이 있으면 막는다 — 가격 없이 할 일이 스냅샷되지 않도록. */
+  unpriced: UnpricedStock[];
   /** 계좌에 포트폴리오에 없는 종목이 있으면 시작을 막는다. */
   hasOutsideHoldings: boolean;
 }) {
@@ -239,7 +256,7 @@ function StartRebalancingSection({
   const startRebalancing = useRebalancingStore((s) => s.startRebalancing);
   const { replace, push } = useFlow();
 
-  const disabledReason = startDisabledReason(tasks, pricesLoading, hasOutsideHoldings);
+  const block = rebalancingStartBlock({ hasOutsideHoldings, unpriced, taskCount: tasks.length });
 
   if (inProgress) {
     return (
@@ -258,10 +275,10 @@ function StartRebalancingSection({
     );
   }
 
-  if (hasOutsideHoldings) {
+  if (block === "outside-holdings") {
     return (
       <BottomAction>
-        <p className="t3-regular text-fg-neutral-subtle">{disabledReason}</p>
+        <p className="t3-regular text-fg-neutral-subtle">{BLOCK_MESSAGE[block]}</p>
         <ActionButton
           size="large"
           variant="neutralSolid"
@@ -274,13 +291,24 @@ function StartRebalancingSection({
     );
   }
 
+  if (block === "prices-missing" || block === "prices-failed") {
+    return (
+      <UnpricedStartAction
+        block={block}
+        unpriced={unpriced}
+        onEditPortfolio={() => push("PortfolioDetail", { id: portfolio.id })}
+      />
+    );
+  }
+
   return (
     <BottomAction>
-      {disabledReason && <p className="t3-regular text-fg-neutral-subtle">{disabledReason}</p>}
+      {block && <p className="t3-regular text-fg-neutral-subtle">{BLOCK_MESSAGE[block]}</p>}
       <ActionButton
         size="large"
         className="w-full"
-        disabled={disabledReason !== null}
+        disabled={block !== null}
+        loading={block === "prices-loading"}
         onClick={() => {
           const id = startRebalancing({
             accountId: account.id,
@@ -300,16 +328,51 @@ function StartRebalancingSection({
   );
 }
 
-/** 시작 버튼을 막는 이유. 시작할 수 있으면 null. */
-function startDisabledReason(
-  tasks: RebalancingTask[],
-  pricesLoading: boolean,
-  hasOutsideHoldings: boolean
-): string | null {
-  if (hasOutsideHoldings) return "포트폴리오에 없는 종목을 정리한 뒤 시작할 수 있어요.";
-  if (pricesLoading) return "시세를 불러오는 중이에요.";
-  if (tasks.length === 0) return "지금은 사고팔 종목이 없어요.";
-  return null;
+const BLOCK_MESSAGE: Record<RebalancingStartBlock, string> = {
+  "outside-holdings": "포트폴리오에 없는 종목을 정리한 뒤 시작할 수 있어요.",
+  "prices-missing": "시세를 찾을 수 없는 종목을 바꾸거나 뺀 뒤 시작할 수 있어요.",
+  "prices-failed": "시세를 다시 확인한 뒤 시작할 수 있어요.",
+  "prices-loading": "시세를 불러오는 중이에요.",
+  "no-trades": "지금은 사고팔 종목이 없어요.",
+};
+
+/**
+ * 시세를 몰라 시작할 수 없을 때의 다음 행동. 일시 실패면 다시 확인이, 서버에도 시세가 없으면
+ * 포트폴리오 수정이 먼저다. 둘 다 언제나 할 수 있게 둔다.
+ */
+function UnpricedStartAction({
+  block,
+  unpriced,
+  onEditPortfolio,
+}: {
+  block: "prices-missing" | "prices-failed";
+  unpriced: UnpricedStock[];
+  onEditPortfolio: () => void;
+}) {
+  const refreshPrices = useStockPriceStore((s) => s.refreshPrices);
+  const checking = useStockPriceStore((s) => unpriced.some((stock) => s.inFlight[stock.key]));
+  const recheck = {
+    children: "시세 다시 확인",
+    loading: checking,
+    onClick: () => refreshPrices(requestableKeys(unpriced)),
+  };
+  const edit = { children: "포트폴리오 수정", onClick: onEditPortfolio };
+  const [primary, secondary] = block === "prices-missing" ? [edit, recheck] : [recheck, edit];
+
+  return (
+    <BottomAction>
+      <p className="t3-regular text-fg-neutral-subtle">{BLOCK_MESSAGE[block]}</p>
+      <ActionButton size="large" variant="neutralSolid" className="w-full" {...primary} />
+      <ActionButton size="large" variant="neutralWeak" className="w-full" {...secondary} />
+    </BottomAction>
+  );
+}
+
+/** 종목을 고르지 않은 항목은 물을 시세가 없다. */
+function requestableKeys(unpriced: UnpricedStock[]): string[] {
+  return unpriced
+    .map((stock) => stock.key)
+    .filter((key) => !key.startsWith(":") && !key.endsWith(":"));
 }
 
 /**
