@@ -3,9 +3,10 @@
 import { resolve } from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
+import { failureLogPlugin } from "./test/failure-log/failure-log";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), failureLogPlugin(resolve(__dirname, ".vitest-failures"))],
   test: {
     globals: true,
     environment: "jsdom",

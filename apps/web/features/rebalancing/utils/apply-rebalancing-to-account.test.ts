@@ -299,14 +299,14 @@ describe("applyRebalancingToAccount changes", () => {
     ]);
   });
 
-  it("reports the cash item balance before and after", () => {
+  it("reports the cash balance before and after", () => {
     const { cash } = applyRebalancingToAccount(
       account(),
       session([task({ action: "매도", quantity: 1, price: 50_000 })]),
       KRW
     );
 
-    expect(cash).toEqual({ label: "예수금", before: 1_000_000, after: 1_050_000 });
+    expect(cash).toEqual({ before: 1_000_000, after: 1_050_000 });
   });
 
   it("reports cash from zero when the account has no cash item", () => {
@@ -316,6 +316,106 @@ describe("applyRebalancingToAccount changes", () => {
       KRW
     );
 
-    expect(cash).toEqual({ label: "예수금", before: 0, after: 50_000 });
+    expect(cash).toEqual({ before: 0, after: 50_000 });
+  });
+});
+
+describe("applyRebalancingToAccount with several cash items", () => {
+  const cashItems = [
+    { id: "cma", label: "CMA", amount: 900 },
+    { id: "deposit", label: "예수금", amount: 100 },
+    { id: "mmf", label: "MMF", amount: 500 },
+  ];
+  const buy = (price: number) => task({ quantity: 1, price });
+  const amounts = (acc: InvestmentItem) => acc.cashItems.map((c) => [c.id, c.amount]);
+
+  it("spends only the 예수금 item while it covers the buys", () => {
+    const result = applyRebalancingToAccount(account({ cashItems }), session([buy(60)]), KRW);
+
+    expect(amounts(result.account)).toEqual([
+      ["cma", 900],
+      ["deposit", 40],
+      ["mmf", 500],
+    ]);
+  });
+
+  it("spends the other items in order once the 예수금 item runs out", () => {
+    const result = applyRebalancingToAccount(account({ cashItems }), session([buy(1_200)]), KRW);
+
+    expect(amounts(result.account)).toEqual([
+      ["cma", 0],
+      ["deposit", 0],
+      ["mmf", 300],
+    ]);
+    expect(result.cashShortfall).toBe(0);
+  });
+
+  it("spends from the first item when there is no 예수금 item", () => {
+    const result = applyRebalancingToAccount(
+      account({ cashItems: cashItems.filter((c) => c.id !== "deposit") }),
+      session([buy(1_000)]),
+      KRW
+    );
+
+    expect(amounts(result.account)).toEqual([
+      ["cma", 0],
+      ["mmf", 400],
+    ]);
+  });
+
+  it("adds sell proceeds to the 예수금 item only", () => {
+    const result = applyRebalancingToAccount(
+      account({ cashItems }),
+      session([task({ action: "매도", quantity: 1, price: 300 })]),
+      KRW
+    );
+
+    expect(amounts(result.account)).toEqual([
+      ["cma", 900],
+      ["deposit", 400],
+      ["mmf", 500],
+    ]);
+  });
+
+  it("uses newly deposited cash before the existing items", () => {
+    const result = applyRebalancingToAccount(account({ cashItems }), session([buy(550)], 500), KRW);
+
+    expect(amounts(result.account)).toEqual([
+      ["cma", 900],
+      ["deposit", 50],
+      ["mmf", 500],
+    ]);
+  });
+
+  it("leaves cash held back from trading across the items", () => {
+    // 현금 1,500원 중 거래 가능 금액 1,000원을 다 쓰면 남겨 둔 500원은 계좌에 남는다
+    const result = applyRebalancingToAccount(
+      account({ cashItems }),
+      session([buy(1_000)], -500),
+      KRW
+    );
+
+    expect(amounts(result.account)).toEqual([
+      ["cma", 0],
+      ["deposit", 0],
+      ["mmf", 500],
+    ]);
+  });
+
+  it("reports a shortfall only for what the total cash cannot cover", () => {
+    const result = applyRebalancingToAccount(account({ cashItems }), session([buy(1_700)]), KRW);
+
+    expect(result.cashShortfall).toBe(200);
+    expect(amounts(result.account)).toEqual([
+      ["cma", 0],
+      ["deposit", 0],
+      ["mmf", 0],
+    ]);
+  });
+
+  it("reports the total cash before and after", () => {
+    const { cash } = applyRebalancingToAccount(account({ cashItems }), session([buy(1_200)]), KRW);
+
+    expect(cash).toEqual({ before: 1_500, after: 300 });
   });
 });
