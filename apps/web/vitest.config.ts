@@ -26,6 +26,8 @@ export default defineConfig({
     alias: {
       "@": resolve(__dirname),
       "@web": resolve(__dirname),
+      // tsconfig paths 와 같이 소스를 본다 — database 패키지를 빌드(dist)하지 않아도 테스트가 돈다.
+      "@seedbook/database": resolve(__dirname, "../../packages/database/src"),
     },
   },
 });
