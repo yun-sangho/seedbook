@@ -25,6 +25,11 @@ const config: CapacitorConfig = {
     // 앱 안에서 열어야 하는 외부 화면 (로그인). 그 밖의 도메인은 시스템 브라우저로 연다.
     allowNavigation: ["*.kakao.com", "appleid.apple.com"],
   },
+  plugins: {
+    // Android 뒤로가기는 웹이 리스너를 건 뒤에 켠다 (apps/web/lib/native/system-back.ts). 처음부터
+    // 켜면 웹이 뜨지 못한 화면(error.html)에서 뒤로가기가 아무 일도 하지 않는다.
+    App: { disableBackButtonHandler: true },
+  },
 };
 
 export default config;

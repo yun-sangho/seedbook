@@ -12,6 +12,7 @@
   "dependencies": {
     "@capacitor-community/sqlite": "8.1.1",
     "@capacitor/android": "8.6.0",
+    "@capacitor/app": "8.1.2",
     "@capacitor/core": "8.6.0",
     "@capacitor/ios": "8.6.0",
     "@capgo/capacitor-native-biometric": "8.9.1",

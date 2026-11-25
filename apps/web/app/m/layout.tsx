@@ -5,6 +5,7 @@ import { AuthGate } from "@web/components/auth-gate";
 import { HydrationGate } from "@web/components/hydration-gate";
 import { BiometricLoginOffer } from "@web/components/mobile/biometric-login";
 import { SeedColorScheme } from "@web/components/mobile/seed-color-scheme";
+import { SystemBackButton } from "@web/components/mobile/system-back-button";
 import { CSP_NONCE_HEADER } from "@web/lib/csp";
 import { iosStartupImages } from "@web/lib/ios-splash";
 import { MobileStack } from "./_stack/mobile-stack";
@@ -43,6 +44,7 @@ export default async function MobileLayout({ children }: { children: React.React
   return (
     <>
       <SeedColorScheme nonce={nonce} />
+      <SystemBackButton />
       <HydrationGate>
         <AuthGate>
           {/* 화면은 스택이 URL 을 보고 그린다. children(페이지)은 경로만 받아주는 빈 페이지. */}

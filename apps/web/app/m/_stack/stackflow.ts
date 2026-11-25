@@ -5,34 +5,30 @@ import { basicRendererPlugin } from "@stackflow/plugin-renderer-basic";
 import { stackflow } from "@stackflow/react";
 import {
   AccountDetailActivity,
-  AccountsTabActivity,
-  HomeTabActivity,
   PortfolioDetailActivity,
-  PortfolioTabActivity,
   RebalancingDetailActivity,
   RebalancingNewActivity,
   RebalancingSessionActivity,
-  RebalancingTabActivity,
   RebalancingTradeActivity,
   SettingsActivity,
+  TabsActivity,
 } from "./activities";
 import { createNextAwareHistory } from "./next-aware-history";
+import { stackControlPlugin } from "./stack-control";
+import { type TabKey, type TabsParams, tabOf, tabParams } from "./tabs";
 
 /**
- * 모바일 (`/m` 트리) 화면 스택. 하단 탭 4개는 루트 activity 로 두고 탭 전환은
- * `replace` (애니메이션 없음), 상세 화면은 `push` 로 쌓는다.
+ * 모바일 (`/m` 트리) 화면 스택. 하단 탭 4개는 루트 activity `Tabs` 하나에 담아
+ * 탭을 옮겨도 화면이 남고(stack-control.ts 의 `switchTab`), 상세 화면은 `push` 로 쌓는다.
  *
  * URL 은 데스크탑과 같은 `/assets/...` 를 그대로 쓴다 (proxy 가 `/m` 으로 rewrite).
- * 스택은 브라우저 history 를 쌓지 않는 단일 페이지로 동작하고, 뒤로가기는 앱바 뒤로 버튼과
- * SEED 스와이프만 쓴다 (next-aware-history.ts).
+ * 스택은 브라우저 history 를 쌓지 않는 단일 페이지로 동작하고, 뒤로가기는 앱바 뒤로 버튼·
+ * SEED 스와이프(next-aware-history.ts)와 Android 시스템 뒤로가기(lib/native/system-back.ts)다.
  * 이 모듈은 `window` 를 쓰므로 클라이언트 전용으로만 불러온다 (`mobile-stack.tsx`).
  */
 declare module "@stackflow/config" {
   interface Register {
-    HomeTab: Record<string, never>;
-    AccountsTab: Record<string, never>;
-    RebalancingTab: Record<string, never>;
-    PortfolioTab: Record<string, never>;
+    Tabs: TabsParams;
     AccountDetail: { id: string };
     RebalancingNew: Record<string, never>;
     RebalancingDetail: { id: string };
@@ -43,37 +39,31 @@ declare module "@stackflow/config" {
   }
 }
 
-export type TabActivityName = "HomeTab" | "AccountsTab" | "RebalancingTab" | "PortfolioTab";
-
 /** 상세 URL 로 바로 들어와도 뒤로가기가 해당 탭 목록으로 가도록 아래에 깔 화면. */
-function underTab(activityName: TabActivityName) {
-  return () => [{ activityName, activityParams: {} }];
+function underTab(tab: TabKey) {
+  return () => [{ activityName: "Tabs" as const, activityParams: tabParams(tab) }];
 }
 
 const config = defineConfig({
   activities: [
-    { name: "HomeTab", route: "/assets" },
-    { name: "AccountsTab", route: "/assets/investments" },
-    { name: "RebalancingTab", route: "/assets/rebalancing" },
-    { name: "PortfolioTab", route: "/assets/portfolio" },
     {
       name: "AccountDetail",
-      route: { path: "/assets/investments/:id", defaultHistory: underTab("AccountsTab") },
+      route: { path: "/assets/investments/:id", defaultHistory: underTab("investments") },
     },
     {
       name: "RebalancingNew",
-      route: { path: "/assets/rebalancing/new", defaultHistory: underTab("RebalancingTab") },
+      route: { path: "/assets/rebalancing/new", defaultHistory: underTab("rebalancing") },
     },
     {
       // 계좌 리밸런싱 계산. 정적 경로(`new`)가 `:id` 보다 먼저 매칭된다 (history-sync 정렬).
       name: "RebalancingDetail",
-      route: { path: "/assets/rebalancing/:id", defaultHistory: underTab("RebalancingTab") },
+      route: { path: "/assets/rebalancing/:id", defaultHistory: underTab("rebalancing") },
     },
     {
       name: "RebalancingSession",
       route: {
         path: "/assets/rebalancing/sessions/:id",
-        defaultHistory: underTab("RebalancingTab"),
+        defaultHistory: underTab("rebalancing"),
       },
     },
     {
@@ -82,7 +72,7 @@ const config = defineConfig({
       route: {
         path: "/assets/rebalancing/sessions/:id/trades/:taskId",
         defaultHistory: (params) => [
-          ...underTab("RebalancingTab")(),
+          ...underTab("rebalancing")(),
           {
             activityName: "RebalancingSession" as const,
             activityParams: { id: params.id ?? "" },
@@ -92,23 +82,26 @@ const config = defineConfig({
     },
     {
       name: "PortfolioDetail",
-      route: { path: "/assets/portfolio/:id", defaultHistory: underTab("PortfolioTab") },
+      route: { path: "/assets/portfolio/:id", defaultHistory: underTab("portfolio") },
     },
     {
       name: "Settings",
-      route: { path: "/assets/settings", defaultHistory: underTab("HomeTab") },
+      route: { path: "/assets/settings", defaultHistory: underTab("home") },
+    },
+    {
+      // `/assets` 와 `/assets/<탭>`. 같은 모양의 다른 경로(settings)보다 뒤에 둬야 그쪽이 먼저
+      // 매칭된다. 모르는 탭은 홈으로 연다.
+      name: "Tabs",
+      route: { path: "/assets(/:tab)", decode: (params) => tabParams(tabOf(params)) },
     },
   ],
   transitionDuration: 350,
 });
 
-export const { Stack } = stackflow({
+export const { Stack, actions } = stackflow({
   config,
   components: {
-    HomeTab: HomeTabActivity,
-    AccountsTab: AccountsTabActivity,
-    RebalancingTab: RebalancingTabActivity,
-    PortfolioTab: PortfolioTabActivity,
+    Tabs: TabsActivity,
     AccountDetail: AccountDetailActivity,
     RebalancingNew: RebalancingNewActivity,
     RebalancingDetail: RebalancingDetailActivity,
@@ -123,9 +116,10 @@ export const { Stack } = stackflow({
     seedPlugin(({ initialContext }) => ({
       theme: (initialContext as Partial<SeedPluginOptions> | undefined)?.theme ?? "cupertino",
     })),
+    stackControlPlugin,
     historySyncPlugin({
       config,
-      fallbackActivity: () => "HomeTab",
+      fallbackActivity: () => "Tabs",
       // 브라우저 history 를 쌓지 않는 메모리 history. URL 은 주소창에만 반영 (next-aware-history.ts).
       history: createNextAwareHistory(),
     }),

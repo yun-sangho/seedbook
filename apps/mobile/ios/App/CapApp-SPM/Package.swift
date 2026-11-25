@@ -13,6 +13,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", exact: "8.6.0"),
         .package(name: "CapacitorCommunitySqlite", path: "../../../../../node_modules/.pnpm/@capacitor-community+sqlite@8.1.1_@capacitor+core@8.6.0/node_modules/@capacitor-community/sqlite"),
+        .package(name: "CapacitorApp", path: "../../../../../node_modules/.pnpm/@capacitor+app@8.1.2_@capacitor+core@8.6.0/node_modules/@capacitor/app"),
         .package(name: "CapgoCapacitorNativeBiometric", path: "../../../../../node_modules/.pnpm/@capgo+capacitor-native-biometric@8.9.1_@capacitor+core@8.6.0/node_modules/@capgo/capacitor-native-biometric"),
         .package(name: "SeedbookNativePlugins", path: "../../../../../packages/native-plugins")
     ],
@@ -23,6 +24,7 @@ let package = Package(
                 .product(name: "Capacitor", package: "capacitor-swift-pm"),
                 .product(name: "Cordova", package: "capacitor-swift-pm"),
                 .product(name: "CapacitorCommunitySqlite", package: "CapacitorCommunitySqlite"),
+                .product(name: "CapacitorApp", package: "CapacitorApp"),
                 .product(name: "CapgoCapacitorNativeBiometric", package: "CapgoCapacitorNativeBiometric"),
                 .product(name: "SeedbookNativePlugins", package: "SeedbookNativePlugins")
             ]
