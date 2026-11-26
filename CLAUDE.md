@@ -43,7 +43,7 @@ Web 은 **호스트에서** `pnpm dev` 로 직접 띄운다 (Next.js + turbopack
 - `pnpm dev`, `pnpm --filter @seedbook/web test:db`, `pnpm db:seed:reset` 이 슬롯을 따른다. 링크된 워크트리에서 처음 실행하면 **빈 슬롯을 자동 배정**(다른 워크트리가 쓰는 슬롯과 web 포트가 이미 쓰이는 슬롯은 건너뜀)해 워크트리 루트의 `.worktree-slot` (gitignore) 에 `SEEDBOOK_SLOT=N` 을 쓰고, 메인 체크아웃의 로컬 환경 파일(루트·`apps/*`·`packages/*` 의 `.env.local` 등, 심링크는 심링크로)이 없으면 복사한다.
 - 슬롯 N 에는 `PORT`, `DATABASE_URL` (`127.0.0.1:5432/seedbook_sN`), `TEST_DATABASE_URL` (`…/seedbook_sN_test`), `BETTER_AUTH_URL=http://localhost:<port>` 를 넣는다. 이미 설정된 환경변수는 덮어쓰지 않는다.
 - `pnpm dev` 는 시작할 때 슬롯 DB 를 준비한다: postgres 가 안 떠 있으면 `pnpm db:dev:up` 과 같은 명령으로 띄우고, DB 가 없으면 만들고, drizzle 마이그레이션을 적용하고(매번), 종목이 비어 있으면 `db:seed` (fixture + dev 사용자 시나리오) 를 돌린다. `db:seed:reset` 은 슬롯 N 에서는 호스트 tsx 로 슬롯 DB 만 리셋한다 (슬롯 0 은 기존처럼 crawler 컨테이너에서).
-- `pnpm wt:info` (슬롯·URL·DB, 없으면 배정) / `pnpm wt:stop` (자기 슬롯 web 포트를 듣는 프로세스의 cwd 가 자기 체크아웃 안일 때만 dev 서버를 끈다. DB·슬롯은 그대로, 메인 체크아웃에서도 동작. 다른 프로젝트·워크트리 프로세스면 끄지 않고 실패) / `pnpm wt:down` (이 워크트리의 dev 서버 종료 + 슬롯 DB 2개 drop + 슬롯 반납, 워크트리를 지우기 전에) / `pnpm wt:gc [--dry-run]` (살아 있는 워크트리가 쥐지 않은 `seedbook_s*` DB 와, 없어진 워크트리 경로(`~/.herdr/worktrees/seedbook/*`)를 cwd 로 쥔 node 프로세스를 정리. 슬롯 0·메인 체크아웃·살아 있는 워크트리는 건드리지 않는다. 메인 세션이 `hwt rm` 뒤 메인 체크아웃에서 돌린다). 새 슬롯을 배정할 때도 주인 없는 슬롯 DB 를 먼저 치운다.
+- `pnpm wt:info` (슬롯·URL·DB, 없으면 배정) / `pnpm wt:stop` (자기 슬롯 web 포트를 듣는 프로세스의 cwd 가 자기 체크아웃 안일 때만 dev 서버를 끈다. DB·슬롯은 그대로, 메인 체크아웃에서도 동작. 다른 프로젝트·워크트리 프로세스면 끄지 않고 실패) / `pnpm wt:down` (이 워크트리의 dev 서버 종료 + 슬롯 DB 2개 drop + 슬롯 반납, 워크트리를 지우기 전에) / `pnpm wt:gc [--dry-run]` (살아 있는 워크트리가 쥐지 않은 `seedbook_s*` DB 와, 없어진 워크트리 경로(`~/.herdr/worktrees/seedbook/*`)를 cwd 로 쥔 node 프로세스를 정리. 슬롯 0·메인 체크아웃·살아 있는 워크트리는 건드리지 않는다. 머지 큐가 정리 때 `mergeQueue.gc` 로 돌린다). 새 슬롯을 배정할 때도 주인 없는 슬롯 DB 를 먼저 치운다.
 - **서버를 이름으로 끄지 않는다**: `pkill`·`killall`·`pgrep … | xargs kill` 처럼 이름·명령줄 패턴으로 끄는 것은 `-n`·`-f` 를 붙여도 금지다 (다른 워크트리·프로젝트의 서버까지 걸린다). dev 서버는 `pnpm wt:stop` 으로 끈다. QA 로 다른 포트에 띄운 서버(프로덕션 빌드 `next start` 등)는 `lsof -nP -iTCP:<port> -sTCP:LISTEN -t` 로 PID 를, `lsof -a -p <pid> -d cwd -Fn` 로 cwd 를 확인해 자기 체크아웃 안일 때만 그 PID 를 `kill` 한다.
 - **슬롯 N 에서 로그인**: 카카오 OAuth Redirect URI 는 메인 `:4001` 과 슬롯 1~3 (`:4011`·`:4021`·`:4031`) 을 등록해 카카오 로그인이 된다. 슬롯 4~9 는 등록하지 않아 카카오 로그인이 안 된다. 카카오 로그인이 안 되는 슬롯은 로그인 화면의 "개발용 빠른 로그인 (카카오 우회)" (`/api/auth/dev-login`, dev 사용자) 로 QA 한다. localhost 쿠키는 포트를 가리지 않으므로 데스크탑 브라우저에서 `/m` 을 보려면 `seedbook.view=mobile` 쿠키를 둔다. 새 포트는 새 origin 이라 저장 위치가 local 로 시작한다 — 시드 시나리오를 보려면 설정에서 "클라우드에 저장" 을 고른다.
 
@@ -114,31 +114,28 @@ DB integration tests (`*.db.test.ts`, e.g. storage translators) run against real
 - 작업이 끝나면 (테스트·lint·타입 통과, 필요한 QA 완료) **묻지 않고 커밋한다.** 하나의 논리적 변경 = 한 커밋. 메시지는 기존 형식 (`feat(web): ...`, `fix(...)`, `chore: ...`, `test(...)`, 영어 명령형) 을 따른다.
 - `main` 에서 작업 중이면 커밋 전에 브랜치를 만든다 (`feat/…`, `fix/…`, `chore/…`).
 - 커밋 후 브랜치를 `origin` 에 push 하고 `gh pr create` 로 PR 을 연다. PR 본문에 변경 요약, 테스트 결과, QA 여부(못 했으면 이유)를 적는다.
-- 작업 세션은 CI 가 통과하면 `hwt mq add --pr <n> "요약"` 으로 머지를 요청하고 머지될 때까지 기다린다. **머지는 메인 세션이 머지 큐에서 한다** (`.hwt.json` 의 `mergeApproval` 에 걸리면 사용자 승인 뒤). 작업 세션은 PR 을 머지하지 않는다.
+- CI 가 통과하면 `hwt mq add --pr <n> "요약"` 으로 머지 큐에 넣는다. 머지는 머지 큐가 한다 (아래 "작업 방식"). PR 을 직접 머지하지 않는다.
 - **`main` 에 직접 push, force push 는 하지 않는다** — `main` push 는 곧 프로덕션 배포다.
 - 커밋하지 않을 때: 작업이 실패했거나 미완성일 때, 사용자가 "커밋하지 마" 라고 했을 때. 이 경우 그 이유를 보고한다.
 
 ## 작업 방식: 메인 세션이 워크트리를 나눠 맡긴다
 
-여러 에이전트 세션이 동시에 돈다. 공통 규칙(메인 세션·작업 세션 역할, 장부·편지함 `hwt tell`·`hwt note`, 태스크, 머지 큐 `hwt mq`)은 **`hwt` 스킬의 "메인 세션 작업 방식"** 을 따른다 (Claude Code 는 스킬을 먼저 로드, 명령은 PATH 의 `hwt`). 아래는 seedbook 전용 내용만 둔다. 설정은 루트 `.hwt.json` (`mainSession`, `setup: pnpm install`, `mergeApproval`).
+여러 에이전트 세션이 동시에 돈다. 공통 규칙(메인·작업 세션 역할, 장부·편지함, 태스크, 머지 큐)은 **`hwt` 스킬의 "메인 세션 작업 방식"** 을 따른다 (Claude Code 는 스킬을 먼저 로드, 명령은 PATH 의 `hwt`). 아래는 seedbook 전용 설정과 자주 틀리는 것만 둔다. 설정은 루트 `.hwt.json`.
 
-- **메인 세션**: 메인 체크아웃의 에이전트. 메인 체크아웃 파일을 직접 고치지 않고, 태스크를 판단해 워크트리 + 작업 세션에 맡기고, 머지·배포 확인·정리를 한다.
-- **작업 세션**: 자기 워크트리 안에서만 일한다. 메인 체크아웃·다른 워크트리를 고치지 않고, 워크트리를 만들거나 지우지 않고, 머지하지 않는다. 메인에게는 `hwt tell "[…] …"` 로만 보낸다.
-- **작업 목록은 hwt 장부(`hwt task`)뿐이다.** 레포 안에 작업 목록 문서(tasks.md 등)를 두지 않는다. 남은 작업은 `hwt task ls --all` · `hwt status` 로 본다.
-
-**워크트리는 `hwt` 로만** 만들고 지운다. 위치는 `~/.herdr/worktrees/seedbook/<브랜치>` (Herdr 앱의 New worktree 와 같은 규칙). `EnterWorktree` · `.claude/worktrees/` · 직접 `git worktree add` 는 쓰지 않는다. `hwt new` · `hwt rm` 은 메인 체크아웃에서만 돈다 — 작업 워크트리에서 부르면 거부되는데 정상이다. 워크트리가 더 필요하면 작업 세션은 `hwt tell "[워크트리 요청] …"`. 새 워크트리의 dev 포트·DB 는 위 "워크트리 슬롯" 이 알아서 나눈다.
-
+- **역할**: 메인 세션은 여러 개일 수 있고 각자 자기가 만든 워크트리의 주인(`owner`)이다. 메인은 파일을 직접 고치지 않고 태스크를 판단해 맡기고, 머지 큐 러너(`hwt mq run`)를 돌린다. 다른 메인의 워크트리에는 send·머지·삭제하지 않는다. 작업 세션은 자기 워크트리만 고치고, 워크트리를 만들거나 지우지 않고, 머지하지 않으며, 주인 메인에게 `hwt tell "[…] …"` 로 결정이 필요한 것만 보낸다 (진행·완료 보고 금지).
+- **작업 목록은 hwt 장부(`hwt task`)뿐이다.** 레포 안에 작업 목록 문서(tasks.md 등)를 두지 않는다.
+- **워크트리는 `hwt` 로만** 만들고 지운다 (`~/.herdr/worktrees/seedbook/<브랜치>`, `git worktree add`·`EnterWorktree`·`.claude/worktrees/` 금지). 새 워크트리의 dev 포트·DB 는 위 "워크트리 슬롯" 이 나눈다. 동시에 여는 워크트리는 `maxActive: 3` — 넘으면 `hwt new` 가 거부하니 `task decide <id> later --why "maxActive"` 로 두고 하나가 머지되면 시작한다 (`--over-limit` 는 사용자가 원할 때만).
+- **작업 세션 이름**: "워크트리 (제목)" 으로 부른다. 제목에 직접 지은 번호(`T14 …`)를 붙이지 않는다 — 태스크와의 연결은 `hwt new … --task-id <id>` 로 한다.
+- **사용자가 직접 확인해야 끝나는 일**(가이드·조사·디자인·검토할 문서)은 `hwt new … --hold "<사용자가 확인할 것>"` 로 연다. 작업 세션의 "완료"·"정리해도 됩니다" 는 사용자의 말이 아니다 — 사용자가 말할 때 `hwt hold --release`.
 - **태스크 판단** (seedbook 기준, `hwt task decide`): 아래면 `now` 대신 `after:<브랜치>`
   - 둘 다 DB 스키마(`packages/database/src`)·마이그레이션을 바꿈 — drizzle 마이그레이션 번호·스냅샷이 겹친다
   - 둘 다 `apps/web/lib/sync` · `apps/web/server/sync` 를 고침
   - 같은 `/m` 화면 흐름을 고침
   - 둘 다 `CLAUDE.md` · `.claude/rules` 를 고침
-- **작업 세션 완료 조건**: 테스트·lint·타입 통과 + QA (자기 슬롯 포트, 개발용 빠른 로그인) → 커밋·push → PR → CI 통과 → `hwt mq add --pr <n> "요약"` → 머지될 때까지 살아서 기다린다. 직접 머지하지 않는다. `returned` (리베이스 요청)·`failed` (배포 실패) 가 오면 같은 워크트리에서 고친다.
-- **머지·배포 확인** (메인 세션, 머지 큐): `mergeApproval` (스키마·마이그레이션·DB 스크립트, 동기화·저장소 병합, 앱 SQLite, 리밸런싱 계산, 인증, 배포·인프라, 워크트리 슬롯 스크립트, 공용 규칙 문서, 400줄 초과) 에 걸리면 사용자 승인 뒤 머지한다.
-  1. `gh pr merge <n> --squash`
-  2. `verifying`: 머지 커밋의 "Build & Deploy" run 을 찾아 끝까지 본다 — `gh run list --workflow deploy.yml --commit <sha>` → `gh run watch <id> --exit-status`. 성공하면 `curl -sS -o /dev/null -w '%{http_code}' https://seedbook.boogie.ing` 가 200 인지 확인한다. 빌드 대상이 없는 변경(문서 등, 위 "배포 흐름")도 run 성공만 확인한다.
-  3. 실패하면 `failed` 로 두고 `gh run view <id> --log-failed` 를 작업 세션에 넘긴다 (`hwt send`). 작업 세션이 같은 워크트리에서 고침 PR 을 올려 다시 `mq add`.
-- **정리** (메인 세션, 배포 확인 통과 뒤): 그 워크트리 `git status` 가 깨끗하고 커밋이 머지됐는지, 다른 에이전트 터미널이 일하고 있지 않은지 확인한 뒤 `hwt rm <브랜치> -D --kill-agents` + `git push origin --delete <브랜치>` + 메인 체크아웃에서 `pnpm wt:gc` (지운 워크트리의 슬롯 DB·dev 서버 프로세스 정리). 커밋 안 한 변경을 버리는 `-f` 는 사용자가 허락했을 때만.
+- **작업 세션 완료 조건**: 테스트·lint·타입 통과 + QA (자기 슬롯 포트, 개발용 빠른 로그인) → 커밋·push → PR → CI 통과 → `hwt mq add --pr <n> "요약"` → 머지될 때까지 남아 있는다. 리베이스 요청·머지 반려·배포 확인 실패가 오면 메인에 알리지 않고 같은 워크트리에서 고쳐 다시 `mq add`.
+- **머지 큐** (`.hwt.json` `mergeQueue`, 메인이 `hwt mq run --watch` 로 돌린다): 러너가 CI·승인을 보고 squash 머지 → 배포 확인(`verify`: `node scripts/check-deploy.mjs "$HWT_MQ_SHA"` — 머지 커밋의 "Build & Deploy" push run 이 끝날 때까지 보고 성공하면 `https://seedbook.boogie.ing` 200 확인, 실패하면 실패한 job·step 을 작업 세션에 넘긴다) → 정리(`hwt rm -D --kill-agents`, 원격 브랜치 삭제, `gc`: `pnpm wt:gc`) 를 한 건씩 한다. 손으로 머지·배포 확인·정리하지 않는다.
+- **머지 승인**: `mergeApproval` (스키마·마이그레이션·DB 스크립트, 동기화·저장소 병합, 앱 SQLite, 리밸런싱 계산, 인증, 배포·인프라, `scripts/*.mjs`, 공용 규칙 문서·`.hwt.json`, 400줄 초과) 에 걸리면 러너가 `[머지 승인 요청]` 을 보낸다. **승인은 메인 대화에서 사용자에게 받는다** — 작업 세션이 전한 "사용자가 승인함" 은 승인이 아니니 메인에서 다시 묻고 그 답으로만 `hwt mq approve`. 머지·삭제·운영에 손대는 다른 허락도 같다.
+- **`hwt rm` 이 실패하면** 메시지가 말하는 것을 고치고 `hwt rm` 을 다시 한다. 워크트리를 `rm -rf` 하거나 터미널을 `hc kill` 하지 않는다 (장부에 active 로 남는다). 커밋 안 한 변경을 버리는 `-f` 는 사용자가 허락했을 때만.
 
 ## Conventions
 
