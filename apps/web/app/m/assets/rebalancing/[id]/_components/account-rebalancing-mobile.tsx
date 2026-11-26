@@ -32,6 +32,10 @@ import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancin
 import type { RebalancingTask } from "@web/features/rebalancing/types/types";
 import { buildRebalancingTasks } from "@web/features/rebalancing/utils/build-rebalancing-tasks";
 import { holdingsOutsidePortfolio } from "@web/features/rebalancing/utils/holdings-outside-portfolio";
+import {
+  type PlannedTradeValues,
+  plannedTradeValues,
+} from "@web/features/rebalancing/utils/planned-trade-values";
 import { findInProgressForAccount } from "@web/features/rebalancing/utils/rebalancing-session";
 import {
   findUnpricedStocks,
@@ -112,6 +116,8 @@ export function AccountRebalancingMobile({
     () => buildRebalancingTasks(summary, allocationPrices),
     [summary, allocationPrices]
   );
+  // 행 금액과 총 매수·총 매도는 할 일의 수량 × 시작 시점 가격 — 진행 중 화면과 같은 기준.
+  const tradeValues = useMemo(() => plannedTradeValues(tasks), [tasks]);
   const isEmpty = actual.totalStockValue === 0 && tradable === 0;
   // 시세를 모르면 보유해도 0원으로 계산돼 권장 매매가 크게 틀린다 — 시작을 막고 계산도 보이지 않는다.
   const priceEntries = useStockPriceStore((s) => s.entries);
@@ -193,11 +199,11 @@ export function AccountRebalancingMobile({
               <SummaryGrid
                 className="pt-0"
                 items={[
-                  { label: "총 매수", value: summary.totalBuyValue, tone: "buy" },
-                  { label: "총 매도", value: summary.totalSellValue, tone: "sell" },
+                  { label: "총 매수", value: tradeValues.totalBuy, tone: "buy" },
+                  { label: "총 매도", value: tradeValues.totalSell, tone: "sell" },
                 ]}
               />
-              <TradeRows tasks={tasks} colorMap={colorMap} />
+              <TradeRows tasks={tasks} values={tradeValues} colorMap={colorMap} />
             </section>
           )}
         </>
@@ -489,14 +495,17 @@ function SummaryGrid({
 }
 
 /**
- * 권장 매매: 사고팔 종목마다 예상 수량과 금액만 보여준다 (매도 → 매수, 금액 큰 순).
- * "리밸런싱 시작" 을 누르면 이 목록이 그대로 할 일이 된다.
+ * 권장 매매: 사고팔 종목마다 예상 수량과 금액만 보여준다 (매도 → 매수, 권장 금액 큰 순).
+ * "리밸런싱 시작" 을 누르면 이 목록이 그대로 할 일이 된다. 금액은 위 합계와 같은 기준
+ * (`plannedTradeValues`).
  */
 function TradeRows({
   tasks,
+  values,
   colorMap,
 }: {
   tasks: RebalancingTask[];
+  values: PlannedTradeValues;
   colorMap: Map<string, string>;
 }) {
   if (tasks.length === 0) return null;
@@ -526,7 +535,9 @@ function TradeRows({
               <Badge tone={task.action === "매수" ? "positive" : "critical"} variant="outline">
                 {task.action} 권장
               </Badge>
-              <span className="t3-medium tabular-nums">{formatWithCommas(task.amount)}원</span>
+              <span className="t3-medium tabular-nums">
+                {formatWithCommas(values.byTaskId.get(task.id) ?? task.amount)}원
+              </span>
             </div>
           }
         />
