@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "check-types": "tsc -p tsconfig.json --noEmit",
+    "check-types": "tsc -p tsconfig.check.json",
     "start": "tsx src/index.ts",
     "crawl:stocks": "tsx src/jobs/sync-stock-list.ts",
     "crawl:prices": "tsx src/jobs/sync-stock-prices.ts",
