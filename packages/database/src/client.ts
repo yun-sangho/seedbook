@@ -49,17 +49,25 @@ const globalForDb = globalThis as unknown as {
  * - `prepare: false`: Supabase Transaction pooler (port 6543) 호환용. Direct connection /
  *   Session pooler 에서도 안전하게 동작.
  * - `connect_timeout`: 연결을 열지 못하면 기다리지 않고 실패한다 (초).
- * - `idle_timeout` · `max_lifetime`: 풀러 연결을 오래 붙잡지 않는다. 운영 web 이 시작할 때 연
- *   풀러 연결 10개를 몇 시간 들고 있다가 모두 답이 없어져, DB 를 쓰는 요청이 전부 멈춘 적이 있다
- *   (T34). 쉬는 연결은 닫고, 오래된 연결은 새로 연다 (초).
+ * - `max_pipeline: 1`: 한 연결에 쿼리를 하나씩만 보낸다. postgres.js 4 는 기본으로 한 연결에 쿼리를
+ *   100개까지 파이프라인으로 보내는데, Supabase 풀러(Supavisor, 6543 transaction mode)는 파이프라인
+ *   쿼리에 답하지 않는다. 운영에서 한 연결에 동시에 보낸 8개 중 7개가 매번 답이 없었고(취소 요청도),
+ *   1 이면 모두 답했다. 동시 요청이 한 연결에 겹칠 때마다 쿼리가 멈췄다 (T34·T35).
+ * - `query_timeout` · `cancel_timeout`: 그래도 답하지 않는 쿼리는 `query_timeout` 뒤 취소하고, 취소에도
+ *   `cancel_timeout` 안에 답이 없으면 그 연결만 닫고 다시 연다. 다른 연결의 쿼리는 건드리지 않는다.
+ *   둘을 더한 값이 web 요청의 DB 제한(`DB_TIMEOUT_MS` 8초) 안에 들어온다 (초).
+ * - `max_lifetime`: 오래된 연결은 새로 연다 (초). 쉬는 연결은 닫지 않고 둔다 — 새 연결을 여는 비용을
+ *   매번 치르지 않게. 쉰 연결도 운영 측정에서 바로 답했다.
  */
 export function postgresPoolOptions(nodeEnv: string | undefined) {
   return {
     prepare: false,
     max: nodeEnv === "production" ? 10 : 5,
     connect_timeout: 10,
-    idle_timeout: 20,
     max_lifetime: 60 * 30,
+    max_pipeline: 1,
+    query_timeout: 6,
+    cancel_timeout: 2,
   };
 }
 
@@ -108,17 +116,6 @@ export async function closeDb(): Promise<void> {
     globalForDb.__seedbookSql = undefined;
     globalForDb.__seedbookDb = undefined;
   }
-}
-
-/**
- * 지금 풀을 버리고 다음 쿼리부터 새 풀을 쓴다. 쿼리가 답하지 않을 때(막힌 연결) 부른다. 옛 풀에서
- * 진행 중인 쿼리는 잠깐 기다린 뒤 끊는다 — 기다리지 않고 바로 돌아온다.
- */
-export function resetDbPool(): void {
-  const stale = globalForDb.__seedbookSql;
-  globalForDb.__seedbookSql = undefined;
-  globalForDb.__seedbookDb = undefined;
-  if (stale) void stale.end({ timeout: 5 }).catch(() => undefined);
 }
 
 export type { Database };

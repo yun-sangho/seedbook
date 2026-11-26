@@ -15,14 +15,12 @@ describe("loadLegalVersions", () => {
   // T34: /terms·/privacy 와 동의 확인이 DB 응답을 영원히 기다렸다.
   it("falls back to the bundled documents when the database never answers", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const onTimeout = vi.fn();
-    const loading = loadLegalVersions(hangingDb, { timeoutMs: 3000, onTimeout });
+    const loading = loadLegalVersions(hangingDb, { timeoutMs: 3000 });
     await vi.advanceTimersByTimeAsync(3000);
 
     await expect(loading).resolves.toEqual({
       versions: LEGAL_DOCUMENT_VERSIONS,
       source: "fallback",
     });
-    expect(onTimeout).toHaveBeenCalledTimes(1);
   });
 });

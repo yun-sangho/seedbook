@@ -24,7 +24,7 @@ export interface LoadedLegalVersions {
  */
 export async function loadLegalVersions(
   db: Database,
-  { timeoutMs = DB_TIMEOUT_MS, onTimeout }: { timeoutMs?: number; onTimeout?: () => void } = {}
+  { timeoutMs = DB_TIMEOUT_MS }: { timeoutMs?: number } = {}
 ): Promise<LoadedLegalVersions> {
   let rows: Array<typeof schema.legalDocument.$inferSelect>;
   try {
@@ -34,7 +34,7 @@ export async function loadLegalVersions(
           .select()
           .from(schema.legalDocument)
           .where(inArray(schema.legalDocument.document, [...LEGAL_DOCUMENT_IDS])),
-      { ms: timeoutMs, onTimeout }
+      { ms: timeoutMs }
     );
   } catch (error) {
     console.error("[legal] legal_document 를 읽지 못해 레포의 문서로 대신한다", error);
