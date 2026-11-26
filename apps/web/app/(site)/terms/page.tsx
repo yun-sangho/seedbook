@@ -1,76 +1,8 @@
-import type { ReactNode } from "react";
-import type { Metadata } from "next";
-import { Article, Text } from "@seed-design/react";
-import { COMPANY } from "@web/lib/company";
-import { effectiveDateLabel } from "@web/lib/legal-documents";
-import { SiteHeader } from "../_components/site-header";
+import { LegalDocumentPage, legalDocumentMetadata } from "../_components/legal-document-page";
 
-export const metadata: Metadata = {
-  title: "이용약관 - Seedbook",
-};
+export const metadata = legalDocumentMetadata("terms");
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="flex flex-col gap-x3">
-      <Text as="h2" textStyle="t6Bold" color="fg.neutral">
-        {title}
-      </Text>
-      <p>{children}</p>
-    </section>
-  );
-}
-
-/** 이용약관 (공개 페이지). 내용을 바꾸면 `lib/legal-documents.ts` 의 버전도 함께 정한다. */
+/** 이용약관 (공개 페이지). 본문은 `packages/database/src/legal/` 에서 쓰고 `db:legal:publish` 로 공개한다. */
 export default function TermsPage() {
-  return (
-    <>
-      <SiteHeader />
-      <main className="mx-auto w-full max-w-3xl px-x4 py-x10 md:px-x8 md:py-x16">
-        <Article>
-          <div className="t5-regular text-fg-neutral-muted flex flex-col gap-x10">
-            <Text as="h1" textStyle="t10Bold" color="fg.neutral">
-              이용약관
-            </Text>
-            <Section title="1. 목적">
-              이 약관은 {COMPANY.name}이 제공하는 Seedbook 의 이용 조건을 정합니다.
-            </Section>
-            <Section title="2. 서비스">
-              이용자가 입력한 투자 계좌·보유 종목·목표 비중으로 평가금액과 리밸런싱 매매 목록을
-              계산해 보여 줍니다. 증권 계좌에 연결하거나 주문을 대신하지 않습니다.
-            </Section>
-            <Section title="3. 투자 판단">
-              계산 결과는 참고용이며 특정 종목의 매매를 권유하지 않습니다. 시세는 늦거나 틀릴 수
-              있고 세금·수수료는 계산에 포함하지 않습니다. 투자 결정은 이용자가 합니다.
-            </Section>
-            <Section title="4. 계정">
-              카카오 등 서비스가 제공하는 방법으로 로그인합니다. 이용자는 자신의 계정과 기기를
-              관리합니다.
-            </Section>
-            <Section title="5. 데이터">
-              &ldquo;이 기기에만 저장&rdquo;을 고르면 자산 정보는 기기에만 있어 기기·브라우저
-              데이터를 지우면 복구할 수 없습니다. &ldquo;클라우드에 저장&rdquo;을 고르면 서버에
-              보관합니다.
-            </Section>
-            <Section title="6. 금지 행위">
-              다른 사람의 계정을 쓰거나, 서비스를 방해하거나, 무단으로 접근하거나 대량으로
-              수집해서는 안 됩니다.
-            </Section>
-            <Section title="7. 변경과 중단">
-              서비스를 바꾸거나 멈출 때 서비스 안에서 미리 알립니다.
-            </Section>
-            <Section title="8. 탈퇴">
-              더보기의 &ldquo;회원 탈퇴&rdquo;로 언제든 탈퇴할 수 있으며 서버와 그 기기의 데이터를
-              삭제합니다.
-            </Section>
-            <Section title="9. 약관 변경">
-              바뀐 내용과 시행일을 알리고 필요하면 다시 동의를 받습니다.
-            </Section>
-            <Section title="10. 문의와 시행일">
-              문의: {COMPANY.email}. 이 약관은 {effectiveDateLabel("terms")}부터 시행합니다.
-            </Section>
-          </div>
-        </Article>
-      </main>
-    </>
-  );
+  return <LegalDocumentPage document="terms" />;
 }

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { StaticActivityComponentType } from "@stackflow/react";
+import { LegalNoticeBanner } from "@web/components/mobile/legal-notice-banner";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
@@ -21,7 +22,12 @@ import { type TabKey, type TabsParams, tabOf } from "./tabs";
 
 /** 탭마다 같은 엘리먼트를 써서, 탭을 바꿀 때 다른 탭 화면이 다시 그려지지 않게 한다. */
 const TAB_SCREENS: Record<TabKey, ReactNode> = {
-  home: <HomeMobile />,
+  home: (
+    <>
+      <LegalNoticeBanner />
+      <HomeMobile />
+    </>
+  ),
   investments: <InvestmentMobile />,
   rebalancing: <RebalancingHomeMobile />,
   portfolio: <PortfolioListMobile />,

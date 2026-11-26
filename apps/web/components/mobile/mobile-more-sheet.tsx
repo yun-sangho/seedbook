@@ -11,11 +11,13 @@ import {
 } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
+import { useLegalNotices } from "@web/components/consent-gate";
 import { AppLockSettingItem } from "@web/components/mobile/app-lock";
 import { BiometricLoginSettingItem } from "@web/components/mobile/biometric-login";
 import { DeleteAccountDialog } from "@web/components/mobile/delete-account-dialog";
 import { authClient, useSession } from "@web/lib/auth-client";
 import { reloadApp } from "@web/lib/device-storage";
+import { koreanDate, LEGAL_DOCUMENTS } from "@web/lib/legal-documents";
 import { markSignedOut } from "@web/lib/native/biometric-login";
 import { type InstallMode, needsSeparateStorageNotice } from "@web/lib/pwa-install";
 import { getStorageMode } from "@web/lib/storage-mode";
@@ -45,6 +47,7 @@ export function MobileMoreSheet({
   isNativeApp,
 }: MobileMoreSheetProps) {
   const { data: session } = useSession();
+  const legalNotices = useLegalNotices();
   const user = session?.user as { name?: string | null; email?: string | null } | undefined;
   // HydrationGate 아래에서만 렌더되므로 render 중 localStorage 읽기가 SSR 과 어긋나지 않는다.
   const showStorageNotice = needsSeparateStorageNotice({
@@ -116,20 +119,21 @@ export function MobileMoreSheet({
                   await reloadApp();
                 }}
               />
-              <ListButtonItem
-                prefix={<Icon svg={<IconDocumentLine />} />}
-                title="이용약관"
-                onClick={() => {
-                  window.location.href = "/terms";
-                }}
-              />
-              <ListButtonItem
-                prefix={<Icon svg={<IconDocumentLine />} />}
-                title="개인정보처리방침"
-                onClick={() => {
-                  window.location.href = "/privacy";
-                }}
-              />
+              {LEGAL_DOCUMENTS.map(({ id, title, href }) => {
+                // 시행일 전 개정이 있으면 함께 알린다 (홈 배너를 닫아도 여기엔 남는다).
+                const notice = legalNotices.find((n) => n.document === id);
+                return (
+                  <ListButtonItem
+                    key={id}
+                    prefix={<Icon svg={<IconDocumentLine />} />}
+                    title={title}
+                    detail={notice ? `${koreanDate(notice.effectiveDate)}부터 바뀌어요` : undefined}
+                    onClick={() => {
+                      window.location.href = href;
+                    }}
+                  />
+                );
+              })}
               <ListButtonItem
                 prefix={<Icon svg={<IconTrashcanLine />} />}
                 title="회원 탈퇴"

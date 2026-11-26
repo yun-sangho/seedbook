@@ -1,38 +1,77 @@
-import { type Database, schema } from "@seedbook/database";
-import { LEGAL_DOCUMENTS } from "@web/lib/legal-documents";
+import { type Database, kstDateString, schema } from "@seedbook/database";
+import type { LegalDocumentVersion } from "@seedbook/database/legal";
+import {
+  type ConsentDocument,
+  consentDocuments,
+  hasAgreedToCurrent,
+  type LegalNotice,
+  upcomingNotices,
+} from "@web/lib/legal/catalog";
 import { and, eq, gt, notExists, type SQL } from "drizzle-orm";
 
 /**
- * 약관·개인정보 동의 (`user_consent`). 첫 가입·기존 사용자·약관 개정을 "현재 버전에 모두 동의한
- * 기록이 있는가" 하나로 판단한다. 로그인 방법(카카오·Apple·생체 인증)과 상관없다.
+ * 약관·개인정보 동의 (`user_consent`). 첫 가입·기존 사용자·약관 개정을 "현재 버전(재동의가 필요한
+ * 마지막 개정 이후)에 모두 동의한 기록이 있는가" 하나로 판단한다. 로그인 방법(카카오·Apple·생체
+ * 인증)과 상관없다. 버전 목록은 `server/legal/legal-versions.ts` 가 준다.
  */
 
-export async function hasRequiredConsents(db: Database, userId: string): Promise<boolean> {
-  const agreed = await db
+function agreedVersions(db: Database, userId: string) {
+  return db
     .select({ document: schema.userConsent.document, version: schema.userConsent.version })
     .from(schema.userConsent)
     .where(eq(schema.userConsent.userId, userId));
-  return LEGAL_DOCUMENTS.every(({ id, version }) =>
-    agreed.some((row) => row.document === id && row.version === version)
-  );
+}
+
+export async function hasRequiredConsents(
+  db: Database,
+  userId: string,
+  versions: readonly LegalDocumentVersion[],
+  now: Date
+): Promise<boolean> {
+  return hasAgreedToCurrent(versions, await agreedVersions(db, userId), kstDateString(now));
+}
+
+export type ConsentStatus =
+  | { agreed: true; notices: LegalNotice[] }
+  | { agreed: false; newSignUp: boolean; documents: ConsentDocument[] };
+
+/** 동의했으면 시행일 전 안내할 개정을, 아니면 동의 화면에 보여 줄 문서를 함께 준다. */
+export async function consentStatus(
+  db: Database,
+  userId: string,
+  versions: readonly LegalDocumentVersion[],
+  now: Date
+): Promise<ConsentStatus> {
+  const today = kstDateString(now);
+  const agreed = await agreedVersions(db, userId);
+  if (hasAgreedToCurrent(versions, agreed, today)) {
+    return { agreed: true, notices: upcomingNotices(versions, today) };
+  }
+  return {
+    agreed: false,
+    newSignUp: await isNewSignUp(db, userId, now),
+    documents: consentDocuments(versions, agreed, today),
+  };
 }
 
 /**
- * 동의를 기록한다. `versions` 는 화면이 보여 준 문서별 버전 — 하나라도 빠지거나 지금 버전과 다르면
+ * 동의를 기록한다. `shown` 은 화면이 보여 준 문서별 버전 — 하나라도 빠지거나 지금 버전과 다르면
  * (화면을 연 뒤 개정됨) 아무것도 기록하지 않고 false.
  */
 export async function recordConsents(
   db: Database,
   userId: string,
-  versions: unknown,
+  shown: unknown,
+  versions: readonly LegalDocumentVersion[],
   now: Date
 ): Promise<boolean> {
-  const shown = (versions ?? {}) as Record<string, unknown>;
-  if (!LEGAL_DOCUMENTS.every(({ id, version }) => shown[id] === version)) return false;
+  const current = consentDocuments(versions, [], kstDateString(now));
+  const sent = (shown ?? {}) as Record<string, unknown>;
+  if (current.length === 0 || !current.every((d) => sent[d.document] === d.version)) return false;
   await db
     .insert(schema.userConsent)
     .values(
-      LEGAL_DOCUMENTS.map(({ id, version }) => ({ userId, document: id, version, agreedAt: now }))
+      current.map((d) => ({ userId, document: d.document, version: d.version, agreedAt: now }))
     )
     .onConflictDoNothing();
   return true;

@@ -1,10 +1,19 @@
 "use client";
 
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { ConsentScreen } from "@web/components/consent-screen";
 import { type ConsentStatus, fetchConsentStatus } from "@web/lib/consent-client";
+import type { LegalNotice } from "@web/lib/legal/catalog";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { Loader2 } from "lucide-react";
+
+const NO_NOTICES: LegalNotice[] = [];
+const LegalNoticesContext = createContext<LegalNotice[]>(NO_NOTICES);
+
+/** 시행일 전에 안내할 약관 개정 (동의를 확인할 때 함께 받는다). */
+export function useLegalNotices(): LegalNotice[] {
+  return useContext(LegalNoticesContext);
+}
 
 /**
  * 현재 약관에 동의하지 않았으면 앱 대신 동의 화면을 보여 준다. 동의를 확인하지 못해도 열지 않는다.
@@ -21,8 +30,14 @@ export function ConsentGate({ children }: { children: ReactNode }) {
     void load();
   }, [load]);
 
-  if (status?.kind === "agreed") return <>{children}</>;
-  if (status?.kind === "required") return <ConsentScreen newSignUp={status.newSignUp} />;
+  if (status?.kind === "agreed") {
+    return (
+      <LegalNoticesContext.Provider value={status.notices}>{children}</LegalNoticesContext.Provider>
+    );
+  }
+  if (status?.kind === "required") {
+    return <ConsentScreen newSignUp={status.newSignUp} documents={status.documents} />;
+  }
   if (status?.kind === "failed") {
     return (
       <main className="bg-bg-layer-default text-fg-neutral flex h-dvh w-full flex-col items-center justify-center gap-x4 p-x6 text-center">
