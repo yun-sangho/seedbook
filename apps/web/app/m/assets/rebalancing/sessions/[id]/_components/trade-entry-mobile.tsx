@@ -15,14 +15,15 @@ import {
   isRebalancingCompleted,
   rebalancingTaskStatus,
 } from "@web/features/rebalancing/utils/rebalancing-session";
-import { tradeCashPreview } from "@web/features/rebalancing/utils/trade-cash-check";
+import { buyShortfall, tradeCashPreview } from "@web/features/rebalancing/utils/trade-cash-check";
 import { useTaskSecurityTypes } from "@web/features/rebalancing/utils/use-task-security-types";
 import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { Callout } from "@web/seed-design/ui/callout";
+import { Checkbox } from "@web/seed-design/ui/checkbox";
 import { ResultSection } from "@web/seed-design/ui/result-section";
 import { TextField, TextFieldInput } from "@web/seed-design/ui/text-field";
-import { formatWithCommas, parseNumericString } from "@web/utils/number-format";
+import { formatSignedWon, formatWithCommas, parseNumericString } from "@web/utils/number-format";
 import { markJustMoved } from "./just-moved-tasks";
 
 /**
@@ -41,8 +42,9 @@ import { markJustMoved } from "./just-moved-tasks";
  *
  * - 가격은 호가 단위(ETF 5원 등)에 맞춘다. −/+ 는 한 호가씩, 직접 입력은 입력을 마치면 가장 가까운
  *   호가로 맞춘다.
- * - 이 매매까지 반영한 예수금이 마이너스면 주문·체결을 기록할 수 없다 (체결 전 매수 주문 금액은
- *   예수금에서 묶인 것으로 본다).
+ * - 이 매수까지 반영한 주문가능금액이 마이너스면 모자란 금액을 보여 주고, 사용자가 확인해야 기록한다
+ *   (체결 전 매수 주문 금액은 예수금에서 묶인 것으로 본다). 모자란 금액은 완료할 때 계좌 현금에
+ *   마이너스(미수)로 남는다. 수량·가격을 바꿔 모자란 금액이 달라지면 다시 확인한다.
  * - 대기 중인 매매는 권장 수량과 시작 시점 가격(이전에 체결을 기록했다 취소했으면 그 값)으로 채운다.
  */
 export function TradeEntryMobile({ sessionId, taskId }: { sessionId: string; taskId: string }) {
@@ -112,11 +114,15 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
     account && quantityOk && tradePrice !== null
       ? tradeCashPreview(account, session, task.id, quantity, tradePrice)
       : null;
-  const shortOfCash = cash !== null && cash.after < 0;
-  const canSave = quantityOk && tradePrice !== null && !shortOfCash;
+  const shortfall = cash !== null ? buyShortfall(task.action, cash) : 0;
+  const shortOfCash = shortfall > 0;
+  // 확인한 모자란 금액 — 수량·가격이 바뀌어 금액이 달라지면 확인이 풀린다.
+  const [confirmedShortfall, setConfirmedShortfall] = useState<number | null>(null);
+  const shortfallConfirmed = shortOfCash && confirmedShortfall === shortfall;
+  const canSave = quantityOk && tradePrice !== null && (!shortOfCash || shortfallConfirmed);
   // 매수가 모자랄 때 지금 살 수 있는 최대 수량.
   const affordable =
-    shortOfCash && task.action === "매수" && tradePrice !== null
+    cash !== null && shortOfCash && tradePrice !== null
       ? affordableQuantity(cash.before, tradePrice)
       : 0;
   const held = account ? holdingQuantityFor(account.holdings ?? [], task) : null;
@@ -214,9 +220,9 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
         {cash && (
           <SummaryRow label="주문가능금액">
             <span className="text-fg-neutral-muted font-normal">
-              {formatWithCommas(cash.before)}원 →{" "}
+              {formatSignedWon(cash.before)} →{" "}
             </span>
-            <span className={cn(shortOfCash && "text-fg-critical")}>
+            <span className={cn(cash.after < 0 && "text-fg-critical")}>
               {formatSignedWon(cash.after)}
             </span>
           </SummaryRow>
@@ -229,12 +235,18 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
           description={`보유한 ${formatWithCommas(held)}주보다 많아요. 보유 수량까지만 계좌에 반영돼요.`}
         />
       )}
-      {cash && shortOfCash && (
-        <div className="flex flex-col items-start gap-x2">
+      {shortOfCash && (
+        <div className="flex flex-col items-start gap-x3">
           <p className="t4-regular text-fg-critical tabular-nums">
-            주문가능금액이 {formatWithCommas(Math.abs(Math.round(cash.after)))}원 모자라 기록할 수
-            없어요. 매도를 먼저 체결하거나 수량을 줄여 주세요.
+            주문가능금액이 {formatWithCommas(shortfall)}원 모자라요. 그대로 기록하면 리밸런싱을
+            완료할 때 계좌 현금이 −{formatWithCommas(shortfall)}원(미수)으로 남아요.
           </p>
+          <Checkbox
+            label={`모자란 ${formatWithCommas(shortfall)}원은 현금 마이너스로 두고 기록할게요`}
+            checked={shortfallConfirmed}
+            onCheckedChange={(checked) => setConfirmedShortfall(checked ? shortfall : null)}
+            tone="neutral"
+          />
           {affordable > 0 && (
             <ActionButton
               variant="neutralWeak"
@@ -402,10 +414,6 @@ const isPositive = (value: number) => Number.isFinite(value) && value > 0;
 
 const draftOf = (value: number | null | undefined) =>
   value !== null && value !== undefined && value > 0 ? formatWithCommas(value) : "";
-
-/** 마이너스면 "−31,776원" (유니코드 마이너스). */
-const formatSignedWon = (value: number) =>
-  `${value < 0 ? "−" : ""}${formatWithCommas(Math.abs(Math.round(value)))}원`;
 
 /** "매수 · 권장 40주 · 11,800원 기준" / 주문했으면 "매수 주문 중 · …", 체결했으면 "매수 체결 · …". */
 function headline(task: RebalancingTask): string {

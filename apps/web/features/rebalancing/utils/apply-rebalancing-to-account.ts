@@ -14,11 +14,11 @@ export interface AppliedRebalancing {
   skipped: RebalancingTask[];
   /** 반영한 매매별 보유 수량 변화 (할 일 순서). 새로 산 종목은 before 0 */
   holdingChanges: HoldingChange[];
-  /** 현금 전체 합(모든 현금 항목)의 변화. 항목이 없었으면 before 0 */
+  /** 현금 전체 합(모든 현금 항목)의 변화. 항목이 없었으면 before 0. after 는 마이너스일 수 있다 */
   cash: CashChange;
   /**
-   * 현금 전체 합이 모자란 금액 (원, 0 이상). 반영할 때는 현금 항목을 0 아래로 내리지 않으므로 이만큼이
-   * 사라진다 — 매매를 기록할 때 이 값이 0 보다 크면 막는다.
+   * 반영한 뒤 현금 전체 합이 0 아래로 내려간 금액 (원, 0 이상) — 모자란 채로 기록한 매수의 미수.
+   * 이만큼 "예수금" 항목이 마이너스가 된다.
    */
   cashShortfall: number;
 }
@@ -46,7 +46,8 @@ export interface CashChange {
  *   정한 거래 가능 금액이 예수금보다 많았으면 (`cashDelta` > 0) 그만큼 새로 넣은 돈이라 더하고,
  *   적었으면 거래에 쓰지 않고 남겨 둔 돈이라 그대로 둔다.
  *   늘어난 돈은 첫 "예수금" 항목(없으면 첫 현금 항목, 그것도 없으면 새로 만듦)에 더하고, 줄어든 돈은
- *   그 항목부터 빼고 모자라면 나머지 항목에서 순서대로 뺀다. 항목은 0 아래로 내려가지 않는다.
+ *   그 항목부터 빼고 모자라면 나머지 항목에서 순서대로 뺀다. 모든 항목을 0 까지 쓰고도 모자라면
+ *   (주문가능금액이 모자란 채로 기록한 매수) 남은 금액을 그 항목에 마이너스로 남긴다.
  */
 export function applyRebalancingToAccount(
   account: InvestmentItem,
@@ -135,8 +136,9 @@ function sumQuantity(holdings: StockHolding[], key: string): number {
 }
 
 /**
- * 현금 변화를 항목에 나눠 반영한다. "예수금" 항목(없으면 첫 항목)부터 반영하고, 그 항목으로
- * 모자란 금액은 나머지 항목에서 순서대로 뺀다.
+ * 현금 변화를 항목에 나눠 반영한다. 늘어난 돈은 "예수금" 항목(없으면 첫 항목)에 더한다. 줄어든 돈은
+ * 그 항목부터 빼고 모자라면 나머지 항목에서 순서대로 뺀다 — 각 항목은 가진 만큼(0 위의 돈)만 쓴다.
+ * 그래도 모자란 금액은 "예수금" 항목에 마이너스(미수)로 남긴다. 항목이 없으면 "예수금" 항목을 만든다.
  */
 function applyCashChange(
   account: InvestmentItem,
@@ -144,30 +146,38 @@ function applyCashChange(
 ): { cashItems: CashItem[]; cash: CashChange; shortfall: number } {
   const { cashItems } = account;
   const before = sumCash(account);
-  const cash = { before, after: Math.max(0, before + change) };
-  const shortfall = Math.max(0, -(before + change));
+  const cash = { before, after: before + change };
+  const shortfall = Math.max(0, -cash.after);
 
   if (change === 0) return { cashItems, cash, shortfall };
   const primary = cashItems.find((c) => c.label === DEFAULT_CASH_LABEL) ?? cashItems[0];
   if (!primary) {
     return {
-      cashItems: [{ id: crypto.randomUUID(), label: DEFAULT_CASH_LABEL, amount: cash.after }],
+      cashItems: [{ id: crypto.randomUUID(), label: DEFAULT_CASH_LABEL, amount: change }],
       cash,
       shortfall,
     };
   }
 
-  const amounts = new Map<CashItem, number>();
-  let remaining = change;
-  for (const item of [primary, ...cashItems.filter((c) => c !== primary)]) {
-    if (remaining === 0) break;
-    const balance = (item.amount || 0) + remaining;
-    amounts.set(item, Math.max(0, balance));
-    // 이 항목으로 모자란 금액만 다음 항목으로 넘긴다.
-    remaining = Math.min(0, balance);
+  const amounts = new Map<CashItem, number>(cashItems.map((c) => [c, c.amount || 0]));
+  if (change > 0) {
+    amounts.set(primary, (amounts.get(primary) ?? 0) + change);
+  } else {
+    let toSpend = -change;
+    for (const item of [primary, ...cashItems.filter((c) => c !== primary)]) {
+      if (toSpend === 0) break;
+      const balance = amounts.get(item) ?? 0;
+      const spent = Math.min(Math.max(0, balance), toSpend);
+      amounts.set(item, balance - spent);
+      toSpend -= spent;
+    }
+    // 모든 항목을 0 까지 쓰고도 모자란 금액 — 미수처럼 "예수금" 항목에 마이너스로 남긴다.
+    if (toSpend > 0) amounts.set(primary, (amounts.get(primary) ?? 0) - toSpend);
   }
   return {
-    cashItems: cashItems.map((c) => ({ ...c, amount: amounts.get(c) ?? c.amount })),
+    cashItems: cashItems.map((c) =>
+      amounts.get(c) === (c.amount || 0) ? c : { ...c, amount: amounts.get(c) ?? c.amount }
+    ),
     cash,
     shortfall,
   };

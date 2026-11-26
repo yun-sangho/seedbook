@@ -21,7 +21,7 @@ function account(id: string, holdings: StockHolding[], cash = 0): InvestmentItem
     currentValue: 0,
     records: [],
     holdings,
-    cashItems: cash > 0 ? [{ id: `${id}-cash`, label: "예수금", amount: cash }] : [],
+    cashItems: cash !== 0 ? [{ id: `${id}-cash`, label: "예수금", amount: cash }] : [],
     note: "",
     color: "#000",
   };
@@ -181,5 +181,29 @@ describe("linkedPortfolioStatus", () => {
     const status = linkedPortfolioStatus("acc-1", [p], [acc], prices);
 
     expect(status?.state).toBe("needs-rebalancing");
+  });
+
+  it("flags negative cash (bought short of cash) as needing rebalancing", () => {
+    // 주식 50:50 이지만 예수금 −20,000원 (미수) → 기준 80,000원, 주식 각 62.5%, 예수금 −25%
+    const acc = account("acc-1", [holding("A", 50), holding("B", 50)], -20_000);
+    const p = portfolio({
+      id: "p",
+      accountIds: ["acc-1"],
+      allocations: [allocation("A", 50), allocation("B", 50)],
+    });
+
+    const status = linkedPortfolioStatus("acc-1", [p], [acc], prices);
+
+    expect(status?.state).toBe("needs-rebalancing");
+    expect(status?.maxAbsGapPercent).toBeCloseTo(25);
+  });
+
+  it("reports unknown when negative cash outweighs the holdings", () => {
+    const acc = account("acc-1", [holding("A", 10)], -20_000);
+    const p = portfolio({ id: "p", accountIds: ["acc-1"], allocations: [allocation("A", 100)] });
+
+    const status = linkedPortfolioStatus("acc-1", [p], [acc], prices);
+
+    expect(status?.state).toBe("unknown");
   });
 });

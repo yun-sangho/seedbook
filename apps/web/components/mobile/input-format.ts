@@ -9,6 +9,14 @@ export function formatMoneyDraft(raw: string): string {
   return digits === "" ? "" : Number(digits).toLocaleString();
 }
 
+/**
+ * 숫자 키패드엔 마이너스 키가 없어 부호는 따로 고른다. 마이너스면 앞에 "-" 를 붙여
+ * `parseNumericString` 이 0 아래 값으로 읽게 한다. 빈 입력은 그대로 빈 문자열.
+ */
+export function signMoneyDraft(draft: string, negative: boolean): string {
+  return negative && draft !== "" ? `-${draft}` : draft;
+}
+
 /** 소수 허용 비중 입력 정리: 숫자와 첫 번째 소수점만 남긴다. */
 export function sanitizePercentDraft(raw: string): string {
   const cleaned = raw.replace(/[^\d.]/g, "");

@@ -55,7 +55,7 @@ import { Badge } from "@web/seed-design/ui/badge";
 import { Callout } from "@web/seed-design/ui/callout";
 import { List, ListButtonItem, ListItem } from "@web/seed-design/ui/list";
 import { ResultSection } from "@web/seed-design/ui/result-section";
-import { formatWithCommas, numberToKorean } from "@web/utils/number-format";
+import { formatSignedWon, formatWithCommas, numberToKorean } from "@web/utils/number-format";
 import { CompleteRebalancingSheet } from "./complete-rebalancing-sheet";
 import { justMovedFrom, takeJustMoved } from "./just-moved-tasks";
 import { RebalancingResultSection } from "./rebalancing-result-section";
@@ -518,10 +518,6 @@ function CashOutlook({
     </section>
   );
 }
-
-/** 마이너스면 "−31,776원" (유니코드 마이너스). */
-const formatSignedWon = (value: number) =>
-  `${value < 0 ? "−" : ""}${formatWithCommas(Math.abs(Math.round(value)))}원`;
 
 /**
  * 행에 보여줄 수량·주당 가격 — 상태마다 그때 정해진 값을 쓴다.

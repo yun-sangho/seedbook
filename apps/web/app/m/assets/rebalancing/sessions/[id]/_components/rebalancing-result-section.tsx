@@ -4,7 +4,7 @@ import type { RebalancingResult, RebalancingTask } from "@web/features/rebalanci
 import { formatQuantityChange } from "@web/features/rebalancing/utils/format-quantity-change";
 import { executedPriceFor } from "@web/features/rebalancing/utils/rebalancing-session";
 import { cn } from "@web/lib/utils";
-import { formatWithCommas } from "@web/utils/number-format";
+import { formatSignedWon, formatWithCommas } from "@web/utils/number-format";
 
 /** 목표 비중과 이 정도 차이까지는 맞춘 것으로 본다 (%p). */
 const ON_TARGET_TOLERANCE_PERCENT = 1;
@@ -75,9 +75,16 @@ export function RebalancingResultSection({
           </div>
           <div className="t4-regular text-fg-neutral-muted mt-x1 flex items-baseline gap-x3 tabular-nums">
             <span className="min-w-0 flex-1">
-              {cashBefore !== null && <>{formatWithCommas(cashBefore)}원 → </>}
-              <span className={cn(cashBefore !== null && "text-fg-neutral font-bold")}>
-                {formatWithCommas(result.cash)}원
+              {cashBefore !== null && <>{formatSignedWon(cashBefore)} → </>}
+              <span
+                className={cn(
+                  cashBefore !== null && "text-fg-neutral font-bold",
+                  result.cash < 0 && "text-fg-critical font-bold"
+                )}
+              >
+                {formatSignedWon(result.cash)}
+                {/* 주문가능금액이 모자란 채로 매수해 계좌 현금이 마이너스(미수)로 남았다. */}
+                {result.cash < 0 && " (부족)"}
               </span>
             </span>
             {cashChange !== 0 && (

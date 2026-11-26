@@ -47,6 +47,11 @@ export function formatWithCommas(num: number): string {
   return num.toLocaleString();
 }
 
+/** 원 단위 금액을 쉼표와 함께 보여준다. 마이너스면 유니코드 마이너스를 붙인다 ("−31,776원"). */
+export function formatSignedWon(value: number): string {
+  return `${value < 0 ? "−" : ""}${formatWithCommas(Math.abs(Math.round(value)))}원`;
+}
+
 /**
  * 수익률을 계산하는 함수 (%)
  * @param currentValue 현재 가치

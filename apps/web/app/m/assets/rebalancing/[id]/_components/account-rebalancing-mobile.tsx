@@ -47,7 +47,12 @@ import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { Badge } from "@web/seed-design/ui/badge";
 import { List, ListItem } from "@web/seed-design/ui/list";
-import { formatWithCommas, numberToKorean, parseNumericString } from "@web/utils/number-format";
+import {
+  formatSignedWon,
+  formatWithCommas,
+  numberToKorean,
+  parseNumericString,
+} from "@web/utils/number-format";
 
 const OTHER_HOLDING_COLOR = "#94a3b8";
 const CASH_COLOR = "#e2e8f0";
@@ -155,7 +160,7 @@ export function AccountRebalancingMobile({
           onValueChange={setTradableDraft}
         />
         <p className="t3-regular text-fg-neutral-subtle">
-          현금성 자산 {formatWithCommas(cashBalance)}원
+          현금성 자산 {formatSignedWon(cashBalance)}
           {tradable !== cashBalance && (
             <>
               {" · "}
@@ -172,6 +177,12 @@ export function AccountRebalancingMobile({
         <p className="t3-regular text-fg-neutral-subtle">
           수수료 등으로 남겨 둘 돈이 있으면 줄이고, 더 넣을 돈이 있으면 늘리세요.
         </p>
+        {tradable < 0 && (
+          // 주문가능금액이 모자란 채로 매수해 현금이 마이너스(미수)다 — 기준 금액에서 빠져 매도로 메운다.
+          <p className="t3-regular text-fg-critical">
+            현금이 마이너스(미수)예요. 그만큼 매수는 줄이고 매도는 늘려 계산해요.
+          </p>
+        )}
       </section>
 
       <Divider />
