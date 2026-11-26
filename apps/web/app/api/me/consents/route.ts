@@ -13,7 +13,7 @@ import { getLegalVersions } from "@web/server/legal/legal-versions";
  * - `DELETE`: 동의 거부. 방금 만든 계정이면 지운다. 로그아웃은 클라이언트가 이어서 한다.
  *
  * 앱을 열 때마다 거치는 요청이라, DB 가 답하지 않으면 기다리지 않고 503 을 준다 (T34) — 클라이언트는
- * "다시 시도" 를 보여 주고, 막힌 커넥션 풀은 새로 만든다 (`withDbTimeout`).
+ * "다시 시도" 를 보여 준다 (`withDbTimeout`).
  */
 
 function unauthorized() {
