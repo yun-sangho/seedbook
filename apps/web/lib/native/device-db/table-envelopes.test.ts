@@ -318,6 +318,8 @@ describe("rebalancing-storage", () => {
           executedPrice: null,
           orderedQuantity: null,
           orderedPrice: null,
+          filledQuantity: null,
+          filledAmount: null,
           done: false,
         },
       ],

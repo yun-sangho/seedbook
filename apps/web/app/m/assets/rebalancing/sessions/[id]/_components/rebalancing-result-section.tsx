@@ -59,7 +59,7 @@ export function RebalancingResultSection({
                       {formatQuantityChange(h.change)}
                     </span>
                   )}
-                  {price !== null && <> · {formatWithCommas(price)}원</>}
+                  {price !== null && <> · {formatWithCommas(Math.round(price))}원</>}
                 </span>
                 <span className="shrink-0">목표 {formatPercent(h.targetPercent)}</span>
               </div>

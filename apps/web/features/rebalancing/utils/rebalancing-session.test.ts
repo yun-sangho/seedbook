@@ -8,13 +8,16 @@ import {
   executedPriceFor,
   executedPriceOf,
   executedQuantityOf,
+  fillRebalancingTaskOrder,
   findInProgressForAccount,
   groupRebalancingTasks,
   inProgressAccountIds,
+  isPartiallyFilled,
   isRebalancingStopped,
   orderRebalancingTaskWith,
   rebalancingProgress,
   rebalancingTaskStatus,
+  remainingOrderQuantity,
   toggleRebalancingTask,
   visibleRebalancingTasks,
 } from "./rebalancing-session";
@@ -405,5 +408,128 @@ describe("executedPriceFor", () => {
 
     expect(executedPriceFor(tasks, "KOSPI", "A")).toBeNull();
     expect(executedPriceFor(tasks, "KOSPI", "Z")).toBeNull();
+  });
+});
+
+describe("partial fills (부분 체결)", () => {
+  // 10주 × 1,000원 매수 주문
+  const ordered = () => orderRebalancingTaskWith(session(), "a", 10, 1_000);
+  const taskA = (s: RebalancingSession) => s.tasks.find((t) => t.id === "a")!;
+
+  it("records a fill short of the order and keeps the rest ordered", () => {
+    const result = taskA(fillRebalancingTaskOrder(ordered(), "a", 4, 990));
+
+    expect(result).toMatchObject({ done: false, filledQuantity: 4, filledAmount: 3_960 });
+    expect(rebalancingTaskStatus(result)).toBe("ordered");
+    expect(isPartiallyFilled(result)).toBe(true);
+    expect(remainingOrderQuantity(result)).toBe(6);
+  });
+
+  it("keeps the order quantity and price as placed", () => {
+    const result = taskA(fillRebalancingTaskOrder(ordered(), "a", 4, 990));
+
+    expect(result).toMatchObject({ orderedQuantity: 10, orderedPrice: 1_000 });
+  });
+
+  it("adds a further partial fill to what was filled before", () => {
+    const once = fillRebalancingTaskOrder(ordered(), "a", 4, 990);
+
+    const result = taskA(fillRebalancingTaskOrder(once, "a", 3, 1_000));
+
+    expect(result).toMatchObject({ done: false, filledQuantity: 7, filledAmount: 6_960 });
+    expect(remainingOrderQuantity(result)).toBe(3);
+  });
+
+  it("fills the task once the remainder is filled, at the average price", () => {
+    const once = fillRebalancingTaskOrder(ordered(), "a", 4, 900);
+
+    const result = taskA(fillRebalancingTaskOrder(once, "a", 6, 1_000));
+
+    expect(result).toMatchObject({ done: true, executedQuantity: 10, executedPrice: 960 });
+    expect(rebalancingTaskStatus(result)).toBe("filled");
+  });
+
+  it("fills the task at the entered values when the whole order fills at once", () => {
+    const result = taskA(fillRebalancingTaskOrder(ordered(), "a", 10, 990));
+
+    expect(result).toMatchObject({ done: true, executedQuantity: 10, executedPrice: 990 });
+  });
+
+  it("fills the task when more than the remainder is entered", () => {
+    const once = fillRebalancingTaskOrder(ordered(), "a", 4, 1_000);
+
+    const result = taskA(fillRebalancingTaskOrder(once, "a", 8, 1_000));
+
+    expect(result).toMatchObject({ done: true, executedQuantity: 12 });
+  });
+
+  it("does not record a fill on a task that has no order", () => {
+    const s = session();
+    expect(fillRebalancingTaskOrder(s, "a", 4, 1_000)).toBe(s);
+  });
+
+  it("does not record a fill on a completed rebalancing", () => {
+    const s = { ...ordered(), completedAt: NOW };
+    expect(fillRebalancingTaskOrder(s, "a", 4, 1_000)).toBe(s);
+  });
+
+  it("cancelling the remainder fills the task with what was filled (잔량 취소)", () => {
+    const once = fillRebalancingTaskOrder(ordered(), "a", 4, 990);
+
+    const result = taskA(cancelRebalancingTaskOrder(once, "a"));
+
+    expect(result).toMatchObject({ done: true, executedQuantity: 4, executedPrice: 990 });
+  });
+
+  it("unfilling a task filled after partial fills returns it to the partial order", () => {
+    const once = fillRebalancingTaskOrder(ordered(), "a", 4, 990);
+    const filled = fillRebalancingTaskOrder(once, "a", 6, 1_000);
+
+    const result = taskA(toggleRebalancingTask(filled, "a"));
+
+    expect(rebalancingTaskStatus(result)).toBe("ordered");
+    expect(result).toMatchObject({ filledQuantity: 4, filledAmount: 3_960 });
+    expect(remainingOrderQuantity(result)).toBe(6);
+  });
+
+  it("amends the order of a partially filled task to more than was filled", () => {
+    const once = fillRebalancingTaskOrder(ordered(), "a", 4, 990);
+
+    const result = taskA(orderRebalancingTaskWith(once, "a", 8, 1_010));
+
+    expect(result).toMatchObject({ orderedQuantity: 8, orderedPrice: 1_010, filledQuantity: 4 });
+    expect(remainingOrderQuantity(result)).toBe(4);
+  });
+
+  it("does not amend the order to no more than was already filled", () => {
+    const once = fillRebalancingTaskOrder(ordered(), "a", 4, 990);
+
+    expect(orderRebalancingTaskWith(once, "a", 4, 1_000)).toBe(once);
+  });
+
+  it("counts the partial fill as traded so far", () => {
+    const result = taskA(fillRebalancingTaskOrder(ordered(), "a", 4, 990));
+
+    expect(executedQuantityOf(result)).toBe(4);
+    expect(executedPriceOf(result)).toBe(990);
+  });
+
+  it("does not treat an unfilled task's leftover executed values as a partial fill", () => {
+    // 체결을 취소해도 입력 기억용으로 executedQuantity 가 남는다.
+    const leftover = {
+      ...task("a"),
+      orderedQuantity: 10,
+      orderedPrice: 1_000,
+      executedQuantity: 10,
+    };
+
+    expect(isPartiallyFilled(leftover)).toBe(false);
+    expect(executedQuantityOf(leftover)).toBeNull();
+    expect(remainingOrderQuantity(leftover)).toBe(10);
+  });
+
+  it("has no remainder when the task is not ordered", () => {
+    expect(remainingOrderQuantity(task("a"))).toBe(0);
+    expect(remainingOrderQuantity(task("a", true))).toBe(0);
   });
 });

@@ -90,6 +90,10 @@ function parseTask(value: unknown): RebalancingTask | null {
   const orderedQuantity = v.orderedQuantity ?? null;
   const orderedPrice = v.orderedPrice ?? null;
   if (!isNullableNumber(orderedQuantity) || !isNullableNumber(orderedPrice)) return null;
+  // 부분 체결 수량·금액도 나중에 추가된 필드라 없으면 null (부분 체결 없음).
+  const filledQuantity = v.filledQuantity ?? null;
+  const filledAmount = v.filledAmount ?? null;
+  if (!isNullableNumber(filledQuantity) || !isNullableNumber(filledAmount)) return null;
   // 알려진 필드만 남긴다 — jsonb 컬럼에 임의 데이터가 쌓이지 않게.
   return {
     id: v.id,
@@ -106,6 +110,8 @@ function parseTask(value: unknown): RebalancingTask | null {
     executedPrice,
     orderedQuantity,
     orderedPrice,
+    filledQuantity,
+    filledAmount,
     done: v.done,
   };
 }

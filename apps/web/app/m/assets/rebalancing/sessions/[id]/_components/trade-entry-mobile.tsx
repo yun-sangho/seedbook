@@ -12,10 +12,19 @@ import type { RebalancingTask, RebalancingTaskStatus } from "@web/features/rebal
 import { affordableQuantity } from "@web/features/rebalancing/utils/affordable-quantity";
 import { holdingQuantityFor } from "@web/features/rebalancing/utils/holding-quantity";
 import {
+  filledQuantityOf,
+  fillRebalancingTaskOrder,
+  isPartiallyFilled,
   isRebalancingCompleted,
+  orderRebalancingTaskWith,
   rebalancingTaskStatus,
+  remainingOrderQuantity,
 } from "@web/features/rebalancing/utils/rebalancing-session";
-import { buyShortfall, tradeCashPreview } from "@web/features/rebalancing/utils/trade-cash-check";
+import {
+  buyShortfall,
+  tradeCashPreview,
+  tradeCashPreviewFor,
+} from "@web/features/rebalancing/utils/trade-cash-check";
 import { useTaskSecurityTypes } from "@web/features/rebalancing/utils/use-task-security-types";
 import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
@@ -31,7 +40,9 @@ import { markJustMoved } from "./just-moved-tasks";
  *
  * - 대기: 증권사에 넣은 주문 수량·주문가를 "주문 기록" 으로 남긴다. 시장가처럼 바로 체결됐으면
  *   "바로 체결" 로 건너뛴다.
- * - 주문: 주문 값이 채워져 있어 대부분 그대로 "체결 기록" 만 누른다. "주문 취소" 로 대기로 돌린다.
+ * - 주문: 잔량과 주문가가 채워져 있어 대부분 그대로 "체결 기록" 만 누른다. 잔량보다 적게 넣으면
+ *   "부분 체결 기록" — 체결된 만큼 쌓고 나머지는 주문 중으로 남아 나중에 추가로 체결하거나 취소한다.
+ *   "주문 취소" 로 대기로 돌린다 (부분 체결됐으면 "잔량 취소" — 체결된 만큼으로 체결을 마친다).
  *   주문 내역의 "정정" 으로 주문 수량·주문가를 고친다 (증권사 앱의 정정/취소와 같은 흐름). 정정은
  *   따로 들어가야 한다 — 체결 입력을 주문과 다르게 고친 게 정정인지 다른 값으로 체결된 건지 알 수 없다.
  * - 체결: 기록한 값을 고치거나 "체결 취소" 로 주문(또는 대기)으로 되돌린다.
@@ -81,6 +92,7 @@ export function TradeEntryMobile({ sessionId, taskId }: { sessionId: string; tas
 function TradeEntryForm({ sessionId, task }: { sessionId: string; task: RebalancingTask }) {
   const session = useRebalancingStore((s) => s.sessions.find((x) => x.id === sessionId))!;
   const completeTaskWith = useRebalancingStore((s) => s.completeTaskWith);
+  const fillTaskOrder = useRebalancingStore((s) => s.fillTaskOrder);
   const orderTaskWith = useRebalancingStore((s) => s.orderTaskWith);
   const cancelTaskOrder = useRebalancingStore((s) => s.cancelTaskOrder);
   const toggleTask = useRebalancingStore((s) => s.toggleTask);
@@ -90,9 +102,12 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
   );
   const { pop } = useFlow();
 
-  // 주문했으면 주문 값으로, 아니면 기록한 체결 값(체결을 취소해도 남아 있다)이나 권장 값으로 채운다.
+  const partial = isPartiallyFilled(task);
+  const filled = filledQuantityOf(task);
+  const remaining = remainingOrderQuantity(task);
+  // 주문했으면 잔량·주문가로, 아니면 기록한 체결 값(체결을 취소해도 남아 있다)이나 권장 값으로 채운다.
   const [quantityDraft, setQuantityDraft] = useState(() =>
-    draftOf(status === "ordered" ? task.orderedQuantity : (task.executedQuantity ?? task.quantity))
+    draftOf(status === "ordered" ? remaining : (task.executedQuantity ?? task.quantity))
   );
   const [priceDraft, setPriceDraft] = useState(() =>
     draftOf(status === "ordered" ? task.orderedPrice : (task.executedPrice ?? task.price))
@@ -109,17 +124,38 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
   // 기록할 가격은 호가에 맞춘 값이다 — 금액과 예수금도 그 값으로 계산한다.
   const tradePrice = priceOk ? snapToTick(price, securityType) : null;
   const amount = quantityOk && tradePrice !== null ? Math.round(quantity * tradePrice) : null;
+  const isOrderInput = status === "pending" || amending;
+  // 주문 중인 매매의 체결 입력은 이번에 체결된 수량 — 잔량보다 적으면 부분 체결이다.
+  const fillingOrder = status === "ordered" && !amending;
+  const partialFill = fillingOrder && quantityOk && quantity < remaining;
+  // 부분 체결된 주문은 이미 체결된 수량보다 많게만 정정할 수 있다.
+  const amendTooSmall = amending && quantityOk && quantity <= filled;
   // 계좌가 지워졌으면 예수금을 알 수 없어 확인하지 않는다.
   const cash =
-    account && quantityOk && tradePrice !== null
-      ? tradeCashPreview(account, session, task.id, quantity, tradePrice)
+    account && quantityOk && tradePrice !== null && !amendTooSmall
+      ? fillingOrder
+        ? tradeCashPreviewFor(
+            account,
+            session,
+            task.id,
+            fillRebalancingTaskOrder(session, task.id, quantity, tradePrice)
+          )
+        : amending
+          ? tradeCashPreviewFor(
+              account,
+              session,
+              task.id,
+              orderRebalancingTaskWith(session, task.id, quantity, tradePrice)
+            )
+          : tradeCashPreview(account, session, task.id, quantity, tradePrice)
       : null;
   const shortfall = cash !== null ? buyShortfall(task.action, cash) : 0;
   const shortOfCash = shortfall > 0;
   // 확인한 모자란 금액 — 수량·가격이 바뀌어 금액이 달라지면 확인이 풀린다.
   const [confirmedShortfall, setConfirmedShortfall] = useState<number | null>(null);
   const shortfallConfirmed = shortOfCash && confirmedShortfall === shortfall;
-  const canSave = quantityOk && tradePrice !== null && (!shortOfCash || shortfallConfirmed);
+  const canSave =
+    quantityOk && tradePrice !== null && !amendTooSmall && (!shortOfCash || shortfallConfirmed);
   // 매수가 모자랄 때 지금 살 수 있는 최대 수량.
   const affordable =
     cash !== null && shortOfCash && tradePrice !== null
@@ -127,13 +163,20 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
       : 0;
   const held = account ? holdingQuantityFor(account.holdings ?? [], task) : null;
   const oversold = task.action === "매도" && held !== null && quantityOk && quantity > held;
-  const differs = quantityOk && task.quantity !== null && quantity !== task.quantity;
+  const differs =
+    !fillingOrder && quantityOk && task.quantity !== null && quantity !== task.quantity;
   const setPrice = (next: number) => setPriceDraft(formatWithCommas(next));
 
   const recordFill = () => {
     if (!canSave || tradePrice === null) return;
-    if (status !== "filled") markJustMoved(task.id, status);
-    completeTaskWith(session.id, task.id, quantity, tradePrice);
+    if (fillingOrder) {
+      // 부분 체결이면 주문 중에 그대로 남는다.
+      if (!partialFill) markJustMoved(task.id, "ordered");
+      fillTaskOrder(session.id, task.id, quantity, tradePrice);
+    } else {
+      if (status !== "filled") markJustMoved(task.id, status);
+      completeTaskWith(session.id, task.id, quantity, tradePrice);
+    }
     pop();
   };
   const recordOrder = () => {
@@ -143,6 +186,8 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
     pop();
   };
   const cancelOrder = () => {
+    // 잔량 취소는 체결된 만큼으로 체결을 마친다.
+    if (partial) markJustMoved(task.id, "ordered");
     cancelTaskOrder(session.id, task.id);
     pop();
   };
@@ -150,16 +195,15 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
     toggleTask(session.id, task.id);
     pop();
   };
-  const fillOrderDrafts = () => {
+  const startAmend = () => {
+    // 정정은 주문 전체 수량을 고친다.
     setQuantityDraft(draftOf(task.orderedQuantity));
     setPriceDraft(draftOf(task.orderedPrice));
-  };
-  const startAmend = () => {
-    fillOrderDrafts();
     setAmending(true);
   };
   const stopAmend = () => {
-    fillOrderDrafts();
+    setQuantityDraft(draftOf(remaining));
+    setPriceDraft(draftOf(task.orderedPrice));
     setAmending(false);
   };
   const saveAmend = () => {
@@ -167,7 +211,6 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
     orderTaskWith(session.id, task.id, quantity, tradePrice);
     pop();
   };
-  const isOrderInput = status === "pending" || amending;
 
   return (
     <div className="flex flex-col gap-x6 px-x4 pt-x4 pb-x6">
@@ -176,7 +219,7 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
       {status === "ordered" && !amending && <OrderCard task={task} onAmend={startAmend} />}
 
       <StepperField
-        label={isOrderInput ? `${task.action} 주문 수량` : `${task.action} 체결 수량`}
+        label={quantityLabel(task.action, isOrderInput, fillingOrder && partial)}
         value={quantityDraft}
         onValueChange={(value) => setQuantityDraft(formatMoneyDraft(value))}
         suffix="주"
@@ -188,7 +231,13 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
         stepLabel="1주"
         autoFocus
         hint={
-          task.quantity === null ? null : differs ? (
+          fillingOrder ? (
+            fillHint(remaining, quantityOk ? quantity : null)
+          ) : amending && partial ? (
+            <span className={cn(amendTooSmall && "text-fg-critical")}>
+              이미 체결된 {formatWithCommas(filled)}주보다 많아야 해요
+            </span>
+          ) : task.quantity === null ? null : differs ? (
             // 권장 수량은 시작할 때 계산한 계획이라, 다르게 사고팔면 그 차이는 다른 매매에 반영되지 않는다.
             <span className="text-fg-warning">
               권장 {formatWithCommas(task.quantity)}주와 달라요 · 주문가능금액이 남거나 모자랄 수
@@ -268,7 +317,7 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
         )}
         {status === "ordered" && !amending && (
           <ActionButton variant="neutralWeak" size="large" onClick={cancelOrder}>
-            주문 취소
+            {partial ? "잔량 취소" : "주문 취소"}
           </ActionButton>
         )}
         {amending && (
@@ -287,7 +336,7 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
           disabled={!canSave}
           onClick={amending ? saveAmend : status === "pending" ? recordOrder : recordFill}
         >
-          {amending ? "정정 저장" : PRIMARY_LABEL[status]}
+          {amending ? "정정 저장" : partialFill ? "부분 체결 기록" : PRIMARY_LABEL[status]}
         </ActionButton>
       </div>
     </div>
@@ -301,6 +350,7 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
 function OrderCard({ task, onAmend }: { task: RebalancingTask; onAmend: () => void }) {
   const quantity = task.orderedQuantity ?? 0;
   const price = task.orderedPrice ?? 0;
+  const filled = filledQuantityOf(task);
   return (
     <div className="border-stroke-neutral-muted rounded-r3 flex items-center gap-x3 border px-x4 py-x3">
       <div className="min-w-0 flex-1">
@@ -310,6 +360,14 @@ function OrderCard({ task, onAmend }: { task: RebalancingTask; onAmend: () => vo
         <p className="t3-regular text-fg-neutral-muted mt-[2px] tabular-nums">
           총 {formatWithCommas(Math.round(quantity * price))}원
         </p>
+        {isPartiallyFilled(task) && (
+          // 부분 체결: 체결된 수량·평균가와 아직 주문 중인 잔량.
+          <p className="t3-regular text-fg-informative mt-[2px] tabular-nums">
+            {formatWithCommas(filled)}주 체결 (평균{" "}
+            {formatWithCommas(Math.round((task.filledAmount ?? 0) / filled))}원) · 잔량{" "}
+            {formatWithCommas(remainingOrderQuantity(task))}주
+          </p>
+        )}
       </div>
       <ActionButton variant="neutralWeak" size="small" onClick={onAmend}>
         정정
@@ -412,12 +470,32 @@ const STATUS_SUFFIX: Record<RebalancingTaskStatus, string> = {
 
 const isPositive = (value: number) => Number.isFinite(value) && value > 0;
 
+// 평균 체결가처럼 원 아래 자리가 있는 값은 원 단위로 채운다.
 const draftOf = (value: number | null | undefined) =>
-  value !== null && value !== undefined && value > 0 ? formatWithCommas(value) : "";
+  value !== null && value !== undefined && value > 0 ? formatWithCommas(Math.round(value)) : "";
+
+function quantityLabel(
+  action: RebalancingTask["action"],
+  isOrderInput: boolean,
+  partial: boolean
+): string {
+  if (isOrderInput) return `${action} 주문 수량`;
+  return partial ? `추가 ${action} 체결 수량` : `${action} 체결 수량`;
+}
+
+/** 주문 체결 입력 아래: "잔량 32주" / 잔량보다 적으면 "잔량 32주 중 · 나머지 20주는 주문 중으로 남아요". */
+function fillHint(remaining: number, quantity: number | null): string {
+  const base = `잔량 ${formatWithCommas(remaining)}주`;
+  if (quantity === null || quantity >= remaining) return base;
+  return `${base} 중 부분 체결 · 나머지 ${formatWithCommas(remaining - quantity)}주는 주문 중으로 남아요`;
+}
 
 /** "매수 · 권장 40주 · 11,800원 기준" / 주문했으면 "매수 주문 중 · …", 체결했으면 "매수 체결 · …". */
 function headline(task: RebalancingTask): string {
-  const action = `${task.action}${STATUS_SUFFIX[rebalancingTaskStatus(task)]}`;
+  const suffix = isPartiallyFilled(task)
+    ? " 부분 체결"
+    : STATUS_SUFFIX[rebalancingTaskStatus(task)];
+  const action = `${task.action}${suffix}`;
   if (task.quantity === null) return action;
   const basis = task.price !== null ? ` · ${formatWithCommas(task.price)}원 기준` : "";
   return `${action} · 권장 ${formatWithCommas(task.quantity)}주${basis}`;

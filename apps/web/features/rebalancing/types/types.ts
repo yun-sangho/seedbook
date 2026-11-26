@@ -36,6 +36,14 @@ export interface RebalancingTask {
    */
   orderedQuantity?: number | null;
   orderedPrice?: number | null;
+  /**
+   * 주문이 부분 체결된 누적 수량 (주) 과 누적 체결 금액 (원, 수량 × 체결가의 합). 주문 중이면서
+   * 수량이 0 보다 크면 "부분 체결" — 체결된 만큼은 거래한 것으로 보고 잔량(주문 수량 − 누적 수량)은
+   * 주문 중으로 남는다. 잔량까지 체결하거나 잔량을 취소하면 체결(`done`)로 넘어가고, 이 값은 체결을
+   * 취소했을 때 부분 체결 상태로 돌아가도록 남겨 둔다. 이 필드가 생기기 전의 할 일이면 없다 (0).
+   */
+  filledQuantity?: number | null;
+  filledAmount?: number | null;
   /** `price` 의 기준 시각 (ISO). 가격이 없거나 기록 전에 시작한 리밸런싱이면 null */
   priceAsOf: string | null;
   /** `price` 가 장중 시세인지 종가인지. `priceAsOf` 와 함께 null */

@@ -26,6 +26,8 @@ function toTask(value: unknown): RebalancingTask {
     executedPrice: nullableNum(v.executedPrice),
     orderedQuantity: nullableNum(v.orderedQuantity),
     orderedPrice: nullableNum(v.orderedPrice),
+    filledQuantity: nullableNum(v.filledQuantity),
+    filledAmount: nullableNum(v.filledAmount),
     priceAsOf: typeof v.priceAsOf === "string" ? v.priceAsOf : null,
     priceKind: v.priceKind === "realtime" || v.priceKind === "close" ? v.priceKind : null,
     done: v.done === true,
