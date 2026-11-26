@@ -20,6 +20,9 @@ services:
       CRON_MORNING: ${CRON_MORNING:-0 6 * * 1-5}
       CRON_AFTERNOON: ${CRON_AFTERNOON:-30 16 * * 1-5}
       NODE_ENV: production
+      # DB 풀 크기. Supabase session pooler 서버 연결 한도 15 를 web 8 + crawler 1 로 나눈다
+      # (packages/database/src/client.ts 의 postgresPoolOptions).
+      DB_POOL_MAX: "1"
 
   web:
     image: ${WEB_IMAGE:-ghcr.io/yun-sangho/seedbook/web}:${WEB_IMAGE_TAG:-latest}
@@ -38,6 +41,7 @@ services:
       APPLE_PRIVATE_KEY_BASE64: ${APPLE_PRIVATE_KEY_BASE64:-}
       APPLE_APP_BUNDLE_ID: ${APPLE_APP_BUNDLE_ID:-}
       NODE_ENV: production
+      DB_POOL_MAX: "8"
       PORT: "3001"
       HOSTNAME: "0.0.0.0"
     ports:

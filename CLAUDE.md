@@ -171,7 +171,7 @@ The web app builds with `output: 'standalone'` (see `apps/web/next.config.js`) a
 
 **Only use Next.js features that are supported by `output: 'standalone'`.** Do not add functionality that depends on Vercel-only infrastructure.
 
-DB 마이그레이션은 stock-crawler 이미지 entrypoint (`apps/stock-crawler/entrypoint.sh`) 의 `drizzle migrate` (`packages/database/scripts/migrate.ts`) 가 컨테이너 시작 시 자동으로 돌린다. 새 마이그레이션은 `pnpm --filter @seedbook/database db:generate` 로 schema 변경 후 자동 생성. Drizzle 은 단순 SQL apply 라 Supabase 풀러로도 동작하지만, 보수적으로 `DATABASE_URL` 은 direct connection (`db.<ref>.supabase.co:5432`) 을 권장한다.
+DB 마이그레이션은 stock-crawler 이미지 entrypoint (`apps/stock-crawler/entrypoint.sh`) 의 `drizzle migrate` (`packages/database/scripts/migrate.ts`) 가 컨테이너 시작 시 자동으로 돌린다. 새 마이그레이션은 `pnpm --filter @seedbook/database db:generate` 로 schema 변경 후 자동 생성. `DATABASE_URL` 은 Supabase session pooler (`*.pooler.supabase.com:5432`) 를 쓴다 — 서버 연결 한도가 15 라 풀 크기를 서비스별 `DB_POOL_MAX` (`docker-compose.yml`: web 8, stock-crawler 1, `packages/database/src/client.ts`) 로 나눈다. transaction pooler (6543) 는 쓰지 않는다.
 
 **마이그레이션 규칙 (반드시 지킬 것):**
 
