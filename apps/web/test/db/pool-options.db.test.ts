@@ -3,8 +3,11 @@ import postgres from "postgres";
 import { afterAll, describe, expect, it } from "vitest";
 import { testDatabaseUrl } from "./test-database-url";
 
-/** 운영과 같은 풀 설정에 연결 하나 — 동시 쿼리가 같은 연결에 겹치게 한다. */
-const sql = postgres(testDatabaseUrl(), { ...postgresPoolOptions("production"), max: 1 });
+/** 운영 crawler 와 같은 풀 설정(연결 하나) — 동시 쿼리가 같은 연결에 겹치게 한다. */
+const sql = postgres(
+  testDatabaseUrl(),
+  postgresPoolOptions({ NODE_ENV: "production", DB_POOL_MAX: "1" })
+);
 
 afterAll(() => sql.end({ timeout: 1 }));
 

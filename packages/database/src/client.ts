@@ -43,11 +43,35 @@ const globalForDb = globalThis as unknown as {
   __seedbookDb?: Database;
 };
 
+/** 운영 web 의 기본 풀 크기. crawler 는 `DB_POOL_MAX=1` 로 줄인다 (`docker-compose.yml`). */
+const PRODUCTION_POOL_MAX = 8;
+const DEVELOPMENT_POOL_MAX = 5;
+
+type PoolEnv = { NODE_ENV?: string; DB_POOL_MAX?: string };
+
+function poolMax({ NODE_ENV, DB_POOL_MAX }: PoolEnv): number {
+  if (DB_POOL_MAX === undefined) {
+    return NODE_ENV === "production" ? PRODUCTION_POOL_MAX : DEVELOPMENT_POOL_MAX;
+  }
+  const max = Number(DB_POOL_MAX);
+  if (DB_POOL_MAX.trim() === "" || !Number.isInteger(max) || max < 1) {
+    throw new Error(`DB_POOL_MAX must be a positive integer, got ${JSON.stringify(DB_POOL_MAX)}`);
+  }
+  return max;
+}
+
 /**
  * postgres.js 커넥션 풀 설정.
  *
- * - `prepare: false`: Supabase Transaction pooler (port 6543) 호환용. Direct connection /
- *   Session pooler 에서도 안전하게 동작.
+ * - `max`: 앱별 풀 크기. 운영 DB 는 Supabase session pooler (`*.pooler.supabase.com:5432`) 로
+ *   붙는데, session mode 는 클라이언트 연결 하나가 서버 연결 하나를 쥐고 있고 서버 연결은 15개까지다.
+ *   web 8 + stock-crawler 1 = 9 로 두고, 나머지는 배포 때 컨테이너가 겹치거나 마이그레이션
+ *   (`scripts/migrate.ts`, 자체 연결 1개)·`docker compose exec stock-crawler` 로 돌리는 스크립트
+ *   (crawler 의 `DB_POOL_MAX=1` 을 물려받는다) 가 쓰는 여유다. `DB_POOL_MAX` 가 없으면 운영 8
+ *   (web), 그 밖은 5. crawler 는 쿼리를 하나씩 기다려 보내므로 1 개로 충분하고, 동시에 보내도
+ *   연결이 빌 때까지 차례를 기다린다 (그 대기도 `query_timeout` 에 들어간다).
+ * - `prepare: false`: 풀러(transaction mode)와 호환되게 prepared statement 를 쓰지 않는다.
+ *   Direct connection / session pooler 에서도 안전하게 동작.
  * - `connect_timeout`: 연결을 열지 못하면 기다리지 않고 실패한다 (초).
  * - `max_pipeline: 1`: 한 연결에 쿼리를 하나씩만 보낸다. postgres.js 4 는 기본으로 한 연결에 쿼리를
  *   100개까지 파이프라인으로 보내는데, Supabase 풀러(Supavisor, 6543 transaction mode)는 파이프라인
@@ -59,10 +83,10 @@ const globalForDb = globalThis as unknown as {
  * - `max_lifetime`: 오래된 연결은 새로 연다 (초). 쉬는 연결은 닫지 않고 둔다 — 새 연결을 여는 비용을
  *   매번 치르지 않게. 쉰 연결도 운영 측정에서 바로 답했다.
  */
-export function postgresPoolOptions(nodeEnv: string | undefined) {
+export function postgresPoolOptions(env: PoolEnv) {
   return {
     prepare: false,
-    max: nodeEnv === "production" ? 10 : 5,
+    max: poolMax(env),
     connect_timeout: 10,
     max_lifetime: 60 * 30,
     max_pipeline: 1,
@@ -76,7 +100,7 @@ function createClient(): Sql {
   if (!url) {
     throw new Error("DATABASE_URL is not set. Set it in the environment before running queries.");
   }
-  return postgres(url, postgresPoolOptions(process.env.NODE_ENV));
+  return postgres(url, postgresPoolOptions(process.env));
 }
 
 function ensureClient(): Sql {
