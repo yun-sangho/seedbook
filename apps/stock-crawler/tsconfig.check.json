@@ -1,0 +1,13 @@
+{
+  // 타입 검사 전용 — @seedbook/database 를 dist 대신 소스로 본다 (packages/database
+  // 를 빌드하지 않아도 check-types 가 돈다). 빌드(tsconfig.json)는 그대로 dist 를
+  // 보고 rootDir ./src 를 지켜야 출력이 dist/index.js 에 남는다 (entrypoint.sh).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "../..",
+    "paths": {
+      "@seedbook/database": ["../../packages/database/src"]
+    }
+  }
+}
