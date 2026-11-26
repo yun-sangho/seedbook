@@ -2,7 +2,7 @@ import type { InvestmentItem } from "@web/features/investments/types/types";
 import { describe, expect, it } from "vitest";
 import type { RebalancingSession, RebalancingTask } from "../types/types";
 import { affordableQuantity } from "./affordable-quantity";
-import { rebalancingCashOutlook, tradeCashPreview } from "./trade-cash-check";
+import { buyShortfall, rebalancingCashOutlook, tradeCashPreview } from "./trade-cash-check";
 
 /** 예수금이 모자라는 금액 — 0 보다 크면 매매 입력 화면이 완료를 막는다. */
 const cashShortfallAfterTrade = (...args: Parameters<typeof tradeCashPreview>) =>
@@ -321,5 +321,27 @@ describe("cash checks with several cash items", () => {
   it("affords as many shares as the total cash covers", () => {
     const { before } = tradeCashPreview(multi(), session([task()]), "buy", 20, 100);
     expect(affordableQuantity(before, 100)).toBe(10);
+  });
+});
+
+describe("buyShortfall", () => {
+  it("is 0 when the cash covers the buy", () => {
+    expect(buyShortfall("매수", { before: 100_000, after: 0 })).toBe(0);
+  });
+
+  it("is how far the buy pushes cash below zero", () => {
+    expect(buyShortfall("매수", { before: 100_000, after: -500 })).toBe(500);
+  });
+
+  it("is 0 for a sell even when cash stays negative — a sell only pays cash back", () => {
+    expect(buyShortfall("매도", { before: -80_000, after: -30_000 })).toBe(0);
+  });
+
+  it("counts the account's cash that is already negative", () => {
+    // 지난 리밸런싱에서 모자란 채로 매수해 예수금이 −30,000원인 계좌
+    const preview = tradeCashPreview(account(-30_000), session([task()]), "buy", 1, 10_000);
+
+    expect(preview).toEqual({ before: -30_000, after: -40_000 });
+    expect(buyShortfall("매수", preview)).toBe(40_000);
   });
 });

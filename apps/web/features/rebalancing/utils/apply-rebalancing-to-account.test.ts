@@ -221,14 +221,16 @@ describe("applyRebalancingToAccount", () => {
     ]);
   });
 
-  it("does not let cash go below zero", () => {
-    const { account: result } = applyRebalancingToAccount(
+  it("leaves the cash the buys are short of as negative cash", () => {
+    // 예수금 10,000원으로 2주 × 50,000원 매수 → 90,000원 모자라 예수금 −90,000원 (미수)
+    const { account: result, cash } = applyRebalancingToAccount(
       account({ cashItems: [{ id: "c1", label: "예수금", amount: 10_000 }] }),
       session([task({ quantity: 2, price: 50_000 })]),
       KRW
     );
 
-    expect(result.cashItems[0]?.amount).toBe(0);
+    expect(result.cashItems[0]?.amount).toBe(-90_000);
+    expect(cash).toEqual({ before: 10_000, after: -90_000 });
   });
 
   it("reports how much cash the buys are short of", () => {
@@ -240,6 +242,40 @@ describe("applyRebalancingToAccount", () => {
     );
 
     expect(cashShortfall).toBe(90_000);
+  });
+
+  it("creates a negative 예수금 item when an account without cash buys", () => {
+    const { account: result } = applyRebalancingToAccount(
+      account({ cashItems: [] }),
+      session([task({ quantity: 1, price: 50_000 })]),
+      KRW
+    );
+
+    expect(result.cashItems).toEqual([
+      expect.objectContaining({ label: "예수금", amount: -50_000 }),
+    ]);
+  });
+
+  it("pays back negative cash with sell proceeds", () => {
+    const { account: result, cashShortfall } = applyRebalancingToAccount(
+      account({ cashItems: [{ id: "c1", label: "예수금", amount: -30_000 }] }),
+      session([task({ action: "매도", quantity: 1, price: 50_000 })]),
+      KRW
+    );
+
+    expect(result.cashItems[0]?.amount).toBe(20_000);
+    expect(cashShortfall).toBe(0);
+  });
+
+  it("adds a new shortfall to cash that is already negative", () => {
+    const { account: result, cashShortfall } = applyRebalancingToAccount(
+      account({ cashItems: [{ id: "c1", label: "예수금", amount: -30_000 }] }),
+      session([task({ quantity: 1, price: 50_000 })]),
+      KRW
+    );
+
+    expect(result.cashItems[0]?.amount).toBe(-80_000);
+    expect(cashShortfall).toBe(80_000);
   });
 
   it("reports no shortfall when the cash covers the buys", () => {
@@ -402,15 +438,52 @@ describe("applyRebalancingToAccount with several cash items", () => {
     ]);
   });
 
-  it("reports a shortfall only for what the total cash cannot cover", () => {
+  it("spends every item to zero and leaves the shortfall on the 예수금 item", () => {
     const result = applyRebalancingToAccount(account({ cashItems }), session([buy(1_700)]), KRW);
 
     expect(result.cashShortfall).toBe(200);
     expect(amounts(result.account)).toEqual([
       ["cma", 0],
-      ["deposit", 0],
+      ["deposit", -200],
       ["mmf", 0],
     ]);
+  });
+
+  it("leaves the shortfall on the first item when there is no 예수금 item", () => {
+    const result = applyRebalancingToAccount(
+      account({ cashItems: cashItems.filter((c) => c.id !== "deposit") }),
+      session([buy(1_600)]),
+      KRW
+    );
+
+    expect(amounts(result.account)).toEqual([
+      ["cma", -200],
+      ["mmf", 0],
+    ]);
+  });
+
+  it("does not spend an item that is already negative as if it were cash", () => {
+    const withDebt = [
+      { id: "deposit", label: "예수금", amount: -100 },
+      { id: "mmf", label: "MMF", amount: 500 },
+    ];
+    const result = applyRebalancingToAccount(
+      account({ cashItems: withDebt }),
+      session([buy(600)]),
+      KRW
+    );
+
+    expect(amounts(result.account)).toEqual([
+      ["deposit", -200],
+      ["mmf", 0],
+    ]);
+    expect(result.cash).toEqual({ before: 400, after: -200 });
+  });
+
+  it("reports the total cash going negative", () => {
+    const { cash } = applyRebalancingToAccount(account({ cashItems }), session([buy(1_700)]), KRW);
+
+    expect(cash).toEqual({ before: 1_500, after: -200 });
   });
 
   it("reports the total cash before and after", () => {

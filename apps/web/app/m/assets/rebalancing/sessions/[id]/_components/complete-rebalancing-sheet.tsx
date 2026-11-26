@@ -18,6 +18,7 @@ import {
   executedPriceOf,
   rebalancingTaskStatus,
 } from "@web/features/rebalancing/utils/rebalancing-session";
+import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
   BottomSheetBody,
@@ -27,7 +28,7 @@ import {
 } from "@web/seed-design/ui/bottom-sheet";
 import { Callout } from "@web/seed-design/ui/callout";
 import { Checkbox } from "@web/seed-design/ui/checkbox";
-import { formatWithCommas } from "@web/utils/number-format";
+import { formatSignedWon, formatWithCommas } from "@web/utils/number-format";
 
 /** 포트폴리오에서 통화를 찾지 못한 새 보유 종목의 통화 — 지금은 국내 주식만 다룬다. */
 const FALLBACK_CURRENCY = "KRW";
@@ -186,33 +187,45 @@ function ApplyPreview({
     return <p className="t4-regular text-fg-neutral-muted mt-x2">계좌에 반영할 매매가 없어요.</p>;
   }
   return (
-    <ul className="divide-stroke-neutral-subtle mt-x2 max-h-[45dvh] divide-y overflow-y-auto">
-      {holdingChanges.map((change) => {
-        const delta = change.after - change.before;
-        const price = executedPriceOf(change.task);
-        return (
-          <ChangeRow
-            key={change.task.id}
-            label={change.task.name || change.task.ticker}
-            aside={
-              <span className={delta > 0 ? "text-fg-positive" : "text-fg-critical"}>
-                {formatQuantityChange(delta)}주
-              </span>
-            }
-            before={`${formatWithCommas(change.before)}주`}
-            after={`${formatWithCommas(change.after)}주`}
-            price={price !== null ? `체결가 ${formatWithCommas(price)}원` : undefined}
-          />
-        );
-      })}
-      {cashChanged && (
-        <ChangeRow
-          label="주문가능금액"
-          before={`${formatWithCommas(cash.before)}원`}
-          after={`${formatWithCommas(cash.after)}원`}
+    <>
+      {cash.after < 0 && (
+        // 주문가능금액이 모자란 채로 기록한 매수 — 모자란 금액은 계좌 현금에 마이너스(미수)로 남는다.
+        <Callout
+          tone="critical"
+          description={`현금이 ${formatWithCommas(-cash.after)}원 모자라요. 계좌 현금이 ${formatSignedWon(cash.after)}(부족)으로 남아요.`}
+          className="mt-x2"
         />
       )}
-    </ul>
+      <ul className="divide-stroke-neutral-subtle mt-x2 max-h-[45dvh] divide-y overflow-y-auto">
+        {holdingChanges.map((change) => {
+          const delta = change.after - change.before;
+          const price = executedPriceOf(change.task);
+          return (
+            <ChangeRow
+              key={change.task.id}
+              label={change.task.name || change.task.ticker}
+              aside={
+                <span className={delta > 0 ? "text-fg-positive" : "text-fg-critical"}>
+                  {formatQuantityChange(delta)}주
+                </span>
+              }
+              before={`${formatWithCommas(change.before)}주`}
+              after={`${formatWithCommas(change.after)}주`}
+              price={price !== null ? `체결가 ${formatWithCommas(price)}원` : undefined}
+            />
+          );
+        })}
+        {cashChanged && (
+          <ChangeRow
+            label="주문가능금액"
+            aside={cash.after < 0 ? <span className="text-fg-critical">부족</span> : undefined}
+            before={formatSignedWon(cash.before)}
+            after={formatSignedWon(cash.after)}
+            afterClassName={cash.after < 0 ? "text-fg-critical" : undefined}
+          />
+        )}
+      </ul>
+    </>
   );
 }
 
@@ -222,6 +235,7 @@ function ChangeRow({
   before,
   after,
   price,
+  afterClassName,
 }: {
   label: string;
   aside?: React.ReactNode;
@@ -229,6 +243,8 @@ function ChangeRow({
   after: string;
   /** 체결 가격 (주당). 예수금 줄에는 없다. */
   price?: string;
+  /** "후" 값의 글자색 (모자란 예수금은 critical). */
+  afterClassName?: string;
 }) {
   return (
     <li className="py-x2">
@@ -238,7 +254,8 @@ function ChangeRow({
       </div>
       <div className="t3-regular text-fg-neutral-muted mt-[2px] flex items-baseline gap-x3 tabular-nums">
         <p className="min-w-0 flex-1">
-          {before} → <span className="text-fg-neutral font-bold">{after}</span>
+          {before} →{" "}
+          <span className={cn("text-fg-neutral font-bold", afterClassName)}>{after}</span>
         </p>
         {price && <span className="shrink-0">{price}</span>}
       </div>

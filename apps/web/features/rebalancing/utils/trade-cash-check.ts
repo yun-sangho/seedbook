@@ -1,11 +1,11 @@
 import type { InvestmentItem } from "@web/features/investments/types/types";
-import type { RebalancingSession, RebalancingTask } from "../types/types";
+import type { RebalancingSession, RebalancingTask, RebalancingTaskAction } from "../types/types";
 import { applyRebalancingToAccount } from "./apply-rebalancing-to-account";
 import { rebalancingTaskStatus } from "./rebalancing-session";
 
 /**
- * 계좌에 반영할 때와 같은 계산(`applyRebalancingToAccount`)으로, 현금 전체 합(모든 현금 항목)을
- * 0 으로 자르기 전 값으로 구한다. 완료한 매매(기록한 체결 가격)와 시작할 때 넣은 돈이 들어간다. 거래 가능
+ * 계좌에 반영할 때와 같은 계산(`applyRebalancingToAccount`)으로 현금 전체 합(모든 현금 항목)을
+ * 구한다 (마이너스일 수 있다). 완료한 매매(기록한 체결 가격)와 시작할 때 넣은 돈이 들어간다. 거래 가능
  * 금액을 예수금보다 적게 잡았으면 남겨 둔 돈은 계좌에는 남지만 매매에 쓸 수 없어 뺀다.
  */
 function rawCashAfter(
@@ -31,7 +31,7 @@ function heldForBuyOrders(tasks: RebalancingTask[], exceptTaskId?: string): numb
 
 /**
  * 매매 하나를 이 수량·가격으로 기록하기 전/후의 쓸 수 있는 예수금 (원). `after` 는 0 아래로
- * 내려갈 수 있다 — 마이너스면 기록을 막는다.
+ * 내려갈 수 있다 — 매수로 마이너스가 되면(`buyShortfall`) 모자란 금액을 보여 주고 확인을 받은 뒤 기록한다.
  *
  * `before` 에는 이 매매를 빼고 다른 체결한 매매와, 다른 체결 전 매수 주문에 묶인 금액을 넣는다
  * (이 매매를 이미 기록했었다면 그 값은 뺀다). `after` 는 이 매매가 체결됐을 때 — 매수는 예수금을
@@ -52,6 +52,17 @@ export function tradeCashPreview(
     t.id === taskId ? { ...t, done: true, executedQuantity: quantity, executedPrice: price } : t
   );
   return { before, after: rawCashAfter(account, session, withTrade) - held };
+}
+
+/**
+ * 이 매수로 주문가능금액이 모자라는 금액 (원, 0 이상). 모자란 채로 기록하면 완료할 때 계좌 현금이
+ * 그만큼 마이너스(미수)가 된다. 매도는 예수금을 늘리기만 하므로 이미 마이너스여도 0 이다.
+ */
+export function buyShortfall(
+  action: RebalancingTaskAction,
+  preview: { before: number; after: number }
+): number {
+  return action === "매수" ? Math.max(0, -Math.round(preview.after)) : 0;
 }
 
 export interface RebalancingCashOutlook {

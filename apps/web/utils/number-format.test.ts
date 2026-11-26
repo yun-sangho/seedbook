@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   calculateReturnRate,
   formatReturnRate,
+  formatSignedWon,
   formatWithCommas,
   numberToKorean,
   parseNumericString,
@@ -69,6 +70,20 @@ describe("parseNumericString", () => {
 describe("formatWithCommas", () => {
   it("should format numbers with commas", () => {
     expect(formatWithCommas(1234567)).toBe("1,234,567");
+  });
+});
+
+describe("formatSignedWon", () => {
+  it("shows a positive amount with commas and 원", () => {
+    expect(formatSignedWon(1_234_567)).toBe("1,234,567원");
+  });
+
+  it("puts a unicode minus in front of a negative amount", () => {
+    expect(formatSignedWon(-31_776)).toBe("−31,776원");
+  });
+
+  it("rounds to whole 원", () => {
+    expect(formatSignedWon(-1_000.4)).toBe("−1,000원");
   });
 });
 
