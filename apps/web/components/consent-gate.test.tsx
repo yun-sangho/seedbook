@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import { CONSENT_CHECK_TIMEOUT_MS } from "@web/lib/consent-client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConsentGate } from "./consent-gate";
 
@@ -166,6 +167,29 @@ describe("ConsentGate", () => {
     fireEvent.click(box(/전체 동의/));
     await act(async () => fireEvent.click(agree()));
     expect(requests[0]?.body).toEqual({ versions: { terms: "2026-12-10", privacy: "2026-11-25" } });
+  });
+
+  // T34: 서버가 답하지 않으면(운영 web 의 DB 커넥션 풀이 막힘) 스피너에서 영원히 머물렀다.
+  it("offers a retry instead of spinning forever when the consent check never answers", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal(
+        "fetch",
+        (_url: string, init?: RequestInit) =>
+          new Promise<Response>((_, reject) => {
+            init?.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+          })
+      );
+      await open();
+      expect(screen.getByRole("status")).toBeInTheDocument();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(CONSENT_CHECK_TIMEOUT_MS);
+      });
+      expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("warns a new user that declining removes the new account, and does nothing on cancel", async () => {
