@@ -189,7 +189,7 @@ export const deviceCredential = seedbook.table(
 
 /**
  * 약관·개인정보 동의 기록. 문서의 버전마다 한 행이라 개정 뒤 다시 동의해도 이전 기록이 남는다.
- * 현재 버전은 `apps/web/lib/legal-documents.ts`. IP·기기 정보는 두지 않는다.
+ * 버전은 `legal_document` 의 (document, version). IP·기기 정보는 두지 않는다.
  */
 export const userConsent = seedbook.table(
   "user_consent",
@@ -203,6 +203,32 @@ export const userConsent = seedbook.table(
     agreedAt: timestamp("agreedAt", { precision: 3, mode: "date" }).notNull(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.document, t.version], name: "user_consent_pkey" })]
+);
+
+/**
+ * 공개한 약관·개인정보처리방침 버전. 레포(`src/legal/`)에서 쓰고 `db:legal:publish` 가 넣는다.
+ * 공개한 행은 고치지 않는다 — 바꾸려면 새 버전을 추가한다. 시행일(KST)이 지난 버전 중 가장 늦은 것이
+ * 현재 버전이다.
+ */
+export const legalDocument = seedbook.table(
+  "legal_document",
+  {
+    // "terms" | "privacy"
+    document: text("document").notNull(),
+    version: text("version").notNull(),
+    title: text("title").notNull(),
+    // 작은 마크다운 (`src/legal/markdown.ts`). HTML 은 쓰지 않는다.
+    body: text("body").notNull(),
+    // 바뀐 내용 요약. 첫 버전은 null.
+    summary: text("summary"),
+    effectiveDate: date("effectiveDate", { mode: "string" }).notNull(),
+    requiresConsent: boolean("requiresConsent").notNull(),
+    publishedAt: timestamp("publishedAt", { precision: 3, mode: "date" }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.document, t.version], name: "legal_document_pkey" }),
+    uniqueIndex("legal_document_document_effectiveDate_key").on(t.document, t.effectiveDate),
+  ]
 );
 
 // ─── Investments ────────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@ import { db } from "@seedbook/database";
 import { ACCOUNT_HEADER } from "@web/lib/account-header";
 import { auth } from "@web/lib/auth";
 import { hasRequiredConsents } from "@web/server/consents/consents";
+import { getLegalVersions } from "@web/server/legal/legal-versions";
 
 /**
  * Better Auth 세션을 조회해 사용자 id 를 반환한다. 세션이 없으면 null.
@@ -26,5 +27,6 @@ export async function resolveSessionUserId(request: Request): Promise<string | n
 export async function resolveUserId(request: Request): Promise<string | null> {
   const userId = await resolveSessionUserId(request);
   if (!userId) return null;
-  return (await hasRequiredConsents(db, userId)) ? userId : null;
+  const { versions } = await getLegalVersions();
+  return (await hasRequiredConsents(db, userId, versions, new Date())) ? userId : null;
 }

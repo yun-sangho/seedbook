@@ -6,6 +6,9 @@ const { getSession, hasRequiredConsents } = vi.hoisted(() => ({
 }));
 vi.mock("@seedbook/database", () => ({ db: {} }));
 vi.mock("@web/server/consents/consents", () => ({ hasRequiredConsents }));
+vi.mock("@web/server/legal/legal-versions", () => ({
+  getLegalVersions: async () => ({ versions: [], source: "database" }),
+}));
 vi.mock("@web/lib/auth", () => ({ auth: { api: { getSession } } }));
 
 const { resolveSessionUserId, resolveUserId } = await import("./auth-server");

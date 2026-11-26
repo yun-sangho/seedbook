@@ -6,7 +6,8 @@ import { DeleteAccountDialog } from "@web/components/mobile/delete-account-dialo
 import { authClient } from "@web/lib/auth-client";
 import { declineConsent, submitConsent } from "@web/lib/consent-client";
 import { reloadApp } from "@web/lib/device-storage";
-import { LEGAL_DOCUMENTS, type LegalDocumentId } from "@web/lib/legal-documents";
+import type { ConsentDocument } from "@web/lib/legal/catalog";
+import { koreanDate, legalDocumentHref } from "@web/lib/legal-documents";
 import { markSignedOut } from "@web/lib/native/biometric-login";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
@@ -26,17 +27,27 @@ const DECLINE_DESCRIPTION = {
   existing: "동의하기 전에는 서비스를 쓸 수 없어 로그아웃해요. 계정과 자산은 지우지 않아요.",
 };
 
-/** 약관·개인정보 동의 화면. 첫 가입, 기존 사용자, 약관 개정 때 모두 이 화면을 쓴다. */
-export function ConsentScreen({ newSignUp }: { newSignUp: boolean }) {
-  const [checked, setChecked] = useState<ReadonlySet<LegalDocumentId>>(new Set());
+/**
+ * 약관·개인정보 동의 화면. 첫 가입, 기존 사용자, 약관 개정 때 모두 이 화면을 쓴다. 개정이면 바뀐
+ * 문서마다 시행일과 바뀐 내용 요약을 보여 준다.
+ */
+export function ConsentScreen({
+  newSignUp,
+  documents,
+}: {
+  newSignUp: boolean;
+  documents: readonly ConsentDocument[];
+}) {
+  const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
   const [pending, setPending] = useState<"agree" | "decline" | null>(null);
   const [failed, setFailed] = useState(false);
   const [declineOpen, setDeclineOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const allChecked = checked.size === LEGAL_DOCUMENTS.length;
+  const allChecked = documents.every(({ document }) => checked.has(document));
+  const revised = documents.some(({ change }) => change !== null);
 
-  const toggle = (id: LegalDocumentId, next: boolean) => {
+  const toggle = (id: string, next: boolean) => {
     const updated = new Set(checked);
     if (next) updated.add(id);
     else updated.delete(id);
@@ -46,7 +57,7 @@ export function ConsentScreen({ newSignUp }: { newSignUp: boolean }) {
   const agree = async () => {
     setPending("agree");
     setFailed(false);
-    if ((await submitConsent()) === "failed") {
+    if ((await submitConsent(documents)) === "failed") {
       setPending(null);
       setFailed(true);
       return;
@@ -74,9 +85,11 @@ export function ConsentScreen({ newSignUp }: { newSignUp: boolean }) {
     <main className="bg-bg-layer-default text-fg-neutral flex h-dvh w-full flex-col overflow-y-auto px-x6 pt-[env(safe-area-inset-top)] pb-[calc(env(safe-area-inset-bottom)+24px)]">
       <div className="mx-auto flex w-full max-w-sm flex-1 flex-col gap-x8 pt-x16">
         <div className="flex flex-col gap-x2">
-          <h1 className="t8-bold">약관에 동의해 주세요</h1>
+          <h1 className="t8-bold">{revised ? "약관이 바뀌었어요" : "약관에 동의해 주세요"}</h1>
           <p className="t5-regular text-fg-neutral-muted break-keep">
-            Seedbook 을 이용하려면 아래 내용에 동의해야 해요.
+            {revised
+              ? "바뀐 내용을 확인하고 동의해야 Seedbook 을 계속 이용할 수 있어요."
+              : "Seedbook 을 이용하려면 아래 내용에 동의해야 해요."}
           </p>
         </div>
 
@@ -88,26 +101,35 @@ export function ConsentScreen({ newSignUp }: { newSignUp: boolean }) {
             tone="neutral"
             checked={allChecked}
             onCheckedChange={(next) =>
-              setChecked(next ? new Set(LEGAL_DOCUMENTS.map(({ id }) => id)) : new Set())
+              setChecked(next ? new Set(documents.map(({ document }) => document)) : new Set())
             }
           />
           <div className="border-stroke-neutral-subtle border-t" />
-          {LEGAL_DOCUMENTS.map(({ id, title, href }) => (
-            <div key={id} className="flex items-center justify-between gap-x2">
-              <Checkbox
-                label={`${title} 동의 (필수)`}
-                size="large"
-                tone="neutral"
-                checked={checked.has(id)}
-                onCheckedChange={(next) => toggle(id, next)}
-              />
-              <a
-                href={href}
-                aria-label={`${title} 보기`}
-                className="t4-regular text-fg-neutral-subtle shrink-0 underline underline-offset-4"
-              >
-                보기
-              </a>
+          {documents.map(({ document, title, change }) => (
+            <div key={document} className="flex flex-col gap-x1">
+              <div className="flex items-center justify-between gap-x2">
+                <Checkbox
+                  label={`${title} 동의 (필수)`}
+                  size="large"
+                  tone="neutral"
+                  checked={checked.has(document)}
+                  onCheckedChange={(next) => toggle(document, next)}
+                />
+                <a
+                  href={legalDocumentHref(document)}
+                  aria-label={`${title} 보기`}
+                  className="t4-regular text-fg-neutral-subtle shrink-0 underline underline-offset-4"
+                >
+                  보기
+                </a>
+              </div>
+              {change && (
+                <p className="t4-regular text-fg-neutral-muted break-keep pl-x8">
+                  {[`${koreanDate(change.effectiveDate)}부터`, change.summary]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              )}
             </div>
           ))}
         </div>
