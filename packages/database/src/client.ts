@@ -43,17 +43,32 @@ const globalForDb = globalThis as unknown as {
   __seedbookDb?: Database;
 };
 
+/**
+ * postgres.js 커넥션 풀 설정.
+ *
+ * - `prepare: false`: Supabase Transaction pooler (port 6543) 호환용. Direct connection /
+ *   Session pooler 에서도 안전하게 동작.
+ * - `connect_timeout`: 연결을 열지 못하면 기다리지 않고 실패한다 (초).
+ * - `idle_timeout` · `max_lifetime`: 풀러 연결을 오래 붙잡지 않는다. 운영 web 이 시작할 때 연
+ *   풀러 연결 10개를 몇 시간 들고 있다가 모두 답이 없어져, DB 를 쓰는 요청이 전부 멈춘 적이 있다
+ *   (T34). 쉬는 연결은 닫고, 오래된 연결은 새로 연다 (초).
+ */
+export function postgresPoolOptions(nodeEnv: string | undefined) {
+  return {
+    prepare: false,
+    max: nodeEnv === "production" ? 10 : 5,
+    connect_timeout: 10,
+    idle_timeout: 20,
+    max_lifetime: 60 * 30,
+  };
+}
+
 function createClient(): Sql {
   const url = process.env.DATABASE_URL;
   if (!url) {
     throw new Error("DATABASE_URL is not set. Set it in the environment before running queries.");
   }
-  // `prepare: false` 는 Supabase Transaction pooler (port 6543) 호환용. Direct
-  // connection / Session pooler 에서도 안전하게 동작.
-  return postgres(url, {
-    prepare: false,
-    max: process.env.NODE_ENV === "production" ? 10 : 5,
-  });
+  return postgres(url, postgresPoolOptions(process.env.NODE_ENV));
 }
 
 function ensureClient(): Sql {
@@ -93,6 +108,17 @@ export async function closeDb(): Promise<void> {
     globalForDb.__seedbookSql = undefined;
     globalForDb.__seedbookDb = undefined;
   }
+}
+
+/**
+ * 지금 풀을 버리고 다음 쿼리부터 새 풀을 쓴다. 쿼리가 답하지 않을 때(막힌 연결) 부른다. 옛 풀에서
+ * 진행 중인 쿼리는 잠깐 기다린 뒤 끊는다 — 기다리지 않고 바로 돌아온다.
+ */
+export function resetDbPool(): void {
+  const stale = globalForDb.__seedbookSql;
+  globalForDb.__seedbookSql = undefined;
+  globalForDb.__seedbookDb = undefined;
+  if (stale) void stale.end({ timeout: 5 }).catch(() => undefined);
 }
 
 export type { Database };

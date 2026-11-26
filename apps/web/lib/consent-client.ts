@@ -3,6 +3,12 @@ import type { ConsentDocument, LegalNotice } from "@web/lib/legal/catalog";
 
 const CONSENTS_URL = "/api/me/consents";
 
+/**
+ * 동의 확인을 기다리는 최대 시간. 앱을 열 때마다 이 응답을 기다리며 스피너를 보여 주므로, 서버가
+ * 답하지 않으면 포기하고 "다시 시도" 를 보여 준다 (T34 — 서버가 응답 없이 멈춰 스피너에 갇혔다).
+ */
+export const CONSENT_CHECK_TIMEOUT_MS = 15_000;
+
 export type ConsentStatus =
   | { kind: "agreed"; notices: LegalNotice[] }
   | { kind: "required"; newSignUp: boolean; documents: ConsentDocument[] }
@@ -22,10 +28,18 @@ function isDocumentLike(value: unknown): boolean {
   );
 }
 
-/** 확인하지 못하면 `failed` — 동의한 것으로 보지 않는다. */
+/** 확인하지 못하면(시간 초과 포함) `failed` — 동의한 것으로 보지 않는다. */
 export async function fetchConsentStatus(): Promise<ConsentStatus> {
+  const controller = new AbortController();
+  const timer = setTimeout(
+    () => controller.abort(new DOMException("consent check timed out", "TimeoutError")),
+    CONSENT_CHECK_TIMEOUT_MS
+  );
   try {
-    const response = await accountFetch(CONSENTS_URL, { cache: "no-store" });
+    const response = await accountFetch(CONSENTS_URL, {
+      cache: "no-store",
+      signal: controller.signal,
+    });
     if (!response.ok) return { kind: "failed" };
     const body = (await response.json()) as Record<string, unknown>;
     if (body.agreed === true) {
@@ -49,6 +63,8 @@ export async function fetchConsentStatus(): Promise<ConsentStatus> {
     };
   } catch {
     return { kind: "failed" };
+  } finally {
+    clearTimeout(timer);
   }
 }
 

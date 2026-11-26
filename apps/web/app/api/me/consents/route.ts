@@ -1,6 +1,7 @@
 import { db } from "@seedbook/database";
 import { resolveSessionUserId } from "@web/lib/auth-server";
 import { consentStatus, deleteNewSignUp, recordConsents } from "@web/server/consents/consents";
+import { DbTimeoutError, withDbTimeout } from "@web/server/db-timeout";
 import { getLegalVersions } from "@web/server/legal/legal-versions";
 
 /**
@@ -10,18 +11,36 @@ import { getLegalVersions } from "@web/server/legal/legal-versions";
  *   `{ agreed: false, newSignUp, documents }` (거부하면 계정이 지워지는 새 가입인지, 동의할 문서).
  * - `POST { versions }`: 동의 기록. 화면이 보여 준 버전이 지금과 다르면 409.
  * - `DELETE`: 동의 거부. 방금 만든 계정이면 지운다. 로그아웃은 클라이언트가 이어서 한다.
+ *
+ * 앱을 열 때마다 거치는 요청이라, DB 가 답하지 않으면 기다리지 않고 503 을 준다 (T34) — 클라이언트는
+ * "다시 시도" 를 보여 주고, 막힌 커넥션 풀은 새로 만든다 (`withDbTimeout`).
  */
 
 function unauthorized() {
   return Response.json({ error: "unauthorized" }, { status: 401 });
 }
 
-export async function GET(request: Request): Promise<Response> {
-  const userId = await resolveSessionUserId(request);
-  if (!userId) return unauthorized();
+function unavailable() {
+  return Response.json({ error: "database unavailable" }, { status: 503 });
+}
 
-  const { versions } = await getLegalVersions();
-  return Response.json(await consentStatus(db, userId, versions, new Date()));
+async function answerInTime(handle: () => Promise<Response>): Promise<Response> {
+  try {
+    return await withDbTimeout(handle);
+  } catch (error) {
+    if (error instanceof DbTimeoutError) return unavailable();
+    throw error;
+  }
+}
+
+export function GET(request: Request): Promise<Response> {
+  return answerInTime(async () => {
+    const userId = await resolveSessionUserId(request);
+    if (!userId) return unauthorized();
+
+    const { versions } = await getLegalVersions();
+    return Response.json(await consentStatus(db, userId, versions, new Date()));
+  });
 }
 
 export async function POST(request: Request): Promise<Response> {

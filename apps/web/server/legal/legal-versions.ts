@@ -5,6 +5,7 @@ import {
   type LegalDocumentVersion,
 } from "@seedbook/database/legal";
 import { inArray } from "drizzle-orm";
+import { DB_TIMEOUT_MS, withDbTimeout } from "../db-timeout";
 
 export interface LoadedLegalVersions {
   versions: readonly LegalDocumentVersion[];
@@ -18,16 +19,23 @@ export interface LoadedLegalVersions {
  *
  * - 아직 한 버전도 공개하지 않은 문서 — 배포 직후 `db:legal:publish` 를 돌리기 전. 첫 버전이 같아서
  *   기존 동의는 그대로 맞는다.
- * - DB 를 읽지 못함 — `/terms`·`/privacy` 는 계속 열린다. 동의 확인은 어차피 `user_consent` 를
- *   읽어야 해서 실패하고, 앱은 열리지 않는다 (fail closed).
+ * - DB 를 읽지 못하거나 `timeoutMs` 안에 답이 없음 — `/terms`·`/privacy` 는 계속 열린다. 동의
+ *   확인은 어차피 `user_consent` 를 읽어야 해서 실패하고, 앱은 열리지 않는다 (fail closed).
  */
-export async function loadLegalVersions(db: Database): Promise<LoadedLegalVersions> {
+export async function loadLegalVersions(
+  db: Database,
+  { timeoutMs = DB_TIMEOUT_MS, onTimeout }: { timeoutMs?: number; onTimeout?: () => void } = {}
+): Promise<LoadedLegalVersions> {
   let rows: Array<typeof schema.legalDocument.$inferSelect>;
   try {
-    rows = await db
-      .select()
-      .from(schema.legalDocument)
-      .where(inArray(schema.legalDocument.document, [...LEGAL_DOCUMENT_IDS]));
+    rows = await withDbTimeout(
+      async () =>
+        db
+          .select()
+          .from(schema.legalDocument)
+          .where(inArray(schema.legalDocument.document, [...LEGAL_DOCUMENT_IDS])),
+      { ms: timeoutMs, onTimeout }
+    );
   } catch (error) {
     console.error("[legal] legal_document 를 읽지 못해 레포의 문서로 대신한다", error);
     return { versions: LEGAL_DOCUMENT_VERSIONS, source: "fallback" };
