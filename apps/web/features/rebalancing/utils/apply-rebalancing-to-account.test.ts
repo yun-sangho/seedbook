@@ -492,3 +492,36 @@ describe("applyRebalancingToAccount with several cash items", () => {
     expect(cash).toEqual({ before: 1_500, after: 300 });
   });
 });
+
+describe("applyRebalancingToAccount with a partially filled order", () => {
+  // 10주 × 50,000원 매수 주문 중 4주가 49,000원, 1주가 50,000원에 체결됐다.
+  const partial = task({
+    done: false,
+    orderedQuantity: 10,
+    orderedPrice: 50_000,
+    filledQuantity: 5,
+    filledAmount: 4 * 49_000 + 50_000,
+  });
+
+  it("applies the filled shares and leaves the remainder out", () => {
+    const applied = applyRebalancingToAccount(account(), session([partial]), KRW);
+
+    expect(applied.account.holdings[0]?.quantity).toBe(15);
+    expect(applied.skipped).toEqual([]);
+  });
+
+  it("spends the cash of the fills at their prices", () => {
+    const applied = applyRebalancingToAccount(account(), session([partial]), KRW);
+
+    expect(applied.cashChange).toBe(-246_000);
+  });
+
+  it("does not apply an order with nothing filled yet", () => {
+    const ordered = task({ done: false, orderedQuantity: 10, orderedPrice: 50_000 });
+
+    const applied = applyRebalancingToAccount(account(), session([ordered]), KRW);
+
+    expect(applied.account.holdings[0]?.quantity).toBe(10);
+    expect(applied.cashChange).toBe(0);
+  });
+});

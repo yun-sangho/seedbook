@@ -2,7 +2,13 @@ import type { InvestmentItem } from "@web/features/investments/types/types";
 import { describe, expect, it } from "vitest";
 import type { RebalancingSession, RebalancingTask } from "../types/types";
 import { affordableQuantity } from "./affordable-quantity";
-import { buyShortfall, rebalancingCashOutlook, tradeCashPreview } from "./trade-cash-check";
+import { fillRebalancingTaskOrder, orderRebalancingTaskWith } from "./rebalancing-session";
+import {
+  buyShortfall,
+  rebalancingCashOutlook,
+  tradeCashPreview,
+  tradeCashPreviewFor,
+} from "./trade-cash-check";
 
 /** 예수금이 모자라는 금액 — 0 보다 크면 매매 입력 화면이 완료를 막는다. */
 const cashShortfallAfterTrade = (...args: Parameters<typeof tradeCashPreview>) =>
@@ -343,5 +349,62 @@ describe("buyShortfall", () => {
 
     expect(preview).toEqual({ before: -30_000, after: -40_000 });
     expect(buyShortfall("매수", preview)).toBe(40_000);
+  });
+});
+
+describe("cash with a partially filled buy order", () => {
+  // 10주 × 10,000원 매수 주문 중 4주가 9,900원에 체결됐다 — 잔량 6주는 주문 중.
+  const partial = () =>
+    task({ orderedQuantity: 10, orderedPrice: 10_000, filledQuantity: 4, filledAmount: 39_600 });
+
+  it("spends the filled cash now and holds only the remainder for the order", () => {
+    const outlook = rebalancingCashOutlook(account(200_000), session([partial()]));
+
+    expect(outlook.heldForOrders).toBe(60_000);
+    expect(outlook.now).toBe(200_000 - 39_600 - 60_000);
+  });
+
+  it("expects the remainder to fill at the order price", () => {
+    const outlook = rebalancingCashOutlook(account(200_000), session([partial()]));
+
+    expect(outlook.expected).toBe(200_000 - 39_600 - 60_000);
+  });
+
+  it("previews a further fill from the cash left after the earlier fills", () => {
+    const s = session([partial()]);
+    const next = fillRebalancingTaskOrder(s, "buy", 2, 10_000);
+
+    // 앞선 체결분은 이미 썼고, 이 주문의 묶인 금액은 이번 체결에 쓰이므로 before 에서 풀린다.
+    // after: 이번 2주 체결 + 남은 4주는 다시 주문 금액만큼 묶인다.
+    expect(tradeCashPreviewFor(account(200_000), s, "buy", next)).toEqual({
+      before: 160_400,
+      after: 160_400 - 20_000 - 40_000,
+    });
+  });
+
+  it("previews filling the last of the order like any fill", () => {
+    const s = session([partial()]);
+    const next = fillRebalancingTaskOrder(s, "buy", 6, 10_000);
+
+    expect(tradeCashPreviewFor(account(200_000), s, "buy", next).after).toBe(100_400);
+  });
+
+  it("previews amending the order as holding only the new remainder", () => {
+    const s = session([partial()]);
+    const next = orderRebalancingTaskWith(s, "buy", 8, 10_000);
+
+    expect(tradeCashPreviewFor(account(200_000), s, "buy", next)).toEqual({
+      before: 160_400,
+      after: 120_400,
+    });
+  });
+
+  it("previews editing a filled task's total without counting its earlier partial fills twice", () => {
+    const s = session([{ ...partial(), done: true, executedQuantity: 10, executedPrice: 9_960 }]);
+
+    expect(tradeCashPreview(account(200_000), s, "buy", 10, 10_000)).toEqual({
+      before: 200_000,
+      after: 100_000,
+    });
   });
 });

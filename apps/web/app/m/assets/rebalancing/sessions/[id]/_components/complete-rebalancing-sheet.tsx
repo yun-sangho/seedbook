@@ -16,6 +16,7 @@ import { formatQuantityChange } from "@web/features/rebalancing/utils/format-qua
 import { computeRebalancingResult } from "@web/features/rebalancing/utils/rebalancing-result";
 import {
   executedPriceOf,
+  isPartiallyFilled,
   rebalancingTaskStatus,
 } from "@web/features/rebalancing/utils/rebalancing-session";
 import { cn } from "@web/lib/utils";
@@ -75,6 +76,7 @@ export function CompleteRebalancingSheet({
   const canApply = preview !== null;
   const uncheckedCount = session.tasks.filter((t) => !t.done).length;
   const orderedCount = session.tasks.filter((t) => rebalancingTaskStatus(t) === "ordered").length;
+  const partialCount = session.tasks.filter(isPartiallyFilled).length;
   // 남은 매매가 있으면 "완료"가 아니라 "종료"다.
   const stopping = uncheckedCount > 0;
   const willApply = canApply && applyToAccount;
@@ -90,8 +92,8 @@ export function CompleteRebalancingSheet({
       const prices = new Map<string, number>();
       for (const [key, point] of livePrices) prices.set(key, point.close);
       for (const task of session.tasks) {
-        // 매매한 종목은 실제 체결 가격, 남은 매매는 시작 시점 가격.
-        const price = task.done ? executedPriceOf(task) : task.price;
+        // 매매한 종목은 실제 체결 가격(부분 체결이면 평균가), 남은 매매는 시작 시점 가격.
+        const price = executedPriceOf(task) ?? task.price;
         if (price !== null) prices.set(stockPriceKey(task.market, task.ticker), price);
       }
       const result = portfolio
@@ -123,6 +125,8 @@ export function CompleteRebalancingSheet({
             <Callout
               tone="warning"
               description={`남은 매매 ${uncheckedCount}건은 하지 않은 것으로 기록되고, 계좌에도 반영되지 않아요.${
+                partialCount > 0 ? ` 부분 체결된 ${partialCount}건은 체결된 수량만 반영돼요.` : ""
+              }${
                 orderedCount > 0
                   ? ` 주문 중인 ${orderedCount}건은 증권사 앱에서 따로 취소해 주세요.`
                   : ""
@@ -211,7 +215,7 @@ function ApplyPreview({
               }
               before={`${formatWithCommas(change.before)}주`}
               after={`${formatWithCommas(change.after)}주`}
-              price={price !== null ? `체결가 ${formatWithCommas(price)}원` : undefined}
+              price={price !== null ? `체결가 ${formatWithCommas(Math.round(price))}원` : undefined}
             />
           );
         })}

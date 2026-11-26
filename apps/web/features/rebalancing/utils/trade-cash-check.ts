@@ -1,7 +1,12 @@
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import type { RebalancingSession, RebalancingTask, RebalancingTaskAction } from "../types/types";
 import { applyRebalancingToAccount } from "./apply-rebalancing-to-account";
-import { rebalancingTaskStatus } from "./rebalancing-session";
+import {
+  completeRebalancingTaskWith,
+  filledQuantityOf,
+  rebalancingTaskStatus,
+  remainingOrderQuantity,
+} from "./rebalancing-session";
 
 /**
  * 계좌에 반영할 때와 같은 계산(`applyRebalancingToAccount`)으로 현금 전체 합(모든 현금 항목)을
@@ -19,24 +24,33 @@ function rawCashAfter(
 }
 
 /**
- * 체결 전 매수 주문에 묶인 금액 (원) — 증권사의 주문가능금액처럼 예수금에서 미리 뺀다.
- * 매도 주문은 체결돼야 예수금이 들어오므로 묶지 않는다.
+ * 체결 전 매수 주문에 묶인 금액 (원) — 증권사의 주문가능금액처럼 예수금에서 미리 뺀다. 부분 체결된
+ * 주문은 잔량만 묶는다. 매도 주문은 체결돼야 예수금이 들어오므로 묶지 않는다.
  */
 function heldForBuyOrders(tasks: RebalancingTask[], exceptTaskId?: string): number {
   return tasks
     .filter((t) => t.id !== exceptTaskId && t.action === "매수")
-    .filter((t) => rebalancingTaskStatus(t) === "ordered")
-    .reduce((sum, t) => sum + (t.orderedQuantity ?? 0) * (t.orderedPrice ?? 0), 0);
+    .reduce((sum, t) => sum + remainingOrderQuantity(t) * (t.orderedPrice ?? 0), 0);
+}
+
+/** 체결한 매매(부분 체결 포함)를 넣고 체결 전 매수 주문에 묶인 금액을 뺀 쓸 수 있는 예수금. */
+function availableCash(
+  account: InvestmentItem,
+  session: RebalancingSession,
+  exceptHoldOf?: string
+): number {
+  return (
+    rawCashAfter(account, session, session.tasks) - heldForBuyOrders(session.tasks, exceptHoldOf)
+  );
 }
 
 /**
- * 매매 하나를 이 수량·가격으로 기록하기 전/후의 쓸 수 있는 예수금 (원). `after` 는 0 아래로
- * 내려갈 수 있다 — 매수로 마이너스가 되면(`buyShortfall`) 모자란 금액을 보여 주고 확인을 받은 뒤 기록한다.
- *
- * `before` 에는 이 매매를 빼고 다른 체결한 매매와, 다른 체결 전 매수 주문에 묶인 금액을 넣는다
- * (이 매매를 이미 기록했었다면 그 값은 뺀다). `after` 는 이 매매가 체결됐을 때 — 매수는 예수금을
- * 쓰고 매도는 예수금이 들어온다. 매수 주문은 주문 금액만큼 묶여 체결과 같은 값이 되고, 매도 주문은
- * 예수금을 줄이지 않으니 따로 계산하지 않는다.
+ * 매매 하나를 이 수량·가격으로 체결했다고 기록하기 전/후의 쓸 수 있는 예수금 (원). 수량은 이 매매의
+ * 전체 체결 수량이다 — 바로 체결하거나, 체결한 값을 고칠 때 쓴다 (앞선 부분 체결은 이 값에 들어간
+ * 것으로 보고 따로 세지 않는다). 주문을 기록할 때도 쓴다 — 매수 주문은 주문 금액만큼 묶여 체결과
+ * 같은 값이 되고, 매도 주문은 예수금을 줄이지 않으니 따로 계산하지 않는다.
+ * `after` 는 0 아래로 내려갈 수 있다 — 매수로 마이너스가 되면(`buyShortfall`) 모자란 금액을 보여 주고
+ * 확인을 받은 뒤 기록한다.
  */
 export function tradeCashPreview(
   account: InvestmentItem,
@@ -45,13 +59,35 @@ export function tradeCashPreview(
   quantity: number,
   price: number
 ): { before: number; after: number } {
-  const without = session.tasks.map((t) => (t.id === taskId ? { ...t, done: false } : t));
-  const held = heldForBuyOrders(session.tasks, taskId);
-  const before = rawCashAfter(account, session, without) - held;
-  const withTrade = session.tasks.map((t) =>
-    t.id === taskId ? { ...t, done: true, executedQuantity: quantity, executedPrice: price } : t
-  );
-  return { before, after: rawCashAfter(account, session, withTrade) - held };
+  const reset = {
+    ...session,
+    tasks: session.tasks.map((t) =>
+      t.id === taskId ? { ...t, filledQuantity: 0, filledAmount: 0 } : t
+    ),
+  };
+  const next = completeRebalancingTaskWith(reset, taskId, quantity, price);
+  return tradeCashPreviewFor(account, reset, taskId, next);
+}
+
+/**
+ * 매매 하나를 바꾸기 전/후의 쓸 수 있는 예수금 (원) — `next` 는 바꾼 뒤의 리밸런싱 (주문 체결·부분
+ * 체결·정정 등의 결과).
+ *
+ * `before` 에는 이 매매의 체결 기록(`done`)과 이 매매의 주문에 묶인 금액을 빼고, 다른 체결한 매매와
+ * 다른 체결 전 매수 주문에 묶인 금액, 이 매매의 앞선 부분 체결을 넣는다. `after` 는 `next` 그대로 —
+ * 부분 체결 뒤 남은 주문이나 정정한 주문은 잔량만큼 다시 묶인다.
+ */
+export function tradeCashPreviewFor(
+  account: InvestmentItem,
+  session: RebalancingSession,
+  taskId: string,
+  next: RebalancingSession
+): { before: number; after: number } {
+  const base = {
+    ...session,
+    tasks: session.tasks.map((t) => (t.id === taskId ? { ...t, done: false } : t)),
+  };
+  return { before: availableCash(account, base, taskId), after: availableCash(account, next) };
 }
 
 /**
@@ -67,14 +103,14 @@ export function buyShortfall(
 
 export interface RebalancingCashOutlook {
   /**
-   * 지금 쓸 수 있는 예수금 (원) — 시작 시 현금 투입/인출과 체결한 매매를 넣고, 체결 전 매수
-   * 주문에 묶인 금액을 뺀 값. 0 아래로 내려갈 수 있다.
+   * 지금 쓸 수 있는 예수금 (원) — 시작 시 현금 투입/인출과 체결한 매매(부분 체결 포함)를 넣고,
+   * 체결 전 매수 주문에 묶인 금액(부분 체결이면 잔량)을 뺀 값. 0 아래로 내려갈 수 있다.
    */
   now: number;
   /** 체결 전 매수 주문에 묶인 금액 (원). `now` 에서 이미 뺐다. */
   heldForOrders: number;
   /**
-   * 남은 매매를 모두 하면 남을 예수금 (원). 주문한 매매는 주문 수량·가격, 대기 중인 매매는 권장
+   * 남은 매매를 모두 하면 남을 예수금 (원). 주문한 매매는 주문 수량·가격(부분 체결분은 체결한 값), 대기 중인 매매는 권장
    * 수량·시작 시점 가격대로 체결된다고 본다. 시세를 몰랐던 매매는 빠진다.
    */
   expected: number;
@@ -90,17 +126,23 @@ export function rebalancingCashOutlook(
 ): RebalancingCashOutlook {
   const planned = session.tasks.map((t) => {
     if (t.done) return t;
-    const ordered = rebalancingTaskStatus(t) === "ordered";
+    if (rebalancingTaskStatus(t) !== "ordered") {
+      return { ...t, done: true, executedQuantity: t.quantity, executedPrice: t.price };
+    }
+    // 앞선 부분 체결은 체결한 값으로, 잔량은 주문가로 체결된다고 본다.
+    const remaining = remainingOrderQuantity(t);
+    const quantity = filledQuantityOf(t) + remaining;
+    const amount = (t.filledAmount ?? 0) + remaining * (t.orderedPrice ?? 0);
     return {
       ...t,
       done: true,
-      executedQuantity: ordered ? t.orderedQuantity : t.quantity,
-      executedPrice: ordered ? t.orderedPrice : t.price,
+      executedQuantity: quantity,
+      executedPrice: quantity > 0 ? amount / quantity : t.orderedPrice,
     };
   });
   const heldForOrders = heldForBuyOrders(session.tasks);
   return {
-    now: rawCashAfter(account, session, session.tasks) - heldForOrders,
+    now: availableCash(account, session),
     heldForOrders,
     expected: rawCashAfter(account, session, planned),
   };

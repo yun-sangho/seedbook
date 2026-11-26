@@ -17,6 +17,8 @@ function validTask(overrides: Record<string, unknown> = {}) {
     executedPrice: null,
     orderedQuantity: null,
     orderedPrice: null,
+    filledQuantity: null,
+    filledAmount: null,
     done: false,
     ...overrides,
   };
@@ -139,6 +141,41 @@ describe("parseRebalancingFields", () => {
 
   it("rejects an order price that is not a number", () => {
     const fields = validFields({ tasks: [validTask({ orderedPrice: "69400" })] });
+
+    expect(parseRebalancingFields(fields)).toBeNull();
+  });
+
+  it("keeps the partial fill of an ordered task", () => {
+    const fields = validFields({
+      tasks: [
+        validTask({
+          orderedQuantity: 7,
+          orderedPrice: 69_400,
+          filledQuantity: 3,
+          filledAmount: 208_200,
+        }),
+      ],
+    });
+
+    expect(parseRebalancingFields(fields)?.tasks[0]).toMatchObject({
+      filledQuantity: 3,
+      filledAmount: 208_200,
+    });
+  });
+
+  it("treats a missing partial fill as none for tasks saved before partial fills", () => {
+    const legacy: Record<string, unknown> = validTask();
+    delete legacy.filledQuantity;
+    delete legacy.filledAmount;
+
+    expect(parseRebalancingFields(validFields({ tasks: [legacy] }))?.tasks[0]).toMatchObject({
+      filledQuantity: null,
+      filledAmount: null,
+    });
+  });
+
+  it("rejects a partial fill quantity that is not a number", () => {
+    const fields = validFields({ tasks: [validTask({ filledQuantity: "3" })] });
 
     expect(parseRebalancingFields(fields)).toBeNull();
   });

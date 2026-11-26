@@ -2,7 +2,7 @@ import type { CashItem, InvestmentItem, StockHolding } from "@web/features/inves
 import { stockPriceKey } from "@web/features/investments/utils/use-stock-prices";
 import { sumCash } from "@web/features/portfolio/utils/linked-portfolio-status";
 import type { RebalancingSession, RebalancingTask } from "../types/types";
-import { executedPriceOf, executedQuantityOf } from "./rebalancing-session";
+import { executedPriceOf, executedQuantityOf, isPartiallyFilled } from "./rebalancing-session";
 
 const DEFAULT_CASH_LABEL = "예수금";
 
@@ -38,6 +38,7 @@ export interface CashChange {
  * 완료한 리밸런싱의 매매를 계좌에 반영한다.
  *
  * - 완료한 할 일의 실제 수량(`executedQuantityOf`)만큼 보유 수량을 늘리거나 줄인다 (0 아래로 내려가지 않음).
+ *   부분 체결된 주문은 체결된 수량만 평균가로 반영하고 잔량은 반영하지 않는다.
  *   같은 종목이 여러 줄이면 매도는 앞 줄부터 차례로 뺀다. 보유보다 많이 판 기록이면
  *   실제로 있던 수량만큼만 팔고, 예수금도 그만큼만 더한다.
  *   보유하지 않던 종목을 샀으면 새 보유 종목을 만든다 (`currencyFor` 로 통화를 정한다).
@@ -60,7 +61,7 @@ export function applyRebalancingToAccount(
   const holdingChanges: HoldingChange[] = [];
 
   for (const task of session.tasks) {
-    if (!task.done) continue;
+    if (!task.done && !isPartiallyFilled(task)) continue;
     const tradeQuantity = executedQuantityOf(task);
     const tradePrice = executedPriceOf(task);
     if (tradeQuantity === null || tradePrice === null || tradeQuantity <= 0) {

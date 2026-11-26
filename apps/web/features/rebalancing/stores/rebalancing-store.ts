@@ -8,6 +8,7 @@ import {
   cancelRebalancingTaskOrder,
   completeRebalancing,
   completeRebalancingTaskWith,
+  fillRebalancingTaskOrder,
   orderRebalancingTaskWith,
   toggleRebalancingTask,
 } from "../utils/rebalancing-session";
@@ -35,7 +36,11 @@ interface RebalancingState {
     orderedQuantity: number,
     orderedPrice: number
   ) => void;
-  /** 주문을 취소해 대기로 돌린다. */
+  /**
+   * 주문의 체결을 기록한다. 주문 수량에 못 미치면 부분 체결로 쌓고 잔량은 주문 중으로 둔다.
+   */
+  fillTaskOrder: (sessionId: string, taskId: string, quantity: number, price: number) => void;
+  /** 주문을 취소해 대기로 돌린다. 부분 체결됐으면 잔량만 취소해 체결된 만큼으로 체결을 마친다. */
   cancelTaskOrder: (sessionId: string, taskId: string) => void;
   /** 완료 기록으로 넘긴다. 계좌에 반영했으면 반영 후 구성을 함께 남긴다. */
   completeRebalancing: (sessionId: string, result?: RebalancingResult | null) => void;
@@ -83,6 +88,14 @@ export const useRebalancingStore = create<RebalancingState>()(
             s.id === sessionId
               ? orderRebalancingTaskWith(s, taskId, orderedQuantity, orderedPrice)
               : s
+          ),
+        }));
+      },
+
+      fillTaskOrder: (sessionId, taskId, quantity, price) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? fillRebalancingTaskOrder(s, taskId, quantity, price) : s
           ),
         }));
       },

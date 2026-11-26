@@ -32,12 +32,15 @@ import {
   canCompleteRebalancing,
   executedPriceOf,
   executedQuantityOf,
+  filledQuantityOf,
   groupRebalancingTasks,
+  isPartiallyFilled,
   isRebalancingCompleted,
   isRebalancingStopped,
   type RebalancingTaskGroup,
   rebalancingProgress,
   rebalancingTaskStatus,
+  remainingOrderQuantity,
 } from "@web/features/rebalancing/utils/rebalancing-session";
 import {
   type RebalancingTaskSort,
@@ -396,6 +399,14 @@ const ENDED_LABEL: Record<RebalancingTaskSection, string> = {
 function TaskStatusBadge({ task, ended }: { task: RebalancingTask; ended: boolean }) {
   const status = rebalancingTaskStatus(task);
   const { label, tone } = STATUS_BADGE[status];
+  // 부분 체결된 주문은 주문 중 그룹에 두되 배지로 구분한다 (끝난 기록에서도 일부는 체결됐다).
+  if (isPartiallyFilled(task)) {
+    return (
+      <Badge tone={tone} variant="weak">
+        부분 체결
+      </Badge>
+    );
+  }
   return (
     <Badge tone={tone} variant="weak">
       {ended ? ENDED_LABEL[status] : label}
@@ -526,13 +537,16 @@ function CashOutlook({
 function shownTrade(task: RebalancingTask): { quantity: number | null; price: number | null } {
   switch (rebalancingTaskStatus(task)) {
     case "filled":
-      return { quantity: executedQuantityOf(task), price: executedPriceOf(task) };
+      return { quantity: executedQuantityOf(task), price: roundedPrice(executedPriceOf(task)) };
     case "ordered":
       return { quantity: task.orderedQuantity ?? null, price: task.orderedPrice ?? null };
     case "pending":
       return { quantity: task.quantity, price: task.price };
   }
 }
+
+/** 평균 체결가처럼 원 아래 자리가 있는 가격은 원 단위로 보여 준다. */
+const roundedPrice = (price: number | null) => (price === null ? null : Math.round(price));
 
 /** 매매할 때 먼저 보는 건 몇 주인지 — 행 오른쪽에 크게. 수량을 모르면 비워 둔다. */
 function TaskQuantity({ task }: { task: RebalancingTask }) {
@@ -562,6 +576,15 @@ function TaskPrice({ task }: { task: RebalancingTask }) {
  */
 function TaskDetail({ task }: { task: RebalancingTask }) {
   const { quantity, price } = shownTrade(task);
+  if (isPartiallyFilled(task)) {
+    // 부분 체결: 주문 수량 중 몇 주가 체결됐고 몇 주가 남았는지.
+    return (
+      <span className="tabular-nums">
+        {formatWithCommas(filledQuantityOf(task))}주 체결 · 잔량{" "}
+        {formatWithCommas(remainingOrderQuantity(task))}주
+      </span>
+    );
+  }
   const differs = !!quantity && task.quantity !== null && quantity !== task.quantity;
   const total = quantity !== null && price !== null ? Math.round(quantity * price) : null;
   if (total === null && !differs) return null;

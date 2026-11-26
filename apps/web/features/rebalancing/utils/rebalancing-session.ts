@@ -120,7 +120,7 @@ export function groupRebalancingTasks(
 
 /**
  * 증권사에 넣은 주문을 기록한다 (이미 주문했으면 값을 바꾼다). 체결한 할 일은 바꾸지 않는다 —
- * 체결을 먼저 취소한다.
+ * 체결을 먼저 취소한다. 부분 체결된 주문은 이미 체결된 수량보다 많게만 정정할 수 있다.
  */
 export function orderRebalancingTaskWith(
   session: RebalancingSession,
@@ -128,19 +128,66 @@ export function orderRebalancingTaskWith(
   orderedQuantity: number,
   orderedPrice: number
 ): RebalancingSession {
+  const target = session.tasks.find((t) => t.id === taskId);
+  if (target && orderedQuantity <= filledQuantityOf(target)) return session;
   return updateUnfilledTask(session, taskId, (t) => ({ ...t, orderedQuantity, orderedPrice }));
 }
 
-/** 주문을 취소해 대기로 돌린다. 체결한 할 일은 바꾸지 않는다. */
+/**
+ * 주문을 취소한다. 체결된 것이 없으면 대기로 돌아가고, 부분 체결됐으면 잔량만 취소해 체결된
+ * 수량·평균가로 체결을 마친다 (잔량 취소). 체결한 할 일은 바꾸지 않는다.
+ */
 export function cancelRebalancingTaskOrder(
   session: RebalancingSession,
   taskId: string
 ): RebalancingSession {
-  return updateUnfilledTask(session, taskId, (t) => ({
-    ...t,
-    orderedQuantity: null,
-    orderedPrice: null,
-  }));
+  return updateUnfilledTask(session, taskId, (t) =>
+    isPartiallyFilled(t)
+      ? finishFill(t, filledQuantityOf(t), t.filledAmount ?? 0)
+      : { ...t, orderedQuantity: null, orderedPrice: null }
+  );
+}
+
+/**
+ * 주문의 체결을 기록한다 (주문 중인 할 일만). 이번 체결과 앞선 부분 체결을 합쳐 주문 수량에 못
+ * 미치면 부분 체결로 쌓고 잔량은 주문 중으로 둔다. 주문 수량을 채우면(넘어도) 합친 수량과 평균가로
+ * 체결을 마친다 — 앞선 부분 체결 기록은 남겨 두어 체결을 취소하면 부분 체결 상태로 돌아간다.
+ */
+export function fillRebalancingTaskOrder(
+  session: RebalancingSession,
+  taskId: string,
+  quantity: number,
+  price: number
+): RebalancingSession {
+  const target = session.tasks.find((t) => t.id === taskId);
+  if (!target || rebalancingTaskStatus(target) !== "ordered") return session;
+  return updateUnfilledTask(session, taskId, (t) => {
+    const filledQuantity = filledQuantityOf(t) + quantity;
+    const filledAmount = (t.filledAmount ?? 0) + quantity * price;
+    if (filledQuantity < (t.orderedQuantity ?? 0)) return { ...t, filledQuantity, filledAmount };
+    return finishFill(t, filledQuantity, filledAmount);
+  });
+}
+
+/** 합친 수량·금액으로 체결을 마친다. 체결 가격은 평균가 (금액 ÷ 수량). */
+function finishFill(task: RebalancingTask, quantity: number, amount: number): RebalancingTask {
+  return { ...task, done: true, executedQuantity: quantity, executedPrice: amount / quantity };
+}
+
+/** 부분 체결로 지금까지 체결된 수량 (주). 부분 체결이 없었으면 0. */
+export function filledQuantityOf(task: RebalancingTask): number {
+  return task.filledQuantity ?? 0;
+}
+
+/** 주문 중이고 일부가 체결된 할 일 — 체결된 만큼은 거래한 것으로 보고 잔량은 주문 중으로 둔다. */
+export function isPartiallyFilled(task: RebalancingTask): boolean {
+  return rebalancingTaskStatus(task) === "ordered" && filledQuantityOf(task) > 0;
+}
+
+/** 아직 체결되지 않은 주문 수량 (주). 주문 중이 아니면 0. */
+export function remainingOrderQuantity(task: RebalancingTask): number {
+  if (rebalancingTaskStatus(task) !== "ordered") return 0;
+  return Math.max(0, (task.orderedQuantity ?? 0) - filledQuantityOf(task));
 }
 
 function updateUnfilledTask(
@@ -182,15 +229,23 @@ export function completeRebalancingTaskWith(
   };
 }
 
-/** 실제로 사고판 수량. 완료하지 않았으면 null, 수량 없이 체크했으면 권장 수량. */
+/**
+ * 실제로 사고판 수량. 부분 체결된 주문이면 지금까지 체결된 수량, 체결하지 않았으면 null,
+ * 수량 없이 체크했으면 권장 수량.
+ */
 export function executedQuantityOf(task: RebalancingTask): number | null {
-  if (!task.done) return null;
+  if (!task.done) return isPartiallyFilled(task) ? filledQuantityOf(task) : null;
   return task.executedQuantity ?? task.quantity;
 }
 
-/** 실제로 사고판 가격 (주당). 완료하지 않았으면 null, 가격 없이 체크했으면 시작 시점 가격. */
+/**
+ * 실제로 사고판 가격 (주당). 부분 체결된 주문이면 지금까지 체결된 평균가, 체결하지 않았으면
+ * null, 가격 없이 체크했으면 시작 시점 가격.
+ */
 export function executedPriceOf(task: RebalancingTask): number | null {
-  if (!task.done) return null;
+  if (!task.done) {
+    return isPartiallyFilled(task) ? (task.filledAmount ?? 0) / filledQuantityOf(task) : null;
+  }
   return task.executedPrice ?? task.price;
 }
 
