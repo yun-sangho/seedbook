@@ -161,6 +161,25 @@ describe("buildRebalancingTasks", () => {
       expect(cost(tasks, "매수")).toBeLessThanOrEqual(50_000 + cost(tasks, "매도"));
     });
 
+    it("pays back negative cash from sell proceeds before buying", () => {
+      // 예수금 −100,000원 (미수) + 매도 2주 200,000원 = 100,000원. 매수 1.5주 → 2주 = 200,000원 → 1주
+      const tasks = buildRebalancingTasks(
+        summary([sell("S", -200_000), buy("B", 150_000)], -100_000),
+        prices({ S: 100_000, B: 100_000 })
+      );
+
+      expect(tasks.find((t) => t.id === "B")?.quantity).toBe(1);
+    });
+
+    it("cuts every buy to 0 shares when nothing pays back negative cash", () => {
+      const tasks = buildRebalancingTasks(
+        summary([buy("A", 100_000), buy("B", 50_000)], -100_000),
+        prices({ A: 50_000, B: 50_000 })
+      );
+
+      expect(tasks.map((t) => t.quantity)).toEqual([0, 0]);
+    });
+
     it("cuts more buys when a sell rounds down", () => {
       // 매도 2.4주 → 2주 = 200,000원 (권장 240,000원). 예수금 0원.
       // 매수 A 1주 (120,000원), B 1주 (120,000원) = 240,000원 → 하나를 0주로 (같으면 앞 줄)

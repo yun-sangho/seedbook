@@ -43,7 +43,8 @@ export function linkedPortfolioStatus(
   // 예수금도 리밸런싱 대상이다 (목표 0원 — 모두 목표 비중대로 투자).
   const cashBalance = sumCash(account);
 
-  if (portfolio.allocations.length === 0 || actual.totalStockValue + cashBalance === 0) {
+  if (portfolio.allocations.length === 0 || actual.totalStockValue + cashBalance <= 0) {
+    // 값을 매길 게 없거나, 마이너스 현금(미수)이 보유 종목보다 커서 비중을 정할 수 없다.
     return { ...base, state: "unknown", breachedCount: 0, maxAbsGapPercent: 0 };
   }
 

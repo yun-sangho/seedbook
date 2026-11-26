@@ -138,11 +138,10 @@ export function computeRebalancingGap(
   const targetSum = allocations.reduce((acc, a) => acc + (a.targetPercent || 0), 0);
   const unallocatedPercent = Math.max(0, MAX_TOTAL_PERCENT - targetSum);
 
-  // 투입/인출을 반영한 뒤의 예수금. 인출이 예수금보다 크면 0 (나머지는 매도로 충당).
+  // 투입/인출을 반영한 뒤의 예수금(거래 가능 금액). 마이너스면 (주문가능금액이 모자란 채로 매수한
+  // 미수, 또는 예수금보다 큰 인출) 그만큼 매도로 메워야 한다 — 비중도 마이너스로 보여 이격에 걸린다.
   const cashRow =
-    cashBalance === undefined
-      ? undefined
-      : buildCashRow(Math.max(0, cashBalance + cashDelta), newBaseValue);
+    cashBalance === undefined ? undefined : buildCashRow(cashBalance + cashDelta, newBaseValue);
 
   return {
     rows,

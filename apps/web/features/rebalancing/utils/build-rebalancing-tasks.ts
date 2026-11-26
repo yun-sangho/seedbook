@@ -44,7 +44,7 @@ export function buildRebalancingTasks(
 
   tasks.sort((a, b) => ACTION_ORDER[a.action] - ACTION_ORDER[b.action] || b.amount - a.amount);
   // 예수금 행(`cashBalance` 를 준 계산)이 있어야 쓸 수 있는 돈을 안다 — 거래 가능 금액
-  // (예수금 + cashDelta, 0 아래로 내려가지 않음).
+  // (예수금 + cashDelta). 마이너스(미수)면 매도 대금으로 먼저 메운다.
   if (!summary.cashRow) return tasks;
   return fitBuysToCash(tasks, summary.cashRow.actualValue);
 }

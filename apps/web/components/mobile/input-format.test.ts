@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { formatMoneyDraft, moneyDraftReading, sanitizePercentDraft } from "./input-format";
+import {
+  formatMoneyDraft,
+  moneyDraftReading,
+  sanitizePercentDraft,
+  signMoneyDraft,
+} from "./input-format";
 
 describe("formatMoneyDraft", () => {
   it("adds thousands separators", () => {
@@ -62,5 +67,19 @@ describe("moneyDraftReading", () => {
   it("shows nothing for empty or zero input", () => {
     expect(moneyDraftReading("")).toBeUndefined();
     expect(moneyDraftReading("0")).toBeUndefined();
+  });
+});
+
+describe("signMoneyDraft", () => {
+  it("keeps the draft as is when it is not negative", () => {
+    expect(signMoneyDraft("12,000", false)).toBe("12,000");
+  });
+
+  it("puts a minus in front of a negative draft so it parses below zero", () => {
+    expect(signMoneyDraft("12,000", true)).toBe("-12,000");
+  });
+
+  it("leaves an empty draft empty even when negative", () => {
+    expect(signMoneyDraft("", true)).toBe("");
   });
 });

@@ -316,6 +316,28 @@ describe("computeRebalancingGap", () => {
       expect(result.cashRow?.gapPercent).toBeCloseTo(-100);
     });
 
+    it("reports negative cash (bought short of cash) as a negative cash row", () => {
+      // 주식 A 1,100k + 예수금 −100k (미수), 목표 A 100% → 기준 금액 1,000k
+      const a = makeAllocation({ ticker: "A", targetPercent: 100 });
+      const perStock = actualMap([["KOSPI:A", 1_100_000]], 1_100_000);
+
+      const result = computeRebalancingGap([a], perStock, 1_100_000, 0, { cashBalance: -100_000 });
+
+      expect(result.cashRow?.actualValue).toBe(-100_000);
+      expect(result.cashRow?.actualPercent).toBeCloseTo(-10);
+      expect(result.cashRow?.gapPercent).toBeCloseTo(10);
+    });
+
+    it("sells enough to pay back negative cash", () => {
+      const a = makeAllocation({ ticker: "A", targetPercent: 100 });
+      const perStock = actualMap([["KOSPI:A", 1_100_000]], 1_100_000);
+
+      const result = computeRebalancingGap([a], perStock, 1_100_000, 0, { cashBalance: -100_000 });
+
+      expect(result.newBaseValue).toBe(1_000_000);
+      expect(result.rows[0]).toMatchObject({ gapValue: -100_000, action: "매도" });
+    });
+
     it("has no cash row when no cash balance option is given (desktop behaviour unchanged)", () => {
       const a = makeAllocation({ ticker: "A", targetPercent: 100 });
       const perStock = actualMap([["KOSPI:A", 500_000]], 500_000);

@@ -38,6 +38,7 @@ import { ResultSection } from "@web/seed-design/ui/result-section";
 import {
   calculateReturnRate,
   formatReturnRate,
+  formatSignedWon,
   formatWithCommas,
   numberToKorean,
   parseNumericString,
@@ -221,7 +222,7 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
             />
             <InlineAmount
               label={CASH_LABEL}
-              value={`${formatWithCommas(cashTotal)}원`}
+              value={formatSignedWon(cashTotal)}
               onEdit={() => setEditing({ kind: "cash" })}
             />
           </div>
@@ -405,6 +406,7 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
         }
         value={cashTotal}
         onSave={saveCashTotal}
+        allowNegative
       />
       {editingHolding && (
         <EditHoldingSheet

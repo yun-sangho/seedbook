@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ConfirmDialog } from "@web/components/mobile/confirm-dialog";
-import { formatMoneyDraft } from "@web/components/mobile/input-format";
+import { formatMoneyDraft, signMoneyDraft } from "@web/components/mobile/input-format";
 import { MoneyField } from "@web/components/mobile/money-field";
 import { ACCOUNT_COLORS } from "@web/features/investments/types/constants";
 import type { InvestmentItem, StockHolding } from "@web/features/investments/types/types";
@@ -14,6 +14,7 @@ import {
   BottomSheetFooter,
   BottomSheetRoot,
 } from "@web/seed-design/ui/bottom-sheet";
+import { Checkbox } from "@web/seed-design/ui/checkbox";
 import { TextField, TextFieldInput } from "@web/seed-design/ui/text-field";
 import { numberToKorean, parseNumericString } from "@web/utils/number-format";
 
@@ -46,7 +47,10 @@ function SheetActions({ onSave, onDelete }: { onSave: () => void; onDelete?: () 
   );
 }
 
-/** 금액 하나를 고치는 시트 (투자원금, 현금성 자산). */
+/**
+ * 금액 하나를 고치는 시트 (투자원금, 현금성 자산). `allowNegative` 면 마이너스(미수 — 주문가능금액이
+ * 모자란 채로 매수한 금액)를 체크박스로 고를 수 있다. 숫자 키패드엔 마이너스 키가 없다.
+ */
 export function EditAmountSheet({
   open,
   onOpenChange,
@@ -54,23 +58,36 @@ export function EditAmountSheet({
   description,
   value,
   onSave,
+  allowNegative = false,
 }: SheetProps & {
   title: string;
   description?: string;
   value: number;
   onSave: (value: string) => void;
+  allowNegative?: boolean;
 }) {
-  const [draft, setDraft] = useState(() => toDraft(value));
+  const [draft, setDraft] = useState(() => toDraft(allowNegative ? Math.abs(value) : value));
+  const [negative, setNegative] = useState(() => allowNegative && value < 0);
   return (
     <BottomSheetRoot open={open} onOpenChange={onOpenChange}>
       <BottomSheetContent title={title} description={description} showHandle>
         <BottomSheetBody>
           <MoneyField ariaLabel={title} value={draft} onValueChange={setDraft} autoFocus />
+          {allowNegative && (
+            <div className="mt-x3">
+              <Checkbox
+                label="모자란 금액이에요 (마이너스, 미수)"
+                checked={negative}
+                onCheckedChange={setNegative}
+                tone="neutral"
+              />
+            </div>
+          )}
         </BottomSheetBody>
         <BottomSheetFooter>
           <SheetActions
             onSave={() => {
-              onSave(draft);
+              onSave(signMoneyDraft(draft, negative));
               onOpenChange(false);
             }}
           />
