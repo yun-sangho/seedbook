@@ -4,7 +4,7 @@ import { cn } from "@web/lib/utils";
 const SCREEN_WIDTH = 780;
 const SCREEN_HEIGHT = 1560;
 
-export type AppScreenName = "home" | "accounts" | "portfolio" | "rebalancing" | "session";
+export type AppScreenName = "garden-home";
 
 /**
  * 소개 페이지에 넣는 실제 앱 화면 캡처 (설정 화면의 데모 데이터). 이 페이지의 색 모드는 시스템
