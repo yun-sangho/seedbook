@@ -24,6 +24,7 @@
     "db:dev:down": "docker compose -f docker-compose.dev.yml stop postgres",
     "docker:prod": "docker compose pull && docker compose up -d --remove-orphans",
     "mobile:sync": "pnpm --filter @seedbook/mobile sync",
+    "brand:icons": "node scripts/generate-brand-icons.mjs",
     "wt:info": "node scripts/worktree.mjs info",
     "wt:stop": "node scripts/worktree.mjs stop",
     "wt:down": "node scripts/worktree.mjs down",

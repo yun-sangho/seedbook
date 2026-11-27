@@ -8,9 +8,11 @@ iOS·Android 앱은 **운영 서버(`https://seedbook.boogie.ing`)를 WebView �
 capacitor.config.ts          서버 주소, UA 표시(SeedbookApp), 앱 안에서 열 외부 도메인
 www-src/                     서버에 못 닿을 때 보여줄 로컬 페이지 (error.html)
 scripts/build-www.mjs        www-src → www (서버 주소 치환). `pnpm sync` 가 실행
-scripts/generate-native-images.mjs  웹 로고로 아이콘·스플래시 생성
 ios/  android/               네이티브 프로젝트 (커밋 대상)
 ```
+
+앱 아이콘·스플래시는 웹 아이콘과 같은 원본(`apps/web/brand/mark.svg`)에서 루트 `pnpm brand:icons`
+(`scripts/generate-brand-icons.mjs`)로 만든다. 직접 고치지 말고 원본을 바꾼 뒤 다시 실행한다.
 
 웹과 맞물리는 곳: `apps/web/lib/device.ts` 의 `NATIVE_APP_UA_MARKER` 가 `appendUserAgent` 와 같아야
 한다. 웹은 이 표시로 iPad 앱에도 모바일 UI 를 주고, PWA 설치 안내를 숨긴다.
