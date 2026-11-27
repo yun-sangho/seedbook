@@ -173,13 +173,29 @@ function Fiddlehead({ x, top, coil }: { x: number; top: number; coil: number }) 
   );
 }
 
+/** 풍성 단계 이슬 (x, y, 반지름). 잎줄기 끝 쪽과 아치 위에 고루. */
+const DEW_DROPS: [number, number, number][] = [
+  [12.5, 45, 1.8],
+  [51.5, 45, 1.8],
+  [9.5, 36, 1.5],
+  [54.5, 36, 1.5],
+  [22, 24, 1.5],
+  [42, 23, 1.5],
+  [17, 52, 1.4],
+  [47, 52, 1.4],
+];
+
 function Sparkle({ x, y, r }: { x: number; y: number; r: number }) {
-  const k = r * 0.28;
+  const k = r * 0.24;
   return (
-    <path
-      d={`M${x} ${y - r} Q${x + k} ${y - k} ${x + r} ${y} Q${x + k} ${y + k} ${x} ${y + r} Q${x - k} ${y + k} ${x - r} ${y} Q${x - k} ${y - k} ${x} ${y - r}Z`}
-      fill={SPARKLE}
-    />
+    <>
+      <circle cx={x} cy={y} r={r * 0.55} fill={SPARKLE} opacity={0.35} />
+      <path
+        d={`M${x} ${y - r} Q${x + k} ${y - k} ${x + r} ${y} Q${x + k} ${y + k} ${x} ${y + r} Q${x - k} ${y + k} ${x - r} ${y} Q${x - k} ${y - k} ${x} ${y - r}Z`}
+        fill={SPARKLE}
+      />
+      <circle cx={x} cy={y} r={r * 0.2} fill="#FFFFFF" />
+    </>
   );
 }
 
@@ -251,12 +267,16 @@ export function FernArt({ stage, layer }: { stage: PlantStage; layer: "back" | "
       {layer === "back" && stage === "sapling" && <Fiddlehead x={31} top={33} coil={3.2} />}
       {layer === "front" && stage === "bloom" && (
         <>
-          <ellipse cx="13" cy="44" rx="1.6" ry="1.9" fill={DEW} />
-          <ellipse cx="50.5" cy="44" rx="1.6" ry="1.9" fill={DEW} />
-          <ellipse cx="24" cy="23" rx="1.4" ry="1.7" fill={DEW} />
-          <Sparkle x={45} y={14} r={3.6} />
-          <Sparkle x={16} y={22} r={2.8} />
-          <Sparkle x={33} y={9} r={2.2} />
+          {DEW_DROPS.map(([x, y, r]) => (
+            <g key={`${x},${y}`}>
+              <ellipse cx={x} cy={y} rx={r} ry={r * 1.15} fill={DEW} />
+              <circle cx={x - r * 0.35} cy={y - r * 0.45} r={r * 0.35} fill="#FFFFFF" />
+            </g>
+          ))}
+          <Sparkle x={46} y={13} r={5} />
+          <Sparkle x={15} y={21} r={4} />
+          <Sparkle x={33} y={8} r={3.2} />
+          <Sparkle x={54} y={30} r={3} />
         </>
       )}
     </>

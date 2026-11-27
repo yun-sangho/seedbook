@@ -92,10 +92,20 @@ describe("buildPlant (fern)", () => {
   });
 
   it("hangs dew drops on the fronds at the full stage", () => {
-    const hasDew = (stage: PlantStage) =>
-      meshes(fern({ stage }).root).some((mesh) => mesh.geometry instanceof THREE.SphereGeometry);
-    expect(hasDew("tree")).toBe(false);
-    expect(hasDew("bloom")).toBe(true);
+    // 이슬은 잎줄기 지오메트리에 합쳐져 있다 (정점 색 = 이슬 색).
+    const dew = new THREE.Color("#E4F6FF");
+    const dewVertices = (stage: PlantStage) =>
+      meshes(fern({ stage }).root).reduce((sum, mesh) => {
+        const color = mesh.geometry.getAttribute("color");
+        if (!color) return sum;
+        let count = 0;
+        for (let i = 0; i < color.count; i++) {
+          if (Math.abs(color.getX(i) - dew.r) + Math.abs(color.getZ(i) - dew.b) < 1e-4) count++;
+        }
+        return sum + count;
+      }, 0);
+    expect(dewVertices("tree")).toBe(0);
+    expect(dewVertices("bloom")).toBeGreaterThan(0);
   });
 
   it("twinkles sparkles around the full fern", () => {

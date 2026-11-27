@@ -21,9 +21,13 @@ const COLORS = {
   droop: "#A9A24C",
   seed: "#9BD38A",
   seedHighlight: "#DDF4D2",
-  dew: "#D9F3FF",
+  dew: "#E4F6FF",
   dewHighlight: "#FFFFFF",
 } as const;
+
+/** 풍성 단계: 잎줄기마다 맺히는 이슬 수와 둘레에서 반짝이는 별 수. */
+const DEW_PER_FROND = 3;
+const SPARKLE_COUNT = 14;
 
 /** 처짐 1 일 때 잎줄기가 더 숙여지는 각도(라디안). 모양(아치)에도 따로 처짐을 넣는다. */
 const DROOP_PITCH = 0.3;
@@ -78,6 +82,10 @@ class MeshBuilder {
   private positions: number[] = [];
   private colors: number[] = [];
   private indices: number[] = [];
+
+  get vertexCount(): number {
+    return this.positions.length / 3;
+  }
 
   vertex(p: THREE.Vector3, c: THREE.Color): number {
     this.positions.push(p.x, p.y, p.z);
@@ -198,6 +206,33 @@ function addTaperedTube(
   }
 }
 
+const _blobSphere = new THREE.SphereGeometry(1, 8, 6);
+
+/** 둥근 덩어리 (이슬). 잎줄기 지오메트리에 합쳐 draw call 을 늘리지 않는다. */
+function addBlob(
+  mb: MeshBuilder,
+  center: THREE.Vector3,
+  radius: number,
+  stretchY: number,
+  color: THREE.Color
+) {
+  const position = _blobSphere.getAttribute("position");
+  const index = _blobSphere.getIndex();
+  const first = mb.vertexCount;
+  for (let i = 0; i < position.count; i++) {
+    _p.set(
+      position.getX(i) * radius,
+      position.getY(i) * radius * stretchY,
+      position.getZ(i) * radius
+    ).add(center);
+    mb.vertex(_p, color);
+  }
+  if (!index) return;
+  for (let i = 0; i < index.count; i += 3) {
+    mb.tri(first + index.getX(i), first + index.getX(i + 1), first + index.getX(i + 2));
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 잎줄기·새순
 // ---------------------------------------------------------------------------
@@ -234,7 +269,10 @@ function frondCurve(spec: FrondSpec): THREE.CubicBezierCurve3 {
 /** 잎줄기 하나 (엽축 + 양쪽 소엽) 를 지오메트리 하나로. */
 function frondGeometry(
   spec: FrondSpec,
-  droop: number
+  droop: number,
+  /** 잎줄기에 맺힐 이슬 수 (풍성 단계). */
+  dew = 0,
+  rand: () => number = Math.random
 ): { geometry: THREE.BufferGeometry; curve: THREE.CubicBezierCurve3 } {
   const mb = new MeshBuilder();
   const curve = frondCurve(spec);
@@ -290,6 +328,30 @@ function frondGeometry(
     leafletLength * 0.1,
     spec.tipColor
   );
+
+  // 이슬: 소엽 끝에 맺힌 물방울 + 하얀 반사점. 잎줄기와 같이 흔들린다.
+  const dewColor = new THREE.Color(COLORS.dew);
+  const shineColor = new THREE.Color(COLORS.dewHighlight);
+  for (let i = 0; i < dew; i++) {
+    const s = 0.3 + ((i + rand() * 0.6) / Math.max(dew, 1)) * 0.6;
+    curve.getPoint(s, point);
+    curve.getTangent(s, tangent);
+    const side = i % 2 === 0 ? 1 : -1;
+    const reach = leafletLength * leafletProfile(s) * (0.55 + rand() * 0.3);
+    const at = point
+      .clone()
+      .add(new THREE.Vector3(side * reach, -0.035 - reach * 0.25, 0))
+      .addScaledVector(tangent, reach * 0.4);
+    const radius = 0.036 + rand() * 0.016;
+    addBlob(mb, at, radius, 1.15, dewColor);
+    addBlob(
+      mb,
+      at.clone().add(new THREE.Vector3(-radius * 0.35, radius * 0.45, radius * 0.6)),
+      radius * 0.32,
+      1,
+      shineColor
+    );
+  }
 
   return { geometry: mb.build(), curve };
 }
@@ -349,9 +411,10 @@ function sparkleTexture(): THREE.CanvasTexture {
     c2d.quadraticCurveTo(29, 35, 2, 32);
     c2d.quadraticCurveTo(29, 29, 32, 2);
     c2d.fill();
-    const glow = c2d.createRadialGradient(32, 32, 0, 32, 32, 14);
-    glow.addColorStop(0, "rgba(255,250,210,1)");
-    glow.addColorStop(1, "rgba(255,250,210,0)");
+    const glow = c2d.createRadialGradient(32, 32, 0, 32, 32, 22);
+    glow.addColorStop(0, "rgba(255,255,255,1)");
+    glow.addColorStop(0.35, "rgba(255,244,190,0.85)");
+    glow.addColorStop(1, "rgba(255,240,180,0)");
     c2d.fillStyle = glow;
     c2d.fillRect(0, 0, 64, 64);
   }
@@ -470,7 +533,8 @@ export function buildFernBody(ctx: FernBuildContext, body: THREE.Group): FernBod
         color: fade(ring.inner ? COLORS.frondInner : COLORS.frond),
         tipColor: fade(COLORS.frondTip),
       };
-      const { geometry, curve } = frondGeometry(frondSpec, droop);
+      const dew = stage === "bloom" ? DEW_PER_FROND : 0;
+      const { geometry, curve } = frondGeometry(frondSpec, droop, dew, ctx.rand);
       const pivot = new THREE.Group();
       const azimuth = azimuthStart + index * golden + (ctx.rand() - 0.5) * 0.25;
       pivot.rotation.y = azimuth;
@@ -507,50 +571,25 @@ export function buildFernBody(ctx: FernBuildContext, body: THREE.Group): FernBod
 
   const sparkles: { sprite: THREE.Sprite; phase: number; size: number }[] = [];
   if (stage === "bloom") {
-    // 이슬: 잎줄기 끝 가까이 물방울 (잎줄기와 같이 흔들린다).
-    const dewGeo = track(new THREE.SphereGeometry(0.045, 12, 8));
-    const shineGeo = track(new THREE.SphereGeometry(0.014, 6, 4));
-    const dewMat = new THREE.MeshToonMaterial({
-      color: COLORS.dew,
-      gradientMap: getToonGradient(),
-      transparent: true,
-      opacity: 0.92,
-    });
-    const shineMat = new THREE.MeshBasicMaterial({ color: COLORS.dewHighlight });
-    disposers.push(
-      () => dewMat.dispose(),
-      () => shineMat.dispose()
-    );
-    fronds.forEach(({ group, curve }, i) => {
-      if (i % 2 === 1) return;
-      const s = 0.55 + ctx.rand() * 0.3;
-      const at = curve.getPoint(s).add(new THREE.Vector3(0, -0.04, 0));
-      const drop = new THREE.Mesh(dewGeo, dewMat);
-      drop.position.copy(at);
-      drop.scale.set(1, 1.15, 1);
-      const shine = new THREE.Mesh(shineGeo, shineMat);
-      shine.position.copy(at).add(new THREE.Vector3(-0.015, 0.02, 0.03));
-      group.add(drop, shine);
-    });
     // 반짝임: 식물 둘레에서 번갈아 반짝이는 별.
     const texture = sparkleTexture();
     const sparkleMat = new THREE.SpriteMaterial({
       map: texture,
       transparent: true,
       depthWrite: false,
-      color: "#FFE27A",
+      color: "#FFF1A8",
     });
     disposers.push(
       () => texture.dispose(),
       () => sparkleMat.dispose()
     );
-    const count = 9;
+    const count = SPARKLE_COUNT;
     for (let i = 0; i < count; i++) {
       const sprite = new THREE.Sprite(sparkleMat);
       const a = (i / count) * Math.PI * 2 + ctx.rand() * 0.5;
-      const r = 0.55 + ctx.rand() * 0.6;
-      sprite.position.set(Math.cos(a) * r, 0.2 + ctx.rand() * 1.0, Math.sin(a) * r);
-      const size = 0.24 + ctx.rand() * 0.1;
+      const r = 0.45 + ctx.rand() * 0.75;
+      sprite.position.set(Math.cos(a) * r, 0.15 + ctx.rand() * 1.15, Math.sin(a) * r);
+      const size = 0.34 + ctx.rand() * 0.16;
       sprite.scale.setScalar(size);
       body.add(sprite);
       sparkles.push({ sprite, phase: ctx.rand() * Math.PI * 2, size });
@@ -562,7 +601,7 @@ export function buildFernBody(ctx: FernBuildContext, body: THREE.Group): FernBod
     update(time) {
       for (const sparkle of sparkles) {
         // 잠깐 반짝였다 사라진다 (sin 의 위쪽 끝만 쓴다). 재질을 같이 쓰므로 크기로만 깜빡인다.
-        const twinkle = Math.max(0, Math.sin(time * 1.6 + sparkle.phase)) ** 6;
+        const twinkle = Math.max(0, Math.sin(time * 2.2 + sparkle.phase)) ** 3;
         sparkle.sprite.scale.setScalar(Math.max(sparkle.size * twinkle, 0.0001));
       }
     },
