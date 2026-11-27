@@ -95,6 +95,11 @@ function cookiesFrom(response: Response): string {
 
 /** 카카오 로그인 왕복 (시작 → 카카오 → 콜백). 로그인된 사용자 id 를 돌려준다. */
 async function signInWithKakao(kakaoId: number): Promise<string> {
+  return sessionUserId(await kakaoSessionCookie(kakaoId));
+}
+
+/** 카카오로 로그인한 세션 쿠키. */
+async function kakaoSessionCookie(kakaoId: number): Promise<string> {
   createdEmails.push(`kakao-${kakaoId}@users.seedbook.invalid`);
   stubKakaoServers(kakaoId);
 
@@ -115,7 +120,7 @@ async function signInWithKakao(kakaoId: number): Promise<string> {
     })
   );
   expect(callback.headers.get("location")).toBe("/m");
-  return sessionUserId(cookiesFrom(callback));
+  return cookiesFrom(callback);
 }
 
 function unsignedJwt(payload: Record<string, unknown>): string {
@@ -255,5 +260,68 @@ describe("apple sign-in without personal info (better-auth + real Postgres)", ()
     const second = await signInWithApple(sub);
 
     expect(second).toBe(first);
+  });
+});
+
+describe("profile update keeps only a nickname and a seed avatar", () => {
+  async function updateUser(cookie: string, body: Record<string, unknown>) {
+    return auth.handler(
+      new Request(`${BASE_URL}/api/auth/update-user`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: BASE_URL, cookie },
+        body: JSON.stringify(body),
+      })
+    );
+  }
+
+  it("stores the nickname and the seed avatar key", async () => {
+    const cookie = await kakaoSessionCookie(randomInt(1, 2 ** 40));
+    const userId = await sessionUserId(cookie);
+
+    const response = await updateUser(cookie, { name: "  푸른   새싹 ", image: "seed:pot-2-mint" });
+
+    expect(response.status).toBe(200);
+    expect(await userRow(userId)).toMatchObject({ name: "푸른 새싹", image: "seed:pot-2-mint" });
+  });
+
+  it("rejects a photo URL", async () => {
+    const cookie = await kakaoSessionCookie(randomInt(1, 2 ** 40));
+    const userId = await sessionUserId(cookie);
+
+    const response = await updateUser(cookie, { image: "https://k.kakaocdn.net/hong.jpg" });
+
+    expect(response.status).toBe(400);
+    expect((await userRow(userId))?.image).toBeNull();
+  });
+
+  it("rejects a nickname over the length limit", async () => {
+    const cookie = await kakaoSessionCookie(randomInt(1, 2 ** 40));
+    const userId = await sessionUserId(cookie);
+
+    const response = await updateUser(cookie, { name: "가".repeat(13) });
+
+    expect(response.status).toBe(400);
+    expect((await userRow(userId))?.name).toBe("사용자");
+  });
+
+  it("rejects a banned nickname", async () => {
+    const cookie = await kakaoSessionCookie(randomInt(1, 2 ** 40));
+
+    const response = await updateUser(cookie, { name: "Seedbook 운영자" });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("keeps the nickname when a later kakao sign-in happens", async () => {
+    const kakaoId = randomInt(1, 2 ** 40);
+    const cookie = await kakaoSessionCookie(kakaoId);
+    await updateUser(cookie, { name: "알뜰한 도토리", image: "seed:seed-1-sun" });
+
+    const userId = await signInWithKakao(kakaoId);
+
+    expect(await userRow(userId)).toMatchObject({
+      name: "알뜰한 도토리",
+      image: "seed:seed-1-sun",
+    });
   });
 });

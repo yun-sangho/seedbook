@@ -19,10 +19,14 @@ await import("./hydration-gate");
 await import("./auth-gate");
 await import("@web/features/investments/stores/investment-store");
 
-type SessionState = { data: { user: { id: string } } | null; isPending: boolean };
+type SessionState = {
+  data: { user: { id: string; name: string; image: string } } | null;
+  isPending: boolean;
+};
 
+// 씨앗 아바타를 정한 계정 — 가입 단계(`ProfileSetupGate`)를 지난 상태.
 const session = (userId: string): SessionState => ({
-  data: { user: { id: userId } },
+  data: { user: { id: userId, name: "푸른 새싹", image: "seed:sprout-2-green" } },
   isPending: false,
 });
 const SIGNED_OUT: SessionState = { data: null, isPending: false };

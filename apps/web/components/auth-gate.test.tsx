@@ -7,6 +7,7 @@ import { AuthGate } from "./auth-gate";
 // 모킹한다. 각 테스트가 useSession 이 돌려줄 값을 지정한다.
 const mockUseSession = vi.fn();
 const mockSignInSocial = vi.fn();
+const mockUpdateUser = vi.fn();
 
 vi.mock("@web/lib/auth-client", () => ({
   useSession: () => mockUseSession(),
@@ -14,8 +15,12 @@ vi.mock("@web/lib/auth-client", () => ({
     signIn: {
       social: (opts: unknown) => mockSignInSocial(opts),
     },
+    updateUser: (body: unknown) => mockUpdateUser(body),
   },
 }));
+
+/** 씨앗 아바타를 정한(가입 단계를 지난) 사용자. */
+const SET_UP_USER = { id: "u-1", name: "푸른 새싹", image: "seed:sprout-2-green" };
 
 function setStorageMode(mode: StorageMode) {
   window.localStorage.setItem(STORAGE_MODE_KEY, mode);
@@ -25,6 +30,7 @@ describe("AuthGate", () => {
   beforeEach(() => {
     mockUseSession.mockReset();
     mockSignInSocial.mockReset();
+    mockUpdateUser.mockReset();
     // 동의 확인만 답하고 나머지 API 는 실패시킨다.
     vi.stubGlobal("fetch", async (url: string) =>
       url === "/api/me/consents"
@@ -57,10 +63,7 @@ describe("AuthGate", () => {
     "renders children when a session exists in %s mode",
     async (mode) => {
       setStorageMode(mode);
-      mockUseSession.mockReturnValue({
-        data: { user: { id: "u-1" } },
-        isPending: false,
-      });
+      mockUseSession.mockReturnValue({ data: { user: SET_UP_USER }, isPending: false });
 
       render(
         <AuthGate>
@@ -81,7 +84,7 @@ describe("AuthGate", () => {
         ? Response.json({ agreed: true })
         : Response.json({ storageMode: "cloud", chosen: false, inUse: true });
     });
-    mockUseSession.mockReturnValue({ data: { user: { id: "u-1" } }, isPending: false });
+    mockUseSession.mockReturnValue({ data: { user: SET_UP_USER }, isPending: false });
 
     render(
       <AuthGate>
@@ -94,6 +97,88 @@ describe("AuthGate", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("앱 콘텐츠")).not.toBeInTheDocument();
     expect(urls).toEqual(["/api/me/consents", "/api/me/storage-mode"]);
+  });
+
+  describe("seed avatar and nickname step", () => {
+    const SETUP_HEADING = { name: "나를 나타낼 씨앗을 골라 주세요" };
+
+    it("asks a new sign-up to pick an avatar and nickname after consent, before the app", async () => {
+      mockUseSession.mockReturnValue({
+        data: { user: { id: "u-1", name: "사용자", image: null } },
+        isPending: false,
+      });
+
+      render(
+        <AuthGate>
+          <div>앱 콘텐츠</div>
+        </AuthGate>
+      );
+
+      expect(await screen.findByRole("heading", SETUP_HEADING)).toBeInTheDocument();
+      expect(screen.queryByText("앱 콘텐츠")).not.toBeInTheDocument();
+      // 기본 이름 대신 뽑은 닉네임을 채운다.
+      expect(screen.getByLabelText("닉네임")).not.toHaveValue("사용자");
+      expect(screen.getByLabelText("닉네임")).not.toHaveValue("");
+    });
+
+    it("keeps the name an existing user already chose", async () => {
+      mockUseSession.mockReturnValue({
+        data: { user: { id: "u-1", name: "주식하는 곰", image: null } },
+        isPending: false,
+      });
+
+      render(
+        <AuthGate>
+          <div>앱 콘텐츠</div>
+        </AuthGate>
+      );
+
+      await screen.findByRole("heading", SETUP_HEADING);
+      expect(screen.getByLabelText("닉네임")).toHaveValue("주식하는 곰");
+    });
+
+    it("saves the nickname and a seed avatar key, then opens the app", async () => {
+      mockUseSession.mockReturnValue({
+        data: { user: { id: "u-1", name: "사용자", image: null } },
+        isPending: false,
+      });
+      mockUpdateUser.mockResolvedValue({ data: { status: true }, error: null });
+      render(
+        <AuthGate>
+          <div>앱 콘텐츠</div>
+        </AuthGate>
+      );
+      await screen.findByRole("heading", SETUP_HEADING);
+
+      fireEvent.change(screen.getByLabelText("닉네임"), { target: { value: " 알뜰한  도토리 " } });
+      fireEvent.click(screen.getByRole("button", { name: "시작하기" }));
+
+      expect(await screen.findByText("앱 콘텐츠")).toBeInTheDocument();
+      expect(mockUpdateUser).toHaveBeenCalledWith({
+        name: "알뜰한 도토리",
+        image: expect.stringMatching(/^seed:(seed|sprout|pot)-[123]-[a-z]+$/),
+      });
+    });
+
+    it("does not save a nickname over the length limit", async () => {
+      mockUseSession.mockReturnValue({
+        data: { user: { id: "u-1", name: "사용자", image: null } },
+        isPending: false,
+      });
+      render(
+        <AuthGate>
+          <div>앱 콘텐츠</div>
+        </AuthGate>
+      );
+      await screen.findByRole("heading", SETUP_HEADING);
+
+      // 입력의 maxLength 는 붙여 넣기를 막지 않는다.
+      fireEvent.change(screen.getByLabelText("닉네임"), { target: { value: "가".repeat(13) } });
+      fireEvent.click(screen.getByRole("button", { name: "시작하기" }));
+
+      expect(await screen.findByText("닉네임은 12자까지 쓸 수 있어요")).toBeInTheDocument();
+      expect(mockUpdateUser).not.toHaveBeenCalled();
+    });
   });
 
   it.each<StorageMode>(["local", "cloud"])(

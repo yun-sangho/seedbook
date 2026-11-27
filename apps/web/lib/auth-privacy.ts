@@ -1,5 +1,11 @@
 import { ANONYMOUS_USER_NAME, anonymousEmail } from "@seedbook/database";
+import {
+  nicknameError,
+  normalizeNickname,
+  profileImageError,
+} from "@web/lib/seed-identity/profile";
 import type { BetterAuthOptions } from "better-auth";
+import { APIError } from "better-auth/api";
 
 /**
  * 로그인에서 신상 정보를 저장하지 않게 하는 better-auth 설정 (`packages/database/src/anonymous-identity.ts`).
@@ -9,6 +15,7 @@ import type { BetterAuthOptions } from "better-auth";
  *   사람은 (provider, 식별 번호) 로 계정을 찾으므로 다시 로그인해도 같은 계정이다.
  * - 재로그인이 이름·사진을 provider 프로필로 덮어쓰지 않는다 (`overrideUserInfoOnSignIn` 기본값 false).
  * - OAuth 토큰과 세션의 접속 IP·User-Agent 를 DB 에 남기지 않는다 (`privacyDatabaseHooks`).
+ * - 사용자가 바꾸는 이름은 닉네임 규칙을, 사진은 씨앗 아바타 키만 받는다 (`lib/seed-identity/profile.ts`).
  */
 
 /** 신상 정보 없는 사용자 필드. provider 가 준 이름·사진은 버린다. */
@@ -53,10 +60,34 @@ const NO_OAUTH_TOKENS = {
 const NO_CLIENT_INFO = { ipAddress: null, userAgent: null };
 
 /**
+ * 프로필 수정(`updateUser`)이 닉네임 규칙을 어기거나 사진 URL 을 넣으면 거절한다. 닉네임은 공백을
+ * 정리해 저장한다.
+ */
+async function validateProfileUpdate<T extends { name?: unknown; image?: unknown }>(data: T) {
+  const next = { ...data };
+  if (typeof data.name === "string") {
+    if (nicknameError(data.name)) {
+      throw new APIError("BAD_REQUEST", { message: "invalid nickname" });
+    }
+    next.name = normalizeNickname(data.name);
+  }
+  if (data.image !== undefined) {
+    const image = typeof data.image === "string" ? data.image : null;
+    if (data.image !== null && (image === null || profileImageError(image))) {
+      throw new APIError("BAD_REQUEST", { message: "image must be a seed avatar key" });
+    }
+  }
+  return { data: next };
+}
+
+/**
  * 저장 직전에 OAuth 토큰과 세션 접속 정보를 지운다. better-auth 의 IP 추적 자체(`disableIpTracking`)는
  * 끄지 않는다 — 요청 IP 는 로그인 rate limit 에 쓰이고, 저장만 하지 않으면 된다.
  */
 export const privacyDatabaseHooks = {
+  user: {
+    update: { before: validateProfileUpdate },
+  },
   account: {
     create: { before: async (data) => ({ data: { ...data, ...NO_OAUTH_TOKENS } }) },
     update: { before: async (data) => ({ data: { ...data, ...NO_OAUTH_TOKENS } }) },

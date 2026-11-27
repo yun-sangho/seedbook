@@ -10,12 +10,18 @@ import {
   IconTrashcanLine,
 } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
+import { ANONYMOUS_USER_NAME } from "@seedbook/database/anonymous-identity";
 import { useFlow } from "@stackflow/react";
 import { useLegalNotices } from "@web/components/consent-gate";
 import { AppLockSettingItem } from "@web/components/mobile/app-lock";
 import { BiometricLoginSettingItem } from "@web/components/mobile/biometric-login";
 import { DeleteAccountDialog } from "@web/components/mobile/delete-account-dialog";
-import { authClient, useSession } from "@web/lib/auth-client";
+import {
+  ProfileSheet,
+  SessionUserAvatar,
+  useSessionUser,
+} from "@web/components/mobile/profile-menu";
+import { authClient } from "@web/lib/auth-client";
 import { reloadApp } from "@web/lib/device-storage";
 import { koreanDate, LEGAL_DOCUMENTS } from "@web/lib/legal-documents";
 import { markSignedOut } from "@web/lib/native/biometric-login";
@@ -37,7 +43,7 @@ interface MobileMoreSheetProps {
   isNativeApp: boolean;
 }
 
-/** 하단 탭 "더보기": 앱 설치, 설정, 로그아웃, 회원 탈퇴. */
+/** 하단 탭 "더보기": 내 프로필, 앱 설치, 설정, 로그아웃, 회원 탈퇴. */
 export function MobileMoreSheet({
   open,
   onOpenChange,
@@ -46,9 +52,8 @@ export function MobileMoreSheet({
   isIOS,
   isNativeApp,
 }: MobileMoreSheetProps) {
-  const { data: session } = useSession();
+  const user = useSessionUser();
   const legalNotices = useLegalNotices();
-  const user = session?.user as { name?: string | null } | undefined;
   // HydrationGate 아래에서만 렌더되므로 render 중 localStorage 읽기가 SSR 과 어긋나지 않는다.
   const showStorageNotice = needsSeparateStorageNotice({
     isIOS,
@@ -56,14 +61,24 @@ export function MobileMoreSheet({
     isNativeApp,
   });
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const { push } = useFlow();
 
   return (
     <>
       <BottomSheetRoot open={open} onOpenChange={onOpenChange}>
-        <BottomSheetContent title={user?.name || "더보기"} showHandle>
+        <BottomSheetContent title="더보기" showHandle>
           <BottomSheetBody>
             <List>
+              <ListButtonItem
+                prefix={<SessionUserAvatar size={40} />}
+                title={user?.name || ANONYMOUS_USER_NAME}
+                detail="아바타·닉네임 바꾸기"
+                onClick={() => {
+                  onOpenChange(false);
+                  setProfileOpen(true);
+                }}
+              />
               {installMode === "prompt" && (
                 <ListButtonItem
                   prefix={<Icon svg={<IconPlusSquareLine />} />}
@@ -142,6 +157,7 @@ export function MobileMoreSheet({
           </BottomSheetBody>
         </BottomSheetContent>
       </BottomSheetRoot>
+      <ProfileSheet open={profileOpen} onOpenChange={setProfileOpen} />
       <DeleteAccountDialog open={deleteOpen} onOpenChange={setDeleteOpen} />
     </>
   );

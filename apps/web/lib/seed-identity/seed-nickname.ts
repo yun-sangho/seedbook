@@ -1,0 +1,73 @@
+import { pickRandom } from "@web/lib/seed-identity/seed-avatar";
+
+/** 실명 대신 쓰는 닉네임: "형용사 + 씨앗/식물 명사" (예: "푸른 새싹"). */
+
+export const NICKNAME_ADJECTIVES = [
+  "푸른",
+  "싱그러운",
+  "작은",
+  "단단한",
+  "부지런한",
+  "느긋한",
+  "반짝이는",
+  "포근한",
+  "씩씩한",
+  "수줍은",
+  "용감한",
+  "상냥한",
+  "든든한",
+  "꿋꿋한",
+  "향긋한",
+  "촉촉한",
+  "따뜻한",
+  "해맑은",
+  "슬기로운",
+  "차분한",
+  "다정한",
+  "튼튼한",
+  "말랑한",
+  "동글동글한",
+  "성실한",
+  "꾸준한",
+  "알뜰한",
+  "여유로운",
+  "명랑한",
+  "새침한",
+] as const;
+
+export const NICKNAME_NOUNS = [
+  "새싹",
+  "씨앗",
+  "떡잎",
+  "새순",
+  "도토리",
+  "솔방울",
+  "밤톨",
+  "해바라기",
+  "민들레",
+  "클로버",
+  "묘목",
+  "강낭콩",
+  "완두콩",
+  "꽃봉오리",
+  "잎사귀",
+  "소나무",
+  "은행나무",
+  "단풍잎",
+  "선인장",
+  "다육이",
+  "튤립",
+  "데이지",
+  "이끼",
+  "고사리",
+  "연꽃",
+  "매화",
+  "벚꽃",
+  "대나무",
+  "무화과",
+  "올리브",
+] as const;
+
+export function randomNickname(random: () => number = Math.random): string {
+  return `${pickRandom(NICKNAME_ADJECTIVES, random)} ${pickRandom(NICKNAME_NOUNS, random)}`;
+}
