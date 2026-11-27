@@ -85,7 +85,10 @@ describe("hybrid storage for sync-managed stores in cloud mode", () => {
   });
 
   it("falls back to the local cache when the pull fails", async () => {
-    const cached = JSON.stringify({ state: { sessions: [{ id: "a" }] }, version: 1 });
+    const cached = JSON.stringify({
+      state: { sessions: [{ id: sessionRow.id, ...sessionRow.data, result: null }] },
+      version: 1,
+    });
     localStorage.setItem("rebalancing-storage", cached);
     fetchMock.mockRejectedValue(new TypeError("offline"));
     const storage = (await loadCloudStorage())("rebalancing-storage");
@@ -136,6 +139,32 @@ describe("hybrid storage for sync-managed stores in cloud mode", () => {
       op: "upsert",
       data: { accountName: "오프라인 수정" },
     });
+  });
+
+  it("normalizes NaN values before writing the local cache", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          cursor: "c1",
+          changes: {
+            rebalancing: [sessionRow],
+            listOrder: [{ domain: "rebalancings", order: [sessionRow.id] }],
+          },
+        })
+      )
+    );
+    const storage = (await loadCloudStorage())("rebalancing-storage");
+    const hydrated = JSON.parse((await storage.getItem("rebalancing-storage")) as string);
+
+    // persist 는 메모리의 NaN 을 JSON null 로 직렬화한다.
+    const edited = {
+      ...hydrated,
+      state: { sessions: [{ ...hydrated.state.sessions[0], cashDelta: null }] },
+    };
+    await storage.setItem("rebalancing-storage", JSON.stringify(edited));
+
+    const cached = JSON.parse(localStorage.getItem("rebalancing-storage") as string);
+    expect(cached.state.sessions[0].cashDelta).toBe(0);
   });
 
   it("shares one full pull between the stores hydrating on the same page load", async () => {

@@ -92,3 +92,31 @@ describe("portfolioSyncConfig", () => {
     });
   });
 });
+
+describe("portfolioSyncConfig.normalizeItem", () => {
+  const broken = (patch: Record<string, unknown>) => ({ ...item, ...patch }) as PortfolioItem;
+
+  it("turns a NaN or negative drift threshold into 0", () => {
+    expect(
+      portfolioSyncConfig.normalizeItem(broken({ driftThresholdPercent: null }))
+        .driftThresholdPercent
+    ).toBe(0);
+    expect(
+      portfolioSyncConfig.normalizeItem(broken({ driftThresholdPercent: -3 })).driftThresholdPercent
+    ).toBe(0);
+  });
+
+  it("turns a NaN target percent into 0", () => {
+    const normalized = portfolioSyncConfig.normalizeItem(
+      broken({ allocations: [{ ...item.allocations[0], targetPercent: Number.NaN }] })
+    );
+
+    expect(normalized.allocations[0]?.targetPercent).toBe(0);
+  });
+
+  it("leaves a valid portfolio as it is, including fields it does not know", () => {
+    const withUnknown = { ...item, futureField: 1 } as PortfolioItem;
+
+    expect(portfolioSyncConfig.normalizeItem(withUnknown)).toEqual(withUnknown);
+  });
+});
