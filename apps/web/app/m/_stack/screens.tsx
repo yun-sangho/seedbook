@@ -126,8 +126,10 @@ interface DetailScreenProps {
   title: string;
   /** 제목 아래 보조 텍스트 (계좌 유형) */
   subtitle?: string;
-  /** 제목 앞 색상 점 (계좌·포트폴리오 색) */
+  /** 제목 앞 색상 점 (계좌 색) */
   dotColor?: string;
+  /** 제목 앞 아이콘 (포트폴리오 식물). 있으면 색상 점 대신 보인다. */
+  leading?: ReactNode;
   children: ReactNode;
 }
 
@@ -135,7 +137,7 @@ interface DetailScreenProps {
  * 상세 화면 (push). 오른쪽 앱바 버튼("수정" 등)은 화면 안쪽에서 `<HeaderAction>` 으로
  * 넣는다 — 버튼이 여는 시트 상태가 화면 컴포넌트에 남아 있어야 해서 portal 슬롯을 쓴다.
  */
-export function DetailScreen({ title, subtitle, dotColor, children }: DetailScreenProps) {
+export function DetailScreen({ title, subtitle, dotColor, leading, children }: DetailScreenProps) {
   const [actionSlot, setActionSlot] = useState<HTMLElement | null>(null);
   const [bottomSlot, setBottomSlot] = useState<HTMLElement | null>(null);
 
@@ -148,12 +150,16 @@ export function DetailScreen({ title, subtitle, dotColor, children }: DetailScre
         <SeedAppBar.Main layout={subtitle ? "withSubtitle" : "titleOnly"}>
           <VStack overflowX="auto">
             <SeedAppBar.Title>
-              {dotColor && (
-                <span
-                  className="mr-[6px] inline-block size-[10px] rounded-full align-middle"
-                  style={{ backgroundColor: dotColor }}
-                  aria-hidden
-                />
+              {leading ? (
+                <span className="mr-[6px] inline-flex align-middle">{leading}</span>
+              ) : (
+                dotColor && (
+                  <span
+                    className="mr-[6px] inline-block size-[10px] rounded-full align-middle"
+                    style={{ backgroundColor: dotColor }}
+                    aria-hidden
+                  />
+                )
               )}
               {title}
             </SeedAppBar.Title>

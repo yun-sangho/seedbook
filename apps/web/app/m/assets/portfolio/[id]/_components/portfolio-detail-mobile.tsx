@@ -419,7 +419,6 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
         {...sheetProps(editing?.kind === "settings")}
         portfolio={portfolio}
         onRename={(name) => updatePortfolio(portfolio.id, "name", name)}
-        onColorChange={(color) => updatePortfolio(portfolio.id, "color", color)}
         onDelete={deletePortfolio}
       />
       <EditDriftThresholdSheet

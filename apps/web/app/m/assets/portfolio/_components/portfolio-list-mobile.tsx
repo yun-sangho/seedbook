@@ -9,8 +9,10 @@ import { profitToneClass } from "@web/components/mobile/profit-tone";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { summarizeAccounts } from "@web/features/investments/utils/summarize-accounts";
 import { useLiveAccounts } from "@web/features/investments/utils/use-live-accounts";
+import { PortfolioPlantAvatar } from "@web/features/portfolio/components/portfolio-plant-avatar";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import { resolvePortfolioAccounts } from "@web/features/portfolio/utils/resolve-portfolio-accounts";
+import { usePortfolioPlantViews } from "@web/features/portfolio/utils/use-portfolio-plants";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { Badge } from "@web/seed-design/ui/badge";
 import { ResultSection } from "@web/seed-design/ui/result-section";
@@ -24,6 +26,9 @@ export function PortfolioListMobile() {
   // 저장된 평가금액이 아니라 지금 시세로 다시 계산한 금액을 보여준다 (계좌 상세와 같은 값).
   const investments = useLiveAccounts(storedInvestments);
   const { push } = useFlow();
+  // 정원과 같은 식물 (단계·리밸런싱 필요) — 색 대신 이 식물로 포트폴리오를 구분한다.
+  const { plants } = usePortfolioPlantViews();
+  const plantById = useMemo(() => new Map(plants.map((p) => [p.portfolioId, p])), [plants]);
   // 목록의 금액은 포트폴리오에 연결된 계좌로 계산하므로, 가격 기준도 그 계좌들로 알린다.
   const linkedAccounts = useMemo(() => {
     const linkedIds = new Set(portfolios.flatMap((p) => p.accountIds));
@@ -60,6 +65,7 @@ export function PortfolioListMobile() {
         const linkEmpty = scopedAccounts.length === 0;
         // 연결 계좌의 평가금액·수익률 합 (홈·포트폴리오 상세와 같은 계산).
         const totals = summarizeAccounts(scopedAccounts);
+        const plant = plantById.get(portfolio.id);
 
         return (
           <div key={portfolio.id}>
@@ -69,10 +75,11 @@ export function PortfolioListMobile() {
               onClick={() => push("PortfolioDetail", { id: portfolio.id })}
               className="active:bg-bg-layer-default-pressed flex w-full items-center gap-x3 px-x4 py-x4 text-left"
             >
-              <span
-                className="size-x3 shrink-0 rounded-full"
-                style={{ backgroundColor: portfolio.color }}
-                aria-hidden
+              <PortfolioPlantAvatar
+                portfolioId={portfolio.id}
+                stage={plant?.stage ?? portfolio.growthStage}
+                size={44}
+                needsRebalance={plant?.rebalancing === "needs-rebalancing"}
               />
               <div className="min-w-0 flex-1">
                 <p className="t5-bold truncate">{portfolio.name}</p>
