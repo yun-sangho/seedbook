@@ -1,7 +1,5 @@
 import * as THREE from "three";
-import { REBALANCE_BADGE_HIT_PX, REBALANCE_BADGE_PX } from "./plant-options";
-
-const BADGE_COLOR = "#E8664F";
+import { REBALANCE_BADGE_COLOR, REBALANCE_BADGE_HIT_PX, REBALANCE_BADGE_PX } from "./plant-options";
 
 /** `userData` 표시. 렌더러가 탭한 것이 배지인지 볼 때 쓴다. */
 export const REBALANCE_BADGE_KEY = "rebalanceBadge";
@@ -12,7 +10,7 @@ function drawBadge(ctx: CanvasRenderingContext2D) {
   ctx.beginPath();
   ctx.arc(64, 68, 52, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = BADGE_COLOR;
+  ctx.fillStyle = REBALANCE_BADGE_COLOR;
   ctx.beginPath();
   ctx.arc(64, 62, 52, 0, Math.PI * 2);
   ctx.fill();

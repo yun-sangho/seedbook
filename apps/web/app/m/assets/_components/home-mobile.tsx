@@ -1,174 +1,267 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import {
-  IconArrowClockwiseCircularFill,
-  IconCheckmarkCircleFill,
-  IconExclamationmarkCircleFill,
-} from "@karrotmarket/react-monochrome-icon";
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { useFlow } from "@stackflow/react";
-import { switchTab } from "@web/app/m/_stack/stack-control";
-import { AddAccountSheet } from "@web/app/m/assets/investments/_components/add-account-sheet";
-import { HoldingsPriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
-import { profitToneClass } from "@web/components/mobile/profit-tone";
-import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
-import { summarizeAccounts } from "@web/features/investments/utils/summarize-accounts";
-import { useLiveAccounts } from "@web/features/investments/utils/use-live-accounts";
-import { useLinkedPortfolioStatus } from "@web/features/portfolio/utils/use-linked-portfolio-status";
-import { useRebalancingHomeTab } from "@web/features/rebalancing/stores/rebalancing-home-tab-store";
-import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
-import { inProgressBanner } from "@web/features/rebalancing/utils/in-progress-banner";
-import { inProgressAccountIds } from "@web/features/rebalancing/utils/rebalancing-session";
-import { ActionableCallout } from "@web/seed-design/ui/callout";
+import { setRootBack } from "@web/app/m/_stack/stack-control";
+import { EditPlantGoalSheet } from "@web/app/m/assets/portfolio/[id]/_components/portfolio-plant-card";
+import { GardenCanvas } from "@web/features/garden/components/garden-canvas";
+import { gardenLayout } from "@web/features/garden/plant-3d/garden-layout";
+import type { PlantSlot } from "@web/features/garden/plant-3d/plant-renderer";
 import {
-  ChipTabsContent,
-  ChipTabsList,
-  ChipTabsRoot,
-  ChipTabsTrigger,
-} from "@web/seed-design/ui/chip-tabs";
-import { ResultSection } from "@web/seed-design/ui/result-section";
-import { formatReturnRate, numberToKorean } from "@web/utils/number-format";
-import { formatProfitKorean } from "@web/utils/profit-color";
-import { HoldingsSummaryList, InvestmentTrend, MonthlySummaryList } from "./investment-stats";
+  type GardenFocusAction,
+  type GrownPlant,
+  gardenFocusIndex,
+  gardenFocusReducer,
+  gardenHandlesBack,
+  gardenPlantOptions,
+  grownSince,
+  type RebalanceDestination,
+  rebalanceDestination,
+} from "@web/features/garden/utils/garden-home";
+import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
+import { useStockPrices } from "@web/features/investments/utils/use-stock-prices";
+import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
+import { PLANT_STAGE_LABELS } from "@web/features/portfolio/types/constants";
+import { usePortfolioPlants } from "@web/features/portfolio/utils/use-portfolio-plants";
+import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
+import { GardenFocusPanel } from "./garden-focus-panel";
+import { GardenOverviewList } from "./garden-overview-list";
 
-type Tab = "holdings" | "monthly" | "trend";
+/** 정원 창 높이 (화면 높이 대비). 아래 목록만 스크롤하고 정원 창은 크기가 바뀌지 않는다. */
+export const GARDEN_HEIGHT = "40dvh";
+/** 마지막 scroll 뒤 이만큼 지나면 3D 렌더를 다시 돌린다 (ms). */
+const SCROLL_IDLE_MS = 150;
+/** 성장 축하 문구를 보여주는 시간 (ms, `animate-garden-celebrate` 와 같게). */
+const CELEBRATE_MS = 3200;
+
+/** 받침 없는 마지막 글자면 "로", 있으면 "으로" (ㄹ 받침도 "로"). */
+function toParticle(word: string): string {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  if (code < 0 || code > 11171) return "(으)로";
+  const final = code % 28;
+  return final === 0 || final === 8 ? "로" : "으로";
+}
 
 /**
- * 모바일 홈 (`/assets`). 위에는 핵심만 (총 평가금액·수익, 리밸런싱 알림), 그 아래 통계는
- * 칩 탭(종목 / 월별 내역 / 투자 추이, 기본은 종목)으로 나눠 한 번에 하나만 보여준다. 계좌 목록은 "계좌" 탭.
+ * 모바일 홈 (`/assets`) = 포트폴리오 식물 정원. 위쪽은 고정 높이 3D 정원 창, 아래는 스크롤 목록.
+ *
+ * - 정원 전체: 목록은 전체 포트폴리오 (식물을 누르거나 행을 누르면 그 식물로 다가간다)
+ * - 포커스: 카메라가 그 식물로 다가가고, 목록은 그 포트폴리오 요약 + 종목
+ * - 되돌리기: 정원 빈 곳 탭, 목록의 "정원 전체", 뒤로가기 (스택의 루트 뒤로가기 — Android 시스템
+ *   뒤로가기 포함, `stack-control.ts` 의 `setRootBack`). 포커스는 정원 창 카메라와 이어진 화면 안
+ *   상태라 스택 화면이나 브라우저 히스토리로 두지 않는다.
  */
 export function HomeMobile() {
+  const plants = usePortfolioPlants();
+  const portfolios = usePortfolioStore((s) => s.portfolios);
+  const addPortfolio = usePortfolioStore((s) => s.addPortfolio);
+  const setPlantGoal = usePortfolioStore((s) => s.setPlantGoal);
   const investments = useInvestmentStore((s) => s.investments);
-  const statusFor = useLinkedPortfolioStatus();
-  const { push } = useFlow();
-  const [tab, setTab] = useState<Tab>("holdings");
-  const [addOpen, setAddOpen] = useState(false);
-
-  // 저장된 평가금액이 아니라 지금 시세로 다시 계산한 금액을 보여준다 (계좌 상세와 같은 값).
-  const liveInvestments = useLiveAccounts(investments);
-  const totals = useMemo(() => summarizeAccounts(liveInvestments), [liveInvestments]);
-
   const sessions = useRebalancingStore((s) => s.sessions);
-  const busyAccountIds = useMemo(() => inProgressAccountIds(sessions), [sessions]);
-  // 연결된 포트폴리오 기준으로 리밸런싱이 필요한 계좌 (계좌 목록 순서대로).
-  const accountsNeedingRebalance = useMemo(
+  const allHoldings = useMemo(
+    () => investments.flatMap((inv) => inv.holdings ?? []),
+    [investments]
+  );
+  const { prices } = useStockPrices(allHoldings);
+  const { push } = useFlow();
+
+  const [focus, dispatchFocus] = useReducer(gardenFocusReducer, null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // 포커스를 바꾸면 아래 목록 내용이 바뀌니 맨 위부터 보인다.
+  const dispatch = useCallback((action: GardenFocusAction) => {
+    dispatchFocus(action);
+    if (action.type !== "sync") scrollRef.current?.scrollTo({ top: 0 });
+  }, []);
+  // 목록은 한 박자 늦게 바꿔 카메라 이동이 먼저 시작되게 한다 (첫 전환 끊김 줄이기).
+  const listFocus = useDeferredValue(focus);
+  // 목표 시트: 닫는 애니메이션 동안에도 그 포트폴리오를 들고 있게 열림과 대상을 따로 둔다.
+  const [goalFor, setGoalFor] = useState<string | null>(null);
+  const [goalOpen, setGoalOpen] = useState(false);
+  const openGoal = useCallback((portfolioId: string) => {
+    setGoalFor(portfolioId);
+    setGoalOpen(true);
+  }, []);
+  const [scrolling, setScrolling] = useState(false);
+  const [celebration, setCelebration] = useState<GrownPlant | null>(null);
+
+  const portfolioIds = useMemo(() => portfolios.map((p) => p.id), [portfolios]);
+  useEffect(() => dispatch({ type: "sync", portfolioIds }), [dispatch, portfolioIds]);
+
+  // 포커스 중이면 뒤로가기가 정원 전체로 돌아간다. 홈 탭이 숨으면 effect 가 멈춰 함께 풀린다.
+  const focusRef = useRef(focus);
+  focusRef.current = focus;
+  useEffect(
     () =>
-      investments.filter(
-        (inv) =>
-          statusFor(inv.id)?.state === "needs-rebalancing" &&
-          // 이미 진행 중인 계좌는 다시 시작하라고 하지 않는다.
-          !busyAccountIds.has(inv.id)
-      ),
-    [investments, statusFor, busyAccountIds]
+      setRootBack(() => {
+        if (!gardenHandlesBack(focusRef.current)) return false;
+        dispatch({ type: "back" });
+        return true;
+      }),
+    [dispatch]
   );
 
-  const resumeBanner = useMemo(
-    () => inProgressBanner(sessions, new Map(investments.map((inv) => [inv.id, inv.accountName]))),
-    [sessions, investments]
-  );
-  const showInProgressList = useRebalancingHomeTab((s) => s.setTab);
+  const slots = useMemo<PlantSlot[]>(() => {
+    const { spots } = gardenLayout(plants.length);
+    return plants.flatMap((plant, i) => {
+      const portfolio = portfolios.find((p) => p.id === plant.portfolioId);
+      const spot = spots[i];
+      if (!portfolio || !spot) return [];
+      return [{ id: plant.portfolioId, options: gardenPlantOptions(plant, portfolio), ...spot }];
+    });
+  }, [plants, portfolios]);
+  const layoutWidth = useMemo(() => gardenLayout(plants.length).width, [plants.length]);
 
-  const resume = () => {
-    if (resumeBanner?.sessionId) {
-      push("RebalancingSession", { id: resumeBanner.sessionId });
-      return;
+  // 화면을 연 동안 자란 식물을 축하한다 (처음 볼 때는 축하하지 않는다).
+  const seenStages = useRef<Map<string, number> | null>(null);
+  useEffect(() => {
+    const grown = grownSince(seenStages.current, plants);
+    seenStages.current = new Map(plants.map((p) => [p.portfolioId, p.stage]));
+    const [first] = grown;
+    if (first) setCelebration(first);
+  }, [plants]);
+  useEffect(() => {
+    if (!celebration) return;
+    const timer = setTimeout(() => setCelebration(null), CELEBRATE_MS);
+    return () => clearTimeout(timer);
+  }, [celebration]);
+
+  // 목록 스크롤 중에는 3D 렌더를 멈춘다. 상태는 바뀔 때만 갱신한다.
+  const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollingRef = useRef(false);
+  const onScroll = useCallback(() => {
+    if (!scrollingRef.current) {
+      scrollingRef.current = true;
+      setScrolling(true);
     }
-    showInProgressList("in-progress");
-    switchTab("rebalancing");
+    if (scrollTimer.current) clearTimeout(scrollTimer.current);
+    scrollTimer.current = setTimeout(() => {
+      scrollingRef.current = false;
+      setScrolling(false);
+    }, SCROLL_IDLE_MS);
+  }, []);
+  useEffect(
+    () => () => {
+      if (scrollTimer.current) clearTimeout(scrollTimer.current);
+    },
+    []
+  );
+
+  const go = useCallback(
+    (destination: RebalanceDestination) => {
+      if (destination.screen === "RebalancingNew") push("RebalancingNew", {});
+      else push(destination.screen, { id: destination.id });
+    },
+    [push]
+  );
+
+  const openRebalancing = useCallback(
+    (portfolioId: string) => {
+      const portfolio = portfolios.find((p) => p.id === portfolioId);
+      const destination = portfolio
+        ? rebalanceDestination(portfolio, investments, prices, sessions)
+        : null;
+      if (destination) go(destination);
+    },
+    [portfolios, investments, prices, sessions, go]
+  );
+
+  const onPick = useCallback(
+    (index: number | null, target: { badge: boolean }) => {
+      const plant = index === null ? null : plants[index];
+      dispatch({ type: "pick", portfolioId: plant?.portfolioId ?? null });
+      if (plant && target.badge) openRebalancing(plant.portfolioId);
+    },
+    [plants, openRebalancing, dispatch]
+  );
+
+  const plantFirstSeed = () => {
+    const id = addPortfolio();
+    push("PortfolioDetail", { id });
   };
 
-  if (investments.length === 0) {
-    return (
-      <div className="flex min-h-[60dvh] flex-col">
-        <ResultSection
-          title="투자 계좌가 없어요"
-          description="첫 투자 계좌를 추가하고 자산의 성장을 추적해보세요."
-          primaryActionProps={{ children: "투자 계좌 추가", onClick: () => setAddOpen(true) }}
-          secondaryActionProps={{
-            children: "설정에서 데모 데이터 불러오기",
-            onClick: () => push("Settings", {}),
-          }}
-        />
-        <AddAccountSheet open={addOpen} onOpenChange={setAddOpen} />
-      </div>
-    );
-  }
-
-  const [firstNeeding] = accountsNeedingRebalance;
-  const needingNames = accountsNeedingRebalance.map((inv) => inv.accountName).join(", ");
+  const focusedPlant = plants.find((p) => p.portfolioId === listFocus) ?? null;
+  const focusedPortfolio = portfolios.find((p) => p.id === listFocus) ?? null;
+  const goalPortfolio = portfolios.find((p) => p.id === goalFor) ?? null;
 
   return (
-    <div className="pb-x4">
-      <HoldingsPriceAsOfBanner investments={investments} />
-      <section className="px-x5 pt-x6 pb-x5">
-        <p className="t4-medium text-fg-neutral-muted">총 평가금액</p>
-        <p className="t10-bold mt-x1 tabular-nums">{numberToKorean(totals.current) || "0원"}</p>
-        <p className={`t5-medium mt-x1 tabular-nums ${profitToneClass(totals.profit)}`}>
-          {formatProfitKorean(totals.profit)} ({formatReturnRate(totals.returnRate)})
-        </p>
-        <p className="t3-regular text-fg-neutral-subtle mt-x2">
-          투자원금 {numberToKorean(totals.initial) || "0원"} · 계좌 {investments.length}개
-        </p>
-      </section>
-
-      {/* 하던 일(이어가기)이 새로 시작할 일보다 먼저다. 같은 계좌가 두 배너에 함께 나오지 않는다. */}
-      {(resumeBanner || firstNeeding) && (
-        <div className="flex flex-col gap-x2 px-x4 pb-x4">
-          {resumeBanner && (
-            <ActionableCallout
-              tone={resumeBanner.readyToComplete ? "positive" : "informative"}
-              prefixIcon={
-                resumeBanner.readyToComplete ? (
-                  <IconCheckmarkCircleFill />
-                ) : (
-                  <IconArrowClockwiseCircularFill />
-                )
-              }
-              title={resumeBanner.title}
-              description={resumeBanner.description}
-              onClick={resume}
-            />
-          )}
-          {firstNeeding && (
-            <ActionableCallout
-              tone="warning"
-              prefixIcon={<IconExclamationmarkCircleFill />}
-              title="리밸런싱이 필요해요"
-              description={needingNames}
-              // 계좌 하나면 바로 그 계좌의 리밸런싱으로, 여러 개면 새 리밸런싱에서 고른다.
-              onClick={() =>
-                accountsNeedingRebalance.length === 1
-                  ? push("RebalancingDetail", { id: firstNeeding.id })
-                  : push("RebalancingNew", {})
-              }
-            />
-          )}
-        </div>
-      )}
-
-      <ChipTabsRoot
-        value={tab}
-        onValueChange={(value) => setTab(value as Tab)}
-        variant="neutralSolid"
-        size="medium"
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div
+        className="relative shrink-0 overflow-hidden bg-[linear-gradient(180deg,#EAF6FF_0%,#F6FBEF_100%)]"
+        style={{ height: GARDEN_HEIGHT }}
       >
-        <ChipTabsList>
-          <ChipTabsTrigger value="holdings">종목</ChipTabsTrigger>
-          <ChipTabsTrigger value="monthly">월별 내역</ChipTabsTrigger>
-          <ChipTabsTrigger value="trend">투자 추이</ChipTabsTrigger>
-        </ChipTabsList>
-        <ChipTabsContent value="trend">
-          <InvestmentTrend investments={investments} />
-        </ChipTabsContent>
-        <ChipTabsContent value="monthly">
-          <div className="pt-x2">
-            <MonthlySummaryList investments={investments} />
+        <GardenCanvas
+          slots={slots}
+          layoutWidth={layoutWidth}
+          garden
+          focus={gardenFocusIndex(focus, plants)}
+          paused={scrolling}
+          onPick={onPick}
+          className="h-full w-full"
+        />
+        {plants.length === 0 && (
+          <p className="t4-medium text-fg-neutral-muted pointer-events-none absolute inset-x-0 top-[var(--seed-dimension-x6)] text-center">
+            아직 심은 씨앗이 없어요
+          </p>
+        )}
+        {celebration && (
+          <div
+            key={`${celebration.portfolioId}-${celebration.stage}`}
+            role="status"
+            className="animate-garden-celebrate bg-bg-layer-floating t4-bold pointer-events-none absolute inset-x-[var(--seed-dimension-x4)] top-[var(--seed-dimension-x4)] z-10 rounded-full px-x4 py-x2 text-center shadow-md"
+          >
+            🎉 {celebration.name ? `${celebration.name} 식물이` : "식물이"}{" "}
+            {PLANT_STAGE_LABELS[celebration.stage]}
+            {toParticle(PLANT_STAGE_LABELS[celebration.stage])} 자랐어요
           </div>
-        </ChipTabsContent>
-        <ChipTabsContent value="holdings">
-          <HoldingsSummaryList investments={investments} />
-        </ChipTabsContent>
-      </ChipTabsRoot>
+        )}
+      </div>
+
+      <div
+        ref={scrollRef}
+        onScroll={onScroll}
+        className="min-h-0 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden"
+      >
+        {focusedPlant && focusedPortfolio ? (
+          <GardenFocusPanel
+            plant={focusedPlant}
+            portfolio={focusedPortfolio}
+            investments={investments}
+            prices={prices}
+            onOverview={() => dispatch({ type: "overview" })}
+            onSetGoal={() => openGoal(focusedPortfolio.id)}
+            onRebalance={() => openRebalancing(focusedPortfolio.id)}
+            onOpenPortfolio={() => push("PortfolioDetail", { id: focusedPortfolio.id })}
+          />
+        ) : (
+          <GardenOverviewList
+            plants={plants}
+            portfolios={portfolios}
+            investments={investments}
+            onFocus={(portfolioId) => dispatch({ type: "pick", portfolioId })}
+            onSetGoal={openGoal}
+            onPlantFirstSeed={plantFirstSeed}
+          />
+        )}
+      </div>
+
+      {goalPortfolio && (
+        <EditPlantGoalSheet
+          // 열 때마다 입력을 지금 목표로 새로 채운다.
+          key={`${goalPortfolio.id}-${goalOpen}`}
+          open={goalOpen}
+          onOpenChange={setGoalOpen}
+          progress={goalPortfolio}
+          onSave={(amount) => setPlantGoal(goalPortfolio.id, amount)}
+        />
+      )}
     </div>
   );
 }

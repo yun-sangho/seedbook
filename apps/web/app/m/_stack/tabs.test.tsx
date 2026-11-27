@@ -199,6 +199,39 @@ describe("stack control", () => {
     expect(control.goBack()).toBe(false);
   });
 
+  it("lets the root screen undo its own state on back before reporting the root", async () => {
+    const { control } = await open("/assets");
+    let focused = true;
+    const release = control.setRootBack(() => {
+      if (!focused) return false;
+      focused = false;
+      return true;
+    });
+
+    expect(control.goBack()).toBe(true);
+    expect(focused).toBe(false);
+    expect(control.goBack()).toBe(false);
+    release();
+  });
+
+  it("pops a pushed screen before asking the root screen", async () => {
+    const { actions, control } = await open("/assets");
+    const rootBack = vi.fn(() => true);
+    const release = control.setRootBack(rootBack);
+    act(() => actions.push("AccountDetail", { id: "a1" }));
+    await settle();
+
+    act(() => {
+      control.goBack();
+    });
+    await settle();
+
+    expect(rootBack).not.toHaveBeenCalled();
+    expect(visibleInput("home")).not.toBeNull();
+    release();
+    expect(control.goBack()).toBe(false);
+  });
+
   it("returns to the home tab when another account signs in", async () => {
     const { actions, control } = await open("/assets/investments");
     control.bindStackToAccount("user-a");
