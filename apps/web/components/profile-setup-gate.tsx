@@ -13,8 +13,9 @@ import { randomNickname } from "@web/lib/seed-identity/seed-nickname";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 
 /**
- * 씨앗 아바타가 없는 계정이면 앱 대신 "아바타·닉네임 정하기" 를 한 번 보여 준다. 새 가입자는 약관
- * 동의 바로 뒤, 기존 사용자는 다음 실행 때. 실명·사진은 받지 않는다 (`lib/auth-privacy.ts`).
+ * 씨앗 아바타가 없는 기존 사용자에게 앱 대신 "아바타·닉네임 정하기" 를 한 번 보여 준다 (다음 실행
+ * 때). 새 가입자는 `OnboardingGate` 의 첫 가입 흐름에서 닉네임을 정한다. 실명·사진은 받지 않는다
+ * (`lib/auth-privacy.ts`).
  */
 export function ProfileSetupGate({ children }: { children: ReactNode }) {
   const { data: session } = useSession();
