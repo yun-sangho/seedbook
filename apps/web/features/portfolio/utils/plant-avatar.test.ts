@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { PlantStage } from "../types/types";
-import { defaultAvatarPlant, resolveProfileAvatar } from "./plant-avatar";
+import {
+  defaultAvatarPlant,
+  pickedAvatarPlant,
+  resolveAvatar,
+  resolveProfileAvatar,
+} from "./plant-avatar";
 
 const A = "11111111-1111-4111-8111-111111111111";
 const B = "22222222-2222-4222-8222-222222222222";
@@ -64,5 +69,52 @@ describe("resolveProfileAvatar", () => {
 
   it("has no seed before profile setup", () => {
     expect(resolveProfileAvatar(null, [])).toEqual({ kind: "seed", variant: null });
+  });
+});
+
+describe("resolveAvatar", () => {
+  const seed = { form: "pot", leaves: 3, color: "mint" } as const;
+
+  it("follows the chosen plant as it grows", () => {
+    const before = resolveAvatar({ seed, plantPortfolioId: B }, [
+      plant(A, 3, 100),
+      plant(B, 1, 900),
+    ]);
+    const after = resolveAvatar({ seed, plantPortfolioId: B }, [
+      plant(A, 3, 100),
+      plant(B, 2, 900),
+    ]);
+
+    expect(before).toMatchObject({ portfolioId: B, stage: 1 });
+    expect(after).toMatchObject({ portfolioId: B, stage: 2 });
+  });
+
+  it("goes back to the most grown plant when auto is picked", () => {
+    expect(
+      resolveAvatar({ seed, plantPortfolioId: null }, [plant(A, 1, 100), plant(B, 2, 9)])
+    ).toMatchObject({
+      portfolioId: B,
+      chosen: false,
+    });
+  });
+});
+
+describe("pickedAvatarPlant", () => {
+  const plants = [plant(A, 1, 100), plant(B, 2, 900)];
+
+  it("is the chosen portfolio's plant", () => {
+    expect(pickedAvatarPlant(A, plants)?.portfolioId).toBe(A);
+  });
+
+  it("is null (auto) before a plant is chosen", () => {
+    expect(pickedAvatarPlant(null, plants)).toBeNull();
+  });
+
+  it("is null (auto) when the chosen portfolio is not here", () => {
+    expect(pickedAvatarPlant(GONE, plants)).toBeNull();
+  });
+
+  it("is null without portfolios", () => {
+    expect(pickedAvatarPlant(A, [])).toBeNull();
   });
 });
