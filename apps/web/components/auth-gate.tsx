@@ -8,6 +8,7 @@ import { EntitySyncRunner } from "@web/components/entity-sync-runner";
 import { LoginScreen } from "@web/components/login-screen";
 import { AppLockOverlay } from "@web/components/mobile/app-lock";
 import { PreferencesSync } from "@web/components/preferences-sync";
+import { ProfileSetupGate } from "@web/components/profile-setup-gate";
 import { StorageChoiceGate } from "@web/components/storage-choice-gate";
 import { StorageModeSync } from "@web/components/storage-mode-sync";
 import { useSession } from "@web/lib/auth-client";
@@ -20,7 +21,8 @@ import { Loader2 } from "lucide-react";
  * 이 게이트는 저장 모드(local / cloud)와 무관하다. 로그인하지 않은 사용자는
  * 어떤 경로에서도 앱을 사용할 수 없다.
  *
- * 로그인 뒤 순서: 약관 동의 → 저장 방식 선택(계정마다 한 번) → 앱. 저장 방식을 고르는 동안에는
+ * 로그인 뒤 순서: 약관 동의 → 씨앗 아바타·닉네임 정하기(계정마다 한 번) → 저장 방식 선택(계정마다
+ * 한 번) → 앱. 저장 방식을 고르는 동안에는
  * 동기화를 시작하지 않는다. 앱 잠금은 저장 방식 선택 화면까지 가린다.
  */
 export function AuthGate({ children }: { children: ReactNode }) {
@@ -58,13 +60,15 @@ export function AuthGate({ children }: { children: ReactNode }) {
   if (session?.user) {
     return (
       <ConsentGate key={session.user.id}>
-        <StorageChoiceGate>
-          <StorageModeSync />
-          <PreferencesSync />
-          <EntitySyncRunner />
-          <AccountValueHistoryRunner />
-          {children}
-        </StorageChoiceGate>
+        <ProfileSetupGate>
+          <StorageChoiceGate>
+            <StorageModeSync />
+            <PreferencesSync />
+            <EntitySyncRunner />
+            <AccountValueHistoryRunner />
+            {children}
+          </StorageChoiceGate>
+        </ProfileSetupGate>
         {/* 네이티브 앱에서 앱 잠금을 켰을 때만 그려진다. */}
         <AppLockOverlay />
       </ConsentGate>

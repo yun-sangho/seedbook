@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { ANONYMOUS_USER_NAME } from "@seedbook/database/anonymous-identity";
-import { authClient, useSession } from "@web/lib/auth-client";
+import { ProfileFields, UserAvatar, useProfileDraft } from "@web/components/profile-editor";
+import { useSession } from "@web/lib/auth-client";
+import type { ProfileUser } from "@web/lib/seed-identity/profile";
+import { parseSeedAvatarKey, randomSeedAvatar } from "@web/lib/seed-identity/seed-avatar";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
   BottomSheetBody,
@@ -10,30 +13,17 @@ import {
   BottomSheetFooter,
   BottomSheetRoot,
 } from "@web/seed-design/ui/bottom-sheet";
-import { TextField, TextFieldInput } from "@web/seed-design/ui/text-field";
-import { UserRound } from "lucide-react";
 
-// 로그인에서 이름·이메일·사진을 받지 않는다 (`lib/auth-privacy.ts`). 이름은 사용자가 여기서 정한다.
-interface SessionUser {
-  name?: string | null;
-}
-
-function useSessionUser(): SessionUser | undefined {
+// 로그인에서 이름·이메일·사진을 받지 않는다 (`lib/auth-privacy.ts`). 씨앗 아바타와 닉네임은 가입
+// 단계(`components/profile-setup-gate.tsx`)에서 정하고, 여기서 다시 바꾼다.
+export function useSessionUser(): ProfileUser | undefined {
   const { data: session } = useSession();
-  return session?.user as SessionUser | undefined;
+  return session?.user as ProfileUser | undefined;
 }
 
-/** 기본 아바타. */
-function Avatar({ size }: { size: number }) {
-  return (
-    <span
-      className="bg-bg-neutral-weak text-fg-neutral-muted flex shrink-0 items-center justify-center overflow-hidden rounded-full"
-      style={{ width: size, height: size }}
-      aria-hidden
-    >
-      <UserRound size={Math.round(size * 0.6)} strokeWidth={1.75} />
-    </span>
-  );
+/** 지금 사용자의 아바타. */
+export function SessionUserAvatar({ size }: { size: number }) {
+  return <UserAvatar image={useSessionUser()?.image} size={size} />;
 }
 
 /**
@@ -48,12 +38,12 @@ export function ProfileButton({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       className="flex size-x10 items-center justify-center"
     >
-      <Avatar size={28} />
+      <SessionUserAvatar size={28} />
     </button>
   );
 }
 
-/** 프로필(이름) 편집 시트. 열 때마다 현재 이름으로 폼을 초기화한다. */
+/** 프로필(아바타·닉네임) 편집 시트. 열 때마다 현재 값으로 폼을 초기화한다. */
 export function ProfileSheet({
   open,
   onOpenChange,
@@ -74,62 +64,31 @@ function ProfileSheetBody({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  user: SessionUser | undefined;
+  user: ProfileUser | undefined;
 }) {
-  const [name, setName] = useState(user?.name ?? "");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const trimmed = name.trim();
+  const [initial] = useState(() => ({
+    avatar: parseSeedAvatarKey(user?.image) ?? randomSeedAvatar(),
+    nickname: user?.name ?? ANONYMOUS_USER_NAME,
+  }));
+  const draft = useProfileDraft(initial);
+  const unchanged = draft.avatar === initial.avatar && draft.nickname === initial.nickname;
 
   const save = async () => {
-    if (!trimmed) {
-      setError("이름을 입력해주세요");
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      const result = await authClient.updateUser({ name: trimmed });
-      if (result?.error) throw new Error(result.error.message ?? "update failed");
-      onOpenChange(false);
-    } catch {
-      setError("저장하지 못했어요. 잠시 후 다시 시도해주세요.");
-    } finally {
-      setSaving(false);
-    }
+    if (await draft.save()) onOpenChange(false);
   };
 
   return (
     <BottomSheetRoot open={open} onOpenChange={onOpenChange}>
       <BottomSheetContent title="내 프로필" showHandle>
         <BottomSheetBody>
-          <div className="flex flex-col gap-x5">
-            <div className="flex items-center gap-x3">
-              <Avatar size={56} />
-              <div className="min-w-0">
-                <p className="t5-bold truncate">{user?.name || ANONYMOUS_USER_NAME}</p>
-                <p className="t3-regular text-fg-neutral-subtle break-keep">
-                  실명이 아니어도 괜찮아요
-                </p>
-              </div>
-            </div>
-            <TextField
-              label="이름"
-              value={name}
-              onValueChange={({ value }) => setName(value)}
-              invalid={!!error}
-              errorMessage={error ?? undefined}
-            >
-              <TextFieldInput placeholder="이름" maxLength={30} />
-            </TextField>
-          </div>
+          <ProfileFields draft={draft} rerollNickname={false} avatarSize={88} />
         </BottomSheetBody>
         <BottomSheetFooter>
           <ActionButton
             size="large"
             className="w-full"
-            loading={saving}
-            disabled={saving || trimmed === (user?.name ?? "")}
+            loading={draft.saving}
+            disabled={draft.saving || unchanged}
             onClick={save}
           >
             저장
