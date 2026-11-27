@@ -177,11 +177,8 @@ function Fiddlehead({ x, top, coil }: { x: number; top: number; coil: number }) 
 const DEW_DROPS: [number, number, number][] = [
   [12.5, 45, 1.8],
   [51.5, 45, 1.8],
-  [9.5, 36, 1.5],
-  [54.5, 36, 1.5],
   [22, 24, 1.5],
   [42, 23, 1.5],
-  [17, 52, 1.4],
   [47, 52, 1.4],
 ];
 

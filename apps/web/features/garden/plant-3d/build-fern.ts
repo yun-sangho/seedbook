@@ -26,7 +26,7 @@ const COLORS = {
 } as const;
 
 /** 풍성 단계: 잎줄기마다 맺히는 이슬 수와 둘레에서 반짝이는 별 수. */
-const DEW_PER_FROND = 3;
+const DEW_PER_FROND = 1;
 const SPARKLE_COUNT = 14;
 
 /** 처짐 1 일 때 잎줄기가 더 숙여지는 각도(라디안). 모양(아치)에도 따로 처짐을 넣는다. */
@@ -333,10 +333,10 @@ function frondGeometry(
   const dewColor = new THREE.Color(COLORS.dew);
   const shineColor = new THREE.Color(COLORS.dewHighlight);
   for (let i = 0; i < dew; i++) {
-    const s = 0.3 + ((i + rand() * 0.6) / Math.max(dew, 1)) * 0.6;
+    const s = 0.45 + ((i + rand()) / Math.max(dew, 1)) * 0.4;
     curve.getPoint(s, point);
     curve.getTangent(s, tangent);
-    const side = i % 2 === 0 ? 1 : -1;
+    const side = rand() < 0.5 ? 1 : -1;
     const reach = leafletLength * leafletProfile(s) * (0.55 + rand() * 0.3);
     const at = point
       .clone()
