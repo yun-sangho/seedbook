@@ -218,3 +218,17 @@
 [data-seed-user-color-scheme="dark"] .garden-sky {
   background: linear-gradient(180deg, #1b2230 0%, #1e2620 100%);
 }
+
+/* 소개 페이지 색: 브랜드 마크(씨앗에서 싹)의 민트 바탕·잎 초록. 다크 모드는 정원 밤하늘에 맞춘 어두운 초록. */
+.landing-mint {
+  background-color: #e2f4df;
+}
+.landing-leaf {
+  color: #2f8a40;
+}
+[data-seed-user-color-scheme="dark"] .landing-mint {
+  background-color: #1f2b22;
+}
+[data-seed-user-color-scheme="dark"] .landing-leaf {
+  color: #7cc870;
+}
