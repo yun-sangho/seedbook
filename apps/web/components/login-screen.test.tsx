@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import { LAST_LOGIN_METHOD_KEY } from "@web/lib/last-login-method";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LoginScreen } from "./login-screen";
 
@@ -18,7 +19,28 @@ const kakao = () => screen.getByRole("button", { name: /카카오로 로그인/ 
 describe("LoginScreen", () => {
   beforeEach(() => {
     mockSignInSocial.mockReset();
+    window.localStorage.clear();
     mockSignInSocial.mockResolvedValue({ data: {}, error: null });
+  });
+
+  it("marks only the success return with the provider, so a failed login is not remembered", async () => {
+    openAt("/assets");
+    await act(async () => fireEvent.click(kakao()));
+    expect(mockSignInSocial).toHaveBeenCalledTimes(1);
+    const { callbackURL, errorCallbackURL } = mockSignInSocial.mock.calls[0]?.[0] ?? {};
+    expect(callbackURL).toContain("signedInWith=kakao");
+    expect(errorCallbackURL).not.toContain("signedInWith");
+  });
+
+  it("points at the provider this device last signed in with", () => {
+    window.localStorage.setItem(LAST_LOGIN_METHOD_KEY, "kakao");
+    openAt("/assets");
+    expect(screen.getByText("최근에 카카오로 로그인했어요")).toBeInTheDocument();
+  });
+
+  it("shows no hint on a device that has not signed in yet", () => {
+    openAt("/assets");
+    expect(screen.queryByText(/최근에 .+로 로그인했어요/)).not.toBeInTheDocument();
   });
 
   it("returns to the screen that asked for login, on success and on failure", async () => {
@@ -26,7 +48,7 @@ describe("LoginScreen", () => {
     await act(async () => fireEvent.click(kakao()));
     expect(mockSignInSocial).toHaveBeenCalledWith({
       provider: "kakao",
-      callbackURL: "/assets/rebalancing",
+      callbackURL: "/assets/rebalancing?signedInWith=kakao",
       errorCallbackURL: "/assets/rebalancing",
     });
   });

@@ -12,6 +12,12 @@ import { ProfileSetupGate } from "@web/components/profile-setup-gate";
 import { StorageChoiceGate } from "@web/components/storage-choice-gate";
 import { StorageModeSync } from "@web/components/storage-mode-sync";
 import { useSession } from "@web/lib/auth-client";
+import { getDeviceStorage } from "@web/lib/device-storage";
+import {
+  addressWithoutSignedInWith,
+  signedInWithFrom,
+  writeLastLoginMethod,
+} from "@web/lib/last-login-method";
 import { clearSignedOutMark } from "@web/lib/native/biometric-login";
 import { Loader2 } from "lucide-react";
 
@@ -34,6 +40,20 @@ export function AuthGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     const storage = signedIn ? sessionStorageOrNull() : null;
     if (storage) clearSignedOutMark(storage);
+  }, [signedIn]);
+
+  // 소셜 로그인에 성공해 돌아오면 주소에 수단이 붙어 있다 (`hooks/use-social-sign-in.ts`). 이 기기의
+  // 최근 로그인 수단으로 남기고, 새로고침·공유에 남지 않게 주소에서 지운다.
+  useEffect(() => {
+    if (!signedIn) return;
+    const provider = signedInWithFrom(window.location);
+    if (!provider) return;
+    writeLastLoginMethod(getDeviceStorage(), provider);
+    window.history.replaceState(
+      window.history.state,
+      "",
+      addressWithoutSignedInWith(window.location)
+    );
   }, [signedIn]);
 
   // 세션이 없으면 다시 조회할 때마다(창 포커스 등) isPending 이 켜진다. 한 번 확인한 뒤에는 로그인

@@ -5,6 +5,12 @@ import { Icon } from "@seed-design/react";
 import { AppleSignInActionButton } from "@web/components/apple-sign-in-action-button";
 import { BiometricSignInButton } from "@web/components/biometric-sign-in-button";
 import { useSocialSignIn } from "@web/hooks/use-social-sign-in";
+import { getDeviceStorage } from "@web/lib/device-storage";
+import {
+  lastLoginMethodLabel,
+  readLastLoginMethod,
+  type SocialProvider,
+} from "@web/lib/last-login-method";
 import { LEGAL_DOCUMENTS } from "@web/lib/legal-documents";
 import {
   LOGIN_ERROR_PARAM,
@@ -19,6 +25,15 @@ import { Sprout } from "lucide-react";
 // Next.js 가 빌드 타임에 치환하므로 클라이언트 번들에서도 사용 가능.
 const isDevEnv = process.env.NODE_ENV === "development";
 
+/** 이 기기에서 마지막으로 쓴 수단의 버튼 아래에 붙는다 (`lib/last-login-method.ts`). */
+function LastLoginHint({ provider }: { provider: SocialProvider }) {
+  return (
+    <p className="t3-medium text-fg-brand -mt-x1 pb-x1 text-center">
+      {lastLoginMethodLabel(provider)}
+    </p>
+  );
+}
+
 /**
  * 로그인 화면. 브라우저에서만 그려진다 (`HydrationGate` 아래) — 첫 렌더에서 주소를 읽어도 된다.
  */
@@ -28,6 +43,8 @@ export function LoginScreen() {
     loginErrorMessage(new URLSearchParams(window.location.search).get(LOGIN_ERROR_PARAM))
   );
   const { pendingProvider, failed, signIn } = useSocialSignIn(returnPath);
+  // 다른 수단으로 따로 가입해 계정이 둘로 갈리지 않게, 이 기기에서 쓰던 수단을 알려 준다.
+  const [lastLoginMethod] = useState(() => readLastLoginMethod(getDeviceStorage()));
   const [devPending, setDevPending] = useState(false);
   const [devFailed, setDevFailed] = useState(false);
 
@@ -84,8 +101,10 @@ export function LoginScreen() {
           >
             카카오로 로그인
           </ActionButton>
+          {lastLoginMethod === "kakao" && <LastLoginHint provider="kakao" />}
           <AppleSignInActionButton
             size="large"
+            hint={lastLoginMethod === "apple" && <LastLoginHint provider="apple" />}
             loading={pendingProvider === "apple"}
             disabled={busy && pendingProvider !== "apple"}
             onClick={() => signIn("apple")}
