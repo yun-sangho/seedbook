@@ -2,22 +2,14 @@
 
 import { useRef, useState } from "react";
 import {
-  IconCheckmarkLine,
   IconDocumentArrowLeftLine,
   IconDocumentPlusLine,
-  IconKeyholeShieldLine,
   IconSparkle2Line,
 } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
-import { useFlow } from "@stackflow/react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
-import {
-  describeSwitchProgress,
-  type SwitchDirection,
-  useStorageModeSwitch,
-} from "@web/features/settings/hooks/use-storage-mode-switch";
 import { backupAccountTag, resolveBackupIds } from "@web/features/settings/utils/backup-ids";
 import {
   type BackupSections,
@@ -41,28 +33,8 @@ import {
   AlertDialogTitle,
 } from "@web/seed-design/ui/alert-dialog";
 import { List, ListButtonItem } from "@web/seed-design/ui/list";
-import { ListHeader } from "@web/seed-design/ui/list-header";
-import { ProgressCircle } from "@web/seed-design/ui/progress-circle";
 
 const DEMO_DATA_URL = "/seed-data/user-data.json";
-
-const SWITCH_COPY: Record<
-  SwitchDirection,
-  { title: string; description: string; confirm: string }
-> = {
-  "to-cloud": {
-    title: "클라우드 저장으로 바꿀까요?",
-    description:
-      "이 기기의 데이터를 클라우드에 올려요. 클라우드에 있던 데이터와 합쳐지고 지워지는 항목은 없어요. 같은 항목은 이 기기의 내용으로 맞춰요.",
-    confirm: "클라우드로 바꾸기",
-  },
-  "to-local": {
-    title: "이 기기에만 저장할까요?",
-    description:
-      "클라우드 데이터를 이 기기로 받아요. 이 기기의 데이터와 합쳐지고 지워지는 항목은 없어요. 같은 항목은 이 기기의 내용을 유지해요.",
-    confirm: "이 기기로 바꾸기",
-  },
-};
 
 /** 데이터 가져오기·데모 데이터의 확인과 결과 안내. */
 type DataDialog =
@@ -75,10 +47,8 @@ type DataDialog =
     }
   | { kind: "message"; title: string; description: string; reloadOnClose?: boolean };
 
-/** 더보기 → 설정. 저장소 모드 전환과 데이터 백업 (예전 PC 관리 화면). */
-export function SettingsMobile() {
-  const { push } = useFlow();
-  const storage = useStorageModeSwitch();
+/** 설정 → 백업·데모 데이터. 내보내기·가져오기와 데모 데이터 불러오기. */
+export function DataBackupMobile() {
   const [dataDialog, setDataDialog] = useState<DataDialog>({ kind: "closed" });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -178,41 +148,8 @@ export function SettingsMobile() {
     setDataDialog({ kind: "closed" });
   };
 
-  const switching = storage.state.kind === "progress";
-
   return (
-    <div className="pb-x6">
-      <ListHeader>계정</ListHeader>
-      <List>
-        <ListButtonItem
-          prefix={<Icon svg={<IconKeyholeShieldLine />} />}
-          title="로그인 수단"
-          detail="다른 로그인 수단을 연결해 같은 계정으로 로그인해요"
-          onClick={() => push("LoginMethods", {})}
-        />
-      </List>
-
-      <ListHeader className="mt-x4">저장 위치</ListHeader>
-      <List>
-        <ListButtonItem
-          title="이 기기에만 저장"
-          detail="이 기기에만 두고 다른 기기와 맞추지 않아요"
-          suffix={storage.mode === "local" ? <Icon svg={<IconCheckmarkLine />} /> : undefined}
-          aria-pressed={storage.mode === "local"}
-          disabled={switching}
-          onClick={() => storage.request("local")}
-        />
-        <ListButtonItem
-          title="클라우드에 저장"
-          detail="같은 계정이면 어느 기기에서든 같은 데이터를 봐요"
-          suffix={storage.mode === "cloud" ? <Icon svg={<IconCheckmarkLine />} /> : undefined}
-          aria-pressed={storage.mode === "cloud"}
-          disabled={switching}
-          onClick={() => storage.request("cloud")}
-        />
-      </List>
-
-      <ListHeader className="mt-x4">데이터</ListHeader>
+    <div className="pt-x2 pb-x6">
       <List>
         <ListButtonItem
           prefix={<Icon svg={<IconDocumentArrowLeftLine />} />}
@@ -242,8 +179,6 @@ export function SettingsMobile() {
         aria-hidden
         tabIndex={-1}
       />
-
-      <StorageSwitchDialog state={storage.state} onCancel={storage.cancel} onRun={storage.run} />
 
       <AlertDialogRoot
         open={dataDialog.kind !== "closed"}
@@ -302,90 +237,5 @@ export function SettingsMobile() {
         </AlertDialogContent>
       </AlertDialogRoot>
     </div>
-  );
-}
-
-function StorageSwitchDialog({
-  state,
-  onCancel,
-  onRun,
-}: {
-  state: ReturnType<typeof useStorageModeSwitch>["state"];
-  onCancel: () => void;
-  onRun: (direction: SwitchDirection) => void;
-}) {
-  const busy = state.kind === "progress";
-
-  return (
-    <AlertDialogRoot
-      open={state.kind !== "idle"}
-      onOpenChange={(open) => {
-        if (!open && !busy) onCancel();
-      }}
-    >
-      <AlertDialogContent>
-        {state.kind === "confirm" && (
-          <>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{SWITCH_COPY[state.direction].title}</AlertDialogTitle>
-              <AlertDialogDescription>
-                {SWITCH_COPY[state.direction].description}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <div className="flex w-full gap-x2">
-                <AlertDialogAction variant="neutralWeak" size="large" flexGrow>
-                  취소
-                </AlertDialogAction>
-                <ActionButton
-                  variant="neutralSolid"
-                  size="large"
-                  flexGrow
-                  onClick={() => onRun(state.direction)}
-                >
-                  {SWITCH_COPY[state.direction].confirm}
-                </ActionButton>
-              </div>
-            </AlertDialogFooter>
-          </>
-        )}
-        {state.kind === "progress" && (
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {state.direction === "to-cloud" ? "클라우드로 옮기는 중" : "이 기기로 옮기는 중"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              <span className="flex items-center gap-x2">
-                <ProgressCircle size="24" tone="neutral" />
-                {describeSwitchProgress(state.progress, state.direction)}
-              </span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-        )}
-        {state.kind === "error" && (
-          <>
-            <AlertDialogHeader>
-              <AlertDialogTitle>저장 위치를 바꾸지 못했어요</AlertDialogTitle>
-              <AlertDialogDescription>{state.message}</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <div className="flex w-full gap-x2">
-                <AlertDialogAction variant="neutralWeak" size="large" flexGrow>
-                  닫기
-                </AlertDialogAction>
-                <ActionButton
-                  variant="neutralSolid"
-                  size="large"
-                  flexGrow
-                  onClick={() => onRun(state.direction)}
-                >
-                  다시 시도
-                </ActionButton>
-              </div>
-            </AlertDialogFooter>
-          </>
-        )}
-      </AlertDialogContent>
-    </AlertDialogRoot>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { isNativeAppUserAgent } from "@web/lib/device";
 import { type InstallMode, isIOSUserAgent, resolveInstallMode } from "@web/lib/pwa-install";
 
@@ -18,16 +18,18 @@ function isStandaloneDisplay(): boolean {
   );
 }
 
-/**
- * 홈 화면 설치 상태와 설치 실행 함수.
- * `beforeinstallprompt` 는 페이지 로드 직후 한 번 오므로 항상 마운트된 곳(모바일 셸)에서 호출한다.
- */
-export function usePwaInstall(): {
+export interface PwaInstall {
   mode: InstallMode;
   install: () => Promise<void>;
   isIOS: boolean;
   isNativeApp: boolean;
-} {
+}
+
+/**
+ * 홈 화면 설치 상태와 설치 실행 함수.
+ * `beforeinstallprompt` 는 페이지 로드 직후 한 번 오므로 항상 마운트된 곳(모바일 셸)에서 호출한다.
+ */
+export function usePwaInstall(): PwaInstall {
   const [promptEvent, setPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [standalone, setStandalone] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
@@ -74,4 +76,16 @@ export function usePwaInstall(): {
     isIOS,
     isNativeApp,
   };
+}
+
+/** 모바일 셸(`mobile-stack-client.tsx`)이 받은 설치 상태를 화면(설정 메뉴)에 내려준다. */
+export const PwaInstallContext = createContext<PwaInstall>({
+  mode: "unavailable",
+  install: async () => {},
+  isIOS: false,
+  isNativeApp: false,
+});
+
+export function usePwaInstallState(): PwaInstall {
+  return useContext(PwaInstallContext);
 }
