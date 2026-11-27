@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { PlantSceneMetrics, PlantSlot } from "../plant-3d/plant-renderer";
+import type { GardenAnchor, PlantSceneMetrics, PlantSlot } from "../plant-3d/plant-renderer";
 
 export interface GardenCanvasProps {
   /** 그릴 식물과 자리. 정원 배치는 `gardenLayout()` 으로 구한다. */
@@ -12,6 +12,8 @@ export interface GardenCanvasProps {
   garden: boolean;
   /** 다가갈 식물 (slots 의 index). null 이면 정원 전체. 바뀌면 카메라가 부드럽게 옮겨 간다. */
   focus?: number | null;
+  /** 정원을 화면 어디에 둘지 (`groundEdge`: 받침 앞쪽 끝이 화면 세로 가운데). 기본 `center`. */
+  anchor?: GardenAnchor;
   /** true 면 렌더 루프를 멈춘다 (아래 목록 스크롤 중 등). */
   paused?: boolean;
   /** 탭한 식물 (빈 곳이면 null). `badge` 는 리밸런싱 `!` 배지를 눌렀는지. */

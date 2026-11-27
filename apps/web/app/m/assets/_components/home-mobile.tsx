@@ -1,44 +1,37 @@
 "use client";
 
-import {
-  useCallback,
-  useDeferredValue,
-  useEffect,
-  useMemo,
-  useReducer,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { IconChevronRightLine } from "@karrotmarket/react-monochrome-icon";
+import { Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 import { setRootBack } from "@web/app/m/_stack/stack-control";
-import { EditPlantGoalSheet } from "@web/app/m/assets/portfolio/[id]/_components/portfolio-plant-card";
+import { PriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
 import { GardenCanvas } from "@web/features/garden/components/garden-canvas";
-import { gardenLayout } from "@web/features/garden/plant-3d/garden-layout";
+import { gardenLayout, spotsTallestToBack } from "@web/features/garden/plant-3d/garden-layout";
 import type { PlantSlot } from "@web/features/garden/plant-3d/plant-renderer";
 import {
-  type GardenFocusAction,
   type GrownPlant,
   gardenFocusIndex,
   gardenFocusReducer,
   gardenHandlesBack,
   gardenPlantOptions,
   grownSince,
-  type RebalanceDestination,
-  rebalanceDestination,
 } from "@web/features/garden/utils/garden-home";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { useStockPrices } from "@web/features/investments/utils/use-stock-prices";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import { PLANT_STAGE_LABELS } from "@web/features/portfolio/types/constants";
 import { usePortfolioPlants } from "@web/features/portfolio/utils/use-portfolio-plants";
-import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
-import { GardenFocusPanel } from "./garden-focus-panel";
-import { GardenOverviewList } from "./garden-overview-list";
+import { GardenOverviewList, GardenTotalHeader } from "./garden-overview-list";
+import { GardenSheet } from "./garden-sheet";
 
-/** 정원 창 높이 (화면 높이 대비). 아래 목록만 스크롤하고 정원 창은 크기가 바뀌지 않는다. */
-export const GARDEN_HEIGHT = "40dvh";
 /** 마지막 scroll 뒤 이만큼 지나면 3D 렌더를 다시 돌린다 (ms). */
 const SCROLL_IDLE_MS = 150;
+/**
+ * 식물을 누른 뒤 "자세히 보기" 칩을 띄우기까지 (ms). 바텀시트가 내려가고(260ms) 카메라가 거의 다
+ * 다가간 뒤에 나오게 한다.
+ */
+const DETAIL_CHIP_DELAY_MS = 650;
 /** 성장 축하 문구를 보여주는 시간 (ms, `animate-garden-celebrate` 와 같게). */
 const CELEBRATE_MS = 3200;
 
@@ -51,7 +44,9 @@ function toParticle(word: string): string {
 }
 
 /**
- * 모바일 홈 (`/assets`) = 포트폴리오 식물 정원. 위쪽은 고정 높이 3D 정원 창, 아래는 스크롤 목록.
+ * 모바일 홈 (`/assets`) = 포트폴리오 식물 정원. 3D 정원이 화면을 채우고, 목록은 그 위로 끌어 올리는
+ * 바텀시트 (`GardenSheet`, 머리 = 총 평가금액). 정원은 받침 앞쪽 끝이 영역 세로 가운데에 오게 고정
+ * (위쪽 절반에 식물), 시트는 처음에 그 아래까지 올라오고, 끌면 정원은 그대로 둔 채 시트가 덮는다.
  *
  * - 정원 전체: 목록은 전체 포트폴리오 (식물을 누르거나 행을 누르면 그 식물로 다가간다)
  * - 포커스: 카메라가 그 식물로 다가가고, 목록은 그 포트폴리오 요약 + 종목
@@ -63,9 +58,7 @@ export function HomeMobile() {
   const plants = usePortfolioPlants();
   const portfolios = usePortfolioStore((s) => s.portfolios);
   const addPortfolio = usePortfolioStore((s) => s.addPortfolio);
-  const setPlantGoal = usePortfolioStore((s) => s.setPlantGoal);
   const investments = useInvestmentStore((s) => s.investments);
-  const sessions = useRebalancingStore((s) => s.sessions);
   const allHoldings = useMemo(
     () => investments.flatMap((inv) => inv.holdings ?? []),
     [investments]
@@ -73,27 +66,14 @@ export function HomeMobile() {
   const { prices } = useStockPrices(allHoldings);
   const { push } = useFlow();
 
-  const [focus, dispatchFocus] = useReducer(gardenFocusReducer, null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  // 포커스를 바꾸면 아래 목록 내용이 바뀌니 맨 위부터 보인다.
-  const dispatch = useCallback((action: GardenFocusAction) => {
-    dispatchFocus(action);
-    if (action.type !== "sync") scrollRef.current?.scrollTo({ top: 0 });
-  }, []);
-  // 목록은 한 박자 늦게 바꿔 카메라 이동이 먼저 시작되게 한다 (첫 전환 끊김 줄이기).
-  const listFocus = useDeferredValue(focus);
-  // 목표 시트: 닫는 애니메이션 동안에도 그 포트폴리오를 들고 있게 열림과 대상을 따로 둔다.
-  const [goalFor, setGoalFor] = useState<string | null>(null);
-  const [goalOpen, setGoalOpen] = useState(false);
-  const openGoal = useCallback((portfolioId: string) => {
-    setGoalFor(portfolioId);
-    setGoalOpen(true);
-  }, []);
+  const [focus, dispatch] = useReducer(gardenFocusReducer, null);
   const [scrolling, setScrolling] = useState(false);
+  // 정원 영역. 바텀시트는 이 영역 안에서 정원 위를 덮는다.
+  const areaRef = useRef<HTMLDivElement>(null);
   const [celebration, setCelebration] = useState<GrownPlant | null>(null);
 
   const portfolioIds = useMemo(() => portfolios.map((p) => p.id), [portfolios]);
-  useEffect(() => dispatch({ type: "sync", portfolioIds }), [dispatch, portfolioIds]);
+  useEffect(() => dispatch({ type: "sync", portfolioIds }), [portfolioIds]);
 
   // 포커스 중이면 뒤로가기가 정원 전체로 돌아간다. 홈 탭이 숨으면 effect 가 멈춰 함께 풀린다.
   const focusRef = useRef(focus);
@@ -105,14 +85,16 @@ export function HomeMobile() {
         dispatch({ type: "back" });
         return true;
       }),
-    [dispatch]
+    []
   );
 
   const slots = useMemo<PlantSlot[]>(() => {
     const { spots } = gardenLayout(plants.length);
+    // 키 큰 식물을 뒷줄에 둬 앞줄 나무가 뒷줄을 가리지 않게 한다 (slots 순서는 plants 순서 그대로).
+    const spotOf = spotsTallestToBack(plants.map((plant) => plant.stage));
     return plants.flatMap((plant, i) => {
       const portfolio = portfolios.find((p) => p.id === plant.portfolioId);
-      const spot = spots[i];
+      const spot = spots[spotOf[i] ?? i];
       if (!portfolio || !spot) return [];
       return [{ id: plant.portfolioId, options: gardenPlantOptions(plant, portfolio), ...spot }];
     });
@@ -154,32 +136,13 @@ export function HomeMobile() {
     []
   );
 
-  const go = useCallback(
-    (destination: RebalanceDestination) => {
-      if (destination.screen === "RebalancingNew") push("RebalancingNew", {});
-      else push(destination.screen, { id: destination.id });
-    },
-    [push]
-  );
-
-  const openRebalancing = useCallback(
-    (portfolioId: string) => {
-      const portfolio = portfolios.find((p) => p.id === portfolioId);
-      const destination = portfolio
-        ? rebalanceDestination(portfolio, investments, prices, sessions)
-        : null;
-      if (destination) go(destination);
-    },
-    [portfolios, investments, prices, sessions, go]
-  );
-
+  // 식물(`!` 배지 포함)을 누르면 카메라만 다가가고, 시트는 내려가며 위에 "자세히 보기" 칩이 뜬다.
   const onPick = useCallback(
-    (index: number | null, target: { badge: boolean }) => {
+    (index: number | null) => {
       const plant = index === null ? null : plants[index];
       dispatch({ type: "pick", portfolioId: plant?.portfolioId ?? null });
-      if (plant && target.badge) openRebalancing(plant.portfolioId);
     },
-    [plants, openRebalancing, dispatch]
+    [plants]
   );
 
   const plantFirstSeed = () => {
@@ -187,24 +150,31 @@ export function HomeMobile() {
     push("PortfolioDetail", { id });
   };
 
-  const focusedPlant = plants.find((p) => p.portfolioId === listFocus) ?? null;
-  const focusedPortfolio = portfolios.find((p) => p.id === listFocus) ?? null;
-  const goalPortfolio = portfolios.find((p) => p.id === goalFor) ?? null;
+  const focusedPortfolio = portfolios.find((p) => p.id === focus) ?? null;
+  const focusedId = focusedPortfolio?.id ?? null;
+  // 칩은 포커스·시트 내리기가 끝난 뒤에 띄운다. 포커스가 바뀌거나 풀리면 바로 숨긴다.
+  const [chipFor, setChipFor] = useState<string | null>(null);
+  useEffect(() => {
+    setChipFor(null);
+    if (focusedId === null) return;
+    const timer = setTimeout(() => setChipFor(focusedId), DETAIL_CHIP_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [focusedId]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div
-        className="relative shrink-0 overflow-hidden bg-[linear-gradient(180deg,#EAF6FF_0%,#F6FBEF_100%)]"
-        style={{ height: GARDEN_HEIGHT }}
-      >
+      {/* 시세 기준은 정원 전체·포커스 모두 앱바 바로 아래에 붙인다. */}
+      <PriceAsOfBanner prices={prices} />
+      <div ref={areaRef} className="garden-sky relative min-h-0 flex-1 overflow-hidden">
         <GardenCanvas
           slots={slots}
           layoutWidth={layoutWidth}
           garden
+          anchor="groundEdge"
           focus={gardenFocusIndex(focus, plants)}
           paused={scrolling}
           onPick={onPick}
-          className="h-full w-full"
+          className="absolute inset-0"
         />
         {plants.length === 0 && (
           <p className="t4-medium text-fg-neutral-muted pointer-events-none absolute inset-x-0 top-[var(--seed-dimension-x6)] text-center">
@@ -222,46 +192,35 @@ export function HomeMobile() {
             {toParticle(PLANT_STAGE_LABELS[celebration.stage])} 자랐어요
           </div>
         )}
-      </div>
-
-      <div
-        ref={scrollRef}
-        onScroll={onScroll}
-        className="min-h-0 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden"
-      >
-        {focusedPlant && focusedPortfolio ? (
-          <GardenFocusPanel
-            plant={focusedPlant}
-            portfolio={focusedPortfolio}
-            investments={investments}
-            prices={prices}
-            onOverview={() => dispatch({ type: "overview" })}
-            onSetGoal={() => openGoal(focusedPortfolio.id)}
-            onRebalance={() => openRebalancing(focusedPortfolio.id)}
-            onOpenPortfolio={() => push("PortfolioDetail", { id: focusedPortfolio.id })}
-          />
-        ) : (
+        <GardenSheet
+          areaRef={areaRef}
+          header={<GardenTotalHeader investments={investments} />}
+          onScroll={onScroll}
+          collapsed={focusedPortfolio !== null}
+          floating={
+            chipFor !== null &&
+            chipFor === focusedId && (
+              <button
+                type="button"
+                onClick={() => push("PortfolioDetail", { id: chipFor })}
+                aria-label={`${focusedPortfolio?.name || "포트폴리오"} 자세히 보기`}
+                className="animate-garden-chip-in bg-bg-layer-floating t4-bold active:bg-bg-layer-floating-pressed flex items-center gap-x1 rounded-full py-x2 pr-x3 pl-x4 shadow-md"
+              >
+                자세히 보기
+                <Icon svg={<IconChevronRightLine />} size="x4" />
+              </button>
+            )
+          }
+        >
           <GardenOverviewList
             plants={plants}
             portfolios={portfolios}
             investments={investments}
-            onFocus={(portfolioId) => dispatch({ type: "pick", portfolioId })}
-            onSetGoal={openGoal}
+            onOpenPortfolio={(id) => push("PortfolioDetail", { id })}
             onPlantFirstSeed={plantFirstSeed}
           />
-        )}
+        </GardenSheet>
       </div>
-
-      {goalPortfolio && (
-        <EditPlantGoalSheet
-          // 열 때마다 입력을 지금 목표로 새로 채운다.
-          key={`${goalPortfolio.id}-${goalOpen}`}
-          open={goalOpen}
-          onOpenChange={setGoalOpen}
-          progress={goalPortfolio}
-          onSave={(amount) => setPlantGoal(goalPortfolio.id, amount)}
-        />
-      )}
     </div>
   );
 }

@@ -120,6 +120,20 @@
 @theme {
   --animate-task-leave: task-leave 300ms ease-in 500ms both;
 
+  /* 정원 홈: 식물에 다가간 뒤 바텀시트 위에 뜨는 "자세히 보기" 칩. */
+  --animate-garden-chip-in: garden-chip-in 220ms ease-out both;
+
+  @keyframes garden-chip-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   /* 정원 홈: 식물이 자랐을 때 정원 창 위에 잠깐 뜨는 축하 문구. */
   --animate-garden-celebrate: garden-celebrate 3200ms ease-out both;
 
@@ -190,4 +204,17 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* 정원 홈: 정원 창 하늘 배경. 앱 색 모드(SEED `data-seed-user-color-scheme`)를 따라 다크 모드에서는
+   앱 배경과 이어지는 어두운 밤하늘로 바꾼다 (3D 캔버스는 투명이라 이 배경이 비친다). */
+.garden-sky {
+  background: linear-gradient(180deg, #eaf6ff 0%, #f6fbef 100%);
+}
+[data-seed-user-color-scheme="dark"] {
+  /* 식물 아바타(`PlantAvatar`) 원형 배경: 밝은 연두 대신 정원 밤하늘과 이어지는 어두운 초록. */
+  --plant-avatar-bg: #243328;
+}
+[data-seed-user-color-scheme="dark"] .garden-sky {
+  background: linear-gradient(180deg, #1b2230 0%, #1e2620 100%);
 }
