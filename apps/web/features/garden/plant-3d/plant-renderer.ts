@@ -37,6 +37,8 @@ export interface PlantSceneHandle {
   focus(index: number | null): void;
   /** 렌더 루프를 잠시 멈춘다 (아래 목록을 스크롤하는 동안 GPU·메인 스레드를 비운다). */
   setPaused(paused: boolean): void;
+  /** 다크 모드면 조명·바닥 판 톤을 낮춘다 (어두운 정원 창 배경에 맞춤). */
+  setNight(night: boolean): void;
   dispose(): void;
 }
 
@@ -48,16 +50,38 @@ interface SceneConfig {
   onPick?: (index: number | null, target: { badge: boolean }) => void;
 }
 
+/** 낮(라이트 모드)·밤(다크 모드) 조명과 바닥 판 색. 밤은 밝기를 낮추고 살짝 차갑게 한다. */
+const TONES = {
+  day: {
+    sky: "#FFF8EC",
+    groundLight: "#B9A78E",
+    hemi: 1.7,
+    sun: "#FFFFFF",
+    sunIntensity: 1.9,
+    ground: "#BFE0A6",
+  },
+  night: {
+    sky: "#DCE3F5",
+    groundLight: "#6E6456",
+    hemi: 1.25,
+    sun: "#E8ECFF",
+    sunIntensity: 1.35,
+    ground: "#5F7F55",
+  },
+} as const;
+
 function addLights(scene: THREE.Scene) {
-  scene.add(new THREE.HemisphereLight("#FFF8EC", "#B9A78E", 1.7));
-  const sun = new THREE.DirectionalLight("#FFFFFF", 1.9);
+  const hemi = new THREE.HemisphereLight(TONES.day.sky, TONES.day.groundLight, TONES.day.hemi);
+  scene.add(hemi);
+  const sun = new THREE.DirectionalLight(TONES.day.sun, TONES.day.sunIntensity);
   sun.position.set(3, 5, 4);
   scene.add(sun);
+  return { hemi, sun };
 }
 
-function buildGround(): THREE.Mesh {
+function buildGround(): THREE.Mesh<THREE.CylinderGeometry, THREE.MeshToonMaterial> {
   const geometry = new THREE.CylinderGeometry(1, 1.03, 0.18, 48);
-  const material = new THREE.MeshToonMaterial({ color: "#BFE0A6" });
+  const material = new THREE.MeshToonMaterial({ color: TONES.day.ground });
   const ground = new THREE.Mesh(geometry, material);
   ground.position.y = -0.09;
   return ground;
@@ -108,7 +132,7 @@ export function createPlantScene(canvas: HTMLCanvasElement, config: SceneConfig)
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
   const scene = new THREE.Scene();
-  addLights(scene);
+  const lights = addLights(scene);
   const ground = config.garden ? buildGround() : null;
   if (ground) scene.add(ground);
 
@@ -428,6 +452,15 @@ export function createPlantScene(canvas: HTMLCanvasElement, config: SceneConfig)
         yaw = THREE.MathUtils.clamp(yaw, -0.45, 0.45);
       }
       transition = { start: performance.now(), frames: 0, worst: 0 };
+    },
+    setNight(night) {
+      const tone = night ? TONES.night : TONES.day;
+      lights.hemi.color.set(tone.sky);
+      lights.hemi.groundColor.set(tone.groundLight);
+      lights.hemi.intensity = tone.hemi;
+      lights.sun.color.set(tone.sun);
+      lights.sun.intensity = tone.sunIntensity;
+      ground?.material.color.set(tone.ground);
     },
     setPaused(next) {
       paused = next;

@@ -11,6 +11,7 @@ import {
 import { resolvePortfolioAccounts } from "@web/features/portfolio/utils/resolve-portfolio-accounts";
 import type { RebalancingSession } from "@web/features/rebalancing/types/types";
 import { isRebalancingCompleted } from "@web/features/rebalancing/utils/rebalancing-session";
+import { calculateReturnRate } from "@web/utils/number-format";
 import {
   PLANT_STAGES,
   type PlantOptions,
@@ -92,30 +93,47 @@ export interface GardenRow {
   drooping: boolean;
   /** 목표가 없어 정해야 한다 (씨앗이거나 방금 목표를 달성함). */
   needsGoal: boolean;
+  /** 연결 계좌들의 수익률 (%). 연결 계좌가 없거나 투자원금이 0 이면 null. */
+  returnRate: number | null;
 }
 
-function gardenRow(plant: PortfolioPlantView, linked: boolean): GardenRow {
+type RowAccount = Pick<InvestmentItem, "id" | "initialInvestment" | "currentValue">;
+
+function linkedReturnRate(accounts: readonly RowAccount[]): number | null {
+  const initial = accounts.reduce((sum, inv) => sum + (inv.initialInvestment || 0), 0);
+  if (initial <= 0) return null;
+  const current = accounts.reduce((sum, inv) => sum + (inv.currentValue || 0), 0);
+  return calculateReturnRate(current, initial);
+}
+
+/** `accounts` = 그 포트폴리오에 연결된 계좌. 없으면 금액·수익률이 null. */
+function gardenRow(plant: PortfolioPlantView, accounts: readonly RowAccount[]): GardenRow {
   return {
     portfolioId: plant.portfolioId,
     name: plant.name || "이름 없는 포트폴리오",
     stage: plant.stage,
     pot: potForPortfolio(plant.portfolioId),
-    value: linked ? plant.value : null,
+    value: accounts.length > 0 ? plant.value : null,
     needsRebalance: plant.rebalancing === "needs-rebalancing",
     drooping: plant.drooping,
     needsGoal: plant.goalState === "needs-goal",
+    returnRate: linkedReturnRate(accounts),
   };
 }
 
+/**
+ * 정원 목록 행. 수익률은 넘겨받은 계좌 값(`initialInvestment`·`currentValue`)으로 계산하므로
+ * 지금 시세로 다시 계산한 계좌(`useLiveAccounts`)를 넘긴다.
+ */
 export function gardenRows(
   plants: readonly PortfolioPlantView[],
   portfolios: readonly Pick<PortfolioItem, "id" | "accountIds">[],
-  investments: readonly Pick<InvestmentItem, "id">[]
+  investments: readonly RowAccount[]
 ): GardenRow[] {
-  const accountIds = new Set(investments.map((inv) => inv.id));
   return plants.map((plant) => {
     const portfolio = portfolios.find((p) => p.id === plant.portfolioId);
-    return gardenRow(plant, portfolio?.accountIds.some((id) => accountIds.has(id)) ?? false);
+    const linked = investments.filter((inv) => portfolio?.accountIds.includes(inv.id));
+    return gardenRow(plant, linked);
   });
 }
 
@@ -150,7 +168,7 @@ export function gardenFocusSummary(
     ...stocks.filter((s) => s.targetPercent === null),
   ];
   return {
-    row: gardenRow(plant, linked),
+    row: gardenRow(plant, accounts),
     goalState: plant.goalState,
     goalAmount: plant.goalAmount,
     goalPercent: goalProgressPercent(plant.value, plant.goalAmount),

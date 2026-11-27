@@ -12,6 +12,7 @@ import {
 import { useFlow } from "@stackflow/react";
 import { setRootBack } from "@web/app/m/_stack/stack-control";
 import { EditPlantGoalSheet } from "@web/app/m/assets/portfolio/[id]/_components/portfolio-plant-card";
+import { PriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
 import { GardenCanvas } from "@web/features/garden/components/garden-canvas";
 import { gardenLayout } from "@web/features/garden/plant-3d/garden-layout";
 import type { PlantSlot } from "@web/features/garden/plant-3d/plant-renderer";
@@ -193,8 +194,10 @@ export function HomeMobile() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {/* 시세 기준은 정원 전체·포커스 모두 앱바 바로 아래에 붙인다. */}
+      <PriceAsOfBanner prices={prices} />
       <div
-        className="relative shrink-0 overflow-hidden bg-[linear-gradient(180deg,#EAF6FF_0%,#F6FBEF_100%)]"
+        className="garden-sky relative shrink-0 overflow-hidden"
         style={{ height: GARDEN_HEIGHT }}
       >
         <GardenCanvas
@@ -246,7 +249,6 @@ export function HomeMobile() {
             portfolios={portfolios}
             investments={investments}
             onFocus={(portfolioId) => dispatch({ type: "pick", portfolioId })}
-            onSetGoal={openGoal}
             onPlantFirstSeed={plantFirstSeed}
           />
         )}

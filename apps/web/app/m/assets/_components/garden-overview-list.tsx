@@ -9,7 +9,6 @@ import {
 import { Divider, Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 import { switchTab } from "@web/app/m/_stack/stack-control";
-import { HoldingsPriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
 import { profitToneClass } from "@web/components/mobile/profit-tone";
 import { PlantAvatar } from "@web/features/garden/components/plant-avatar";
 import { PLANT_STAGES, REBALANCE_BADGE_COLOR } from "@web/features/garden/plant-3d/plant-options";
@@ -50,7 +49,7 @@ export function RebalanceMark({ size = 18 }: { size?: number }) {
 
 function rowCaption(row: GardenRow): string {
   const stage = PLANT_STAGE_LABELS[row.stage];
-  // 목표가 없으면 옆의 "목표 정하기" 버튼이 안내한다.
+  // 목표 정하기는 포커스 요약에서 한다. 목록은 금액·수익률을 먼저 보인다.
   if (row.needsGoal) return row.stage === 0 ? stage : `${stage} · 목표 달성!`;
   return row.drooping ? `${stage} · 시들해요` : stage;
 }
@@ -64,14 +63,12 @@ export function GardenOverviewList({
   portfolios,
   investments,
   onFocus,
-  onSetGoal,
   onPlantFirstSeed,
 }: {
   plants: PortfolioPlantView[];
   portfolios: PortfolioItem[];
   investments: InvestmentItem[];
   onFocus: (portfolioId: string) => void;
-  onSetGoal: (portfolioId: string) => void;
   onPlantFirstSeed: () => void;
 }) {
   const { push } = useFlow();
@@ -79,8 +76,8 @@ export function GardenOverviewList({
   const liveInvestments = useLiveAccounts(investments);
   const totals = useMemo(() => summarizeAccounts(liveInvestments), [liveInvestments]);
   const rows = useMemo(
-    () => gardenRows(plants, portfolios, investments),
-    [plants, portfolios, investments]
+    () => gardenRows(plants, portfolios, liveInvestments),
+    [plants, portfolios, liveInvestments]
   );
 
   const sessions = useRebalancingStore((s) => s.sessions);
@@ -100,7 +97,6 @@ export function GardenOverviewList({
 
   return (
     <div className="pb-x4">
-      <HoldingsPriceAsOfBanner investments={investments} />
       {investments.length > 0 && (
         <section className="px-x5 pt-x5 pb-x3">
           <p className="t4-medium text-fg-neutral-muted">총 평가금액</p>
@@ -153,50 +149,47 @@ export function GardenOverviewList({
           {rows.map((row) => (
             <div key={row.portfolioId}>
               <Divider inset />
-              <div className="flex items-center pr-x4">
-                <button
-                  type="button"
-                  onClick={() => onFocus(row.portfolioId)}
-                  aria-label={`${row.name} 식물 보기`}
-                  className="active:bg-bg-layer-default-pressed flex min-w-0 flex-1 items-center gap-x3 py-x3 pl-x4 text-left"
-                >
-                  <span className="relative shrink-0">
-                    <PlantAvatar stage={PLANT_STAGES[row.stage]} pot={row.pot} size={44} />
-                    {row.needsRebalance && (
-                      <span className="absolute -top-[2px] -right-[2px]">
-                        <RebalanceMark size={16} />
-                      </span>
-                    )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="t5-bold block truncate">{row.name}</span>
-                    <span
-                      className={`t3-regular mt-[2px] block truncate ${row.drooping ? "text-fg-warning" : "text-fg-neutral-subtle"}`}
-                    >
-                      {rowCaption(row)}
+              <button
+                type="button"
+                onClick={() => onFocus(row.portfolioId)}
+                aria-label={`${row.name} 식물 보기`}
+                className="active:bg-bg-layer-default-pressed flex w-full items-center gap-x3 px-x4 py-x3 text-left"
+              >
+                <span className="relative shrink-0">
+                  <PlantAvatar stage={PLANT_STAGES[row.stage]} pot={row.pot} size={44} />
+                  {row.needsRebalance && (
+                    <span className="absolute -top-[2px] -right-[2px]">
+                      <RebalanceMark size={16} />
                     </span>
+                  )}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="t5-bold block truncate">{row.name}</span>
+                  <span
+                    className={`t3-regular mt-[2px] block truncate ${row.drooping ? "text-fg-warning" : "text-fg-neutral-subtle"}`}
+                  >
+                    {rowCaption(row)}
                   </span>
-                  <span className="shrink-0 pl-x2 text-right">
-                    {row.value === null ? (
-                      <span className="t3-regular text-fg-neutral-subtle">연결 계좌 없음</span>
-                    ) : (
-                      <span className="t5-bold tabular-nums">
+                </span>
+                <span className="shrink-0 pl-x2 text-right">
+                  {row.value === null ? (
+                    <span className="t3-regular text-fg-neutral-subtle">연결 계좌 없음</span>
+                  ) : (
+                    <>
+                      <span className="t5-bold block tabular-nums">
                         {numberToKorean(row.value) || "0원"}
                       </span>
-                    )}
-                  </span>
-                </button>
-                {row.needsGoal && (
-                  <ActionButton
-                    variant="neutralWeak"
-                    size="xsmall"
-                    onClick={() => onSetGoal(row.portfolioId)}
-                    aria-label={`${row.name} 목표 정하기`}
-                  >
-                    목표 정하기
-                  </ActionButton>
-                )}
-              </div>
+                      {row.returnRate !== null && (
+                        <span
+                          className={`t3-medium mt-[2px] block tabular-nums ${profitToneClass(row.returnRate)}`}
+                        >
+                          {formatReturnRate(row.returnRate)}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </span>
+              </button>
             </div>
           ))}
           <Divider />

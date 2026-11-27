@@ -179,8 +179,26 @@ describe("gardenRows", () => {
         needsRebalance: true,
         drooping: false,
         needsGoal: false,
+        returnRate: null,
       },
     ]);
+  });
+
+  it("shows the return rate of the linked accounts", () => {
+    const a = { ...account("a", []), initialInvestment: 1_000_000, currentValue: 1_100_000 };
+    const b = { ...account("b", []), initialInvestment: 1_000_000, currentValue: 1_000_000 };
+    const other = { ...account("other", []), initialInvestment: 1_000_000, currentValue: 0 };
+    const p = portfolio({ accountIds: ["a", "b"] });
+    const plant = portfolioPlantView(p, [a, b, other], prices);
+
+    expect(gardenRows([plant], [p], [a, b, other])[0]?.returnRate).toBeCloseTo(5);
+  });
+
+  it("has no return rate when the linked accounts have no principal", () => {
+    const p = portfolio({ accountIds: ["balanced"] });
+    const plant = portfolioPlantView(p, [balanced], prices);
+
+    expect(gardenRows([plant], [p], [balanced])[0]?.returnRate).toBeNull();
   });
 
   it("has no value for a portfolio without linked accounts", () => {
@@ -190,6 +208,7 @@ describe("gardenRows", () => {
     const [row] = gardenRows([plant], [p], [balanced]);
 
     expect(row?.value).toBeNull();
+    expect(row?.returnRate).toBeNull();
     expect(row?.needsRebalance).toBe(false);
   });
 

@@ -36,7 +36,6 @@ describe("GardenOverviewList", () => {
         portfolios={[]}
         investments={[]}
         onFocus={noop}
-        onSetGoal={noop}
         onPlantFirstSeed={onPlantFirstSeed}
       />
     );
@@ -54,7 +53,6 @@ describe("GardenOverviewList", () => {
         portfolios={[]}
         investments={[]}
         onFocus={onFocus}
-        onSetGoal={noop}
         onPlantFirstSeed={noop}
       />
     );
@@ -66,22 +64,47 @@ describe("GardenOverviewList", () => {
     expect(screen.getByText("연결 계좌 없음")).toBeTruthy();
   });
 
-  it("asks for the next goal on a plant without one", () => {
-    const onSetGoal = vi.fn();
+  it("shows a reached goal in the caption without a goal button", () => {
     render(
       <GardenOverviewList
         plants={[plant({ goalState: "needs-goal", goalAmount: null })]}
         portfolios={[]}
         investments={[]}
         onFocus={noop}
-        onSetGoal={onSetGoal}
         onPlantFirstSeed={noop}
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "안정형 목표 정하기" }));
-
-    expect(onSetGoal).toHaveBeenCalledWith("p1");
     expect(screen.getByText("새싹 · 목표 달성!")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "안정형 목표 정하기" })).toBeNull();
+  });
+
+  it("shows the value and return rate of a linked portfolio", () => {
+    const account = {
+      id: "a1",
+      accountName: "ISA",
+      accountType: "ISA 계좌",
+      currency: "KRW",
+      initialInvestment: 10_000_000,
+      currentValue: 11_000_000,
+      records: [],
+      holdings: [],
+      cashItems: [],
+      note: "",
+      color: "#000",
+    } as const;
+    render(
+      <GardenOverviewList
+        plants={[plant({ value: 11_000_000 })]}
+        portfolios={[{ id: "p1", accountIds: ["a1"] } as never]}
+        investments={[account as never]}
+        onFocus={noop}
+        onPlantFirstSeed={noop}
+      />
+    );
+
+    const row = screen.getByRole("button", { name: "안정형 식물 보기" });
+    expect(row.textContent).toContain("1,100만원");
+    expect(row.textContent).toContain("+10.00%");
   });
 });

@@ -4,6 +4,8 @@ import { useEffect, useRef } from "react";
 import { createPlantScene, type PlantSceneHandle } from "../plant-3d/plant-renderer";
 import type { GardenCanvasProps } from "./garden-canvas";
 
+const COLOR_SCHEME_ATTRIBUTE = "data-seed-user-color-scheme";
+
 /**
  * 3D 정원 캔버스 본체. three 를 담고 있어 직접 쓰지 말고 `garden-canvas.tsx` 의 `GardenCanvas`
  * (늦게 불러오는 래퍼) 를 쓴다.
@@ -50,9 +52,16 @@ export default function GardenCanvasImpl({
       return;
     }
     handleRef.current = handle;
+    // 앱 색 모드(SEED `data-seed-user-color-scheme`)를 따라 조명 톤을 바꾼다.
+    const root = document.documentElement;
+    const applyTone = () => handle.setNight(root.getAttribute(COLOR_SCHEME_ATTRIBUTE) === "dark");
+    applyTone();
+    const toneObserver = new MutationObserver(applyTone);
+    toneObserver.observe(root, { attributes: true, attributeFilter: [COLOR_SCHEME_ATTRIBUTE] });
     handle.setPlants(latest.current.slots, latest.current.layoutWidth);
     handle.focus(latest.current.focus);
     return () => {
+      toneObserver.disconnect();
       handle.dispose();
       handleRef.current = null;
       canvas.remove();
