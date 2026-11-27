@@ -10,6 +10,7 @@ import {
   DeleteAccountActivity,
   LoginMethodsActivity,
   PortfolioDetailActivity,
+  PrivacyActivity,
   ProfileActivity,
   RebalancingDetailActivity,
   RebalancingNewActivity,
@@ -18,6 +19,7 @@ import {
   SettingsActivity,
   StorageModeActivity,
   TabsActivity,
+  TermsActivity,
 } from "./activities";
 import { createNextAwareHistory } from "./next-aware-history";
 import { stackControlPlugin } from "./stack-control";
@@ -46,6 +48,9 @@ declare module "@stackflow/config" {
     StorageMode: Record<string, never>;
     DataBackup: Record<string, never>;
     DeleteAccount: Record<string, never>;
+    /** 버전이 없으면 지금 시행 중인 버전. */
+    Terms: { version?: string };
+    Privacy: { version?: string };
     /** 연결하고 돌아오면 better-auth 가 붙인 결과 쿼리 (`lib/login-methods.ts`). */
     LoginMethods: LinkResultParams;
   }
@@ -127,6 +132,15 @@ const config = defineConfig({
       route: { path: "/assets/settings/delete-account", defaultHistory: underSettings },
     },
     {
+      // 이용약관·개인정보처리방침 (버전을 붙이면 그 버전). 사이트 `/terms`·`/privacy` 와 같은 본문.
+      name: "Terms",
+      route: { path: "/assets/settings/terms(/:version)", defaultHistory: underSettings },
+    },
+    {
+      name: "Privacy",
+      route: { path: "/assets/settings/privacy(/:version)", defaultHistory: underSettings },
+    },
+    {
       // `/assets` 와 `/assets/<탭>`. 같은 모양의 다른 경로(settings)보다 뒤에 둬야 그쪽이 먼저
       // 매칭된다. 모르는 탭은 홈으로 연다.
       name: "Tabs",
@@ -152,6 +166,8 @@ export const { Stack, actions } = stackflow({
     StorageMode: StorageModeActivity,
     DataBackup: DataBackupActivity,
     DeleteAccount: DeleteAccountActivity,
+    Terms: TermsActivity,
+    Privacy: PrivacyActivity,
   },
   plugins: [
     basicRendererPlugin(),

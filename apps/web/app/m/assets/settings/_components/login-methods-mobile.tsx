@@ -47,7 +47,7 @@ function rowDetail(row: LoginMethodRow): string {
 }
 
 /**
- * 더보기 → 설정 → 로그인 수단. 이 계정에 연결된 카카오·Apple 을 보여 주고 다른 수단을 연결·해제한다
+ * 설정 → 로그인 수단. 이 계정에 연결된 카카오·Apple 을 보여 주고 다른 수단을 연결·해제한다
  * (`lib/login-methods.ts`). 연결은 제공자 화면을 다녀오는 왕복이라 결과는 돌아온 주소로 안내한다.
  */
 export function LoginMethodsMobile({
@@ -141,7 +141,7 @@ export function LoginMethodsMobile({
   };
 
   const signInAgain = async () => {
-    // 로그인 화면이 생체 인증 프롬프트를 곧바로 다시 띄우지 않게 한다 (더보기 → 로그아웃과 같다).
+    // 로그인 화면이 생체 인증 프롬프트를 곧바로 다시 띄우지 않게 한다 (설정 → 로그아웃과 같다).
     markSignedOut(window.sessionStorage);
     await authClient.signOut();
     await reloadApp();

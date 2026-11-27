@@ -145,4 +145,4 @@ sqlite3 app.db "select id, accountName, portfolioId from investment_account;"
 | 서명      | Xcode 자동 서명 (Team 선택)                                                  | 업로드 키 생성 → Play App Signing                                                 |
 | 개인정보  | App Privacy 라벨, 개인정보처리방침 URL `https://seedbook.boogie.ing/privacy` | 데이터 보안 양식, 같은 URL, 계정 삭제 URL/설명                                    |
 | 심사 메모 | 송금·거래 기능 없는 자산 기록 도구, 테스트 계정, 앱 전용 기능(4.2) 설명      | 금융 기능 신고서: 해당 없음(기록 도구)                                            |
-| 계정 삭제 | 앱 안 더보기 → 회원 탈퇴                                                     | 동일 + 웹 URL                                                                     |
+| 계정 삭제 | 앱 안 프로필 버튼 → 설정 → 탈퇴하기                                          | 동일 + 웹 URL                                                                     |
