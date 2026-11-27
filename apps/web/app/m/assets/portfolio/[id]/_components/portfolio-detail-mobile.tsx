@@ -26,6 +26,7 @@ import {
   computePlantStatus,
   computePortfolioValuation,
 } from "@web/features/portfolio/utils/portfolio-plant";
+import { portfolioRebalancingState } from "@web/features/portfolio/utils/portfolio-plant-view";
 import { resolvePortfolioAccounts } from "@web/features/portfolio/utils/resolve-portfolio-accounts";
 import { summarizePortfolioDrift } from "@web/features/portfolio/utils/summarize-portfolio-drift";
 import { validateAllocations } from "@web/features/portfolio/utils/validate-allocations";
@@ -226,7 +227,11 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
           onEdit={() => setEditing({ kind: "drift" })}
         />
         <PortfolioPlantCard
+          portfolioId={portfolio.id}
           status={plantStatus}
+          needsRebalance={
+            portfolioRebalancingState(portfolio, linkedAccounts, prices) === "needs-rebalancing"
+          }
           onEdit={() => setEditing({ kind: "plant-goal" })}
         />
       </section>

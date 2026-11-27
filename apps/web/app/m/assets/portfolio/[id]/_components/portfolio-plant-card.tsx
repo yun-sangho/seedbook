@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { formatMoneyDraft } from "@web/components/mobile/input-format";
 import { MoneyField } from "@web/components/mobile/money-field";
+import { PortfolioPlantAvatar } from "@web/features/portfolio/components/portfolio-plant-avatar";
 import { PLANT_STAGE_LABELS } from "@web/features/portfolio/types/constants";
 import type { PlantProgress } from "@web/features/portfolio/types/types";
 import {
@@ -20,6 +21,8 @@ import {
 } from "@web/seed-design/ui/bottom-sheet";
 import { numberToKorean, parseNumericString } from "@web/utils/number-format";
 
+const PLANT_CARD_AVATAR_SIZE = 72;
+
 /** 목표 상태를 한 줄로. */
 function describePlant(status: PlantStatus): string {
   if (status.goalState === "complete") return "꽃·열매까지 다 자랐어요";
@@ -32,19 +35,29 @@ function describePlant(status: PlantStatus): string {
 }
 
 /**
- * 포트폴리오 식물의 단계와 목표. 식물 그림은 정원 화면이 그린다 — 여기서는 목표를 정하는 곳만 둔다.
+ * 포트폴리오 식물의 2D 모습(정원과 같은 단계·화분 색, 리밸런싱 필요면 `!`)과 단계·목표.
  */
 export function PortfolioPlantCard({
+  portfolioId,
   status,
+  needsRebalance,
   onEdit,
 }: {
+  portfolioId: string;
   status: PlantStatus;
+  needsRebalance: boolean;
   onEdit: () => void;
 }) {
   return (
     <div className="border-stroke-neutral-muted rounded-r3 mt-x3 border-2 px-x4 py-x3">
-      <div className="flex items-center justify-between gap-x2">
-        <div className="min-w-0">
+      <div className="flex items-center gap-x3">
+        <PortfolioPlantAvatar
+          portfolioId={portfolioId}
+          stage={status.stage}
+          size={PLANT_CARD_AVATAR_SIZE}
+          needsRebalance={needsRebalance}
+        />
+        <div className="min-w-0 flex-1">
           <p className="t3-regular text-fg-neutral-subtle">
             식물 · {PLANT_STAGE_LABELS[status.stage]}
             {status.drooping && " (시들해요)"}
