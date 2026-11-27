@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GARDEN_SPACING_X, gardenLayout } from "./garden-layout";
+import { GARDEN_SPACING_X, gardenLayout, spotsTallestToBack } from "./garden-layout";
 
 describe("gardenLayout", () => {
   it("returns no spots for an empty garden", () => {
@@ -36,5 +36,31 @@ describe("gardenLayout", () => {
       const keys = gardenLayout(count).spots.map((s) => `${s.x},${s.z}`);
       expect(new Set(keys).size).toBe(count);
     }
+  });
+});
+
+describe("spotsTallestToBack", () => {
+  it("keeps the order when there is a single row", () => {
+    expect(spotsTallestToBack([0, 4, 2])).toEqual([0, 1, 2]);
+  });
+
+  it("puts the tallest plants on the back row", () => {
+    // 5그루 = 뒷줄 3 (spot 0~2) + 앞줄 2 (spot 3~4).
+    const spotOf = spotsTallestToBack([2, 1, 0, 3, 4]);
+    const back = new Set([0, 1, 2]);
+
+    expect(back.has(spotOf[4] ?? -1)).toBe(true);
+    expect(back.has(spotOf[3] ?? -1)).toBe(true);
+    expect(back.has(spotOf[0] ?? -1)).toBe(true);
+    expect(back.has(spotOf[2] ?? -1)).toBe(false);
+  });
+
+  it("keeps the list order among plants of the same height", () => {
+    expect(spotsTallestToBack([1, 1, 1, 1, 1])).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  it("gives every plant its own spot", () => {
+    const spotOf = spotsTallestToBack([3, 0, 4, 1, 2, 0, 4, 3]);
+    expect(new Set(spotOf).size).toBe(8);
   });
 });
