@@ -4,17 +4,32 @@ import { useEffect, useMemo, useState } from "react";
 import { GardenCanvas } from "@web/features/garden/components/garden-canvas";
 import { gardenLayout } from "@web/features/garden/plant-3d/garden-layout";
 import type { PlantSlot } from "@web/features/garden/plant-3d/plant-renderer";
+import {
+  hashString,
+  kindForPortfolio,
+  potForPortfolio,
+} from "@web/features/garden/utils/garden-home";
 import { numberToKorean } from "@web/utils/number-format";
 import { OnboardingStepLayout } from "./onboarding-step-layout";
 
 /** 흙만 보이다가 씨앗이 심기기까지 (ms). */
 const PLANT_DELAY_MS = 700;
 
-const SEED_SLOT: PlantSlot = {
-  options: { stage: "seed", droop: 0, needsRebalance: false, pot: "terracotta", seed: 3 },
-  x: 0,
-  z: 0,
-};
+/** 심은 씨앗. 홈 정원과 같은 화분 색·종류 (포트폴리오 id 로 정해진다 — 씨앗 색으로 종류가 보인다). */
+export function seedSlotFor(portfolioId: string | null): PlantSlot {
+  return {
+    options: {
+      stage: "seed",
+      droop: 0,
+      needsRebalance: false,
+      pot: portfolioId ? potForPortfolio(portfolioId) : "terracotta",
+      seed: portfolioId ? hashString(portfolioId) % 1000 : 3,
+      kind: portfolioId ? kindForPortfolio(portfolioId) : "tree",
+    },
+    x: 0,
+    z: 0,
+  };
+}
 
 const prefersReducedMotion = () =>
   typeof window !== "undefined" &&
@@ -25,10 +40,12 @@ const prefersReducedMotion = () =>
  * 않고, 첫 목표에 닿으면 새싹이 튼다고 안내한다 (사용자 결정 — 홈 정원과 같은 모습).
  */
 export function PlantingStep({
+  portfolioId,
   name,
   goalAmount,
   onNext,
 }: {
+  portfolioId: string | null;
   name: string;
   goalAmount: number | null;
   onNext: () => void;
@@ -41,7 +58,7 @@ export function PlantingStep({
   }, [planted]);
 
   const layoutWidth = gardenLayout(1).width;
-  const slots = useMemo(() => (planted ? [SEED_SLOT] : []), [planted]);
+  const slots = useMemo(() => (planted ? [seedSlotFor(portfolioId)] : []), [planted, portfolioId]);
 
   return (
     <OnboardingStepLayout

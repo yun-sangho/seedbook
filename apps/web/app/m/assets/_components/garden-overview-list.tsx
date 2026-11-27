@@ -208,7 +208,12 @@ export function GardenOverviewList({
                 className="active:bg-bg-layer-default-pressed flex w-full items-center gap-x3 px-x4 py-x3 text-left"
               >
                 <span className="relative shrink-0">
-                  <PlantAvatar stage={PLANT_STAGES[row.stage]} pot={row.pot} size={44} />
+                  <PlantAvatar
+                    stage={PLANT_STAGES[row.stage]}
+                    pot={row.pot}
+                    kind={row.kind}
+                    size={44}
+                  />
                   {row.needsRebalance && (
                     <span className="absolute -top-[2px] -right-[2px]">
                       <RebalanceMark size={16} />
