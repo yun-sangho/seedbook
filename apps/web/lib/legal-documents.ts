@@ -23,3 +23,21 @@ export function koreanDate(day: string): string {
   const [year, month, dayOfMonth] = day.split("-").map(Number);
   return `${year}년 ${month}월 ${dayOfMonth}일`;
 }
+
+export interface LegalDocumentTarget {
+  document: LegalDocumentId;
+  /** 없으면 지금 시행 중인 버전. */
+  version?: string;
+}
+
+/**
+ * 같은 사이트의 약관 주소(`/terms`, `/privacy/2026-11-25` …)를 문서·버전으로 읽는다. 앱은 이 링크를
+ * 사이트 페이지로 나가지 않고 앱 안 문서 화면으로 연다. 약관 주소가 아니면 null.
+ */
+export function parseLegalDocumentHref(href: string): LegalDocumentTarget | null {
+  const match = /^(\/[a-z]+)(?:\/([0-9A-Za-z][0-9A-Za-z.-]*))?$/.exec(href);
+  if (!match) return null;
+  const document = LEGAL_DOCUMENTS.find((d) => d.href === match[1]);
+  if (!document) return null;
+  return match[2] ? { document: document.id, version: match[2] } : { document: document.id };
+}

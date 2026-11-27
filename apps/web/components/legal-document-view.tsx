@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import type { LegalDocumentId } from "@seedbook/database/legal";
 import { LegalDocumentContent } from "@web/components/legal-document-content";
 import type { DocumentPage } from "@web/lib/legal/catalog";
+import type { LegalDocumentTarget } from "@web/lib/legal-documents";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { Callout } from "@web/seed-design/ui/callout";
 import { ProgressCircle } from "@web/seed-design/ui/progress-circle";
@@ -34,17 +35,17 @@ async function fetchLegalDocument(
 
 /**
  * 앱 안에서 보는 약관·개인정보처리방침 (`/api/legal/<문서>`, DB 에 공개한 최신 버전). 사이트
- * 페이지(`/terms`·`/privacy`) 와 같은 본문을 그리고, 다른 버전 링크는 `onOpenVersion` 으로 넘긴다
- * (설정 화면은 push, 동의 화면 문서 보기는 제자리에서 바꾼다).
+ * 페이지(`/terms`·`/privacy`) 와 같은 본문을 그리고, 다른 버전 링크와 본문 안 약관 링크는 사이트로
+ * 나가지 않고 `onOpen` 으로 넘긴다 (설정 화면은 push, 동의 화면 문서 보기는 제자리에서 바꾼다).
  */
 export function LegalDocumentView({
   document,
   version,
-  onOpenVersion,
+  onOpen,
 }: {
   document: LegalDocumentId;
   version?: string;
-  onOpenVersion: (version: string | undefined) => void;
+  onOpen: (target: LegalDocumentTarget) => void;
 }) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
 
@@ -84,15 +85,28 @@ export function LegalDocumentView({
         today={state.document.today}
         showTitle={false}
         renderVersionLink={(linkVersion, children) => (
-          <button
-            type="button"
-            className="text-fg-neutral self-start text-left underline underline-offset-4"
-            onClick={() => onOpenVersion(linkVersion)}
+          <DocumentLinkButton
+            onClick={() => onOpen(linkVersion ? { document, version: linkVersion } : { document })}
           >
             {children}
-          </button>
+          </DocumentLinkButton>
+        )}
+        renderDocumentLink={(target, children) => (
+          <DocumentLinkButton onClick={() => onOpen(target)}>{children}</DocumentLinkButton>
         )}
       />
     </div>
+  );
+}
+
+function DocumentLinkButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      className="text-fg-neutral self-start text-left underline underline-offset-4"
+      onClick={onClick}
+    >
+      {children}
+    </button>
   );
 }

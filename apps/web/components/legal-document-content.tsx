@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Article, Text } from "@seed-design/react";
-import { LegalMarkdown } from "@web/components/legal-markdown";
+import { type LegalDocumentLink, LegalMarkdown } from "@web/components/legal-markdown";
 import type { DocumentPage } from "@web/lib/legal/catalog";
 import { koreanDate } from "@web/lib/legal-documents";
 
@@ -23,11 +23,14 @@ export function LegalDocumentContent({
   page,
   today,
   renderVersionLink,
+  renderDocumentLink,
   showTitle = true,
 }: {
   page: DocumentPage;
   today: string;
   renderVersionLink: LegalVersionLink;
+  /** 본문 안 약관 링크. 앱 화면은 앱 안에서 열고, 사이트는 주지 않아 보통 링크로 둔다. */
+  renderDocumentLink?: LegalDocumentLink;
   /** 앱 화면은 앱바가 제목을 보여 주므로 본문 제목을 뺀다. */
   showTitle?: boolean;
 }) {
@@ -70,7 +73,7 @@ export function LegalDocumentContent({
           </Notice>
         )}
 
-        <LegalMarkdown source={shown.body} />
+        <LegalMarkdown source={shown.body} renderDocumentLink={renderDocumentLink} />
 
         {history.length > 1 && (
           <section className="flex flex-col gap-x3 pt-x7">

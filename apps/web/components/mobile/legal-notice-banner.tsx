@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { IconDocumentLine } from "@karrotmarket/react-monochrome-icon";
+import { useFlow } from "@stackflow/react";
+import { legalActivityOf } from "@web/app/m/_stack/legal-activity";
 import { useLegalNotices } from "@web/components/consent-gate";
 import { getDeviceStorage } from "@web/lib/device-storage";
 import type { LegalNotice } from "@web/lib/legal/catalog";
-import { koreanDate, legalDocumentHref } from "@web/lib/legal-documents";
+import { koreanDate } from "@web/lib/legal-documents";
 import { DismissibleCallout } from "@web/seed-design/ui/callout";
 
 /** 이 기기에서 닫은 안내 ("문서@버전" 목록). 계정 데이터가 아니라 화면 편의라 기기 저장소에 둔다. */
@@ -28,9 +30,13 @@ function subjectParticle(word: string): string {
   return code >= 0 && code <= 11171 && code % 28 === 0 ? "가" : "이";
 }
 
-/** 홈 위에 시행일 전 약관 개정을 알린다. 닫으면 그 버전은 이 기기에서 다시 보이지 않는다. */
+/**
+ * 홈 위에 시행일 전 약관 개정을 알린다. 닫으면 그 버전은 이 기기에서 다시 보이지 않는다.
+ * "자세히 보기" 는 사이트 페이지로 나가지 않고 그 버전을 앱 안 문서 화면(설정의 약관 화면)으로 연다.
+ */
 export function LegalNoticeBanner() {
   const notices = useLegalNotices();
+  const { push } = useFlow();
   const [dismissed, setDismissed] = useState(readDismissed);
 
   const visible = notices.filter((notice) => !dismissed.includes(keyOf(notice)));
@@ -58,9 +64,7 @@ export function LegalNoticeBanner() {
             .join(" · ")}
           linkProps={{
             children: "자세히 보기",
-            onClick: () => {
-              window.location.href = legalDocumentHref(notice.document, notice.version);
-            },
+            onClick: () => push(legalActivityOf(notice.document), { version: notice.version }),
           }}
           onDismiss={() => dismiss(notice)}
         />

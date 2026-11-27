@@ -45,7 +45,7 @@ export function ConsentScreen({
   const [declineOpen, setDeclineOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   // 사이트 페이지로 나가지 않고 이 화면 위에서 문서를 본다 (닫으면 체크 상태·스크롤이 그대로다).
-  const [viewing, setViewing] = useState<{ document: LegalDocumentId; title: string } | null>(null);
+  const [viewing, setViewing] = useState<LegalDocumentId | null>(null);
 
   const allChecked = documents.every(({ document }) => checked.has(document));
   const revised = documents.some(({ change }) => change !== null);
@@ -121,7 +121,7 @@ export function ConsentScreen({
                 <button
                   type="button"
                   aria-label={`${title} 보기`}
-                  onClick={() => setViewing({ document, title })}
+                  onClick={() => setViewing(document)}
                   className="t4-regular text-fg-neutral-subtle shrink-0 underline underline-offset-4"
                 >
                   보기
@@ -215,13 +215,7 @@ export function ConsentScreen({
         </AlertDialogContent>
       </AlertDialogRoot>
       <DeleteAccountDialog open={deleteOpen} onOpenChange={setDeleteOpen} />
-      {viewing && (
-        <LegalDocumentViewer
-          document={viewing.document}
-          title={viewing.title}
-          onClose={() => setViewing(null)}
-        />
-      )}
+      {viewing && <LegalDocumentViewer document={viewing} onClose={() => setViewing(null)} />}
     </main>
   );
 }

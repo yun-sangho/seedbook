@@ -5,6 +5,7 @@ import { IconChevronLeftLine } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
 import type { LegalDocumentId } from "@seedbook/database/legal";
 import { LegalDocumentView } from "@web/components/legal-document-view";
+import { LEGAL_DOCUMENTS, type LegalDocumentTarget } from "@web/lib/legal-documents";
 
 /** 화면 전환 시간 (SEED 스택과 비슷하게). */
 const TRANSITION_MS = 300;
@@ -22,14 +23,14 @@ const CLOSE_RATIO = 0.3;
  */
 export function LegalDocumentViewer({
   document,
-  title,
   onClose,
 }: {
   document: LegalDocumentId;
-  title: string;
   onClose: () => void;
 }) {
-  const [version, setVersion] = useState<string | undefined>(undefined);
+  // 다른 버전·본문 안 약관 링크는 이 화면 안에서 바꿔 연다 (동의 화면을 떠나지 않는다).
+  const [target, setTarget] = useState<LegalDocumentTarget>({ document });
+  const title = LEGAL_DOCUMENTS.find((d) => d.id === target.document)?.title ?? "";
   const [shown, setShown] = useState(false);
   const [dragX, setDragX] = useState<number | null>(null);
   const dragStart = useRef<number | null>(null);
@@ -116,7 +117,7 @@ export function LegalDocumentViewer({
         <h2 className="t6-bold truncate text-center">{title}</h2>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
-        <LegalDocumentView document={document} version={version} onOpenVersion={setVersion} />
+        <LegalDocumentView document={target.document} version={target.version} onOpen={setTarget} />
       </div>
     </div>
   );
