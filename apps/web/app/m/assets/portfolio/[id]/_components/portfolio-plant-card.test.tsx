@@ -1,46 +1,51 @@
 import { render, screen } from "@testing-library/react";
 import type { PlantStatus } from "@web/features/portfolio/utils/portfolio-plant";
 import { describe, expect, it } from "vitest";
-import { PortfolioPlantCard } from "./portfolio-plant-card";
+import { PortfolioPlantRow } from "./portfolio-plant-card";
 
-const status: PlantStatus = {
-  stage: 1,
-  drooping: false,
-  goalState: "set",
-  goalAmount: 10_000_000,
-  remainingToNextStage: 2_000_000,
-  grew: false,
-};
+function status(partial: Partial<PlantStatus>): PlantStatus {
+  return {
+    stage: 1,
+    drooping: false,
+    goalState: "set",
+    goalAmount: 10_000_000,
+    remainingToNextStage: 2_000_000,
+    grew: false,
+    ...partial,
+  };
+}
 
-describe("PortfolioPlantCard", () => {
-  it("shows the portfolio's plant at a recognizable size", () => {
-    const { container } = render(
-      <PortfolioPlantCard
-        portfolioId="p1"
-        status={status}
-        needsRebalance={false}
-        onEdit={() => {}}
-      />
-    );
-    expect(container.querySelector("svg")?.getAttribute("width")).toBe("72");
+const noop = () => {};
+
+describe("PortfolioPlantRow", () => {
+  it("shows the stage and what is left before the goal amount", () => {
+    render(<PortfolioPlantRow status={status({})} onEdit={noop} />);
+    expect(screen.getByText("새싹 · 200만원 남음 (목표 1,000만원)")).toBeTruthy();
   });
 
-  it("marks the plant with the garden's ! when rebalancing is needed", () => {
+  it("asks for the next goal after one is reached", () => {
     render(
-      <PortfolioPlantCard portfolioId="p1" status={status} needsRebalance onEdit={() => {}} />
-    );
-    expect(screen.getByRole("img", { name: "리밸런싱 필요" })).toBeTruthy();
-  });
-
-  it("shows no ! when the portfolio is on target", () => {
-    render(
-      <PortfolioPlantCard
-        portfolioId="p1"
-        status={status}
-        needsRebalance={false}
-        onEdit={() => {}}
+      <PortfolioPlantRow
+        status={status({ goalState: "needs-goal", goalAmount: null, remainingToNextStage: null })}
+        onEdit={noop}
       />
     );
-    expect(screen.queryByRole("img", { name: "리밸런싱 필요" })).toBeNull();
+    expect(screen.getByText("새싹 · 목표 달성!")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "식물 목표 수정" }).textContent).toBe("목표 정하기");
+  });
+
+  it("notes a drooping plant", () => {
+    render(<PortfolioPlantRow status={status({ drooping: true })} onEdit={noop} />);
+    expect(screen.getByText(/시들해요/)).toBeTruthy();
+  });
+
+  it("hides the edit button once the plant is fully grown", () => {
+    render(
+      <PortfolioPlantRow
+        status={status({ stage: 4, goalState: "complete", goalAmount: null })}
+        onEdit={noop}
+      />
+    );
+    expect(screen.queryByRole("button", { name: "식물 목표 수정" })).toBeNull();
   });
 });

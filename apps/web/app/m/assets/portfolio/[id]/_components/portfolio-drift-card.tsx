@@ -1,25 +1,20 @@
 "use client";
 
-import {
-  IconCheckmarkCircleFill,
-  IconExclamationmarkCircleFill,
-} from "@karrotmarket/react-monochrome-icon";
-import { Icon } from "@seed-design/react";
 import type { PortfolioItem } from "@web/features/portfolio/types/types";
 import {
-  describeDriftRule,
+  describeDriftRuleShort,
   driftRuleExample,
-  exampleTargetPercent,
 } from "@web/features/portfolio/utils/drift-percent";
 import type { PortfolioDriftSummary } from "@web/features/portfolio/utils/summarize-portfolio-drift";
 import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
+import { SummaryRow } from "./summary-row";
 
 /**
- * 포트폴리오 상세 상단의 이격 카드: 위에는 경고 기준(문장), 아래에는 연결 계좌의 현재 상태.
- * 연결 계좌가 없으면 상태 줄은 생략한다.
+ * 포트폴리오 상세 상단 요약의 이격 한 줄: 경고 기준(짧게) + 연결 계좌의 지금 상태.
+ * 기준을 숫자로 푼 예시는 수정 시트가 보여준다. 연결 계좌가 없으면 상태는 생략한다.
  */
-export function PortfolioDriftCard({
+export function PortfolioDriftRow({
   portfolio,
   summary,
   linkedCount,
@@ -31,17 +26,9 @@ export function PortfolioDriftCard({
   onEdit: () => void;
 }) {
   return (
-    <div className="border-stroke-neutral-muted rounded-r3 mt-x4 border-2 px-x4 py-x3">
-      <div className="flex items-center justify-between gap-x2">
-        <div className="min-w-0">
-          <p className="t3-regular text-fg-neutral-subtle">이격 경고 기준</p>
-          <p className="t5-bold mt-[2px] tabular-nums">{describeDriftRule(portfolio)}</p>
-          <DriftRuleExample
-            rule={portfolio}
-            targetPercent={exampleTargetPercent(portfolio.allocations)}
-            className="t3-regular text-fg-neutral-subtle mt-[2px]"
-          />
-        </div>
+    <SummaryRow
+      label="이격 경고"
+      action={
         <ActionButton
           variant="neutralWeak"
           size="xsmall"
@@ -50,13 +37,11 @@ export function PortfolioDriftCard({
         >
           수정
         </ActionButton>
-      </div>
-      {linkedCount > 0 && (
-        <div className="border-stroke-neutral-muted mt-x3 border-t pt-x3">
-          <DriftStatusLine summary={summary} />
-        </div>
-      )}
-    </div>
+      }
+    >
+      {describeDriftRuleShort(portfolio)}
+      {linkedCount > 0 && <DriftStatus summary={summary} />}
+    </SummaryRow>
   );
 }
 
@@ -95,26 +80,17 @@ export function DriftRuleExample({
   );
 }
 
-function DriftStatusLine({ summary }: { summary: PortfolioDriftSummary }) {
+function DriftStatus({ summary }: { summary: PortfolioDriftSummary }) {
   if (summary.breachedCount > 0) {
     return (
-      <div className="flex items-center gap-x2">
-        <Icon svg={<IconExclamationmarkCircleFill />} size="x4" color="fg.warning" />
-        <p className="t4-bold text-fg-warning">계좌 {summary.breachedCount}개 리밸런싱 필요</p>
-      </div>
+      <span className="text-fg-warning font-bold">
+        {" "}
+        · 계좌 {summary.breachedCount}개 리밸런싱 필요
+      </span>
     );
   }
   if (summary.okCount > 0) {
-    return (
-      <div className="flex items-center gap-x2">
-        <Icon svg={<IconCheckmarkCircleFill />} size="x4" color="fg.positive" />
-        <p className="t4-bold text-fg-positive">연결 계좌 모두 기준 이내</p>
-      </div>
-    );
+    return <span className="text-fg-positive"> · 모두 기준 이내</span>;
   }
-  return (
-    <p className="t4-regular text-fg-neutral-subtle">
-      보유 종목이나 시세가 없어 아직 판단할 수 없어요
-    </p>
-  );
+  return <span className="text-fg-neutral-subtle"> · 아직 판단할 수 없어요</span>;
 }

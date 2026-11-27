@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { formatMoneyDraft } from "@web/components/mobile/input-format";
 import { MoneyField } from "@web/components/mobile/money-field";
-import { PortfolioPlantAvatar } from "@web/features/portfolio/components/portfolio-plant-avatar";
 import { PLANT_STAGE_LABELS } from "@web/features/portfolio/types/constants";
 import type { PlantProgress } from "@web/features/portfolio/types/types";
 import {
@@ -20,51 +19,28 @@ import {
   BottomSheetRoot,
 } from "@web/seed-design/ui/bottom-sheet";
 import { numberToKorean, parseNumericString } from "@web/utils/number-format";
+import { SummaryRow } from "./summary-row";
 
-const PLANT_CARD_AVATAR_SIZE = 72;
-
-/** 목표 상태를 한 줄로. */
-function describePlant(status: PlantStatus): string {
-  if (status.goalState === "complete") return "꽃·열매까지 다 자랐어요";
+/** 목표 상태를 짧게. */
+function describeGoal(status: PlantStatus): string {
+  if (status.goalState === "complete") return "다 자랐어요";
   if (status.goalState === "needs-goal") {
-    return status.stage === 0
-      ? "목표를 정하면 자라기 시작해요"
-      : "목표를 달성했어요! 다음 목표를 정해 주세요";
+    return status.stage === 0 ? "목표를 정하면 자라요" : "목표 달성!";
   }
-  return `목표 ${numberToKorean(status.goalAmount ?? 0)} · ${numberToKorean(status.remainingToNextStage ?? 0) || "0원"} 남음`;
+  // 남은 금액이 먼저 — 좁으면 뒤의 목표 금액이 다음 줄로 간다.
+  return `${numberToKorean(status.remainingToNextStage ?? 0) || "0원"} 남음 (목표 ${numberToKorean(status.goalAmount ?? 0)})`;
 }
 
 /**
- * 포트폴리오 식물의 2D 모습(정원과 같은 단계·화분 색, 리밸런싱 필요면 `!`)과 단계·목표.
+ * 포트폴리오 상세 상단 요약의 식물 한 줄: 단계·목표·남은 금액 + 목표 정하기.
+ * 식물 그림은 상단 금액 옆 아바타가 보여준다.
  */
-export function PortfolioPlantCard({
-  portfolioId,
-  status,
-  needsRebalance,
-  onEdit,
-}: {
-  portfolioId: string;
-  status: PlantStatus;
-  needsRebalance: boolean;
-  onEdit: () => void;
-}) {
+export function PortfolioPlantRow({ status, onEdit }: { status: PlantStatus; onEdit: () => void }) {
   return (
-    <div className="border-stroke-neutral-muted rounded-r3 mt-x3 border-2 px-x4 py-x3">
-      <div className="flex items-center gap-x3">
-        <PortfolioPlantAvatar
-          portfolioId={portfolioId}
-          stage={status.stage}
-          size={PLANT_CARD_AVATAR_SIZE}
-          needsRebalance={needsRebalance}
-        />
-        <div className="min-w-0 flex-1">
-          <p className="t3-regular text-fg-neutral-subtle">
-            식물 · {PLANT_STAGE_LABELS[status.stage]}
-            {status.drooping && " (시들해요)"}
-          </p>
-          <p className="t5-bold mt-[2px] tabular-nums">{describePlant(status)}</p>
-        </div>
-        {status.goalState !== "complete" && (
+    <SummaryRow
+      label="식물"
+      action={
+        status.goalState !== "complete" && (
           <ActionButton
             variant="neutralWeak"
             size="xsmall"
@@ -73,9 +49,12 @@ export function PortfolioPlantCard({
           >
             {status.goalState === "set" ? "수정" : "목표 정하기"}
           </ActionButton>
-        )}
-      </div>
-    </div>
+        )
+      }
+    >
+      {`${PLANT_STAGE_LABELS[status.stage]} · ${describeGoal(status)}`}
+      {status.drooping && <span className="text-fg-warning"> (시들해요)</span>}
+    </SummaryRow>
   );
 }
 

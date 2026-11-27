@@ -13,6 +13,7 @@ import { useInvestmentStore } from "@web/features/investments/stores/investment-
 import { summarizeAccounts } from "@web/features/investments/utils/summarize-accounts";
 import { useLiveAccounts } from "@web/features/investments/utils/use-live-accounts";
 import { useStockPrices } from "@web/features/investments/utils/use-stock-prices";
+import { PortfolioPlantAvatar } from "@web/features/portfolio/components/portfolio-plant-avatar";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import type { PortfolioItem } from "@web/features/portfolio/types/types";
 import { exampleTargetPercent } from "@web/features/portfolio/utils/drift-percent";
@@ -49,10 +50,10 @@ import { formatProfitWon } from "@web/utils/profit-color";
 import { AddAllocationFlow, EditAllocationSheet } from "./allocation-sheets";
 import { ImportAllocationsSheet } from "./import-allocations-sheet";
 import { type AccountMove, MoveAccountSheet } from "./move-account-sheet";
-import { PortfolioDriftCard } from "./portfolio-drift-card";
+import { PortfolioDriftRow } from "./portfolio-drift-card";
 import { EditDriftThresholdSheet, PortfolioSettingsSheet } from "./portfolio-edit-sheets";
 import { PortfolioOverviewTab } from "./portfolio-overview-tab";
-import { EditPlantGoalSheet, PortfolioPlantCard } from "./portfolio-plant-card";
+import { EditPlantGoalSheet, PortfolioPlantRow } from "./portfolio-plant-card";
 
 type Tab = "overview" | "allocations" | "accounts" | "memo";
 
@@ -197,43 +198,54 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
       {/* 평가금액은 연결 계좌 보유 종목의 시세 기준 — 그 기준 시각을 알린다. */}
       <HoldingsPriceAsOfBanner investments={linkedAccounts} />
       <section className="px-x4 pt-x4 pb-x3">
-        {/* 계좌 상세와 같은 모양 (1원 단위 + 만원 단위 보조) — 이 포트폴리오에 연결된 계좌만 합친다. */}
-        <p className="flex flex-wrap items-baseline gap-x-x2">
-          <span className="t9-bold tabular-nums">
-            {formatWithCommas(Math.round(linkedTotals.current))}원
-          </span>
-          <span className="t4-regular text-fg-neutral-subtle tabular-nums">
-            {numberToKorean(linkedTotals.current) || "0원"}
-          </span>
-        </p>
-        {linkedCount > 0 ? (
-          <>
-            <p className={`t4-medium mt-x1 tabular-nums ${profitToneClass(linkedTotals.profit)}`}>
-              {formatProfitWon(linkedTotals.profit)} ({formatReturnRate(linkedTotals.returnRate)})
+        <div className="flex items-center gap-x4">
+          <PortfolioPlantAvatar
+            portfolioId={portfolio.id}
+            stage={plantStatus.stage}
+            size={64}
+            needsRebalance={
+              portfolioRebalancingState(portfolio, linkedAccounts, prices) === "needs-rebalancing"
+            }
+          />
+          <div className="min-w-0 flex-1">
+            {/* 계좌 상세와 같은 모양 (1원 단위 + 만원 단위 보조) — 이 포트폴리오에 연결된 계좌만 합친다. */}
+            <p className="flex flex-wrap items-baseline gap-x-x2">
+              <span className="t8-bold tabular-nums">
+                {formatWithCommas(Math.round(linkedTotals.current))}원
+              </span>
+              <span className="t3-regular text-fg-neutral-subtle tabular-nums">
+                {numberToKorean(linkedTotals.current) || "0원"}
+              </span>
             </p>
-            <p className="t3-regular text-fg-neutral-subtle mt-x2">
-              투자원금 {formatWithCommas(linkedTotals.initial)}원 · 계좌 {linkedCount}개
-            </p>
-          </>
-        ) : (
-          <p className="t3-regular text-fg-neutral-subtle mt-x2">
-            연결된 계좌가 없어요. 적용 계좌 탭에서 연결하세요.
-          </p>
-        )}
-        <PortfolioDriftCard
-          portfolio={portfolio}
-          summary={driftSummary}
-          linkedCount={linkedCount}
-          onEdit={() => setEditing({ kind: "drift" })}
-        />
-        <PortfolioPlantCard
-          portfolioId={portfolio.id}
-          status={plantStatus}
-          needsRebalance={
-            portfolioRebalancingState(portfolio, linkedAccounts, prices) === "needs-rebalancing"
-          }
-          onEdit={() => setEditing({ kind: "plant-goal" })}
-        />
+            {linkedCount > 0 ? (
+              <>
+                <p className={`t4-medium tabular-nums ${profitToneClass(linkedTotals.profit)}`}>
+                  {formatProfitWon(linkedTotals.profit)} (
+                  {formatReturnRate(linkedTotals.returnRate)})
+                </p>
+                <p className="t3-regular text-fg-neutral-subtle mt-[2px]">
+                  투자원금 {formatWithCommas(linkedTotals.initial)}원 · 계좌 {linkedCount}개
+                </p>
+              </>
+            ) : (
+              <p className="t3-regular text-fg-neutral-subtle mt-x1">
+                연결된 계좌가 없어요. 적용 계좌 탭에서 연결하세요.
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="border-stroke-neutral-muted rounded-r3 divide-stroke-neutral-muted mt-x4 divide-y border px-x4">
+          <PortfolioDriftRow
+            portfolio={portfolio}
+            summary={driftSummary}
+            linkedCount={linkedCount}
+            onEdit={() => setEditing({ kind: "drift" })}
+          />
+          <PortfolioPlantRow
+            status={plantStatus}
+            onEdit={() => setEditing({ kind: "plant-goal" })}
+          />
+        </div>
       </section>
 
       <ChipTabsRoot
