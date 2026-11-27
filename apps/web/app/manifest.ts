@@ -20,8 +20,9 @@ export default function manifest(): MetadataRoute.Manifest {
         type: "image/png",
         purpose: "any",
       },
-      // Android 적응형 아이콘용. 흰 배경 위 로고를 62% 로 줄여 안전 영역(중앙 80% 원)
-      // 안에 넣었다. 런처가 원·둥근사각 등으로 잘라도 가지 끝이 잘리지 않는다.
+      // Android 적응형 아이콘용. 꽉 찬 민트 배경에 마크를 안전 영역(중앙 80% 원) 안에 넣었다.
+      // 런처가 원·둥근사각 등으로 잘라도 잎 끝이 잘리지 않는다. 아이콘 파일은 모두
+      // `pnpm brand:icons` (scripts/generate-brand-icons.mjs, 원본 brand/mark.svg) 가 만든다.
       {
         src: "/maskable-192x192.png",
         sizes: "192x192",
