@@ -163,10 +163,29 @@ describe("gardenRows", () => {
         value: 100_000,
         needsRebalance: true,
         drooping: false,
-        needsGoal: false,
+        goalState: "set",
+        goalAmount: 500_000,
+        goalPercent: 20,
         returnRate: null,
       },
     ]);
+  });
+
+  it("has no goal progress while the plant waits for a goal", () => {
+    const p = portfolio({ accountIds: ["balanced"] });
+    const plant = portfolioPlantView(p, [balanced], prices);
+
+    const [row] = gardenRows([plant], [p], [balanced]);
+
+    expect(row?.goalState).toBe("needs-goal");
+    expect(row?.goalPercent).toBeNull();
+  });
+
+  it("floors the goal progress", () => {
+    const p = portfolio({ accountIds: ["balanced"], goalAmount: 300_000 });
+    const plant = portfolioPlantView(p, [balanced], prices);
+
+    expect(gardenRows([plant], [p], [balanced])[0]?.goalPercent).toBe(33);
   });
 
   it("shows the return rate of the linked accounts", () => {
@@ -195,13 +214,6 @@ describe("gardenRows", () => {
     expect(row?.value).toBeNull();
     expect(row?.returnRate).toBeNull();
     expect(row?.needsRebalance).toBe(false);
-  });
-
-  it("asks for a goal when the plant has none", () => {
-    const p = portfolio({ accountIds: ["balanced"] });
-    const plant = portfolioPlantView(p, [balanced], prices);
-
-    expect(gardenRows([plant], [p], [balanced])[0]?.needsGoal).toBe(true);
   });
 
   it("names a portfolio without a name", () => {

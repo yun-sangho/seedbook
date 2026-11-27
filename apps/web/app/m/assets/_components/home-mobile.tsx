@@ -7,7 +7,7 @@ import { useFlow } from "@stackflow/react";
 import { setRootBack } from "@web/app/m/_stack/stack-control";
 import { PriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
 import { GardenCanvas } from "@web/features/garden/components/garden-canvas";
-import { gardenLayout } from "@web/features/garden/plant-3d/garden-layout";
+import { gardenLayout, spotsTallestToBack } from "@web/features/garden/plant-3d/garden-layout";
 import type { PlantSlot } from "@web/features/garden/plant-3d/plant-renderer";
 import {
   type GrownPlant,
@@ -90,9 +90,11 @@ export function HomeMobile() {
 
   const slots = useMemo<PlantSlot[]>(() => {
     const { spots } = gardenLayout(plants.length);
+    // 키 큰 식물을 뒷줄에 둬 앞줄 나무가 뒷줄을 가리지 않게 한다 (slots 순서는 plants 순서 그대로).
+    const spotOf = spotsTallestToBack(plants.map((plant) => plant.stage));
     return plants.flatMap((plant, i) => {
       const portfolio = portfolios.find((p) => p.id === plant.portfolioId);
-      const spot = spots[i];
+      const spot = spots[spotOf[i] ?? i];
       if (!portfolio || !spot) return [];
       return [{ id: plant.portfolioId, options: gardenPlantOptions(plant, portfolio), ...spot }];
     });

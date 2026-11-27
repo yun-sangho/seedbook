@@ -64,19 +64,47 @@ describe("GardenOverviewList", () => {
     expect(screen.getByText("연결 계좌 없음")).toBeTruthy();
   });
 
-  it("shows a reached goal in the caption without a goal button", () => {
+  function renderRow(partial: Partial<PortfolioPlantView>) {
     render(
       <GardenOverviewList
-        plants={[plant({ goalState: "needs-goal", goalAmount: null })]}
+        plants={[plant(partial)]}
         portfolios={[]}
         investments={[]}
         onOpenPortfolio={noop}
         onPlantFirstSeed={noop}
       />
     );
+  }
 
-    expect(screen.getByText("새싹 · 목표 달성!")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "안정형 목표 정하기" })).toBeNull();
+  it("shows the growth stage next to the name", () => {
+    renderRow({ stage: 0, goalState: "needs-goal", goalAmount: null });
+
+    const row = screen.getByRole("button", { name: "안정형 포트폴리오 보기" });
+    expect(row.textContent).toContain("안정형씨앗");
+  });
+
+  it("fills the goal bar with the progress toward the goal", () => {
+    renderRow({ value: 750_000, goalAmount: 1_000_000 });
+
+    const bar = screen.getByRole("progressbar", { name: "안정형 목표 도달" });
+    expect(bar.getAttribute("aria-valuenow")).toBe("75");
+    expect(screen.queryByText("75%")).toBeNull();
+  });
+
+  it("shows no bar, only a hint, under a seed without a goal", () => {
+    renderRow({ stage: 0, goalState: "needs-goal", goalAmount: null });
+
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(screen.getByText("목표를 정하면 자라요")).toBeTruthy();
+  });
+
+  it("fills the bar when the goal was just reached", () => {
+    renderRow({ stage: 1, goalState: "needs-goal", goalAmount: null });
+
+    expect(
+      screen.getByRole("progressbar", { name: "안정형 목표 도달" }).getAttribute("aria-valuenow")
+    ).toBe("100");
+    expect(screen.getByText("목표 달성!")).toBeTruthy();
   });
 
   it("shows the value and return rate of a linked portfolio", () => {

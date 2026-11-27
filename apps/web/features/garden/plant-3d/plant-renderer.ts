@@ -94,6 +94,19 @@ function buildGround(): THREE.Mesh<THREE.CylinderGeometry, THREE.MeshToonMateria
   return ground;
 }
 
+const plantBox = new THREE.Box3();
+/** 식물(화분 포함) 높이. 배지 스프라이트는 화면 픽셀 크기라 빼고 메시만 잰다. */
+function plantHeight(root: THREE.Object3D): number {
+  root.updateMatrixWorld(true);
+  plantBox.makeEmpty();
+  root.traverse((child) => {
+    if (child instanceof THREE.Mesh) plantBox.expandByObject(child);
+  });
+  if (plantBox.isEmpty()) return 0;
+  // 자람 연출로 줄여 놓은 크기가 아니라 다 자란 크기로 잰다.
+  return (plantBox.max.y - Math.min(plantBox.min.y, root.position.y)) / (root.scale.y || 1);
+}
+
 function disposeObject(object: THREE.Object3D) {
   object.traverse((child) => {
     if (child instanceof THREE.Mesh) {
@@ -113,6 +126,8 @@ const CAMERA_EASE = 5.5;
 /** 한 단계 자랐을 때 쑥 커지는 연출 길이 (ms) 와 시작 크기. */
 const GROW_POP_MS = 900;
 const GROW_POP_FROM = 0.55;
+/** 다가갈 때 다른 식물이 사라지는·물러날 때 다시 나타나는 빠르기 (1/초). */
+const HIDE_EASE = 9;
 
 /** 0 → 1 로 가며 조금 넘쳤다 돌아오는 곡선 (easeOutBack). */
 function easeOutBack(t: number): number {
@@ -147,7 +162,16 @@ export function createPlantScene(canvas: HTMLCanvasElement, config: SceneConfig)
   const turntable = new THREE.Group();
   scene.add(turntable);
 
-  let plants: { built: BuiltPlant; key: string; slot: PlantSlot; popStart?: number }[] = [];
+  let plants: {
+    built: BuiltPlant;
+    key: string;
+    slot: PlantSlot;
+    /** 화분 바닥에서 식물 꼭대기까지 (배지 제외). 다가갈 때 한 화면에 다 들어오게 하는 데 쓴다. */
+    height: number;
+    popStart?: number;
+    /** 다른 식물에 다가갔을 때 숨기는 정도 (1 = 보임, 0 = 사라짐). */
+    shown: number;
+  }[] = [];
   let layoutWidth = 0;
   let focused: number | null = null;
 
@@ -172,10 +196,13 @@ export function createPlantScene(canvas: HTMLCanvasElement, config: SceneConfig)
     const fitWidth = halfWidth / Math.tan(hFov / 2);
     const distance = Math.max(fitWidth * 1.05, 7.5);
     if (config.anchor === "groundEdge" && ground) {
-      // 바라보는 점 = 받침 앞쪽 아래 끝 → 그 점이 화면 정중앙에 온다.
+      // 바라보는 점 = 받침 앞쪽 아래 끝 → 그 점이 화면 정중앙에 온다. 식물이 여러 줄이면 조금 더 위에서
+      // 내려다봐 뒷줄이 앞줄 위로 보이게 한다.
       const edgeZ = ground.scale.z * 1.03;
+      const rows = new Set(plants.map((p) => p.slot.z)).size;
+      const elevation = rows > 1 ? 0.62 : 0.42;
       wantLook.set(0, -0.18, edgeZ);
-      wantPos.set(0, -0.18 + distance * 0.42, edgeZ + distance);
+      wantPos.set(0, -0.18 + distance * elevation, edgeZ + distance);
       return;
     }
     wantLook.set(0, 0.9, 0);
@@ -190,9 +217,15 @@ export function createPlantScene(canvas: HTMLCanvasElement, config: SceneConfig)
     // 패널이 아래를 가리니 식물이 화면 위쪽에 오도록 바라보는 점을 조금 내린다.
     const distance = 5.2 * Math.max(1, 0.7 / camera.aspect);
     if (config.anchor === "groundEdge") {
-      // 화분 앞쪽 바닥을 화면 정중앙에 둬 식물이 위쪽 절반(시트 위)에 오게 한다.
-      wantLook.set(focusWorld.x, focusWorld.y, focusWorld.z + 0.55);
-      wantPos.set(focusWorld.x, focusWorld.y + distance * 0.28, focusWorld.z + 0.55 + distance);
+      // 홈: 다가가면 바텀시트가 머리만 남기고 내려간다. 화분부터 꼭대기까지 한 화면에 꽉 차게
+      // 들어오는 거리로 다가가고, 시트 머리만큼 살짝 위로 올려 둔다.
+      const height = Math.max(plant.height, 1.2);
+      const vHalf = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
+      const hHalf = vHalf * camera.aspect;
+      const fit = Math.max((height / 2 + 0.35) / vHalf, 1.1 / hHalf, 4.2);
+      const lookY = focusWorld.y + height * 0.34;
+      wantLook.set(focusWorld.x, lookY, focusWorld.z);
+      wantPos.set(focusWorld.x, lookY + fit * 0.22, focusWorld.z + fit);
       return;
     }
     wantLook.set(focusWorld.x, focusWorld.y + 0.85, focusWorld.z);
@@ -269,8 +302,9 @@ export function createPlantScene(canvas: HTMLCanvasElement, config: SceneConfig)
       -((event.clientY - rect.top) / rect.height) * 2 + 1
     );
     raycaster.setFromCamera(pointer, camera);
+    // 숨겨진(다른 식물에 다가간 동안) 식물은 누를 수 없다.
     const hits = raycaster.intersectObjects(
-      plants.map((p) => p.built.root),
+      plants.filter((p) => p.shown > 0.5).map((p) => p.built.root),
       true
     );
     // 배지는 늘 위에 그려지므로(depthTest 끔) 먼저 본다.
@@ -340,14 +374,22 @@ export function createPlantScene(canvas: HTMLCanvasElement, config: SceneConfig)
     const time = now / 1000;
     // sizeAttenuation 을 끈 스프라이트는 scale 1 이 화면 높이의 projection[5]/2 배라 px 로 바꾼다.
     const pxToScale = 2 / (camera.projectionMatrix.elements[5] * Math.max(canvas.clientHeight, 1));
-    for (const plant of plants) {
+    // 정원에서 한 식물에 다가가면 나머지는 작아지며 사라지고, 물러나면 다시 나타난다.
+    const hideEase = 1 - Math.exp((-HIDE_EASE * dt) / 1000);
+    plants.forEach((plant, i) => {
       plant.built.update(time, pxToScale);
+      let scale = 1;
       if (plant.popStart !== undefined) {
         const t = Math.min(1, (now - plant.popStart) / GROW_POP_MS);
-        plant.built.root.scale.setScalar(GROW_POP_FROM + (1 - GROW_POP_FROM) * easeOutBack(t));
+        scale = GROW_POP_FROM + (1 - GROW_POP_FROM) * easeOutBack(t);
         if (t >= 1) plant.popStart = undefined;
       }
-    }
+      const wantShown = !config.garden || focused === null || focused === i ? 1 : 0;
+      plant.shown += (wantShown - plant.shown) * hideEase;
+      if (Math.abs(wantShown - plant.shown) < 0.002) plant.shown = wantShown;
+      plant.built.root.visible = plant.shown > 0.01;
+      plant.built.root.scale.setScalar(scale * plant.shown);
+    });
 
     updateCameraTarget();
     const ease = 1 - Math.exp((-CAMERA_EASE * dt) / 1000);
@@ -448,7 +490,14 @@ export function createPlantScene(canvas: HTMLCanvasElement, config: SceneConfig)
         turntable.add(built.root);
         const grew = grewAtSlot(existing?.slot, slot);
         if (grew) built.root.scale.setScalar(GROW_POP_FROM);
-        next.push({ built, key, slot, popStart: grew ? performance.now() : undefined });
+        next.push({
+          built,
+          key,
+          slot,
+          height: plantHeight(built.root),
+          shown: existing?.shown ?? (focused === null || focused === i ? 1 : 0),
+          popStart: grew ? performance.now() : undefined,
+        });
       });
       for (const stale of plants.slice(slots.length)) {
         turntable.remove(stale.built.root);

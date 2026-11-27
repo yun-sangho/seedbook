@@ -18,19 +18,18 @@ const PEEK_HEIGHT = 100;
  * 가운데) 바로 아래에서 시트가 시작한다.
  */
 const MIDDLE_GAP = 16;
-/** 가장 높이 올렸을 때 위에 남기는 정원 (px). */
-const TOP_GAP = 96;
 /** 끄는 것으로 보는 최소 이동 (px). 그보다 작으면 탭 (높이 바꾸기). */
 const DRAG_SLOP = 6;
 const SNAP_MS = 260;
 
 /**
  * 정원 홈의 끌 수 있는 바텀시트. 부모(`position: relative`) 영역의 아래에 붙고, 머리(`header`)를
- * 끌면 머리만 / 중간 / 거의 전체 세 높이 중 하나에 멈춘다. 머리를 탭하면 중간 ↔ 전체로 바뀐다.
+ * 끌면 처음(중간) / 전체 높이 중 하나에 멈춘다 — 처음 높이보다 아래로는 끌어 내릴 수 없다. 머리를
+ * 탭하면 중간 ↔ 전체로 바뀐다.
  * 본문(`children`)은 시트 안에서 스스로 스크롤한다.
  *
  * `collapsed` 가 true 가 되면 머리만 남기고 내려가고, false 로 돌아오면 그 전 높이로 다시 올라온다
- * (식물 포커스). `floating` 은 시트 바로 위에 떠서 시트와 함께 움직인다.
+ * (식물 포커스). 머리만 남는 높이는 이때만 쓰고, 접힌 동안에는 머리만 / 중간 / 전체로 끌 수 있다. `floating` 은 시트 바로 위에 떠서 시트와 함께 움직인다.
  */
 export function GardenSheet({
   areaRef,
@@ -63,16 +62,12 @@ export function GardenSheet({
     return () => observer.disconnect();
   }, [areaRef]);
 
-  const snaps =
-    areaHeight > 0
-      ? [
-          PEEK_HEIGHT,
-          Math.max(PEEK_HEIGHT, Math.round(areaHeight / 2 - MIDDLE_GAP)),
-          Math.max(PEEK_HEIGHT, areaHeight - TOP_GAP),
-        ]
-      : [PEEK_HEIGHT];
-  const middle = snaps[1] ?? PEEK_HEIGHT;
-  const top = snaps[snaps.length - 1] ?? middle;
+  const middle =
+    areaHeight > 0 ? Math.max(PEEK_HEIGHT, Math.round(areaHeight / 2 - MIDDLE_GAP)) : PEEK_HEIGHT;
+  // 가장 높이: 정원 영역 끝(종가 기준 배너 바로 아래)까지.
+  const top = Math.max(middle, areaHeight);
+  // 평소에는 처음 높이 아래로 내릴 수 없다. 식물 포커스로 접혔을 때만 머리만 남는 높이가 있다.
+  const snaps = collapsed ? [PEEK_HEIGHT, middle, top] : [middle, top];
   // 영역 크기가 바뀌면 (회전 등) 지금 높이를 멈춤 높이 안으로 다시 묶는다.
   const shown = clampSheetHeight(height ?? middle, snaps);
 

@@ -47,10 +47,51 @@ export function RebalanceMark({ size = 18 }: { size?: number }) {
   );
 }
 
-function rowCaption(row: GardenRow): string {
+function GoalBar({ row }: { row: GardenRow }) {
+  const { percent, label } = goalBar(row);
+  // 목표가 없는 씨앗은 빈 막대 대신 안내 문구만.
+  if (percent === null) {
+    return <span className="t2-medium text-fg-neutral-subtle mt-x1 block">{label}</span>;
+  }
+  return (
+    <span className="mt-x1_5 flex items-center gap-x2">
+      <span
+        role="progressbar"
+        aria-label={`${row.name} 목표 도달`}
+        aria-valuenow={percent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        className="bg-bg-neutral-weak block h-[6px] min-w-0 flex-1 overflow-hidden rounded-full"
+      >
+        <span
+          className={`block h-full rounded-full ${row.drooping ? "bg-bg-warning-solid" : "bg-bg-brand-solid"}`}
+          style={{ width: `${percent}%` }}
+        />
+      </span>
+      {label && (
+        <span className="t2-medium text-fg-neutral-subtle shrink-0 tabular-nums">{label}</span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * 목표 도달 막대: 채울 비율(%, 막대 없으면 null)과 옆 문구. 목표를 향해 자라는 중이면 막대만, 목표가
+ * 없는 씨앗은 막대 없이 문구만, 방금 달성했거나 다 자랐으면 꽉 찬 막대 + 문구.
+ */
+function goalBar(row: GardenRow): { percent: number | null; label: string | null } {
+  if (row.goalState === "complete") return { percent: 100, label: "다 자랐어요" };
+  if (row.goalState === "needs-goal") {
+    return row.stage === 0
+      ? { percent: null, label: "목표를 정하면 자라요" }
+      : { percent: 100, label: "목표 달성!" };
+  }
+  return { percent: row.goalPercent ?? 0, label: null };
+}
+
+/** 이름 옆 단계 + 시듦. */
+function stageLabel(row: GardenRow): string {
   const stage = PLANT_STAGE_LABELS[row.stage];
-  // 목표 정하기는 포커스 요약에서 한다. 목록은 금액·수익률을 먼저 보인다.
-  if (row.needsGoal) return row.stage === 0 ? stage : `${stage} · 목표 달성!`;
   return row.drooping ? `${stage} · 시들해요` : stage;
 }
 
@@ -175,12 +216,15 @@ export function GardenOverviewList({
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="t5-bold block truncate">{row.name}</span>
-                  <span
-                    className={`t3-regular mt-[2px] block truncate ${row.drooping ? "text-fg-warning" : "text-fg-neutral-subtle"}`}
-                  >
-                    {rowCaption(row)}
+                  <span className="flex min-w-0 items-baseline gap-x1_5">
+                    <span className="t5-bold truncate">{row.name}</span>
+                    <span
+                      className={`t3-regular shrink-0 ${row.drooping ? "text-fg-warning" : "text-fg-neutral-subtle"}`}
+                    >
+                      {stageLabel(row)}
+                    </span>
                   </span>
+                  <GoalBar row={row} />
                 </span>
                 <span className="shrink-0 pl-x2 text-right">
                   {row.value === null ? (
