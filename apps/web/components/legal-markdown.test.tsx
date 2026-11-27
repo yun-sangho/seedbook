@@ -30,4 +30,32 @@ describe("LegalMarkdown", () => {
     expect(container.querySelector("a")).toBeNull();
     expect(container.textContent).toContain('<img src=x onerror="alert(1)">');
   });
+
+  it("hands links to legal documents to renderDocumentLink", () => {
+    render(
+      <LegalMarkdown
+        source="[지난 약관](/terms/2026-11-25) [도움말](/help)"
+        renderDocumentLink={(target, children) => (
+          <button type="button" data-target={JSON.stringify(target)}>
+            {children}
+          </button>
+        )}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "지난 약관" })).toHaveAttribute(
+      "data-target",
+      JSON.stringify({ document: "terms", version: "2026-11-25" })
+    );
+    expect(screen.getByRole("link", { name: "도움말" })).toHaveAttribute("href", "/help");
+  });
+
+  it("keeps legal document links as plain links without renderDocumentLink", () => {
+    render(<LegalMarkdown source="[개인정보처리방침](/privacy)" />);
+
+    expect(screen.getByRole("link", { name: "개인정보처리방침" })).toHaveAttribute(
+      "href",
+      "/privacy"
+    );
+  });
 });

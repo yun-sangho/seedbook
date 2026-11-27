@@ -4,6 +4,9 @@ import type { LegalNotice } from "@web/lib/legal/catalog";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LegalNoticeBanner } from "./legal-notice-banner";
 
+const mocks = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock("@stackflow/react", () => ({ useFlow: () => ({ push: mocks.push }) }));
+
 vi.mock("@web/lib/auth-client", () => ({
   authClient: { signOut: vi.fn(async () => ({})), deleteUser: vi.fn() },
 }));
@@ -20,6 +23,7 @@ let notices: unknown;
 
 beforeEach(() => {
   window.localStorage.clear();
+  mocks.push.mockClear();
   notices = [TERMS];
   vi.stubGlobal("fetch", async () => Response.json({ agreed: true, notices }));
 });
@@ -70,5 +74,20 @@ describe("LegalNoticeBanner", () => {
     notices = [{ ...TERMS, version: "2027-01-01", effectiveDate: "2027-01-01" }];
     await open();
     expect(screen.getByText("이용약관이 바뀌어요")).toBeInTheDocument();
+  });
+
+  it("opens the revised version inside the app instead of the site page", async () => {
+    await open();
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "자세히 보기" })));
+
+    expect(mocks.push).toHaveBeenCalledWith("Terms", { version: "2026-12-10" });
+  });
+
+  it("opens a privacy policy revision on the privacy screen", async () => {
+    notices = [{ ...TERMS, document: "privacy", title: "개인정보처리방침" }];
+    await open();
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "자세히 보기" })));
+
+    expect(mocks.push).toHaveBeenCalledWith("Privacy", { version: "2026-12-10" });
   });
 });

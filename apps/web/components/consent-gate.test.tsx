@@ -26,7 +26,7 @@ const DOCUMENTS = [
 const required = (newSignUp: boolean, documents: unknown[] = DOCUMENTS) =>
   Response.json({ agreed: false, newSignUp, documents });
 
-/** `/api/legal/<문서>` — 문서마다 본문 한 줄. */
+/** `/api/legal/<문서>` — 문서마다 본문 한 줄. 개인정보처리방침은 이용약관 링크도 있다. */
 function legalDocument(url: string) {
   const document = url.split("/").at(-1)?.split("?")[0] ?? "";
   const title = document === "terms" ? "이용약관" : "개인정보처리방침";
@@ -37,7 +37,7 @@ function legalDocument(url: string) {
     effectiveDate: "2026-11-25",
     requiresConsent: true,
     summary: null,
-    body: `${title} 본문`,
+    body: document === "privacy" ? `${title} 본문\n\n[약관 링크](/terms)` : `${title} 본문`,
   };
   return Response.json({
     today: "2026-11-28",
@@ -154,6 +154,19 @@ describe("ConsentGate", () => {
 
     const viewer = screen.getByRole("dialog", { name: "개인정보처리방침" });
     expect(await within(viewer).findByText("개인정보처리방침 본문")).toBeInTheDocument();
+  });
+
+  it("opens a legal document linked from the body inside the same viewer", async () => {
+    await open();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "개인정보처리방침 보기" }));
+    });
+
+    const link = await screen.findByRole("button", { name: "약관 링크" });
+    await act(async () => fireEvent.click(link));
+
+    const viewer = screen.getByRole("dialog", { name: "이용약관" });
+    expect(await within(viewer).findByText("이용약관 본문")).toBeInTheDocument();
   });
 
   it("keeps what was checked after closing a document with the back button", async () => {
