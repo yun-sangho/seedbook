@@ -1,0 +1,49 @@
+/**
+ * 포트폴리오 식물의 그리기 옵션. three 를 가져오지 않는 순수 모듈이라 화면·컨트롤이 3D 번들 없이 쓴다.
+ */
+
+/** 씨앗(0) → 새싹(1) → 묘목(2) → 나무(3) → 꽃·열매(4). 목표를 달성할 때마다 한 단계 자란다. */
+export const PLANT_STAGES = ["seed", "sprout", "sapling", "tree", "bloom"] as const;
+export type PlantStage = (typeof PLANT_STAGES)[number];
+
+export const PLANT_STAGE_LABELS: Record<PlantStage, string> = {
+  seed: "씨앗",
+  sprout: "새싹",
+  sapling: "묘목",
+  tree: "나무",
+  bloom: "꽃·열매",
+};
+
+/** 화분 색 (포트폴리오 구분). 씨앗 아바타(`lib/seed-identity/seed-avatar.ts`) 톤에 맞춘 파스텔. */
+export const POT_COLORS = {
+  terracotta: { body: "#C9714A", rim: "#B35F3A" },
+  cream: { body: "#E8D6BC", rim: "#D6BF9F" },
+  sky: { body: "#86B4E3", rim: "#6B9CD0" },
+  lavender: { body: "#A996E6", rim: "#937DD6" },
+  sun: { body: "#EDBE4F", rim: "#D9A630" },
+} as const;
+export type PotColor = keyof typeof POT_COLORS;
+export const POT_COLOR_IDS = Object.keys(POT_COLORS) as PotColor[];
+
+/** 리밸런싱 배지가 화면에 보이는 크기와 누르는 영역 (CSS px, 정원 전체·포커스 모두 같은 크기). */
+export const REBALANCE_BADGE_PX = 30;
+export const REBALANCE_BADGE_HIT_PX = 44;
+
+export interface PlantOptions {
+  stage: PlantStage;
+  /** 0 (싱싱) ~ 1 (많이 처짐). 이미 도달한 목표보다 금액이 내려간 정도. 단계(크기)는 그대로다. */
+  droop: number;
+  /** 리밸런싱이 필요하면 몸통이 한쪽으로 기울고 옆에 원형 `!` 배지가 뜬다. */
+  needsRebalance: boolean;
+  pot: PotColor;
+  /** 잎·가지 배치를 바꾸는 시드. 포트폴리오마다 모양이 조금씩 다르게. */
+  seed: number;
+}
+
+export const DEFAULT_PLANT_OPTIONS: PlantOptions = {
+  stage: "sapling",
+  droop: 0,
+  needsRebalance: false,
+  pot: "terracotta",
+  seed: 7,
+};
