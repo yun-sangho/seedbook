@@ -25,3 +25,31 @@ describe("PlantAvatar", () => {
     expect(container.innerHTML).toContain("#86B4E3");
   });
 });
+
+describe("PlantAvatar (fern)", () => {
+  // clipPath id (useId) 는 렌더마다 달라 지운다.
+  const withoutIds = (html: string) => html.replace(/_r_\w+_/g, "");
+
+  it("draws the seed in its own color", () => {
+    const tree = withoutIds(render(<PlantAvatar stage="seed" size={48} />).container.innerHTML);
+    const fern = withoutIds(
+      render(<PlantAvatar stage="seed" size={48} kind="fern" />).container.innerHTML
+    );
+    expect(fern).not.toBe(tree);
+  });
+
+  it("draws more leaflets as the fern grows", () => {
+    const shapes = (stage: (typeof PLANT_STAGES)[number]) =>
+      render(<PlantAvatar stage={stage} size={48} kind="fern" />).container.querySelectorAll(
+        "ellipse"
+      ).length;
+    expect(shapes("bloom")).toBeGreaterThan(shapes("tree"));
+    expect(shapes("tree")).toBeGreaterThan(shapes("sapling"));
+  });
+
+  it("looks different from the tree at the same stage", () => {
+    const tree = render(<PlantAvatar stage="tree" size={48} />).container.innerHTML;
+    const fern = render(<PlantAvatar stage="tree" size={48} kind="fern" />).container.innerHTML;
+    expect(fern).not.toBe(tree);
+  });
+});

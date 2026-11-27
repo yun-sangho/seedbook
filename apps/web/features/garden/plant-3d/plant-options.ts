@@ -14,6 +14,24 @@ export const PLANT_STAGE_LABELS: Record<PlantStage, string> = {
   bloom: "꽃·열매",
 };
 
+/** 식물 종류. `tree` 는 씨앗 → 나무 → 꽃·열매, `fern` 은 보스턴고사리. 포트폴리오마다 정해진다 (`kindForPortfolio`). 없으면 `tree`. */
+export const PLANT_KINDS = ["tree", "fern"] as const;
+export type PlantKind = (typeof PLANT_KINDS)[number];
+
+export const PLANT_KIND_LABELS: Record<PlantKind, string> = {
+  tree: "나무",
+  fern: "고사리",
+};
+
+/** 고사리 단계 이름. 고사리는 꽃이 없어 4단계는 "풍성" (잎 끝 이슬·반짝임) 이다. */
+export const FERN_STAGE_LABELS: Record<PlantStage, string> = {
+  seed: "씨앗",
+  sprout: "새순",
+  sapling: "어린 잎",
+  tree: "고사리",
+  bloom: "풍성",
+};
+
 /** 화분 색 (포트폴리오 구분). 씨앗 아바타(`lib/seed-identity/seed-avatar.ts`) 톤에 맞춘 파스텔. */
 export const POT_COLORS = {
   terracotta: { body: "#C9714A", rim: "#B35F3A" },
@@ -40,6 +58,8 @@ export interface PlantOptions {
   pot: PotColor;
   /** 잎·가지 배치를 바꾸는 시드. 포트폴리오마다 모양이 조금씩 다르게. */
   seed: number;
+  /** 식물 종류. 없으면 `tree`. */
+  kind?: PlantKind;
 }
 
 export const DEFAULT_PLANT_OPTIONS: PlantOptions = {

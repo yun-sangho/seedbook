@@ -4,7 +4,9 @@ import { lastReachedGoal } from "@web/features/portfolio/utils/portfolio-plant";
 import type { PortfolioPlantView } from "@web/features/portfolio/utils/portfolio-plant-view";
 import { calculateReturnRate } from "@web/utils/number-format";
 import {
+  PLANT_KINDS,
   PLANT_STAGES,
+  type PlantKind,
   type PlantOptions,
   POT_COLOR_IDS,
   type PotColor,
@@ -30,6 +32,15 @@ export function hashString(text: string): number {
 /** 포트폴리오의 화분 색. 같은 포트폴리오는 기기·새로고침과 관계없이 같은 색이다. */
 export function potForPortfolio(portfolioId: string): PotColor {
   return POT_COLOR_IDS[hashString(portfolioId) % POT_COLOR_IDS.length] ?? "terracotta";
+}
+
+/**
+ * 포트폴리오의 식물 종류 (나무·고사리). 포트폴리오 id 는 씨앗을 심을 때(포트폴리오를 만들 때) 무작위로
+ * 정해지므로 종류도 그때 무작위로 정해지고, 이후로는 기기·새로고침과 관계없이 같다. 화분 색과 따로
+ * 정해지도록 해시에 접두사를 붙인다.
+ */
+export function kindForPortfolio(portfolioId: string): PlantKind {
+  return PLANT_KINDS[hashString(`kind:${portfolioId}`) % PLANT_KINDS.length] ?? "tree";
 }
 
 /**
@@ -62,6 +73,7 @@ export function gardenPlantOptions(
     needsRebalance: plant.rebalancing === "needs-rebalancing",
     pot: potForPortfolio(plant.portfolioId),
     seed: hashString(plant.portfolioId) % 1000,
+    kind: kindForPortfolio(plant.portfolioId),
   };
 }
 
@@ -71,6 +83,7 @@ export interface GardenRow {
   name: string;
   stage: PortfolioPlantView["stage"];
   pot: PotColor;
+  kind: PlantKind;
   /** 평가 금액 (원). 연결 계좌가 없으면 null — "연결 계좌 없음" 으로 보인다. */
   value: number | null;
   needsRebalance: boolean;
@@ -101,6 +114,7 @@ function gardenRow(plant: PortfolioPlantView, accounts: readonly RowAccount[]): 
     name: plant.name || "이름 없는 포트폴리오",
     stage: plant.stage,
     pot: potForPortfolio(plant.portfolioId),
+    kind: kindForPortfolio(plant.portfolioId),
     value: accounts.length > 0 ? plant.value : null,
     needsRebalance: plant.rebalancing === "needs-rebalancing",
     drooping: plant.drooping,
