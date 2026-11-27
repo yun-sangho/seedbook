@@ -1,5 +1,11 @@
 import { useId } from "react";
-import { type PlantStage, POT_COLORS, type PotColor } from "../plant-3d/plant-options";
+import {
+  type PlantKind,
+  type PlantStage,
+  POT_COLORS,
+  type PotColor,
+} from "../plant-3d/plant-options";
+import { FernArt } from "./fern-art";
 
 /**
  * 식물 2D 아바타 (SVG). 3D 식물과 같은 색·모양 규칙(화분, 씨앗 아바타 잎 모양)으로 단계별로 그린다.
@@ -177,11 +183,15 @@ export function PlantAvatar({
   stage,
   pot = "terracotta",
   size,
+  kind = "tree",
 }: {
   stage: PlantStage;
   pot?: PotColor;
   size: number;
+  /** 식물 종류 (`kindForPortfolio`). 없으면 나무. */
+  kind?: PlantKind;
 }) {
+  const fern = kind === "fern";
   const clipId = useId();
   return (
     <svg viewBox="0 0 64 64" width={size} height={size} aria-hidden focusable="false">
@@ -192,8 +202,9 @@ export function PlantAvatar({
       </defs>
       <g clipPath={`url(#${clipId})`}>
         <rect width="64" height="64" fill={BG} />
-        <StageArt stage={stage} />
+        {fern ? <FernArt stage={stage} layer="back" /> : <StageArt stage={stage} />}
         <Pot pot={pot} />
+        {fern && <FernArt stage={stage} layer="front" />}
       </g>
     </svg>
   );

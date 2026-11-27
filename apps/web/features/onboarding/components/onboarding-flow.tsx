@@ -162,6 +162,7 @@ export function OnboardingFlow({
     case "planting":
       return (
         <PlantingStep
+          portfolioId={portfolioId}
           name={portfolio?.name ?? draft.name}
           goalAmount={portfolio?.goalAmount ?? null}
           onNext={() => goTo("storage")}

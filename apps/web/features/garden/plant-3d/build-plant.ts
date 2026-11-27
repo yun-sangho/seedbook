@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { buildFernBody } from "./build-fern";
 import { PLANT_STAGES, type PlantOptions, type PlantStage, POT_COLORS } from "./plant-options";
 import { createRebalanceBadge } from "./rebalance-badge";
 
@@ -473,10 +474,14 @@ export function buildPlant(options: PlantOptions): BuiltPlant {
   const body = new THREE.Group();
   body.position.y = SOIL_Y - 0.03;
   root.add(body);
-  STAGE_BUILDERS[options.stage](ctx, body);
+  const fern = options.kind === "fern" ? buildFernBody(ctx, body) : null;
+  if (fern) disposers.push(fern.dispose);
+  else STAGE_BUILDERS[options.stage](ctx, body);
 
   const baseTilt = options.needsRebalance ? -TILT_ANGLE : 0;
-  const badge = options.needsRebalance ? createRebalanceBadge(BADGE_HEIGHT[options.stage]) : null;
+  const badge = options.needsRebalance
+    ? createRebalanceBadge(fern?.badgeHeight ?? BADGE_HEIGHT[options.stage])
+    : null;
   if (badge) {
     // 몸통이 기울어도 배지는 똑바로 서도록 root 에 붙인다.
     root.add(badge.object);
@@ -497,6 +502,7 @@ export function buildPlant(options: PlantOptions): BuiltPlant {
       for (const leaf of ctx.leaves) {
         leaf.mesh.rotation.x = leaf.basePitch + Math.sin(time * 2.1 + leaf.phase) * 0.05;
       }
+      fern?.update(time);
       badge?.update(time, pxToScale);
     },
     dispose() {
