@@ -70,6 +70,11 @@ describe("LoginScreen", () => {
     expect(kakao()).not.toHaveAttribute("data-loading");
   });
 
+  it("tells the user that no name, email or photo is collected", () => {
+    openAt("/assets");
+    expect(screen.getByText(/이름·이메일·프로필 사진은 받지 않아요/)).toBeInTheDocument();
+  });
+
   it("links to the privacy policy", () => {
     openAt("/assets");
     expect(screen.getByRole("link", { name: "개인정보처리방침" })).toHaveAttribute(

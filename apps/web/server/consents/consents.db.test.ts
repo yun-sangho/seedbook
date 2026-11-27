@@ -18,7 +18,8 @@ afterAll(close);
 
 // 2026-11-26 12:00 KST
 const now = new Date("2026-11-26T03:00:00Z");
-const FIRST = LEGAL_DOCUMENT_VERSIONS;
+// 처음 공개한 버전들. 이후 레포에 추가된 개정과 상관없이 고정한다.
+const FIRST = LEGAL_DOCUMENT_VERSIONS.filter((v) => v.effectiveDate === "2026-11-25");
 const CURRENT = { terms: "2026-11-25", privacy: "2026-11-25" };
 const revision = (
   effectiveDate: string,

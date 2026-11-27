@@ -97,6 +97,18 @@ describe("device credential sign-in (better-auth + real Postgres)", () => {
     expect(sessionCookie(response)).not.toBe(cookie);
   });
 
+  it("does not store the enrolling device's User-Agent", async () => {
+    const { cookie } = await signUp();
+    const { credentialId } = await enroll(cookie);
+
+    const [row] = await db
+      .select()
+      .from(schema.deviceCredential)
+      .where(eq(schema.deviceCredential.id, credentialId));
+
+    expect(row?.userAgent).toBeNull();
+  });
+
   it("rejects a wrong token without setting a cookie", async () => {
     const { cookie } = await signUp();
     const credential = await enroll(cookie);

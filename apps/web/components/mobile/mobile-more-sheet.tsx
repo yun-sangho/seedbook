@@ -48,7 +48,7 @@ export function MobileMoreSheet({
 }: MobileMoreSheetProps) {
   const { data: session } = useSession();
   const legalNotices = useLegalNotices();
-  const user = session?.user as { name?: string | null; email?: string | null } | undefined;
+  const user = session?.user as { name?: string | null } | undefined;
   // HydrationGate 아래에서만 렌더되므로 render 중 localStorage 읽기가 SSR 과 어긋나지 않는다.
   const showStorageNotice = needsSeparateStorageNotice({
     isIOS,
@@ -61,11 +61,7 @@ export function MobileMoreSheet({
   return (
     <>
       <BottomSheetRoot open={open} onOpenChange={onOpenChange}>
-        <BottomSheetContent
-          title={user?.name ?? "더보기"}
-          description={user?.email ?? undefined}
-          showHandle
-        >
+        <BottomSheetContent title={user?.name || "더보기"} showHandle>
           <BottomSheetBody>
             <List>
               {installMode === "prompt" && (
