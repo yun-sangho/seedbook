@@ -1,11 +1,13 @@
-import { ANONYMOUS_USER_NAME, anonymousEmail } from "@seedbook/database";
+import { ANONYMOUS_USER_NAME, anonymousEmail, type Database, schema } from "@seedbook/database";
 import {
   nicknameError,
   normalizeNickname,
   profileImageError,
 } from "@web/lib/seed-identity/profile";
+import { parseProfileImage } from "@web/lib/seed-identity/profile-image";
 import type { BetterAuthOptions } from "better-auth";
 import { APIError } from "better-auth/api";
+import { eq } from "drizzle-orm";
 
 /**
  * 로그인에서 신상 정보를 저장하지 않게 하는 better-auth 설정 (`packages/database/src/anonymous-identity.ts`).
@@ -15,7 +17,8 @@ import { APIError } from "better-auth/api";
  *   사람은 (provider, 식별 번호) 로 계정을 찾으므로 다시 로그인해도 같은 계정이다.
  * - 재로그인이 이름·사진을 provider 프로필로 덮어쓰지 않는다 (`overrideUserInfoOnSignIn` 기본값 false).
  * - OAuth 토큰과 세션의 접속 IP·User-Agent 를 DB 에 남기지 않는다 (`privacyDatabaseHooks`).
- * - 사용자가 바꾸는 이름은 닉네임 규칙을, 사진은 씨앗 아바타 키만 받는다 (`lib/seed-identity/profile.ts`).
+ * - 사용자가 바꾸는 이름은 닉네임 규칙을, 사진은 씨앗 아바타 키나 본인 포트폴리오 식물 키만 받는다
+ *   (`lib/seed-identity/profile.ts`, `profile-image.ts`).
  * - 로그인 수단 연결은 사용자가 로그인한 채로 직접 할 때만 된다 (`privacyAccountOptions`).
  */
 
@@ -89,40 +92,69 @@ const NO_OAUTH_TOKENS = {
 const NO_CLIENT_INFO = { ipAddress: null, userAgent: null };
 
 /**
- * 프로필 수정(`updateUser`)이 닉네임 규칙을 어기거나 사진 URL 을 넣으면 거절한다. 닉네임은 공백을
- * 정리해 저장한다.
+ * 아바타로 고른 식물이 다른 사용자의 포트폴리오면 true. 서버에 없는 포트폴리오는 받는다 — local 모드
+ * 사용자의 포트폴리오는 기기에만 있다. 그런 키는 화면이 그 포트폴리오를 못 찾아 기본값으로 그린다.
  */
-async function validateProfileUpdate<T extends { name?: unknown; image?: unknown }>(data: T) {
-  const next = { ...data };
-  if (typeof data.name === "string") {
-    if (nicknameError(data.name)) {
-      throw new APIError("BAD_REQUEST", { message: "invalid nickname" });
-    }
-    next.name = normalizeNickname(data.name);
-  }
-  if (data.image !== undefined) {
-    const image = typeof data.image === "string" ? data.image : null;
-    if (data.image !== null && (image === null || profileImageError(image))) {
-      throw new APIError("BAD_REQUEST", { message: "image must be a seed avatar key" });
-    }
-  }
-  return { data: next };
+async function isForeignPortfolio(db: Database, portfolioId: string, userId: string | undefined) {
+  const [row] = await db
+    .select({ userId: schema.portfolio.userId })
+    .from(schema.portfolio)
+    .where(eq(schema.portfolio.id, portfolioId));
+  return row !== undefined && row.userId !== userId;
 }
 
 /**
+ * 프로필 수정(`updateUser`)이 닉네임 규칙을 어기거나 사진 URL·남의 포트폴리오 식물을 넣으면 거절한다.
+ * 닉네임은 공백을 정리해 저장한다.
+ */
+function profileUpdateValidator(db: Database) {
+  return async <T extends { name?: unknown; image?: unknown }>(
+    data: T,
+    context: { context: { session?: { user: { id: string } } | null } } | null
+  ) => {
+    const next = { ...data };
+    if (typeof data.name === "string") {
+      if (nicknameError(data.name)) {
+        throw new APIError("BAD_REQUEST", { message: "invalid nickname" });
+      }
+      next.name = normalizeNickname(data.name);
+    }
+    if (data.image !== undefined) {
+      const image = typeof data.image === "string" ? data.image : null;
+      if (data.image !== null && (image === null || profileImageError(image))) {
+        throw new APIError("BAD_REQUEST", { message: "image must be a seed avatar key" });
+      }
+      const { plantPortfolioId } = parseProfileImage(image);
+      if (
+        plantPortfolioId !== null &&
+        (await isForeignPortfolio(db, plantPortfolioId, context?.context.session?.user.id))
+      ) {
+        throw new APIError("BAD_REQUEST", { message: "plant must be your own portfolio" });
+      }
+    }
+    return { data: next };
+  };
+}
+
+/**
+ * 프로필 수정 검사와, 저장 직전에 OAuth 토큰과 세션 접속 정보를 지우는 훅. `db` 는 식물 아바타의
+ * 포트폴리오 주인을 확인하는 데 쓴다.
+ *
  * 저장 직전에 OAuth 토큰과 세션 접속 정보를 지운다. better-auth 의 IP 추적 자체(`disableIpTracking`)는
  * 끄지 않는다 — 요청 IP 는 로그인 rate limit 에 쓰이고, 저장만 하지 않으면 된다.
  */
-export const privacyDatabaseHooks = {
-  user: {
-    update: { before: validateProfileUpdate },
-  },
-  account: {
-    create: { before: async (data) => ({ data: { ...data, ...NO_OAUTH_TOKENS } }) },
-    update: { before: async (data) => ({ data: { ...data, ...NO_OAUTH_TOKENS } }) },
-  },
-  session: {
-    create: { before: async (data) => ({ data: { ...data, ...NO_CLIENT_INFO } }) },
-    update: { before: async (data) => ({ data: { ...data, ...NO_CLIENT_INFO } }) },
-  },
-} satisfies BetterAuthOptions["databaseHooks"];
+export function privacyDatabaseHooks(db: Database) {
+  return {
+    user: {
+      update: { before: profileUpdateValidator(db) },
+    },
+    account: {
+      create: { before: async (data) => ({ data: { ...data, ...NO_OAUTH_TOKENS } }) },
+      update: { before: async (data) => ({ data: { ...data, ...NO_OAUTH_TOKENS } }) },
+    },
+    session: {
+      create: { before: async (data) => ({ data: { ...data, ...NO_CLIENT_INFO } }) },
+      update: { before: async (data) => ({ data: { ...data, ...NO_CLIENT_INFO } }) },
+    },
+  } satisfies BetterAuthOptions["databaseHooks"];
+}

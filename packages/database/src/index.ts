@@ -5,5 +5,6 @@ export * from "./client";
 export * from "./dev-auth";
 export * from "./ensure-dev-auth";
 export * from "./kst";
+export * from "./portfolio-plants";
 export * from "./schema";
 export * from "./scrub-personal-info";

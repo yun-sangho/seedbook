@@ -1,4 +1,6 @@
 import type { schema } from "@seedbook/database";
+import { MAX_PLANT_STAGE } from "@web/features/portfolio/types/constants";
+import type { PlantProgress } from "@web/features/portfolio/types/types";
 
 /**
  * 포트폴리오 한 건의 동기화 표현 (`features/portfolio` 의 `PortfolioItem`, id 제외).
@@ -12,6 +14,11 @@ export type PortfolioFields = {
   accountIds: string[];
   driftMode: "relative" | "absolute";
   driftThresholdPercent: number;
+  /**
+   * 식물 진행 (지금 목표·도달 단계·달성한 목표). 식물이 생기기 전 클라이언트는 보내지 않는다 —
+   * 그때는 저장된 값을 그대로 둔다.
+   */
+  plant?: PlantProgress;
   allocations: Array<{
     id: string;
     market: string;
@@ -22,8 +29,9 @@ export type PortfolioFields = {
   }>;
 };
 
-/** pull 로 내려주는 모양 — 서버가 기록한 생성 / 수정 시각이 붙는다. */
-export type PortfolioData = PortfolioFields & { createdAt: string; updatedAt: string };
+/** pull 로 내려주는 모양 — 식물 진행은 펼쳐서, 서버가 기록한 생성 / 수정 시각이 붙는다. */
+export type PortfolioData = Omit<PortfolioFields, "plant"> &
+  PlantProgress & { createdAt: string; updatedAt: string };
 
 type PortfolioRow = typeof schema.portfolio.$inferSelect;
 type AllocationRow = typeof schema.portfolioAllocation.$inferSelect;
@@ -34,6 +42,44 @@ const isNumber = (x: unknown): x is number => typeof x === "number" && Number.is
 const isUuid = (x: unknown): x is string => isText(x) && UUID_RE.test(x);
 const isDriftMode = (x: unknown): x is PortfolioFields["driftMode"] =>
   x === "relative" || x === "absolute";
+const isPositiveAmount = (x: unknown): x is number =>
+  typeof x === "number" && Number.isSafeInteger(x) && x > 0;
+const isTimestamp = (x: unknown): x is string => isText(x) && !Number.isNaN(Date.parse(x));
+
+/**
+ * 식물 진행 검증. 세 필드가 모두 없으면 `undefined` (식물 이전 클라이언트), 하나라도 잘못되면 `null`.
+ * 달성한 목표 수는 단계 수를 넘을 수 없다.
+ */
+function parsePlantProgress(v: Record<string, unknown>): PlantProgress | null | undefined {
+  if (v.goalAmount === undefined && v.growthStage === undefined && v.goalHistory === undefined) {
+    return undefined;
+  }
+  const goalAmount = v.goalAmount ?? null;
+  const growthStage = v.growthStage ?? 0;
+  const rawHistory = v.goalHistory ?? [];
+  if (
+    (goalAmount !== null && !isPositiveAmount(goalAmount)) ||
+    typeof growthStage !== "number" ||
+    !Number.isInteger(growthStage) ||
+    growthStage < 0 ||
+    growthStage > MAX_PLANT_STAGE ||
+    !Array.isArray(rawHistory) ||
+    rawHistory.length > MAX_PLANT_STAGE
+  ) {
+    return null;
+  }
+  const goalHistory: PlantProgress["goalHistory"] = [];
+  for (const raw of rawHistory) {
+    const g = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
+    if (!g || !isPositiveAmount(g.amount) || !isTimestamp(g.reachedAt)) return null;
+    goalHistory.push({ amount: g.amount, reachedAt: g.reachedAt });
+  }
+  return {
+    goalAmount,
+    growthStage: growthStage as PlantProgress["growthStage"],
+    goalHistory,
+  };
+}
 
 /** 외부 입력 검증. 잘못된 모양이면 `null`. */
 export function parsePortfolioFields(value: unknown): PortfolioFields | null {
@@ -44,7 +90,9 @@ export function parsePortfolioFields(value: unknown): PortfolioFields | null {
   const rawAllocations = v.allocations ?? [];
   // 방식이 생기기 전 클라이언트는 보내지 않는다 — 그때의 판정 방식(%p 차이)으로 둔다.
   const driftMode = v.driftMode ?? "absolute";
+  const plant = parsePlantProgress(v);
   if (
+    plant === null ||
     !isText(v.name) ||
     !isText(v.color) ||
     !isText(note) ||
@@ -89,11 +137,15 @@ export function parsePortfolioFields(value: unknown): PortfolioFields | null {
     accountIds: Array.from(new Set(accountIds)),
     driftMode,
     driftThresholdPercent: v.driftThresholdPercent,
+    ...(plant ? { plant } : {}),
     allocations,
   };
 }
 
-/** 포트폴리오 행 컬럼 (id / userId / 동기화 컬럼 / 생성 시각 제외). */
+/**
+ * 포트폴리오 행 컬럼 (id / userId / 동기화 컬럼 / 생성 시각 제외). 식물 진행이 없으면 식물 컬럼을
+ * 넣지 않는다 — 새 행은 씨앗(컬럼 기본값), 있던 행은 저장된 진행을 그대로 둔다.
+ */
 export function portfolioFieldsToColumns(fields: PortfolioFields) {
   return {
     name: fields.name,
@@ -102,6 +154,13 @@ export function portfolioFieldsToColumns(fields: PortfolioFields) {
     accountIds: fields.accountIds,
     driftMode: fields.driftMode,
     driftThresholdPercent: fields.driftThresholdPercent,
+    ...(fields.plant
+      ? {
+          goalAmount: fields.plant.goalAmount,
+          growthStage: fields.plant.growthStage,
+          goalHistory: fields.plant.goalHistory,
+        }
+      : {}),
   };
 }
 
@@ -117,6 +176,9 @@ export function portfolioRowToData(row: PortfolioRow, allocations: AllocationRow
     accountIds: row.accountIds,
     driftMode: row.driftMode,
     driftThresholdPercent: row.driftThresholdPercent,
+    goalAmount: row.goalAmount,
+    growthStage: row.growthStage as PlantProgress["growthStage"],
+    goalHistory: row.goalHistory,
     allocations: allocations.map((a) => ({
       id: a.id,
       market: a.market,

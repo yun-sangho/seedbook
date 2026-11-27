@@ -11,8 +11,8 @@ import {
   nicknameError,
   normalizeNickname,
 } from "@web/lib/seed-identity/profile";
+import { parseProfileImage, profileImageKey } from "@web/lib/seed-identity/profile-image";
 import {
-  parseSeedAvatarKey,
   randomSeedAvatar,
   type SeedAvatarVariant,
   seedAvatarKey,
@@ -22,9 +22,12 @@ import { ActionButton } from "@web/seed-design/ui/action-button";
 import { TextField, TextFieldInput } from "@web/seed-design/ui/text-field";
 import { UserRound } from "lucide-react";
 
-/** 사용자 아바타. 씨앗 아바타 키가 아니면(가입 단계 전) 기본 아이콘. */
+/**
+ * 사용자 아바타. 씨앗 아바타 키가 아니면(가입 단계 전) 기본 아이콘. 식물 아바타는 아직 그리지
+ * 않는다 — 함께 저장된 씨앗을 보여 준다.
+ */
 export function UserAvatar({ image, size }: { image: string | null | undefined; size: number }) {
-  const variant = parseSeedAvatarKey(image);
+  const variant = parseProfileImage(image).seed;
   if (variant) return <SeedAvatar variant={variant} size={size} className="shrink-0" />;
   return (
     <span
@@ -45,8 +48,15 @@ function differentSeedAvatar(current: SeedAvatarVariant): SeedAvatarVariant {
   return next;
 }
 
-/** 아바타·닉네임 편집 상태. 저장은 `updateUser` — 서버도 같은 규칙으로 검사한다. */
-export function useProfileDraft(initial: { avatar: SeedAvatarVariant; nickname: string }) {
+/**
+ * 아바타·닉네임 편집 상태. 저장은 `updateUser` — 서버도 같은 규칙으로 검사한다. 아바타로 고른
+ * 식물(`plantPortfolioId`)은 씨앗을 바꿔도 그대로 둔다.
+ */
+export function useProfileDraft(initial: {
+  avatar: SeedAvatarVariant;
+  nickname: string;
+  plantPortfolioId?: string | null;
+}) {
   const [avatar, setAvatar] = useState(initial.avatar);
   const [nickname, setNickname] = useState(initial.nickname);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +87,10 @@ export function useProfileDraft(initial: { avatar: SeedAvatarVariant; nickname: 
     try {
       const result = await authClient.updateUser({
         name: normalizeNickname(nickname),
-        image: seedAvatarKey(avatar),
+        image: profileImageKey({
+          seed: avatar,
+          plantPortfolioId: initial.plantPortfolioId ?? null,
+        }),
       });
       if (result?.error) throw new Error(result.error.message ?? "update failed");
       return true;

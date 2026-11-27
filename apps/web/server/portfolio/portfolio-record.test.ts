@@ -76,4 +76,40 @@ describe("parsePortfolioFields", () => {
   it("rejects an unknown drift mode", () => {
     expect(parsePortfolioFields({ ...valid, driftMode: "ratio" })).toBeNull();
   });
+
+  describe("plant", () => {
+    const plant = {
+      goalAmount: 30_000_000,
+      growthStage: 1,
+      goalHistory: [{ amount: 10_000_000, reachedAt: "2026-10-15T06:30:00.000Z" }],
+    };
+
+    it("reads the goal, stage and reached goals", () => {
+      expect(parsePortfolioFields({ ...valid, ...plant })?.plant).toEqual(plant);
+    });
+
+    it("leaves the plant out when an older client sends none (the stored plant is kept)", () => {
+      expect(parsePortfolioFields(valid)).not.toHaveProperty("plant");
+    });
+
+    it("accepts no current goal", () => {
+      expect(
+        parsePortfolioFields({ ...valid, ...plant, goalAmount: null })?.plant?.goalAmount
+      ).toBe(null);
+    });
+
+    it.each([
+      ["a zero goal", { goalAmount: 0 }],
+      ["a fractional goal", { goalAmount: 1.5 }],
+      ["a stage above flowers and fruit", { growthStage: 5 }],
+      ["a negative stage", { growthStage: -1 }],
+      ["a reached goal without a time", { goalHistory: [{ amount: 1 }] }],
+      [
+        "more reached goals than stages",
+        { goalHistory: Array.from({ length: 5 }, () => plant.goalHistory[0]) },
+      ],
+    ])("rejects %s", (_label, override) => {
+      expect(parsePortfolioFields({ ...valid, ...plant, ...override })).toBeNull();
+    });
+  });
 });

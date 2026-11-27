@@ -4,6 +4,7 @@ import {
   stockPriceKey,
 } from "@web/features/investments/utils/use-stock-prices";
 import { describe, expect, it } from "vitest";
+import { INITIAL_PLANT_PROGRESS } from "../types/constants";
 import type { PortfolioAllocation, PortfolioItem } from "../types/types";
 import { linkedPortfolioStatus } from "./linked-portfolio-status";
 
@@ -39,6 +40,7 @@ function portfolio(partial: Partial<PortfolioItem> & Pick<PortfolioItem, "id">):
     accountIds: [],
     driftMode: "absolute",
     driftThresholdPercent: 5,
+    ...INITIAL_PLANT_PROGRESS,
     note: "",
     createdAt: "",
     updatedAt: "",

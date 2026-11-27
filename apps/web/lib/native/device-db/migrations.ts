@@ -143,6 +143,15 @@ export const DEVICE_MIGRATIONS: DeviceMigration[] = [
       )`,
     ],
   },
+  {
+    version: 4,
+    statements: [
+      // 포트폴리오 식물: 지금 목표 금액, 도달 단계 (0~4), 달성한 목표 이력 (JSON).
+      "ALTER TABLE portfolio ADD COLUMN goalAmount INTEGER",
+      "ALTER TABLE portfolio ADD COLUMN growthStage INTEGER NOT NULL DEFAULT 0",
+      "ALTER TABLE portfolio ADD COLUMN goalHistory TEXT NOT NULL DEFAULT '[]'",
+    ],
+  },
 ];
 
 const CREATE_MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS device_schema_migration (

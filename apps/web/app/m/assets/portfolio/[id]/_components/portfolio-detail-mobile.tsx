@@ -22,6 +22,10 @@ import {
   otherLinkedPortfolio,
   sortLinkedElsewhereLast,
 } from "@web/features/portfolio/utils/portfolio-links";
+import {
+  computePlantStatus,
+  computePortfolioValuation,
+} from "@web/features/portfolio/utils/portfolio-plant";
 import { resolvePortfolioAccounts } from "@web/features/portfolio/utils/resolve-portfolio-accounts";
 import { summarizePortfolioDrift } from "@web/features/portfolio/utils/summarize-portfolio-drift";
 import { validateAllocations } from "@web/features/portfolio/utils/validate-allocations";
@@ -47,12 +51,14 @@ import { type AccountMove, MoveAccountSheet } from "./move-account-sheet";
 import { PortfolioDriftCard } from "./portfolio-drift-card";
 import { EditDriftThresholdSheet, PortfolioSettingsSheet } from "./portfolio-edit-sheets";
 import { PortfolioOverviewTab } from "./portfolio-overview-tab";
+import { EditPlantGoalSheet, PortfolioPlantCard } from "./portfolio-plant-card";
 
 type Tab = "overview" | "allocations" | "accounts" | "memo";
 
 type Editing =
   | { kind: "settings" }
   | { kind: "drift" }
+  | { kind: "plant-goal" }
   | { kind: "add-allocation" }
   | { kind: "import-allocations" }
   | { kind: "allocation"; id: string };
@@ -110,6 +116,7 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
   const toggleAccountLink = usePortfolioStore((s) => s.toggleAccountLink);
   const setDriftThreshold = usePortfolioStore((s) => s.setDriftThreshold);
   const setDriftMode = usePortfolioStore((s) => s.setDriftMode);
+  const setPlantGoal = usePortfolioStore((s) => s.setPlantGoal);
   const investments = useInvestmentStore((s) => s.investments);
   const portfolios = usePortfolioStore((s) => s.portfolios);
   // 한 계좌는 하나의 포트폴리오에만 연결된다 — 다른 포트폴리오에 연결된 계좌는 확인 후 옮겨온다.
@@ -164,6 +171,12 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
     () => summarizePortfolioDrift(linkedAccounts.map((inv) => accountStatuses.get(inv.id) ?? null)),
     [linkedAccounts, accountStatuses]
   );
+  // 목표 달성으로 자라는 것은 앱 전체의 `PortfolioPlantGrowthRunner` 가 저장한다.
+  const plantStatus = useMemo(
+    () =>
+      computePlantStatus(portfolio, computePortfolioValuation(portfolio, linkedAccounts, prices)),
+    [portfolio, linkedAccounts, prices]
+  );
 
   const totalPct = validation.totalPercent;
   const totalClass = totalToneClass(totalPct, portfolio.allocations.length > 0);
@@ -211,6 +224,10 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
           summary={driftSummary}
           linkedCount={linkedCount}
           onEdit={() => setEditing({ kind: "drift" })}
+        />
+        <PortfolioPlantCard
+          status={plantStatus}
+          onEdit={() => setEditing({ kind: "plant-goal" })}
         />
       </section>
 
@@ -415,6 +432,12 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
           setDriftMode(portfolio.id, mode);
           setDriftThreshold(portfolio.id, value);
         }}
+      />
+      <EditPlantGoalSheet
+        key={`plant-goal-${editing?.kind === "plant-goal"}`}
+        {...sheetProps(editing?.kind === "plant-goal")}
+        progress={portfolio}
+        onSave={(amount) => setPlantGoal(portfolio.id, amount)}
       />
       <ImportAllocationsSheet
         key={`import-${editing?.kind === "import-allocations"}`}

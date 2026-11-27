@@ -42,7 +42,7 @@ export const auth = betterAuth({
   // 이름·이메일·사진·OAuth 토큰·접속 IP/User-Agent 를 저장하지 않는다 (`lib/auth-privacy.ts`).
   // 로그인 수단 연결(카카오 ↔ Apple)은 로그인한 사용자가 직접 할 때만 된다 (`privacyAccountOptions`).
   account: privacyAccountOptions,
-  databaseHooks: privacyDatabaseHooks,
+  databaseHooks: privacyDatabaseHooks(db),
   socialProviders: {
     kakao: kakaoProviderOptions({
       clientId: process.env.KAKAO_CLIENT_ID ?? "",

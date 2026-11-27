@@ -1,0 +1,68 @@
+import { describe, expect, it } from "vitest";
+import type { PlantStage } from "../types/types";
+import { defaultAvatarPlant, resolveProfileAvatar } from "./plant-avatar";
+
+const A = "11111111-1111-4111-8111-111111111111";
+const B = "22222222-2222-4222-8222-222222222222";
+const GONE = "33333333-3333-4333-8333-333333333333";
+
+function plant(portfolioId: string, stage: PlantStage, value: number, drooping = false) {
+  return { portfolioId, color: "#111", stage, value, drooping };
+}
+
+describe("defaultAvatarPlant", () => {
+  it("picks the most grown plant", () => {
+    expect(defaultAvatarPlant([plant(A, 1, 900), plant(B, 2, 100)])?.portfolioId).toBe(B);
+  });
+
+  it("picks the larger portfolio among equally grown plants", () => {
+    expect(defaultAvatarPlant([plant(A, 2, 100), plant(B, 2, 900)])?.portfolioId).toBe(B);
+  });
+
+  it("is null without portfolios", () => {
+    expect(defaultAvatarPlant([])).toBeNull();
+  });
+});
+
+describe("resolveProfileAvatar", () => {
+  const plants = [plant(A, 3, 100, true), plant(B, 1, 900)];
+
+  it("draws the chosen plant", () => {
+    expect(resolveProfileAvatar(`plant:${B}|seed:pot-3-mint`, plants)).toEqual({
+      kind: "plant",
+      portfolioId: B,
+      color: "#111",
+      stage: 1,
+      drooping: false,
+      chosen: true,
+    });
+  });
+
+  it("draws the most grown plant before one is chosen", () => {
+    expect(resolveProfileAvatar("seed:pot-3-mint", plants)).toMatchObject({
+      kind: "plant",
+      portfolioId: A,
+      stage: 3,
+      drooping: true,
+      chosen: false,
+    });
+  });
+
+  it("falls back to the default when the chosen portfolio was deleted", () => {
+    expect(resolveProfileAvatar(`plant:${GONE}|seed:pot-3-mint`, plants)).toMatchObject({
+      portfolioId: A,
+      chosen: false,
+    });
+  });
+
+  it("draws the seed avatar without portfolios", () => {
+    expect(resolveProfileAvatar(`plant:${GONE}|seed:pot-3-mint`, [])).toEqual({
+      kind: "seed",
+      variant: { form: "pot", leaves: 3, color: "mint" },
+    });
+  });
+
+  it("has no seed before profile setup", () => {
+    expect(resolveProfileAvatar(null, [])).toEqual({ kind: "seed", variant: null });
+  });
+});

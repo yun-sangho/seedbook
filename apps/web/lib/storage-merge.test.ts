@@ -88,4 +88,40 @@ describe("mergeEnvelopes", () => {
       ["p2", []],
     ]);
   });
+
+  it("keeps the further-grown plant of a portfolio on both sides", () => {
+    const reached = { amount: 1000, reachedAt: "2026-11-01T00:00:00.000Z" };
+    const local = env(
+      {
+        portfolios: [{ id: "p1", name: "local", accountIds: [], goalAmount: 1000, growthStage: 0 }],
+      },
+      3
+    );
+    const cloud = env(
+      {
+        portfolios: [
+          {
+            id: "p1",
+            name: "cloud",
+            accountIds: [],
+            goalAmount: null,
+            growthStage: 1,
+            goalHistory: [reached],
+          },
+        ],
+      },
+      3
+    );
+
+    const [merged] = mergeEnvelopes("portfolio-storage", local, cloud)!.state.portfolios as Array<
+      Record<string, unknown>
+    >;
+
+    expect(merged).toMatchObject({
+      name: "local",
+      goalAmount: null,
+      growthStage: 1,
+      goalHistory: [reached],
+    });
+  });
 });

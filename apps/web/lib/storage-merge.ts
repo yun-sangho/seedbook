@@ -1,4 +1,8 @@
 import { dedupePortfolioLinks } from "@web/features/portfolio/utils/portfolio-links";
+import {
+  furtherPlantProgress,
+  readPlantProgress,
+} from "@web/features/portfolio/utils/portfolio-plant";
 import type { CloudStoreKey } from "./storage-mode";
 
 /**
@@ -8,6 +12,7 @@ import type { CloudStoreKey } from "./storage-mode";
  *   - 한쪽에만 있는 항목은 그대로 남긴다 (합집합).
  *   - 같은 항목이 양쪽에 있으면 로컬(지금 이 기기에서 쓰던 쪽)이 이긴다.
  *   - 순서는 로컬 순서 → 클라우드에만 있는 항목(클라우드 순서).
+ *   - 단, 포트폴리오 식물은 더 자란 쪽을 남긴다 — 도달한 단계는 내려가지 않는다.
  * 대가로, 한쪽에서만 지운 항목은 전환 뒤 되살아날 수 있다.
  */
 
@@ -47,6 +52,14 @@ export function mergeEnvelopes(
   const { field, key } = LIST_FIELDS[storeKey];
   let rows = unionBy(asRows(local.state[field]), asRows(cloud.state[field]), key);
   if (storeKey === "portfolio-storage") {
+    const cloudById = new Map(asRows(cloud.state[field]).map((r) => [r[key], r]));
+    rows = rows.map((r) => {
+      const other = cloudById.get(r[key]);
+      if (!other || other === r) return r;
+      const plant = readPlantProgress(r);
+      const further = furtherPlantProgress(plant, readPlantProgress(other));
+      return further === plant ? r : { ...r, ...further };
+    });
     // 한 계좌는 하나의 포트폴리오에만 — 양쪽 포트폴리오가 같은 계좌를 잡고 있을 수 있다.
     rows = dedupePortfolioLinks(
       rows.map((r) => ({
