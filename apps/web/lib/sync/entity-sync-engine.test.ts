@@ -13,6 +13,7 @@ const config: ManagedStoreConfig<Item> = {
   metaKey: "test.sync.items",
   persistVersion: 1,
   itemsField: "items",
+  normalizeItem: (item) => item,
   toData: (item) => ({ name: item.name }),
   fromData: (id, data) => ({ id, name: String(data.name) }),
 };

@@ -36,6 +36,39 @@ describe("createHybridStorage (local mode)", () => {
     expect(result).toBe('{"state":{}}');
   });
 
+  it("local 모드에서 저장 전에 NaN 금액을 0 으로 정리한다", () => {
+    const storage = createHybridStorage("investment-storage");
+    // persist 는 메모리의 NaN 을 JSON null 로 직렬화한다.
+    storage.setItem(
+      "investment-storage",
+      JSON.stringify({
+        state: {
+          investments: [{ id: "a", currentValue: null, holdings: [], records: [], cashItems: [] }],
+        },
+        version: 6,
+      })
+    );
+
+    const saved = JSON.parse(window.localStorage.getItem("investment-storage") as string);
+    expect(saved.state.investments[0].currentValue).toBe(0);
+  });
+
+  it("local 모드에서 이미 저장된 NaN 금액도 읽을 때 0 으로 정리한다", () => {
+    window.localStorage.setItem(
+      "investment-storage",
+      JSON.stringify({
+        state: {
+          investments: [{ id: "a", currentValue: null, holdings: [], records: [], cashItems: [] }],
+        },
+        version: 6,
+      })
+    );
+    const storage = createHybridStorage("investment-storage");
+
+    const loaded = JSON.parse(storage.getItem("investment-storage") as string);
+    expect(loaded.state.investments[0].currentValue).toBe(0);
+  });
+
   it("local 모드에서 removeItem 이 localStorage 에서 key 를 제거한다", () => {
     const storage = createHybridStorage("savings-storage");
     storage.setItem("savings-storage", '{"state":{}}');

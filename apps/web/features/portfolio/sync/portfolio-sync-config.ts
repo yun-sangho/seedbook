@@ -1,13 +1,40 @@
 import type { ManagedStoreConfig } from "@web/lib/sync/managed-store-config";
+import { listOf, finiteNumber as num, text } from "@web/lib/sync/normalize-values";
 import { LEGACY_DRIFT_MODE } from "../types/constants";
 import type { DriftMode, PortfolioItem } from "../types/types";
 import { readPlantProgress } from "../utils/portfolio-plant";
 
-const num = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : 0);
-const text = (value: unknown) => (typeof value === "string" ? value : "");
 // 방식이 없는 데이터는 방식이 생기기 전에 저장된 것 — 그때처럼 %p 차이로 판정한다.
 const driftMode = (value: unknown): DriftMode =>
   value === "relative" || value === "absolute" ? value : LEGACY_DRIFT_MODE;
+
+type Allocation = PortfolioItem["allocations"][number];
+
+const normalizeAllocation = (a: Allocation): Allocation => ({
+  ...a,
+  id: text(a.id),
+  market: text(a.market),
+  ticker: text(a.ticker),
+  name: text(a.name),
+  currency: text(a.currency),
+  targetPercent: num(a.targetPercent),
+});
+
+/** 저장 전 값 정리 — 서버 검증(parsePortfolioFields)이 받는 값으로. 모르는 필드는 남긴다. */
+function normalizePortfolio(item: PortfolioItem): PortfolioItem {
+  return {
+    ...item,
+    name: text(item.name),
+    color: text(item.color),
+    note: text(item.note),
+    accountIds: listOf(item.accountIds).filter((id) => typeof id === "string"),
+    driftMode: driftMode(item.driftMode),
+    // 서버는 음수를 받지 않는다.
+    driftThresholdPercent: Math.max(0, num(item.driftThresholdPercent)),
+    ...readPlantProgress(item),
+    allocations: listOf(item.allocations).map(normalizeAllocation),
+  };
+}
 
 /**
  * 포트폴리오 store (`portfolio-storage`) 의 엔티티 동기화 설정. store 를 import 하지 않는다.
@@ -23,23 +50,27 @@ export const portfolioSyncConfig: ManagedStoreConfig<PortfolioItem> = {
   metaKey: "seedbook.sync.portfolio",
   persistVersion: 3,
   itemsField: "portfolios",
-  toData: (item) => ({
-    name: text(item.name),
-    color: text(item.color),
-    note: text(item.note),
-    accountIds: (item.accountIds ?? []).filter((id) => typeof id === "string"),
-    driftMode: driftMode(item.driftMode),
-    driftThresholdPercent: num(item.driftThresholdPercent),
-    ...readPlantProgress(item),
-    allocations: (item.allocations ?? []).map((a) => ({
-      id: text(a.id),
-      market: text(a.market),
-      ticker: text(a.ticker),
-      name: text(a.name),
-      currency: text(a.currency),
-      targetPercent: num(a.targetPercent),
-    })),
-  }),
+  normalizeItem: normalizePortfolio,
+  toData: (raw) => {
+    const item = normalizePortfolio(raw);
+    return {
+      name: item.name,
+      color: item.color,
+      note: item.note,
+      accountIds: item.accountIds,
+      driftMode: item.driftMode,
+      driftThresholdPercent: item.driftThresholdPercent,
+      ...readPlantProgress(item),
+      allocations: item.allocations.map((a) => ({
+        id: a.id,
+        market: a.market,
+        ticker: a.ticker,
+        name: a.name,
+        currency: a.currency,
+        targetPercent: a.targetPercent,
+      })),
+    };
+  },
   fromData: (id, data) => ({
     id,
     name: text(data.name),

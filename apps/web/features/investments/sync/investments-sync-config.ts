@@ -1,10 +1,58 @@
 import type { ManagedStoreConfig } from "@web/lib/sync/managed-store-config";
-import type { InvestmentItem } from "../types/types";
+import { listOf, finiteNumber as num, text } from "@web/lib/sync/normalize-values";
+import type { CashItem, InvestmentItem, InvestmentRecord, StockHolding } from "../types/types";
 
-const num = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : 0);
-const text = (value: unknown) => (typeof value === "string" ? value : "");
 const list = (value: unknown) =>
   Array.isArray(value) ? (value as Array<Record<string, unknown>>) : [];
+
+/** 매도 제비용률 (%) — 서버 검증 범위(0 이상 100 미만) 밖이면 0. */
+const sellCostPercent = (value: unknown) => {
+  const percent = num(value);
+  return percent >= 0 && percent < 100 ? percent : 0;
+};
+
+const normalizeRecord = (r: InvestmentRecord): InvestmentRecord => ({
+  ...r,
+  date: text(r.date),
+  initialInvestment: num(r.initialInvestment),
+  currentValue: num(r.currentValue),
+});
+
+const normalizeHolding = (h: StockHolding): StockHolding => ({
+  ...h,
+  id: text(h.id),
+  market: text(h.market),
+  ticker: text(h.ticker),
+  name: text(h.name),
+  currency: text(h.currency),
+  quantity: num(h.quantity),
+  memo: text(h.memo),
+});
+
+const normalizeCash = (c: CashItem): CashItem => ({
+  ...c,
+  id: text(c.id),
+  label: text(c.label),
+  amount: num(c.amount),
+});
+
+/** 저장 전 값 정리 — 서버 검증(parseInvestmentFields)이 받는 값으로. 모르는 필드는 남긴다. */
+function normalizeInvestment(item: InvestmentItem): InvestmentItem {
+  return {
+    ...item,
+    accountName: text(item.accountName),
+    accountType: text(item.accountType),
+    currency: text(item.currency),
+    initialInvestment: num(item.initialInvestment),
+    currentValue: num(item.currentValue),
+    note: text(item.note),
+    color: text(item.color),
+    sellCostPercent: sellCostPercent(item.sellCostPercent),
+    records: listOf(item.records).map(normalizeRecord),
+    holdings: listOf(item.holdings).map(normalizeHolding),
+    cashItems: listOf(item.cashItems).map(normalizeCash),
+  };
+}
 
 /**
  * 투자 store (`investment-storage`) 의 엔티티 동기화 설정. store 를 import 하지 않는다 —
@@ -20,36 +68,35 @@ export const investmentsSyncConfig: ManagedStoreConfig<InvestmentItem> = {
   metaKey: "seedbook.sync.investment",
   persistVersion: 6,
   itemsField: "investments",
-  // 서버 검증(parseInvestmentFields)은 유한한 숫자만 받는다 — 입력 도중의 NaN 은 0 으로 보낸다.
-  toData: (item) => ({
-    accountName: text(item.accountName),
-    accountType: text(item.accountType),
-    currency: text(item.currency),
-    initialInvestment: num(item.initialInvestment),
-    currentValue: num(item.currentValue),
-    note: text(item.note),
-    color: text(item.color),
-    sellCostPercent: num(item.sellCostPercent),
-    records: (item.records ?? []).map((r) => ({
-      date: text(r.date),
-      initialInvestment: num(r.initialInvestment),
-      currentValue: num(r.currentValue),
-    })),
-    holdings: (item.holdings ?? []).map((h) => ({
-      id: text(h.id),
-      market: text(h.market),
-      ticker: text(h.ticker),
-      name: text(h.name),
-      currency: text(h.currency),
-      quantity: num(h.quantity),
-      memo: text(h.memo),
-    })),
-    cashItems: (item.cashItems ?? []).map((c) => ({
-      id: text(c.id),
-      label: text(c.label),
-      amount: num(c.amount),
-    })),
-  }),
+  normalizeItem: normalizeInvestment,
+  toData: (raw) => {
+    const item = normalizeInvestment(raw);
+    return {
+      accountName: item.accountName,
+      accountType: item.accountType,
+      currency: item.currency,
+      initialInvestment: item.initialInvestment,
+      currentValue: item.currentValue,
+      note: item.note,
+      color: item.color,
+      sellCostPercent: item.sellCostPercent,
+      records: item.records.map((r) => ({
+        date: r.date,
+        initialInvestment: r.initialInvestment,
+        currentValue: r.currentValue,
+      })),
+      holdings: item.holdings.map((h) => ({
+        id: h.id,
+        market: h.market,
+        ticker: h.ticker,
+        name: h.name,
+        currency: h.currency,
+        quantity: h.quantity,
+        memo: h.memo,
+      })),
+      cashItems: item.cashItems.map((c) => ({ id: c.id, label: c.label, amount: c.amount })),
+    };
+  },
   fromData: (id, data) => ({
     id,
     accountName: text(data.accountName),

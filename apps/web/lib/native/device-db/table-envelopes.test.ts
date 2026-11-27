@@ -5,6 +5,7 @@ import type { SqlDriver } from "./sql-driver";
 import {
   clearDeviceTables,
   isTableEnvelopeKey,
+  readQuarantinedItems,
   readTableEnvelope,
   writeTableEnvelope,
 } from "./table-envelopes";
@@ -488,5 +489,186 @@ describe("clearDeviceTables", () => {
 
     expect(await readTableEnvelope(driver, "investment-storage")).toBeNull();
     expect(await driver.query("SELECT * FROM user_list_order")).toEqual([]);
+  });
+});
+
+describe("items that fail validation (local mode keeps the only copy)", () => {
+  const holding = {
+    id: HOLDING_A,
+    market: "KRX",
+    ticker: "005930",
+    name: "삼성전자",
+    currency: "KRW",
+    quantity: 10,
+    memo: "",
+  };
+
+  // persist 는 JSON 으로 직렬화한다 — 메모리의 NaN 은 null 이 되어 들어온다.
+  const saveInvestments = (investments: unknown[]) =>
+    writeTableEnvelope(driver, "investment-storage", envelope({ investments }, 6));
+
+  async function savedAccounts() {
+    const result = await read(driver, "investment-storage");
+    return (result?.state.investments ?? []) as Array<ReturnType<typeof account>>;
+  }
+
+  it("keeps the last saved account when its update has a NaN amount", async () => {
+    await saveInvestments([account(ACCOUNT_A, "A"), account(ACCOUNT_B, "B")]);
+
+    await saveInvestments([
+      account(ACCOUNT_A, "A", { currentValue: null }),
+      account(ACCOUNT_B, "B 이름 바꿈"),
+    ]);
+
+    const accounts = await savedAccounts();
+    expect(accounts.map((a) => [a.id, a.accountName, a.currentValue])).toEqual([
+      [ACCOUNT_A, "A", 1_200_000],
+      [ACCOUNT_B, "B 이름 바꿈", 1_200_000],
+    ]);
+  });
+
+  it("keeps the last saved account when sellCostPercent is out of range", async () => {
+    await saveInvestments([account(ACCOUNT_A, "A")]);
+
+    await saveInvestments([account(ACCOUNT_A, "A", { sellCostPercent: 100 })]);
+
+    expect((await savedAccounts()).map((a) => a.sellCostPercent)).toEqual([0.2]);
+  });
+
+  it("keeps the account and its holdings when one holding quantity is NaN", async () => {
+    await saveInvestments([account(ACCOUNT_A, "A", { holdings: [holding] })]);
+
+    await saveInvestments([
+      account(ACCOUNT_A, "A", { holdings: [{ ...holding, quantity: null }] }),
+    ]);
+
+    const [saved] = await savedAccounts();
+    expect(saved?.holdings).toEqual([holding]);
+  });
+
+  it("quarantines the original item that could not be saved", async () => {
+    await saveInvestments([account(ACCOUNT_A, "A")]);
+    const broken = account(ACCOUNT_A, "A", { currentValue: null, futureField: "x" });
+
+    await saveInvestments([broken]);
+
+    expect(await readQuarantinedItems(driver)).toEqual([
+      {
+        storageKey: "investment-storage",
+        itemId: ACCOUNT_A,
+        item: broken,
+        quarantinedAt: expect.any(String),
+      },
+    ]);
+  });
+
+  it("keeps only the latest failed version of an item", async () => {
+    await saveInvestments([account(ACCOUNT_A, "첫 번째", { currentValue: null })]);
+    await saveInvestments([account(ACCOUNT_A, "두 번째", { currentValue: null })]);
+
+    const quarantined = await readQuarantinedItems(driver);
+    expect(quarantined.map((q) => (q.item as { accountName: string }).accountName)).toEqual([
+      "두 번째",
+    ]);
+  });
+
+  it("quarantines a new account that fails validation without saving it", async () => {
+    await saveInvestments([account(ACCOUNT_A, "A"), { id: ACCOUNT_B, accountName: 42 }]);
+
+    expect((await savedAccounts()).map((a) => a.id)).toEqual([ACCOUNT_A]);
+    expect((await readQuarantinedItems(driver)).map((q) => q.itemId)).toEqual([ACCOUNT_B]);
+  });
+
+  it("drops the quarantined copy when the user deletes the item", async () => {
+    await saveInvestments([account(ACCOUNT_A, "A", { currentValue: null })]);
+
+    await saveInvestments([]);
+
+    expect(await readQuarantinedItems(driver)).toEqual([]);
+  });
+
+  it("does not touch the accounts when the list is missing from the envelope", async () => {
+    await saveInvestments([account(ACCOUNT_A, "A")]);
+
+    await writeTableEnvelope(driver, "investment-storage", envelope({}, 6));
+
+    expect((await savedAccounts()).map((a) => a.id)).toEqual([ACCOUNT_A]);
+  });
+
+  it("keeps the last saved portfolio, its allocations and account link", async () => {
+    const portfolio = {
+      id: PORTFOLIO,
+      name: "안정형",
+      color: "#00ff00",
+      note: "",
+      accountIds: [ACCOUNT_A],
+      driftMode: "relative",
+      driftThresholdPercent: 5,
+      allocations: [
+        {
+          id: ALLOCATION,
+          market: "KRX",
+          ticker: "005930",
+          name: "삼성전자",
+          currency: "KRW",
+          targetPercent: 100,
+        },
+      ],
+    };
+    await saveInvestments([account(ACCOUNT_A, "A")]);
+    await writeTableEnvelope(driver, "portfolio-storage", envelope({ portfolios: [portfolio] }, 3));
+
+    await writeTableEnvelope(
+      driver,
+      "portfolio-storage",
+      envelope({ portfolios: [{ ...portfolio, driftThresholdPercent: null }] }, 3)
+    );
+
+    const result = await read(driver, "portfolio-storage");
+    expect(result?.state.portfolios).toMatchObject([
+      { id: PORTFOLIO, driftThresholdPercent: 5, allocations: [{ id: ALLOCATION }] },
+    ]);
+    expect(await driver.query("SELECT portfolioId FROM investment_account")).toEqual([
+      { portfolioId: PORTFOLIO },
+    ]);
+    expect((await readQuarantinedItems(driver)).map((q) => q.storageKey)).toEqual([
+      "portfolio-storage",
+    ]);
+  });
+
+  it("keeps the last saved rebalancing session", async () => {
+    const session = {
+      id: SESSION,
+      accountId: ACCOUNT_A,
+      accountName: "계좌",
+      portfolioId: PORTFOLIO,
+      portfolioName: "안정형",
+      cashDelta: -1200,
+      tasks: [],
+      startedAt: "2026-11-10T01:02:03.000Z",
+      completedAt: null,
+      result: null,
+    };
+    await writeTableEnvelope(driver, "rebalancing-storage", envelope({ sessions: [session] }, 1));
+
+    await writeTableEnvelope(
+      driver,
+      "rebalancing-storage",
+      envelope({ sessions: [{ ...session, cashDelta: null }] }, 1)
+    );
+
+    const result = await read(driver, "rebalancing-storage");
+    expect(result?.state.sessions).toMatchObject([{ id: SESSION, cashDelta: -1200 }]);
+    expect((await readQuarantinedItems(driver)).map((q) => q.storageKey)).toEqual([
+      "rebalancing-storage",
+    ]);
+  });
+
+  it("is cleared with the rest of the device tables", async () => {
+    await saveInvestments([account(ACCOUNT_A, "A", { currentValue: null })]);
+
+    await clearDeviceTables(driver);
+
+    expect(await readQuarantinedItems(driver)).toEqual([]);
   });
 });
