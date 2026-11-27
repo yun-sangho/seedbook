@@ -41,6 +41,8 @@ const MOBILE_SUPPORTED_PATTERNS = [
   // 리밸런싱 매매 하나의 체결 수량·가격 입력.
   /^\/assets\/rebalancing\/sessions\/[^/]+\/trades\/[^/]+$/,
   /^\/assets\/settings$/,
+  // 로그인 수단 연결은 제공자 화면을 다녀와 이 주소로 돌아온다.
+  /^\/assets\/settings\/login-methods$/,
 ];
 
 /** 앱 경로 prefix. 모바일 미지원 경로는 모바일 홈, 데스크탑은 소개 페이지로 보낸다. */

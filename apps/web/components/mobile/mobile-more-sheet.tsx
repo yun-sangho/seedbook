@@ -113,7 +113,7 @@ export function MobileMoreSheet({
               <ListButtonItem
                 prefix={<Icon svg={<IconGearLine />} />}
                 title="설정"
-                detail="저장 위치, 데이터 백업"
+                detail="로그인 수단, 저장 위치, 데이터 백업"
                 onClick={() => {
                   onOpenChange(false);
                   push("Settings", {});

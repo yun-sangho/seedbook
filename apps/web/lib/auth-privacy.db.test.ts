@@ -5,7 +5,12 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { eq } from "drizzle-orm";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
-import { appleProviderOptions, kakaoProviderOptions, privacyDatabaseHooks } from "./auth-privacy";
+import {
+  appleProviderOptions,
+  kakaoProviderOptions,
+  privacyAccountOptions,
+  privacyDatabaseHooks,
+} from "./auth-privacy";
 
 const { db, close } = openTestDb();
 const BASE_URL = "http://localhost:3001";
@@ -23,7 +28,7 @@ const auth = betterAuth({
       verification: schema.verification,
     },
   }),
-  account: { updateAccountOnSignIn: false },
+  account: privacyAccountOptions,
   databaseHooks: privacyDatabaseHooks,
   socialProviders: {
     kakao: kakaoProviderOptions({ clientId: "kakao-client", clientSecret: "kakao-secret" }),
@@ -323,5 +328,248 @@ describe("profile update keeps only a nickname and a seed avatar", () => {
       name: "알뜰한 도토리",
       image: "seed:seed-1-sun",
     });
+  });
+});
+
+describe("linking another login method (better-auth + real Postgres)", () => {
+  const LINK_RETURN = "/assets/settings/login-methods";
+
+  function appleSub() {
+    return `001234.${randomUUID().replaceAll("-", "")}.0123`;
+  }
+
+  /** Apple 로 로그인한 세션 쿠키. */
+  async function appleSessionCookie(sub: string): Promise<string> {
+    createdEmails.push(`apple-${sub}@users.seedbook.invalid`.toLowerCase());
+    const response = await auth.handler(
+      new Request(`${BASE_URL}/api/auth/sign-in/social`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: BASE_URL, ...CLIENT_HEADERS },
+        body: JSON.stringify({
+          provider: "apple",
+          idToken: { token: unsignedJwt({ iss: "https://appleid.apple.com", sub }) },
+        }),
+      })
+    );
+    expect(response.status).toBe(200);
+    return cookiesFrom(response);
+  }
+
+  /**
+   * 로그인한 채로 카카오를 연결하는 왕복 (연결 시작 → 카카오 → 콜백). 웹과 앱(WebView)이 타는 리다이렉트
+   * 흐름이다. 콜백이 보내는 주소를 돌려준다.
+   */
+  async function linkKakao(sessionCookie: string, kakaoId: number): Promise<string> {
+    stubKakaoServers(kakaoId);
+    const start = await auth.handler(
+      new Request(`${BASE_URL}/api/auth/link-social`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: BASE_URL,
+          cookie: sessionCookie,
+          ...CLIENT_HEADERS,
+        },
+        body: JSON.stringify({
+          provider: "kakao",
+          callbackURL: `${LINK_RETURN}?linked=kakao`,
+          errorCallbackURL: `${LINK_RETURN}?linking=kakao`,
+        }),
+      })
+    );
+    expect(start.status).toBe(200);
+    const { url } = (await start.json()) as { url: string };
+    const state = new URL(url).searchParams.get("state") ?? "";
+    const startCookies = cookiesFrom(start);
+
+    const callback = await auth.handler(
+      new Request(`${BASE_URL}/api/auth/callback/kakao?code=kakao-code&state=${state}`, {
+        headers: {
+          cookie: [sessionCookie, startCookies].filter(Boolean).join("; "),
+          ...CLIENT_HEADERS,
+        },
+      })
+    );
+    return callback.headers.get("location") ?? "";
+  }
+
+  /** 로그인한 채로 Apple 을 id token 으로 연결한다. */
+  async function linkAppleWithIdToken(sessionCookie: string, sub: string) {
+    return auth.handler(
+      new Request(`${BASE_URL}/api/auth/link-social`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: BASE_URL, cookie: sessionCookie },
+        body: JSON.stringify({
+          provider: "apple",
+          idToken: { token: unsignedJwt({ iss: "https://appleid.apple.com", sub }) },
+        }),
+      })
+    );
+  }
+
+  async function unlink(sessionCookie: string, accountRowId: string) {
+    return auth.handler(
+      new Request(`${BASE_URL}/api/auth/unlink-account`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: BASE_URL, cookie: sessionCookie },
+        body: JSON.stringify({ accountId: accountRowId }),
+      })
+    );
+  }
+
+  async function providers(userId: string) {
+    return (await accountRows(userId)).map((a) => a.providerId).sort();
+  }
+
+  it("links kakao to an apple user although their fixed emails differ", async () => {
+    const cookie = await appleSessionCookie(appleSub());
+    const userId = await sessionUserId(cookie);
+    const kakaoId = randomInt(1, 2 ** 40);
+
+    const location = await linkKakao(cookie, kakaoId);
+
+    expect(location).toBe(`${LINK_RETURN}?linked=kakao`);
+    expect(await providers(userId)).toEqual(["apple", "kakao"]);
+  });
+
+  it("signs the linked kakao into the same user and creates no other user", async () => {
+    const cookie = await appleSessionCookie(appleSub());
+    const userId = await sessionUserId(cookie);
+    const kakaoId = randomInt(1, 2 ** 40);
+    await linkKakao(cookie, kakaoId);
+
+    const signedIn = await signInWithKakao(kakaoId);
+
+    expect(signedIn).toBe(userId);
+    const kakaoEmailUsers = await db
+      .select()
+      .from(schema.user)
+      .where(eq(schema.user.email, `kakao-${kakaoId}@users.seedbook.invalid`));
+    expect(kakaoEmailUsers).toHaveLength(0);
+  });
+
+  it("keeps no OAuth tokens on the linked account", async () => {
+    const cookie = await appleSessionCookie(appleSub());
+    const userId = await sessionUserId(cookie);
+
+    await linkKakao(cookie, randomInt(1, 2 ** 40));
+
+    const kakao = (await accountRows(userId)).find((a) => a.providerId === "kakao");
+    expect(kakao).toMatchObject({
+      accessToken: null,
+      refreshToken: null,
+      idToken: null,
+      accessTokenExpiresAt: null,
+      refreshTokenExpiresAt: null,
+    });
+  });
+
+  it("keeps the user's fixed email, nickname and avatar when linking", async () => {
+    const sub = appleSub();
+    const cookie = await appleSessionCookie(sub);
+    const userId = await sessionUserId(cookie);
+    await db
+      .update(schema.user)
+      .set({ name: "알뜰한 도토리", image: "seed:seed-1-sun" })
+      .where(eq(schema.user.id, userId));
+
+    await linkKakao(cookie, randomInt(1, 2 ** 40));
+
+    expect(await userRow(userId)).toMatchObject({
+      email: `apple-${sub}@users.seedbook.invalid`.toLowerCase(),
+      name: "알뜰한 도토리",
+      image: "seed:seed-1-sun",
+      emailVerified: false,
+    });
+  });
+
+  it("refuses kakao that already belongs to another user and moves nothing", async () => {
+    const kakaoId = randomInt(1, 2 ** 40);
+    const kakaoUser = await signInWithKakao(kakaoId);
+    const cookie = await appleSessionCookie(appleSub());
+    const appleUser = await sessionUserId(cookie);
+
+    const location = await linkKakao(cookie, kakaoId);
+
+    expect(location).toBe(
+      `${LINK_RETURN}?linking=kakao&error=account_already_linked_to_different_user`
+    );
+    expect(await providers(appleUser)).toEqual(["apple"]);
+    expect(await providers(kakaoUser)).toEqual(["kakao"]);
+  });
+
+  it("links apple to a kakao user with an id token (native sign-in shape)", async () => {
+    const cookie = await kakaoSessionCookie(randomInt(1, 2 ** 40));
+    const userId = await sessionUserId(cookie);
+    const sub = appleSub();
+
+    const response = await linkAppleWithIdToken(cookie, sub);
+
+    expect(response.status).toBe(200);
+    expect(await providers(userId)).toEqual(["apple", "kakao"]);
+    expect(await signInWithApple(sub)).toBe(userId);
+  });
+
+  it("refuses an apple id token that already belongs to another user", async () => {
+    const sub = appleSub();
+    const appleUser = await sessionUserId(await appleSessionCookie(sub));
+    const cookie = await kakaoSessionCookie(randomInt(1, 2 ** 40));
+    const kakaoUser = await sessionUserId(cookie);
+
+    const response = await linkAppleWithIdToken(cookie, sub);
+
+    expect(response.status).toBe(409);
+    expect(await providers(kakaoUser)).toEqual(["kakao"]);
+    expect(await providers(appleUser)).toEqual(["apple"]);
+  });
+
+  it("does not unlink the last login method", async () => {
+    const cookie = await kakaoSessionCookie(randomInt(1, 2 ** 40));
+    const userId = await sessionUserId(cookie);
+    const [account] = await accountRows(userId);
+
+    const response = await unlink(cookie, account?.id ?? "");
+
+    expect(response.status).toBe(400);
+    expect(((await response.json()) as { code: string }).code).toBe(
+      "FAILED_TO_UNLINK_LAST_ACCOUNT"
+    );
+    expect(await providers(userId)).toEqual(["kakao"]);
+  });
+
+  it("unlinks one of two login methods", async () => {
+    const cookie = await appleSessionCookie(appleSub());
+    const userId = await sessionUserId(cookie);
+    await linkKakao(cookie, randomInt(1, 2 ** 40));
+    const kakao = (await accountRows(userId)).find((a) => a.providerId === "kakao");
+
+    const response = await unlink(cookie, kakao?.id ?? "");
+
+    expect(response.status).toBe(200);
+    expect(await providers(userId)).toEqual(["apple"]);
+  });
+
+  it("does not join an unlinked method back by its fixed email when signing in with it", async () => {
+    // Apple 로 가입 → 카카오 연결 → Apple 해제. 사용자의 고정 이메일은 여전히 apple-<sub>@… 이다.
+    const sub = appleSub();
+    const cookie = await appleSessionCookie(sub);
+    const userId = await sessionUserId(cookie);
+    await linkKakao(cookie, randomInt(1, 2 ** 40));
+    const apple = (await accountRows(userId)).find((a) => a.providerId === "apple");
+    await unlink(cookie, apple?.id ?? "");
+
+    const response = await auth.handler(
+      new Request(`${BASE_URL}/api/auth/sign-in/social`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: BASE_URL },
+        body: JSON.stringify({
+          provider: "apple",
+          idToken: { token: unsignedJwt({ iss: "https://appleid.apple.com", sub }) },
+        }),
+      })
+    );
+
+    expect(response.status).toBeGreaterThanOrEqual(400);
+    expect(await providers(userId)).toEqual(["kakao"]);
   });
 });

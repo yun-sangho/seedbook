@@ -152,6 +152,13 @@ describe("decideMobileRoute", () => {
     });
   });
 
+  it("rewrites the login methods page into the mobile tree (link sign-in returns here)", () => {
+    expect(decideMobileRoute("/assets/settings/login-methods", "mobile")).toEqual({
+      type: "rewrite",
+      pathname: "/m/assets/settings/login-methods",
+    });
+  });
+
   it("sends the old admin page to the mobile settings page", () => {
     expect(decideMobileRoute("/admin", "mobile")).toEqual({
       type: "redirect",

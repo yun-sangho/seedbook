@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { LAST_LOGIN_METHOD_KEY } from "@web/lib/last-login-method";
 import { STORAGE_MODE_KEY, type StorageMode } from "@web/lib/storage-mode";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthGate } from "./auth-gate";
@@ -227,7 +228,7 @@ describe("AuthGate", () => {
     expect(mockSignInSocial).toHaveBeenCalledTimes(1);
     expect(mockSignInSocial).toHaveBeenCalledWith({
       provider: "kakao",
-      callbackURL: "/assets",
+      callbackURL: "/assets?signedInWith=kakao",
       errorCallbackURL: "/assets",
     });
   });
@@ -255,5 +256,32 @@ describe("AuthGate", () => {
     );
 
     expect(screen.queryByRole("button", { name: /개발용 빠른 로그인/ })).not.toBeInTheDocument();
+  });
+  it("remembers on this device the provider a successful login came back with", async () => {
+    window.history.replaceState(null, "", "/assets/portfolio?signedInWith=apple");
+    mockUseSession.mockReturnValue({ data: { user: SET_UP_USER }, isPending: false });
+
+    render(
+      <AuthGate>
+        <div>앱 콘텐츠</div>
+      </AuthGate>
+    );
+
+    expect(await screen.findByText("앱 콘텐츠")).toBeInTheDocument();
+    expect(window.localStorage.getItem(LAST_LOGIN_METHOD_KEY)).toBe("apple");
+    expect(window.location.pathname + window.location.search).toBe("/assets/portfolio");
+  });
+
+  it("does not record a provider while signed out (a failed or cancelled login)", () => {
+    window.history.replaceState(null, "", "/assets?signedInWith=kakao");
+    mockUseSession.mockReturnValue({ data: null, isPending: false });
+
+    render(
+      <AuthGate>
+        <div>앱 콘텐츠</div>
+      </AuthGate>
+    );
+
+    expect(window.localStorage.getItem(LAST_LOGIN_METHOD_KEY)).toBeNull();
   });
 });
