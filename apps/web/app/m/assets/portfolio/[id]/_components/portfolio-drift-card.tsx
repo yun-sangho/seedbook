@@ -8,7 +8,7 @@ import {
 import type { PortfolioDriftSummary } from "@web/features/portfolio/utils/summarize-portfolio-drift";
 import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
-import { SummaryRow } from "./summary-row";
+import { Badge } from "@web/seed-design/ui/badge";
 
 /**
  * 포트폴리오 상세 상단 요약의 이격 한 줄: 경고 기준(짧게) + 연결 계좌의 지금 상태.
@@ -26,22 +26,21 @@ export function PortfolioDriftRow({
   onEdit: () => void;
 }) {
   return (
-    <SummaryRow
-      label="이격 경고"
-      action={
-        <ActionButton
-          variant="neutralWeak"
-          size="xsmall"
-          onClick={onEdit}
-          aria-label="이격 경고 수정"
-        >
-          수정
-        </ActionButton>
-      }
-    >
-      {describeDriftRuleShort(portfolio)}
-      {linkedCount > 0 && <DriftStatus summary={summary} />}
-    </SummaryRow>
+    <div className="flex min-h-x12 items-center gap-x2 py-x2">
+      <p className="t4-medium min-w-0 flex-1 truncate tabular-nums">
+        <span className="text-fg-neutral-subtle font-normal">이격 </span>
+        {describeDriftRuleShort(portfolio)}
+      </p>
+      {linkedCount > 0 && <DriftStatusBadge summary={summary} />}
+      <ActionButton
+        variant="neutralWeak"
+        size="xsmall"
+        onClick={onEdit}
+        aria-label="이격 경고 수정"
+      >
+        수정
+      </ActionButton>
+    </div>
   );
 }
 
@@ -80,17 +79,21 @@ export function DriftRuleExample({
   );
 }
 
-function DriftStatus({ summary }: { summary: PortfolioDriftSummary }) {
+/** 연결 계좌의 이격 상태를 짧은 배지로. 판단할 수 있는 계좌가 없으면 표시하지 않는다. */
+function DriftStatusBadge({ summary }: { summary: PortfolioDriftSummary }) {
   if (summary.breachedCount > 0) {
     return (
-      <span className="text-fg-warning font-bold">
-        {" "}
-        · 계좌 {summary.breachedCount}개 리밸런싱 필요
-      </span>
+      <Badge tone="warning" variant="weak" className="shrink-0">
+        리밸런싱 필요 {summary.breachedCount}
+      </Badge>
     );
   }
   if (summary.okCount > 0) {
-    return <span className="text-fg-positive"> · 모두 기준 이내</span>;
+    return (
+      <Badge tone="positive" variant="weak" className="shrink-0">
+        정상
+      </Badge>
+    );
   }
-  return <span className="text-fg-neutral-subtle"> · 아직 판단할 수 없어요</span>;
+  return null;
 }

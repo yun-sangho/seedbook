@@ -18,24 +18,28 @@ function status(partial: Partial<PlantStatus>): PlantStatus {
 const noop = () => {};
 
 describe("PortfolioPlantRow", () => {
-  it("shows the stage and what is left before the goal amount", () => {
-    render(<PortfolioPlantRow status={status({})} onEdit={noop} />);
-    expect(screen.getByText("새싹 · 200만원 남음 (목표 1,000만원)")).toBeTruthy();
+  it("shows the stage name and fills the bar toward the goal", () => {
+    render(<PortfolioPlantRow status={status({})} value={8_000_000} onEdit={noop} />);
+    expect(screen.getByText("새싹")).toBeTruthy();
+    expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe("80");
   });
 
-  it("asks for the next goal after one is reached", () => {
+  it("offers to set the next goal after one is reached", () => {
     render(
       <PortfolioPlantRow
         status={status({ goalState: "needs-goal", goalAmount: null, remainingToNextStage: null })}
+        value={12_000_000}
         onEdit={noop}
       />
     );
-    expect(screen.getByText("새싹 · 목표 달성!")).toBeTruthy();
+    expect(screen.getByText("목표 달성!")).toBeTruthy();
     expect(screen.getByRole("button", { name: "식물 목표 수정" }).textContent).toBe("목표 정하기");
   });
 
   it("notes a drooping plant", () => {
-    render(<PortfolioPlantRow status={status({ drooping: true })} onEdit={noop} />);
+    render(
+      <PortfolioPlantRow status={status({ drooping: true })} value={5_000_000} onEdit={noop} />
+    );
     expect(screen.getByText(/시들해요/)).toBeTruthy();
   });
 
@@ -43,6 +47,7 @@ describe("PortfolioPlantRow", () => {
     render(
       <PortfolioPlantRow
         status={status({ stage: 4, goalState: "complete", goalAmount: null })}
+        value={0}
         onEdit={noop}
       />
     );

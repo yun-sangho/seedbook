@@ -174,10 +174,13 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
     [linkedAccounts, accountStatuses]
   );
   // 목표 달성으로 자라는 것은 앱 전체의 `PortfolioPlantGrowthRunner` 가 저장한다.
-  const plantStatus = useMemo(
-    () =>
-      computePlantStatus(portfolio, computePortfolioValuation(portfolio, linkedAccounts, prices)),
+  const plantValuation = useMemo(
+    () => computePortfolioValuation(portfolio, linkedAccounts, prices),
     [portfolio, linkedAccounts, prices]
+  );
+  const plantStatus = useMemo(
+    () => computePlantStatus(portfolio, plantValuation),
+    [portfolio, plantValuation]
   );
 
   const totalPct = validation.totalPercent;
@@ -243,6 +246,7 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
           />
           <PortfolioPlantRow
             status={plantStatus}
+            value={plantValuation.value}
             onEdit={() => setEditing({ kind: "plant-goal" })}
           />
         </div>
