@@ -35,7 +35,7 @@ describe("GardenOverviewList", () => {
         plants={[]}
         portfolios={[]}
         investments={[]}
-        onFocus={noop}
+        onOpenPortfolio={noop}
         onPlantFirstSeed={onPlantFirstSeed}
       />
     );
@@ -45,21 +45,21 @@ describe("GardenOverviewList", () => {
     expect(onPlantFirstSeed).toHaveBeenCalled();
   });
 
-  it("focuses the plant of a tapped row", () => {
-    const onFocus = vi.fn();
+  it("opens the portfolio of a tapped row", () => {
+    const onOpenPortfolio = vi.fn();
     render(
       <GardenOverviewList
         plants={[plant({ rebalancing: "needs-rebalancing" })]}
         portfolios={[]}
         investments={[]}
-        onFocus={onFocus}
+        onOpenPortfolio={onOpenPortfolio}
         onPlantFirstSeed={noop}
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "안정형 식물 보기" }));
+    fireEvent.click(screen.getByRole("button", { name: "안정형 포트폴리오 보기" }));
 
-    expect(onFocus).toHaveBeenCalledWith("p1");
+    expect(onOpenPortfolio).toHaveBeenCalledWith("p1");
     expect(screen.getByRole("img", { name: "리밸런싱 필요" })).toBeTruthy();
     expect(screen.getByText("연결 계좌 없음")).toBeTruthy();
   });
@@ -70,7 +70,7 @@ describe("GardenOverviewList", () => {
         plants={[plant({ goalState: "needs-goal", goalAmount: null })]}
         portfolios={[]}
         investments={[]}
-        onFocus={noop}
+        onOpenPortfolio={noop}
         onPlantFirstSeed={noop}
       />
     );
@@ -98,12 +98,12 @@ describe("GardenOverviewList", () => {
         plants={[plant({ value: 11_000_000 })]}
         portfolios={[{ id: "p1", accountIds: ["a1"] } as never]}
         investments={[account as never]}
-        onFocus={noop}
+        onOpenPortfolio={noop}
         onPlantFirstSeed={noop}
       />
     );
 
-    const row = screen.getByRole("button", { name: "안정형 식물 보기" });
+    const row = screen.getByRole("button", { name: "안정형 포트폴리오 보기" });
     expect(row.textContent).toContain("1,100만원");
     expect(row.textContent).toContain("+10.00%");
   });

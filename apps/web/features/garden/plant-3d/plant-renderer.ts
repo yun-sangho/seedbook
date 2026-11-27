@@ -48,7 +48,14 @@ interface SceneConfig {
   onMetrics?: (metrics: PlantSceneMetrics) => void;
   /** 정원에서 탭한 식물 (빈 곳이면 null). `badge` 는 리밸런싱 배지를 눌렀는지. */
   onPick?: (index: number | null, target: { badge: boolean }) => void;
+  /**
+   * 정원을 화면 어디에 둘지. `center` 는 정원 가운데를 화면 가운데에, `groundEdge` 는 받침의 앞쪽
+   * 끝을 화면 세로 가운데에 둬 식물이 위쪽 절반에 오게 한다 (아래 절반은 바텀시트 자리).
+   */
+  anchor?: GardenAnchor;
 }
+
+export type GardenAnchor = "center" | "groundEdge";
 
 /** 낮(라이트 모드)·밤(다크 모드) 조명과 바닥 판 색. 밤은 밝기를 낮추고 살짝 차갑게 한다. */
 const TONES = {
@@ -164,6 +171,13 @@ export function createPlantScene(canvas: HTMLCanvasElement, config: SceneConfig)
     const hFov = 2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(FOV / 2)) * camera.aspect);
     const fitWidth = halfWidth / Math.tan(hFov / 2);
     const distance = Math.max(fitWidth * 1.05, 7.5);
+    if (config.anchor === "groundEdge" && ground) {
+      // 바라보는 점 = 받침 앞쪽 아래 끝 → 그 점이 화면 정중앙에 온다.
+      const edgeZ = ground.scale.z * 1.03;
+      wantLook.set(0, -0.18, edgeZ);
+      wantPos.set(0, -0.18 + distance * 0.42, edgeZ + distance);
+      return;
+    }
     wantLook.set(0, 0.9, 0);
     wantPos.set(0, 0.9 + distance * 0.42, distance);
   }
@@ -175,6 +189,12 @@ export function createPlantScene(canvas: HTMLCanvasElement, config: SceneConfig)
     plant.built.root.getWorldPosition(focusWorld);
     // 패널이 아래를 가리니 식물이 화면 위쪽에 오도록 바라보는 점을 조금 내린다.
     const distance = 5.2 * Math.max(1, 0.7 / camera.aspect);
+    if (config.anchor === "groundEdge") {
+      // 화분 앞쪽 바닥을 화면 정중앙에 둬 식물이 위쪽 절반(시트 위)에 오게 한다.
+      wantLook.set(focusWorld.x, focusWorld.y, focusWorld.z + 0.55);
+      wantPos.set(focusWorld.x, focusWorld.y + distance * 0.28, focusWorld.z + 0.55 + distance);
+      return;
+    }
     wantLook.set(focusWorld.x, focusWorld.y + 0.85, focusWorld.z);
     wantPos.set(focusWorld.x, focusWorld.y + 0.85 + distance * 0.28, focusWorld.z + distance);
   }

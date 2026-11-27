@@ -12,15 +12,12 @@ import { POT_COLOR_IDS } from "../plant-3d/plant-options";
 import {
   gardenFocusIndex,
   gardenFocusReducer,
-  gardenFocusSummary,
   gardenHandlesBack,
   gardenPlantOptions,
   gardenRows,
-  goalProgressPercent,
   grownSince,
   plantDroop,
   potForPortfolio,
-  rebalanceDestination,
 } from "./garden-home";
 
 function holding(ticker: string, quantity: number): StockHolding {
@@ -77,9 +74,8 @@ const prices = new Map([
 
 const balanced = account("balanced", [holding("A", 50), holding("B", 50)]); // 100,000원
 const skewed = account("skewed", [holding("A", 90), holding("B", 10)]); // 100,000원
-const skewed2 = account("skewed2", [holding("A", 80), holding("B", 20)]);
 
-function session(partial: Partial<RebalancingSession>): RebalancingSession {
+function _session(partial: Partial<RebalancingSession>): RebalancingSession {
   return {
     id: "s",
     accountId: "skewed",
@@ -123,17 +119,6 @@ describe("plantDroop", () => {
 
   it("does not droop before every price has arrived", () => {
     expect(plantDroop(500, 1000, false)).toBe(0);
-  });
-});
-
-describe("goalProgressPercent", () => {
-  it("is null without a goal", () => {
-    expect(goalProgressPercent(100, null)).toBeNull();
-  });
-
-  it("floors the percentage of the goal", () => {
-    expect(goalProgressPercent(999, 1000)).toBe(99);
-    expect(goalProgressPercent(1500, 1000)).toBe(150);
   });
 });
 
@@ -227,50 +212,6 @@ describe("gardenRows", () => {
   });
 });
 
-describe("gardenFocusSummary", () => {
-  it("summarizes the goal and lists target → current weights", () => {
-    const p = portfolio({ accountIds: ["skewed"], goalAmount: 400_000 });
-    const plant = portfolioPlantView(p, [skewed], prices);
-
-    const summary = gardenFocusSummary(plant, p, [skewed], prices);
-
-    expect(summary.goalPercent).toBe(25);
-    expect(summary.remainingToNextStage).toBe(300_000);
-    expect(summary.linked).toBe(true);
-    expect(summary.stocks.map((s) => [s.ticker, s.targetPercent, s.percent])).toEqual([
-      ["A", 50, 90],
-      ["B", 50, 10],
-    ]);
-  });
-
-  it("puts held stocks outside the target after the target stocks", () => {
-    const p = portfolio({ accountIds: ["x"], allocations: [allocation("B", 100)] });
-    const x = account("x", [holding("A", 90), holding("B", 10)]);
-    const plant = portfolioPlantView(p, [x], prices);
-
-    const summary = gardenFocusSummary(plant, p, [x], prices);
-
-    expect(summary.stocks.map((s) => [s.ticker, s.targetPercent])).toEqual([
-      ["B", 100],
-      ["A", null],
-    ]);
-  });
-
-  it("shows targets only for an unlinked portfolio", () => {
-    const p = portfolio();
-    const plant = portfolioPlantView(p, [], prices);
-
-    const summary = gardenFocusSummary(plant, p, [], prices);
-
-    expect(summary.linked).toBe(false);
-    expect(summary.goalPercent).toBeNull();
-    expect(summary.stocks.map((s) => [s.ticker, s.targetPercent, s.percent])).toEqual([
-      ["A", 50, 0],
-      ["B", 50, 0],
-    ]);
-  });
-});
-
 describe("gardenFocusReducer", () => {
   it("focuses the picked plant", () => {
     expect(gardenFocusReducer(null, { type: "pick", portfolioId: "a" })).toBe("a");
@@ -349,49 +290,5 @@ describe("grownSince", () => {
 
   it("does not celebrate a newly added portfolio", () => {
     expect(grownSince(new Map(), [plant("new", 0)])).toEqual([]);
-  });
-});
-
-describe("rebalanceDestination", () => {
-  it("is null when no linked account needs rebalancing", () => {
-    const p = portfolio({ accountIds: ["balanced"] });
-
-    expect(rebalanceDestination(p, [balanced], prices, [])).toBeNull();
-  });
-
-  it("opens the account's rebalancing when one account needs it", () => {
-    const p = portfolio({ accountIds: ["balanced", "skewed"] });
-
-    expect(rebalanceDestination(p, [balanced, skewed], prices, [])).toEqual({
-      screen: "RebalancingDetail",
-      id: "skewed",
-    });
-  });
-
-  it("resumes an in-progress rebalancing of that account", () => {
-    const p = portfolio({ accountIds: ["skewed"] });
-
-    expect(rebalanceDestination(p, [skewed], prices, [session({ id: "s1" })])).toEqual({
-      screen: "RebalancingSession",
-      id: "s1",
-    });
-  });
-
-  it("ignores a completed rebalancing of that account", () => {
-    const p = portfolio({ accountIds: ["skewed"] });
-    const done = session({ id: "s1", completedAt: "2026-11-26T01:00:00.000Z" });
-
-    expect(rebalanceDestination(p, [skewed], prices, [done])).toEqual({
-      screen: "RebalancingDetail",
-      id: "skewed",
-    });
-  });
-
-  it("lets the user pick when several accounts need it", () => {
-    const p = portfolio({ accountIds: ["skewed", "skewed2"] });
-
-    expect(rebalanceDestination(p, [skewed, skewed2], prices, [])).toEqual({
-      screen: "RebalancingNew",
-    });
   });
 });

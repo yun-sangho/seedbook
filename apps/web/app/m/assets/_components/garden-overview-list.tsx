@@ -55,26 +55,49 @@ function rowCaption(row: GardenRow): string {
 }
 
 /**
+ * 바텀시트 머리: 총 평가금액·수익 (지금 시세로 다시 계산한 금액, 계좌 상세와 같은 값). 계좌가 없으면
+ * 문구만.
+ */
+export function GardenTotalHeader({ investments }: { investments: InvestmentItem[] }) {
+  const liveInvestments = useLiveAccounts(investments);
+  const totals = useMemo(() => summarizeAccounts(liveInvestments), [liveInvestments]);
+  return (
+    <section className="px-x5 pt-x1 pb-x3">
+      <p className="t4-medium text-fg-neutral-muted">총 평가금액</p>
+      {investments.length > 0 ? (
+        <div className="mt-x1 flex flex-wrap items-baseline gap-x-x2">
+          <p className="t8-bold tabular-nums">{numberToKorean(totals.current) || "0원"}</p>
+          <p className={`t4-medium tabular-nums ${profitToneClass(totals.profit)}`}>
+            {formatProfitKorean(totals.profit)} ({formatReturnRate(totals.returnRate)})
+          </p>
+        </div>
+      ) : (
+        <p className="t8-bold mt-x1">0원</p>
+      )}
+    </section>
+  );
+}
+
+/**
  * 정원 전체일 때의 목록: 총 평가금액·리밸런싱 이어하기, 그리고 포트폴리오 식물마다 한 행.
- * 행을 누르면 그 식물로 다가간다. 포트폴리오가 없으면 첫 씨앗 심기.
+ * 행을 누르면 포트폴리오 상세로 간다. 포트폴리오가 없으면 첫 씨앗 심기.
  */
 export function GardenOverviewList({
   plants,
   portfolios,
   investments,
-  onFocus,
+  onOpenPortfolio,
   onPlantFirstSeed,
 }: {
   plants: PortfolioPlantView[];
   portfolios: PortfolioItem[];
   investments: InvestmentItem[];
-  onFocus: (portfolioId: string) => void;
+  onOpenPortfolio: (portfolioId: string) => void;
   onPlantFirstSeed: () => void;
 }) {
   const { push } = useFlow();
   // 저장된 평가금액이 아니라 지금 시세로 다시 계산한 금액 (계좌 상세와 같은 값).
   const liveInvestments = useLiveAccounts(investments);
-  const totals = useMemo(() => summarizeAccounts(liveInvestments), [liveInvestments]);
   const rows = useMemo(
     () => gardenRows(plants, portfolios, liveInvestments),
     [plants, portfolios, liveInvestments]
@@ -97,18 +120,6 @@ export function GardenOverviewList({
 
   return (
     <div className="pb-x4">
-      {investments.length > 0 && (
-        <section className="px-x5 pt-x5 pb-x3">
-          <p className="t4-medium text-fg-neutral-muted">총 평가금액</p>
-          <div className="mt-x1 flex flex-wrap items-baseline gap-x-x2">
-            <p className="t8-bold tabular-nums">{numberToKorean(totals.current) || "0원"}</p>
-            <p className={`t4-medium tabular-nums ${profitToneClass(totals.profit)}`}>
-              {formatProfitKorean(totals.profit)} ({formatReturnRate(totals.returnRate)})
-            </p>
-          </div>
-        </section>
-      )}
-
       {resumeBanner && (
         <div className="px-x4 pb-x3">
           <ActionableCallout
@@ -151,8 +162,8 @@ export function GardenOverviewList({
               <Divider inset />
               <button
                 type="button"
-                onClick={() => onFocus(row.portfolioId)}
-                aria-label={`${row.name} 식물 보기`}
+                onClick={() => onOpenPortfolio(row.portfolioId)}
+                aria-label={`${row.name} 포트폴리오 보기`}
                 className="active:bg-bg-layer-default-pressed flex w-full items-center gap-x3 px-x4 py-x3 text-left"
               >
                 <span className="relative shrink-0">

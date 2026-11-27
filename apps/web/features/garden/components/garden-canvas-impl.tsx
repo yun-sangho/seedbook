@@ -14,6 +14,7 @@ export default function GardenCanvasImpl({
   slots,
   layoutWidth,
   garden,
+  anchor = "center",
   focus = null,
   paused = false,
   onPick,
@@ -42,6 +43,7 @@ export default function GardenCanvasImpl({
     try {
       handle = createPlantScene(canvas, {
         garden,
+        anchor,
         onPick: (index, target) => callbacks.current.onPick?.(index, target),
         onMetrics: (metrics) => callbacks.current.onMetrics?.(metrics),
       });
@@ -66,7 +68,7 @@ export default function GardenCanvasImpl({
       handleRef.current = null;
       canvas.remove();
     };
-  }, [garden]);
+  }, [garden, anchor]);
 
   useEffect(() => {
     handleRef.current?.setPlants(slots, layoutWidth);
