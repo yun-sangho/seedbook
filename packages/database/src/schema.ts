@@ -315,6 +315,42 @@ export const cashItem = seedbook.table(
   (t) => [index("cash_item_accountId_idx").on(t.accountId)]
 );
 
+/**
+ * 계좌별 하루 평가 기록. stock-crawler 가 평일 오후 시세 수집 뒤 cloud 모드 사용자의 서버 계좌로
+ * 계산해 넣는다 (`src/account-snapshots.ts`, 같은 날 다시 돌면 덮어씀). 사용자 합계는 계좌를 더해
+ * 구한다. `investment_record` 는 클라이언트 동기화가 저장마다 통째로 바꾸는 표라 쓰지 않는다.
+ * 금액은 원.
+ */
+export const investmentAccountSnapshot = seedbook.table(
+  "investment_account_snapshot",
+  {
+    accountId: uuid("accountId")
+      .notNull()
+      .references(() => investmentAccount.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    // 기록한 KST 날짜.
+    date: date("date", { mode: "string" }).notNull(),
+    // 보유 종목 × 그날(없으면 직전) 종가 합. 가격을 못 찾은 종목은 빠진다.
+    stockValue: bigint("stockValue", { mode: "bigint" }).notNull(),
+    // 현금 항목 합. 강제 매수 등으로 음수일 수 있다.
+    cashValue: bigint("cashValue", { mode: "bigint" }).notNull(),
+    totalValue: bigint("totalValue", { mode: "bigint" }).notNull(),
+    // 종목코드가 있는 보유 종목 수와 그중 가격을 못 찾은 수.
+    holdingCount: integer("holdingCount").notNull(),
+    missingPriceCount: integer("missingPriceCount").notNull(),
+    // 쓴 종가 중 가장 오래된 날짜. `date` 보다 이르면 일부 종목은 직전 종가로 계산했다. 종목이 없으면 null.
+    oldestPriceDate: date("oldestPriceDate", { mode: "string" }),
+    createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.accountId, t.date], name: "investment_account_snapshot_pkey" }),
+    index("investment_account_snapshot_userId_date_idx").on(t.userId, t.date),
+  ]
+);
+
 // ─── Savings ────────────────────────────────────────────────────────────────
 
 export const savingsAccount = seedbook.table(

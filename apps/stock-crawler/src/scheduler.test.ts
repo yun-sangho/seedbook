@@ -29,6 +29,7 @@ const mocks = vi.hoisted(() => {
     cronSchedule: vi.fn(),
     syncStockList: vi.fn(),
     syncStockPrices: vi.fn(),
+    snapshotAccounts: vi.fn(),
   };
 });
 
@@ -45,6 +46,10 @@ vi.mock("./jobs/sync-stock-prices.js", () => ({
   syncStockPrices: mocks.syncStockPrices,
 }));
 
+vi.mock("./jobs/record-account-snapshots.js", () => ({
+  snapshotAccounts: mocks.snapshotAccounts,
+}));
+
 const { isJobRunning, runJob, startScheduler } = await import("./scheduler.js");
 
 describe("scheduler", () => {
@@ -52,6 +57,35 @@ describe("scheduler", () => {
     mocks.cronSchedule.mockReset();
     mocks.syncStockList.mockReset();
     mocks.syncStockPrices.mockReset();
+    mocks.snapshotAccounts.mockReset().mockResolvedValue(true);
+  });
+
+  it("오후 job: 시세 수집 뒤 계좌 평가를 기록", async () => {
+    const order: string[] = [];
+    mocks.syncStockList.mockImplementation(async () => order.push("list"));
+    mocks.syncStockPrices.mockImplementation(async () => order.push("prices"));
+    mocks.snapshotAccounts.mockImplementation(async () => order.push("snapshots"));
+
+    startScheduler();
+    const afternoonHandler = mocks.cronSchedule.mock.calls[1]![1] as () => void;
+    afternoonHandler();
+    await vi.waitFor(() => expect(isJobRunning()).toBe(false));
+
+    expect(order).toEqual(["list", "prices", "snapshots"]);
+  });
+
+  it("오후 job: 시세 수집이 실패하면 계좌 평가를 기록하지 않음 (옛 종가로 남기지 않는다)", async () => {
+    mocks.syncStockList.mockResolvedValue(undefined);
+    mocks.syncStockPrices.mockRejectedValue(new Error("naver down"));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    startScheduler();
+    const afternoonHandler = mocks.cronSchedule.mock.calls[1]![1] as () => void;
+    afternoonHandler();
+    await vi.waitFor(() => expect(isJobRunning()).toBe(false));
+
+    expect(mocks.snapshotAccounts).not.toHaveBeenCalled();
+    error.mockRestore();
   });
 
   it("isJobRunning(): 실행 전 false → 실행 중 true → 완료 후 false", async () => {

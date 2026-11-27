@@ -11,6 +11,7 @@
     "crawl:stocks": "tsx src/jobs/sync-stock-list.ts",
     "crawl:prices": "tsx src/jobs/sync-stock-prices.ts",
     "crawl:all": "tsx src/jobs/run-all.ts",
+    "snapshot:accounts": "tsx src/jobs/record-account-snapshots.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
