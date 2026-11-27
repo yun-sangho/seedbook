@@ -28,6 +28,8 @@ export const POT_COLOR_IDS = Object.keys(POT_COLORS) as PotColor[];
 /** 리밸런싱 배지가 화면에 보이는 크기와 누르는 영역 (CSS px, 정원 전체·포커스 모두 같은 크기). */
 export const REBALANCE_BADGE_PX = 30;
 export const REBALANCE_BADGE_HIT_PX = 44;
+/** 리밸런싱 배지 색. 2D 목록의 `!` 표시도 같은 색을 쓴다. */
+export const REBALANCE_BADGE_COLOR = "#E8664F";
 
 export interface PlantOptions {
   stage: PlantStage;

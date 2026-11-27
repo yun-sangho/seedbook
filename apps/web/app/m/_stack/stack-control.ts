@@ -41,11 +41,27 @@ export function switchTab(tab: TabKey) {
   showTab(actions, tab);
 }
 
-/** 한 화면 뒤로. 이미 루트면 아무것도 하지 않고 false. */
+// 루트 화면 안에서 먼저 되돌릴 것 (정원 홈의 식물 포커스 등). 되돌렸으면 true.
+let rootBack: (() => boolean) | null = null;
+
+/**
+ * 루트에서 뒤로가기를 받을 함수를 건다 — 스택에 쌓인 화면이 없을 때만 불린다. 돌려준 함수를 부르면
+ * 뗀다. 화면 안의 상태(포커스)는 브라우저 히스토리나 스택 화면으로 두지 않고 여기로 되돌린다.
+ */
+export function setRootBack(handler: () => boolean): () => void {
+  rootBack = handler;
+  return () => {
+    if (rootBack === handler) rootBack = null;
+  };
+}
+
+/** 한 화면 뒤로. 루트면 루트 화면이 되돌릴 것을 되돌리고, 그것도 없으면 false. */
 export function goBack(): boolean {
-  if (!actions || depthAboveRoot(actions) <= 0) return false;
-  actions.pop();
-  return true;
+  if (actions && depthAboveRoot(actions) > 0) {
+    actions.pop();
+    return true;
+  }
+  return rootBack?.() ?? false;
 }
 
 let accountId: string | null = null;

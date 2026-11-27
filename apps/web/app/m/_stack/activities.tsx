@@ -34,8 +34,13 @@ const TAB_SCREENS: Record<TabKey, ReactNode> = {
   portfolio: <PortfolioListMobile />,
 };
 
+/** 정원 홈은 위쪽 정원 창을 고정하고 아래 목록만 스크롤한다. */
+const FIXED_HEIGHT_TABS: readonly TabKey[] = ["home"];
+
 export function TabsActivity({ params }: { params: TabsParams }) {
-  return <TabsScreen current={tabOf(params)} screens={TAB_SCREENS} />;
+  return (
+    <TabsScreen current={tabOf(params)} screens={TAB_SCREENS} fixedHeight={FIXED_HEIGHT_TABS} />
+  );
 }
 
 /** 새 리밸런싱: 계좌를 골라 계좌 리밸런싱 계산(`RebalancingDetail`)으로 들어간다. */

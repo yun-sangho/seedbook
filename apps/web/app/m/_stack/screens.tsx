@@ -42,6 +42,11 @@ function tabLabel(key: TabKey): string {
 interface TabsScreenProps {
   current: TabKey;
   screens: Record<TabKey, ReactNode>;
+  /**
+   * 화면 높이에 맞춰 스스로 스크롤하는 탭 (정원 홈: 위는 고정 높이 정원, 아래만 스크롤). 이 탭들은
+   * 바깥에서 스크롤하지 않고 세로 flex 로 채운다.
+   */
+  fixedHeight?: readonly TabKey[];
 }
 
 /**
@@ -54,13 +59,15 @@ interface TabsScreenProps {
  * 화면 전환·스와이프는 activity 마다 첫 번째 레이어만 움직이므로, 레이어(AppScreenContent)는
  * 하나만 두고 그 안에서 탭마다 따로 스크롤한다.
  */
-export function TabsScreen({ current, screens }: TabsScreenProps) {
+export function TabsScreen({ current, screens, fixedHeight = [] }: TabsScreenProps) {
   const { isRoot, isTop } = useActivity();
   const [opened, setOpened] = useState<readonly TabKey[]>([current]);
   if (!opened.includes(current)) setOpened([...opened, current]);
   const [profileOpen, setProfileOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const { mode: installMode, install, isIOS, isNativeApp } = usePwaInstall();
+  // 하단 탭바(홈 인디케이터 포함)만큼 여백.
+  const bottomInset = isRoot ? TAB_BAR_CONTENT_INSET : "var(--seed-safe-area-bottom)";
 
   return (
     <AppScreen>
@@ -76,16 +83,15 @@ export function TabsScreen({ current, screens }: TabsScreenProps) {
       <AppScreenContent style={{ overflowY: "hidden" }}>
         {TAB_KEYS.filter((key) => opened.includes(key)).map((key) => (
           <Activity key={key} mode={key === current ? "visible" : "hidden"}>
-            <div className="h-full overflow-y-auto [&::-webkit-scrollbar]:hidden">
-              <div
-                style={{
-                  // 하단 탭바(홈 인디케이터 포함)만큼 여백.
-                  paddingBottom: isRoot ? TAB_BAR_CONTENT_INSET : "var(--seed-safe-area-bottom)",
-                }}
-              >
+            {fixedHeight.includes(key) ? (
+              <div className="flex h-full flex-col" style={{ paddingBottom: bottomInset }}>
                 {screens[key]}
               </div>
-            </div>
+            ) : (
+              <div className="h-full overflow-y-auto [&::-webkit-scrollbar]:hidden">
+                <div style={{ paddingBottom: bottomInset }}>{screens[key]}</div>
+              </div>
+            )}
           </Activity>
         ))}
       </AppScreenContent>
