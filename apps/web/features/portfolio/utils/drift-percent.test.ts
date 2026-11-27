@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   describeDriftRule,
+  describeDriftRuleShort,
   driftPercent,
   driftRuleExample,
   exampleTargetPercent,
@@ -67,6 +68,26 @@ describe("describeDriftRule", () => {
   it("keeps decimal thresholds", () => {
     expect(describeDriftRule({ driftMode: "absolute", driftThresholdPercent: 2.5 })).toBe(
       "비중이 2.5%p 넘게 차이 나면"
+    );
+  });
+});
+
+describe("describeDriftRuleShort", () => {
+  it("reads an absolute rule as ±N%p", () => {
+    expect(describeDriftRuleShort({ driftMode: "absolute", driftThresholdPercent: 5 })).toBe(
+      "±5%p"
+    );
+  });
+
+  it("reads a relative rule as a share of the target", () => {
+    expect(describeDriftRuleShort({ driftMode: "relative", driftThresholdPercent: 15 })).toBe(
+      "목표의 ±15%"
+    );
+  });
+
+  it("keeps decimal thresholds", () => {
+    expect(describeDriftRuleShort({ driftMode: "absolute", driftThresholdPercent: 2.5 })).toBe(
+      "±2.5%p"
     );
   });
 });

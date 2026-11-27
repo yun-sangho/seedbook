@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { formatMoneyDraft } from "@web/components/mobile/input-format";
 import { MoneyField } from "@web/components/mobile/money-field";
+import { GoalBar, goalPercentOf } from "@web/features/garden/components/goal-bar";
 import { PLANT_STAGE_LABELS } from "@web/features/portfolio/types/constants";
 import type { PlantProgress } from "@web/features/portfolio/types/types";
 import {
@@ -20,48 +21,44 @@ import {
 } from "@web/seed-design/ui/bottom-sheet";
 import { numberToKorean, parseNumericString } from "@web/utils/number-format";
 
-/** 목표 상태를 한 줄로. */
-function describePlant(status: PlantStatus): string {
-  if (status.goalState === "complete") return "꽃·열매까지 다 자랐어요";
-  if (status.goalState === "needs-goal") {
-    return status.stage === 0
-      ? "목표를 정하면 자라기 시작해요"
-      : "목표를 달성했어요! 다음 목표를 정해 주세요";
-  }
-  return `목표 ${numberToKorean(status.goalAmount ?? 0)} · ${numberToKorean(status.remainingToNextStage ?? 0) || "0원"} 남음`;
-}
-
 /**
- * 포트폴리오 식물의 단계와 목표. 식물 그림은 정원 화면이 그린다 — 여기서는 목표를 정하는 곳만 둔다.
+ * 포트폴리오 상세 상단 요약의 식물 한 줄: 지금 단계 이름 + 목표 도달 막대(정원 목록과 같은 모양) +
+ * 목표 정하기. 식물 그림은 상단 금액 옆 아바타가 보여준다.
  */
-export function PortfolioPlantCard({
+export function PortfolioPlantRow({
   status,
+  value,
   onEdit,
 }: {
   status: PlantStatus;
+  /** 포트폴리오 평가 금액 (원) — 막대를 채운다. */
+  value: number;
   onEdit: () => void;
 }) {
   return (
-    <div className="border-stroke-neutral-muted rounded-r3 mt-x3 border-2 px-x4 py-x3">
-      <div className="flex items-center justify-between gap-x2">
-        <div className="min-w-0">
-          <p className="t3-regular text-fg-neutral-subtle">
-            식물 · {PLANT_STAGE_LABELS[status.stage]}
-            {status.drooping && " (시들해요)"}
-          </p>
-          <p className="t5-bold mt-[2px] tabular-nums">{describePlant(status)}</p>
-        </div>
-        {status.goalState !== "complete" && (
-          <ActionButton
-            variant="neutralWeak"
-            size="xsmall"
-            onClick={onEdit}
-            aria-label="식물 목표 수정"
-          >
-            {status.goalState === "set" ? "수정" : "목표 정하기"}
-          </ActionButton>
-        )}
-      </div>
+    <div className="flex min-h-x12 items-center gap-x3 py-x2">
+      <span className={`t4-bold shrink-0 ${status.drooping ? "text-fg-warning" : ""}`}>
+        {PLANT_STAGE_LABELS[status.stage]}
+        {status.drooping && <span className="t3-regular"> · 시들해요</span>}
+      </span>
+      <GoalBar
+        className="min-w-0 flex-1"
+        stage={status.stage}
+        goalState={status.goalState}
+        goalPercent={goalPercentOf(value, status.goalAmount)}
+        drooping={status.drooping}
+        ariaLabel="식물 목표 도달"
+      />
+      {status.goalState !== "complete" && (
+        <ActionButton
+          variant="neutralWeak"
+          size="xsmall"
+          onClick={onEdit}
+          aria-label="식물 목표 수정"
+        >
+          {status.goalState === "set" ? "수정" : "목표 정하기"}
+        </ActionButton>
+      )}
     </div>
   );
 }
