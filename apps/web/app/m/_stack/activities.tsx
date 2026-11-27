@@ -5,7 +5,6 @@ import { type StaticActivityComponentType, useFlow, useStepFlow } from "@stackfl
 import { LegalNoticeBanner } from "@web/components/mobile/legal-notice-banner";
 import { ProfileEditor } from "@web/components/mobile/profile-menu";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
-import { PortfolioPlantAvatar } from "@web/features/portfolio/components/portfolio-plant-avatar";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import { HomeMobile } from "../assets/_components/home-mobile";
@@ -127,18 +126,7 @@ export function RebalancingTradeActivity({ params }: { params: { id: string; tas
 export function PortfolioDetailActivity({ params }: DetailActivityProps) {
   const portfolio = usePortfolioStore((s) => s.portfolios.find((p) => p.id === params.id));
   return (
-    <DetailScreen
-      title={portfolio?.name || "포트폴리오"}
-      leading={
-        portfolio && (
-          <PortfolioPlantAvatar
-            portfolioId={portfolio.id}
-            stage={portfolio.growthStage}
-            size={24}
-          />
-        )
-      }
-    >
+    <DetailScreen title={portfolio?.name || "포트폴리오"}>
       <PortfolioDetailMobile id={params.id} />
     </DetailScreen>
   );

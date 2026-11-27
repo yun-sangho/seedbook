@@ -110,10 +110,8 @@ interface DetailScreenProps {
   title: string;
   /** 제목 아래 보조 텍스트 (계좌 유형) */
   subtitle?: string;
-  /** 제목 앞 색상 점 (계좌 색) */
+  /** 제목 앞 색상 점 (계좌·포트폴리오 색) */
   dotColor?: string;
-  /** 제목 앞 아이콘 (포트폴리오 식물). 있으면 색상 점 대신 보인다. */
-  leading?: ReactNode;
   /** 카드 섹션을 얹는 회색 바탕 (설정 메뉴). */
   basement?: boolean;
   children: ReactNode;
@@ -127,7 +125,6 @@ export function DetailScreen({
   title,
   subtitle,
   dotColor,
-  leading,
   basement = false,
   children,
 }: DetailScreenProps) {
@@ -143,16 +140,12 @@ export function DetailScreen({
         <SeedAppBar.Main layout={subtitle ? "withSubtitle" : "titleOnly"}>
           <VStack overflowX="auto">
             <SeedAppBar.Title>
-              {leading ? (
-                <span className="mr-[6px] inline-flex align-middle">{leading}</span>
-              ) : (
-                dotColor && (
-                  <span
-                    className="mr-[6px] inline-block size-[10px] rounded-full align-middle"
-                    style={{ backgroundColor: dotColor }}
-                    aria-hidden
-                  />
-                )
+              {dotColor && (
+                <span
+                  className="mr-[6px] inline-block size-[10px] rounded-full align-middle"
+                  style={{ backgroundColor: dotColor }}
+                  aria-hidden
+                />
               )}
               {title}
             </SeedAppBar.Title>
