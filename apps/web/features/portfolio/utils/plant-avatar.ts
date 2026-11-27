@@ -1,4 +1,4 @@
-import { parseProfileImage } from "@web/lib/seed-identity/profile-image";
+import { type ProfileImage, parseProfileImage } from "@web/lib/seed-identity/profile-image";
 import type { SeedAvatarVariant } from "@web/lib/seed-identity/seed-avatar";
 import type { PlantStage } from "../types/types";
 import type { PortfolioPlantView } from "./portfolio-plant-view";
@@ -48,8 +48,15 @@ export function resolveProfileAvatar(
   image: string | null | undefined,
   plants: readonly AvatarPlant[]
 ): ProfileAvatar {
-  const { seed, plantPortfolioId } = parseProfileImage(image);
-  const chosen = plants.find((p) => p.portfolioId === plantPortfolioId) ?? null;
+  return resolveAvatar(parseProfileImage(image), plants);
+}
+
+/** `resolveProfileAvatar` 의 파싱한 값 버전 (프로필 시트의 아직 저장하지 않은 선택). */
+export function resolveAvatar(
+  { seed, plantPortfolioId }: ProfileImage,
+  plants: readonly AvatarPlant[]
+): ProfileAvatar {
+  const chosen = pickedAvatarPlant(plantPortfolioId, plants);
   const plant = chosen ?? defaultAvatarPlant(plants);
   if (!plant) return { kind: "seed", variant: seed };
   return {
@@ -60,4 +67,16 @@ export function resolveProfileAvatar(
     drooping: plant.drooping,
     chosen: chosen !== null,
   };
+}
+
+/**
+ * 아바타로 고른 식물. 고르지 않았거나 그 포트폴리오가 없으면(삭제, 다른 기기의 local 포트폴리오) null —
+ * 아바타 고르기에서 "자동" 이 선택된다.
+ */
+export function pickedAvatarPlant<T extends Pick<AvatarPlant, "portfolioId">>(
+  plantPortfolioId: string | null,
+  plants: readonly T[]
+): T | null {
+  if (plantPortfolioId === null) return null;
+  return plants.find((p) => p.portfolioId === plantPortfolioId) ?? null;
 }
