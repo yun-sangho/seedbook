@@ -2,6 +2,7 @@
   "mainSession": true,
   "lang": "ko",
   "setup": "pnpm install",
+  "maxActive": 3,
   "mergeApproval": {
     "maxLines": 400,
     "paths": [
@@ -21,10 +22,17 @@
       "docker-compose*.yml",
       "**/Dockerfile",
       "apps/stock-crawler/entrypoint.sh",
-      "scripts/worktree*.mjs",
+      "scripts/*.mjs",
       "CLAUDE.md",
       ".claude/rules/**",
       ".hwt.json"
     ]
+  },
+  "mergeQueue": {
+    "method": "squash",
+    "verify": "node scripts/check-deploy.mjs \"$HWT_MQ_SHA\"",
+    "gc": "pnpm wt:gc",
+    "cleanup": true,
+    "maxUpdates": 3
   }
 }
