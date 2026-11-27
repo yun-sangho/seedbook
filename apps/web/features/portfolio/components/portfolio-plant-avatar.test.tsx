@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
+import { PlantAvatar } from "@web/features/garden/components/plant-avatar";
 import { POT_COLORS } from "@web/features/garden/plant-3d/plant-options";
-import { potForPortfolio } from "@web/features/garden/utils/garden-home";
+import { kindForPortfolio, potForPortfolio } from "@web/features/garden/utils/garden-home";
 import { describe, expect, it } from "vitest";
 import { PortfolioPlantAvatar } from "./portfolio-plant-avatar";
 
@@ -8,6 +9,20 @@ describe("PortfolioPlantAvatar", () => {
   it("paints the pot in the same color the garden uses for this portfolio", () => {
     const { container } = render(<PortfolioPlantAvatar portfolioId="p-42" stage={1} size={40} />);
     expect(container.innerHTML).toContain(POT_COLORS[potForPortfolio("p-42")].body);
+  });
+
+  it.each(["tree", "fern"] as const)("draws the %s this portfolio grows in the garden", (kind) => {
+    const portfolioId =
+      Array.from({ length: 100 }, (_, i) => `p-${i}`).find((id) => kindForPortfolio(id) === kind) ??
+      "";
+    const withoutIds = (html: string) => html.replace(/_r_\w+_/g, "");
+    const avatar = render(
+      <PortfolioPlantAvatar portfolioId={portfolioId} stage={3} size={40} />
+    ).container.querySelector("svg")?.outerHTML;
+    const expected = render(
+      <PlantAvatar stage="tree" pot={potForPortfolio(portfolioId)} kind={kind} size={40} />
+    ).container.innerHTML;
+    expect(withoutIds(avatar ?? "")).toBe(withoutIds(expected));
   });
 
   it("draws the plant at its growth stage", () => {
