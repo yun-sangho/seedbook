@@ -55,8 +55,10 @@ beforeEach(async () => {
 });
 
 describe("isTableEnvelopeKey", () => {
-  it("covers the asset stores and preferences only", () => {
+  it("covers the asset stores, preferences and account value history only", () => {
     expect(isTableEnvelopeKey("investment-storage")).toBe(true);
+    expect(isTableEnvelopeKey("account-snapshot-storage")).toBe(true);
+    expect(isTableEnvelopeKey("holdings-history-storage")).toBe(true);
     expect(isTableEnvelopeKey("portfolio-storage")).toBe(true);
     expect(isTableEnvelopeKey("rebalancing-storage")).toBe(true);
     expect(isTableEnvelopeKey("seedbook.preferences")).toBe(true);
@@ -355,6 +357,102 @@ describe("seedbook.preferences", () => {
       version: 1,
     });
     expect((await read(driver, "investment-storage"))?.state.holdingsSortOption).toBe("nameAsc");
+  });
+});
+
+describe("account-snapshot-storage", () => {
+  const snapshot = (date: string, totalValue: number, oldestPriceDate: string | null) => ({
+    accountId: ACCOUNT_A,
+    date,
+    stockValue: totalValue + 500,
+    cashValue: -500,
+    totalValue,
+    holdingCount: 2,
+    missingPriceCount: 1,
+    oldestPriceDate,
+  });
+
+  it("returns null when nothing has been saved", async () => {
+    expect(await readTableEnvelope(driver, "account-snapshot-storage")).toBeNull();
+  });
+
+  it("stores the daily values in the server-shaped table, oldest first", async () => {
+    await writeTableEnvelope(
+      driver,
+      "account-snapshot-storage",
+      envelope(
+        {
+          snapshots: [
+            snapshot("2026-11-25", 2_000, null),
+            snapshot("2026-11-24", 1_000, "2026-11-21"),
+            { accountId: "broken" },
+          ],
+        },
+        1
+      )
+    );
+
+    expect(await read(driver, "account-snapshot-storage")).toEqual({
+      state: {
+        snapshots: [
+          snapshot("2026-11-24", 1_000, "2026-11-21"),
+          snapshot("2026-11-25", 2_000, null),
+        ],
+      },
+      version: 1,
+    });
+  });
+
+  it("replaces the rows on the next write", async () => {
+    await writeTableEnvelope(
+      driver,
+      "account-snapshot-storage",
+      envelope({ snapshots: [snapshot("2026-11-24", 1, null)] }, 1)
+    );
+    await writeTableEnvelope(
+      driver,
+      "account-snapshot-storage",
+      envelope({ snapshots: [snapshot("2026-11-25", 2, null)] }, 1)
+    );
+
+    const stored = await read(driver, "account-snapshot-storage");
+    expect(stored?.state.snapshots).toEqual([snapshot("2026-11-25", 2, null)]);
+  });
+});
+
+describe("holdings-history-storage", () => {
+  const accounts = {
+    [ACCOUNT_A]: {
+      holdings: [{ market: "KOSPI", ticker: "005930", quantity: 3 }],
+      cash: [-20, 100],
+    },
+  };
+
+  it("round-trips the holdings entries and stop markers, oldest first", async () => {
+    await writeTableEnvelope(
+      driver,
+      "holdings-history-storage",
+      envelope(
+        {
+          entries: [
+            { date: "2026-11-26", accounts: null },
+            { date: "2026-11-24", accounts },
+            { date: "not-a-date", accounts },
+          ],
+        },
+        1
+      )
+    );
+
+    expect(await read(driver, "holdings-history-storage")).toEqual({
+      state: {
+        entries: [
+          { date: "2026-11-24", accounts },
+          { date: "2026-11-26", accounts: null },
+        ],
+      },
+      version: 1,
+    });
   });
 });
 
