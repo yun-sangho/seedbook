@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { type BuiltPlant, buildPlant } from "./build-plant";
-import type { PlantOptions } from "./plant-options";
+import { PLANT_STAGES, type PlantOptions } from "./plant-options";
 import { REBALANCE_BADGE_KEY } from "./rebalance-badge";
 
 /**
@@ -24,6 +24,8 @@ export interface PlantSceneMetrics {
 }
 
 export interface PlantSlot {
+  /** 식물 구분 (포트폴리오 id). 같은 id 의 식물이 더 자라면 쑥 커지는 연출을 한다. */
+  id?: string;
   options: PlantOptions;
   x: number;
   z: number;
@@ -77,6 +79,22 @@ const TAP_SLOP = 8;
 const TAP_MS = 450;
 /** 카메라가 목표에 다가가는 빠르기 (1/초). */
 const CAMERA_EASE = 5.5;
+/** 한 단계 자랐을 때 쑥 커지는 연출 길이 (ms) 와 시작 크기. */
+const GROW_POP_MS = 900;
+const GROW_POP_FROM = 0.55;
+
+/** 0 → 1 로 가며 조금 넘쳤다 돌아오는 곡선 (easeOutBack). */
+function easeOutBack(t: number): number {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  return 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2;
+}
+
+/** 같은 식물이 더 높은 단계로 바뀌었는지 (자람 연출을 할지). id 가 다르면 다른 식물이다. */
+export function grewAtSlot(before: PlantSlot | undefined, after: PlantSlot): boolean {
+  if (!before || before.id !== after.id) return false;
+  return PLANT_STAGES.indexOf(after.options.stage) > PLANT_STAGES.indexOf(before.options.stage);
+}
 
 export function createPlantScene(canvas: HTMLCanvasElement, config: SceneConfig): PlantSceneHandle {
   const createdAt = performance.now();
@@ -98,7 +116,7 @@ export function createPlantScene(canvas: HTMLCanvasElement, config: SceneConfig)
   const turntable = new THREE.Group();
   scene.add(turntable);
 
-  let plants: { built: BuiltPlant; key: string; slot: PlantSlot }[] = [];
+  let plants: { built: BuiltPlant; key: string; slot: PlantSlot; popStart?: number }[] = [];
   let layoutWidth = 0;
   let focused: number | null = null;
 
@@ -278,7 +296,14 @@ export function createPlantScene(canvas: HTMLCanvasElement, config: SceneConfig)
     const time = now / 1000;
     // sizeAttenuation 을 끈 스프라이트는 scale 1 이 화면 높이의 projection[5]/2 배라 px 로 바꾼다.
     const pxToScale = 2 / (camera.projectionMatrix.elements[5] * Math.max(canvas.clientHeight, 1));
-    for (const plant of plants) plant.built.update(time, pxToScale);
+    for (const plant of plants) {
+      plant.built.update(time, pxToScale);
+      if (plant.popStart !== undefined) {
+        const t = Math.min(1, (now - plant.popStart) / GROW_POP_MS);
+        plant.built.root.scale.setScalar(GROW_POP_FROM + (1 - GROW_POP_FROM) * easeOutBack(t));
+        if (t >= 1) plant.popStart = undefined;
+      }
+    }
 
     updateCameraTarget();
     const ease = 1 - Math.exp((-CAMERA_EASE * dt) / 1000);
@@ -377,7 +402,9 @@ export function createPlantScene(canvas: HTMLCanvasElement, config: SceneConfig)
         const built = buildPlant(slot.options);
         built.root.position.set(slot.x, 0, slot.z);
         turntable.add(built.root);
-        next.push({ built, key, slot });
+        const grew = grewAtSlot(existing?.slot, slot);
+        if (grew) built.root.scale.setScalar(GROW_POP_FROM);
+        next.push({ built, key, slot, popStart: grew ? performance.now() : undefined });
       });
       for (const stale of plants.slice(slots.length)) {
         turntable.remove(stale.built.root);

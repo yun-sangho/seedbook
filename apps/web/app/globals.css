@@ -120,6 +120,29 @@
 @theme {
   --animate-task-leave: task-leave 300ms ease-in 500ms both;
 
+  /* 정원 홈: 식물이 자랐을 때 정원 창 위에 잠깐 뜨는 축하 문구. */
+  --animate-garden-celebrate: garden-celebrate 3200ms ease-out both;
+
+  @keyframes garden-celebrate {
+    0% {
+      opacity: 0;
+      transform: translateY(-8px) scale(0.9);
+    }
+    10% {
+      opacity: 1;
+      transform: translateY(0) scale(1.04);
+    }
+    16%,
+    85% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-4px) scale(1);
+    }
+  }
+
   @keyframes task-leave {
     from {
       opacity: 1;

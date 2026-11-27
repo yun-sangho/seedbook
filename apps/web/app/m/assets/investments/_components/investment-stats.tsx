@@ -16,13 +16,9 @@ import { List, ListItem } from "@web/seed-design/ui/list";
 import { prepareMonthlyInvestmentSummary } from "@web/utils/monthly-summary-utils";
 import { formatReturnRate, numberToKorean } from "@web/utils/number-format";
 import { formatProfitKorean } from "@web/utils/profit-color";
-import {
-  HOLDINGS_SORT_OPTIONS,
-  SortSheet,
-  sortOptionLabel,
-} from "../investments/_components/investment-sheets";
+import { HOLDINGS_SORT_OPTIONS, SortSheet, sortOptionLabel } from "./investment-sheets";
 
-/** 홈 "투자 추이" 탭: 계좌별 누적 평가금액 차트. */
+/** 계좌 탭 "투자 추이": 계좌별 누적 평가금액 차트. */
 export function InvestmentTrend({ investments }: { investments: InvestmentItem[] }) {
   return (
     <section className="px-x4 py-x4">
