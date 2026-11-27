@@ -128,7 +128,7 @@ export function BiometricLoginOffer() {
   );
 }
 
-/** 더보기 시트의 "생체 인증 로그인" 켜기/끄기. 네이티브 앱에서 생체 인증을 쓸 수 있을 때만 보인다. */
+/** 설정 메뉴의 "생체 인증 로그인" 켜기/끄기. 네이티브 앱에서 생체 인증을 쓸 수 있을 때만 보인다. */
 export function BiometricLoginSettingItem() {
   const deps = useBiometricLoginDeps();
   const biometryLabel = useBiometryLabel();

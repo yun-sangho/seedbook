@@ -84,7 +84,7 @@ export function AppLockOverlay() {
 }
 
 /**
- * 더보기 시트의 "앱 잠금" 항목. 네이티브 앱에서 생체 인증을 쓸 수 있을 때만 보인다.
+ * 설정 메뉴의 "앱 잠금" 항목. 네이티브 앱에서 생체 인증을 쓸 수 있을 때만 보인다.
  * 켤 때는 먼저 인증을 한 번 통과해야 한다 (본인 기기에서 켜는지 확인).
  */
 export function AppLockSettingItem() {

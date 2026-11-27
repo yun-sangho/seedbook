@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { BottomActionSlotContext } from "@web/components/mobile/bottom-action";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import { INITIAL_PLANT_PROGRESS } from "@web/features/portfolio/types/constants";
 import type { PlantStage, PortfolioItem } from "@web/features/portfolio/types/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ProfileSheet } from "./profile-menu";
+import { ProfileEditor } from "./profile-menu";
 
 const mockUpdateUser = vi.fn();
 let mockImage = "seed:sprout-2-green";
@@ -35,13 +37,28 @@ function portfolio(id: string, name: string, growthStage: PlantStage): Portfolio
   };
 }
 
-async function savedImage(onOpenChange: ReturnType<typeof vi.fn>) {
+/** 화면(DetailScreen)처럼 하단 고정 슬롯을 두고 그린다 — 저장 버튼이 그 슬롯에 들어간다. */
+function EditorScreen({ onSaved }: { onSaved: () => void }) {
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  return (
+    <BottomActionSlotContext.Provider value={slot}>
+      <ProfileEditor onSaved={onSaved} />
+      <div ref={setSlot} />
+    </BottomActionSlotContext.Provider>
+  );
+}
+
+function renderEditor(onSaved: () => void) {
+  return render(<EditorScreen onSaved={onSaved} />);
+}
+
+async function savedImage(onSaved: ReturnType<typeof vi.fn>) {
   fireEvent.click(screen.getByRole("button", { name: "저장" }));
-  await vi.waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+  await vi.waitFor(() => expect(onSaved).toHaveBeenCalled());
   return mockUpdateUser.mock.calls[0]?.[0].image;
 }
 
-describe("ProfileSheet", () => {
+describe("ProfileEditor", () => {
   beforeEach(() => {
     mockImage = "seed:sprout-2-green";
     usePortfolioStore.setState({ portfolios: [] });
@@ -50,20 +67,20 @@ describe("ProfileSheet", () => {
   });
 
   it("starts from the current nickname with saving disabled", () => {
-    render(<ProfileSheet open onOpenChange={() => {}} />);
+    renderEditor(() => {});
 
     expect(screen.getByLabelText("닉네임")).toHaveValue("푸른 새싹");
     expect(screen.getByRole("button", { name: "저장" })).toBeDisabled();
   });
 
   it("draws a different avatar but keeps the nickname", async () => {
-    const onOpenChange = vi.fn();
-    render(<ProfileSheet open onOpenChange={onOpenChange} />);
+    const onSaved = vi.fn();
+    renderEditor(onSaved);
 
     fireEvent.click(screen.getByRole("button", { name: "다시 뽑기" }));
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
 
-    await vi.waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    await vi.waitFor(() => expect(onSaved).toHaveBeenCalled());
     const [body] = mockUpdateUser.mock.calls[0] ?? [];
     expect(body.name).toBe("푸른 새싹");
     expect(body.image).toMatch(/^seed:/);
@@ -71,7 +88,7 @@ describe("ProfileSheet", () => {
   });
 
   it("shows why a banned nickname is not saved", async () => {
-    render(<ProfileSheet open onOpenChange={() => {}} />);
+    renderEditor(() => {});
 
     fireEvent.change(screen.getByLabelText("닉네임"), { target: { value: "시드북 관리자" } });
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
@@ -81,7 +98,7 @@ describe("ProfileSheet", () => {
   });
 });
 
-describe("ProfileSheet avatar picker", () => {
+describe("ProfileEditor avatar picker", () => {
   beforeEach(() => {
     mockImage = "seed:sprout-2-green";
     usePortfolioStore.setState({
@@ -92,7 +109,7 @@ describe("ProfileSheet avatar picker", () => {
   });
 
   it("lists auto and each plant with its stage instead of the seed reroll", () => {
-    render(<ProfileSheet open onOpenChange={() => {}} />);
+    renderEditor(() => {});
 
     expect(screen.getByRole("radio", { name: "자동 · 가장 큰 식물" })).toBeChecked();
     expect(screen.getByRole("radio", { name: "안정형 · 새싹" })).not.toBeChecked();
@@ -101,28 +118,28 @@ describe("ProfileSheet avatar picker", () => {
   });
 
   it("saves the picked plant with the original seed", async () => {
-    const onOpenChange = vi.fn();
-    render(<ProfileSheet open onOpenChange={onOpenChange} />);
+    const onSaved = vi.fn();
+    renderEditor(onSaved);
 
     fireEvent.click(screen.getByRole("radio", { name: "안정형 · 새싹" }));
 
-    expect(await savedImage(onOpenChange)).toBe(`plant:${STABLE}|seed:sprout-2-green`);
+    expect(await savedImage(onSaved)).toBe(`plant:${STABLE}|seed:sprout-2-green`);
   });
 
   it("goes back to auto by dropping the plant from the image", async () => {
     mockImage = `plant:${STABLE}|seed:sprout-2-green`;
-    const onOpenChange = vi.fn();
-    render(<ProfileSheet open onOpenChange={onOpenChange} />);
+    const onSaved = vi.fn();
+    renderEditor(onSaved);
     expect(screen.getByRole("radio", { name: "안정형 · 새싹" })).toBeChecked();
 
     fireEvent.click(screen.getByRole("radio", { name: "자동 · 가장 큰 식물" }));
 
-    expect(await savedImage(onOpenChange)).toBe("seed:sprout-2-green");
+    expect(await savedImage(onSaved)).toBe("seed:sprout-2-green");
   });
 
   it("checks auto when the picked portfolio is gone", () => {
     mockImage = "plant:33333333-3333-4333-8333-333333333333|seed:sprout-2-green";
-    render(<ProfileSheet open onOpenChange={() => {}} />);
+    renderEditor(() => {});
 
     expect(screen.getByRole("radio", { name: "자동 · 가장 큰 식물" })).toBeChecked();
   });

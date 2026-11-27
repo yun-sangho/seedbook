@@ -114,7 +114,7 @@ export function ProfileFields({
   avatarPicker?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center gap-x5">
+    <div className="flex w-full min-w-0 flex-col items-center gap-x5">
       {avatarPicker ?? (
         <>
           <SeedAvatar variant={draft.avatar} size={avatarSize} />

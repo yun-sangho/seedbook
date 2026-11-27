@@ -14,7 +14,7 @@ import type { PortfolioPlantView } from "@web/features/portfolio/utils/portfolio
 const OPTION_AVATAR_SIZE = 56;
 
 /**
- * 프로필 시트의 아바타 고르기: 큰 아바타 + "자동(가장 큰 식물)" 과 내 식물들. 포트폴리오가 있을
+ * 프로필 편집 화면의 아바타 고르기: 큰 아바타 + "자동(가장 큰 식물)" 과 내 식물들. 포트폴리오가 있을
  * 때만 보인다 (없으면 씨앗 다시 뽑기). 고른 포트폴리오가 이 기기에 없으면 "자동" 이 선택된다.
  */
 export function PlantAvatarPicker({
@@ -36,14 +36,15 @@ export function PlantAvatarPicker({
   return (
     <>
       <ProfileAvatarImage avatar={current} size={avatarSize} />
-      <div className="w-full">
+      {/* 식물이 많아도 가로 목록이 화면 폭을 밀지 않고 자기 영역 안에서만 스크롤한다 (min-w-0). */}
+      <div className="w-full min-w-0">
         <p id="avatar-picker-label" className="t4-bold text-fg-neutral pb-x2">
           아바타 고르기
         </p>
         <div
           role="radiogroup"
           aria-labelledby="avatar-picker-label"
-          className="-mx-x4 flex gap-x3 overflow-x-auto px-x4 pb-x1"
+          className="mx-[calc(var(--seed-dimension-x4)*-1)] flex min-w-0 gap-x3 overflow-x-auto overscroll-x-contain px-x4 pb-x1 [&::-webkit-scrollbar]:hidden"
         >
           <PickerOption
             label="자동"
