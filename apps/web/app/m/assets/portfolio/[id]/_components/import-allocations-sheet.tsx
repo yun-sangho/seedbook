@@ -4,7 +4,9 @@ import { useMemo, useState } from "react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import type { Stock } from "@web/features/investments/types/stock";
 import { useStockPrices } from "@web/features/investments/utils/use-stock-prices";
+import { PortfolioPlantAvatar } from "@web/features/portfolio/components/portfolio-plant-avatar";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
+import type { PlantStage } from "@web/features/portfolio/types/types";
 import {
   type AllocationImportCandidate,
   candidatesFromAccount,
@@ -26,7 +28,8 @@ type SourceKind = "account" | "portfolio";
 interface SourceGroup {
   id: string;
   name: string;
-  color: string;
+  /** 계좌는 색 점, 포트폴리오는 정원과 같은 식물로 나타낸다. */
+  marker: { kind: "color"; color: string } | { kind: "plant"; stage: PlantStage };
   candidates: AllocationImportCandidate[];
 }
 
@@ -68,7 +71,7 @@ export function ImportAllocationsSheet({
         .map((inv) => ({
           id: inv.id,
           name: inv.accountName || "이름 없는 계좌",
-          color: inv.color,
+          marker: { kind: "color" as const, color: inv.color },
           candidates: candidatesFromAccount(inv, prices, existingKeys),
         }))
         .filter((g) => g.candidates.length > 0),
@@ -81,7 +84,7 @@ export function ImportAllocationsSheet({
         .map((p) => ({
           id: p.id,
           name: p.name,
-          color: p.color,
+          marker: { kind: "plant" as const, stage: p.growthStage },
           candidates: candidatesFromPortfolio(p, existingKeys),
         }))
         .filter((g) => g.candidates.length > 0),
@@ -159,11 +162,19 @@ export function ImportAllocationsSheet({
                   groups.map((group) => (
                     <section key={group.id} className="pb-x2">
                       <div className="flex items-center gap-x2 pt-x3 pb-x1">
-                        <span
-                          className="size-x3 shrink-0 rounded-full"
-                          style={{ backgroundColor: group.color }}
-                          aria-hidden
-                        />
+                        {group.marker.kind === "plant" ? (
+                          <PortfolioPlantAvatar
+                            portfolioId={group.id}
+                            stage={group.marker.stage}
+                            size={24}
+                          />
+                        ) : (
+                          <span
+                            className="size-x3 shrink-0 rounded-full"
+                            style={{ backgroundColor: group.marker.color }}
+                            aria-hidden
+                          />
+                        )}
                         <h3 className="t4-bold min-w-0 truncate">{group.name}</h3>
                       </div>
                       <List as="fieldset">

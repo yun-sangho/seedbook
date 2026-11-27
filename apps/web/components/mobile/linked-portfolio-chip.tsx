@@ -1,11 +1,10 @@
 "use client";
 
-import {
-  IconChevronRightSmallLine,
-  IconExclamationmarkCircleFill,
-} from "@karrotmarket/react-monochrome-icon";
+import { IconChevronRightSmallLine } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
+import { PortfolioPlantAvatar } from "@web/features/portfolio/components/portfolio-plant-avatar";
+import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import type { LinkedPortfolioStatus } from "@web/features/portfolio/utils/linked-portfolio-status";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
 import { findInProgressForAccount } from "@web/features/rebalancing/utils/rebalancing-session";
@@ -30,6 +29,7 @@ function chipTone(status: LinkedPortfolioStatus, inProgress: boolean): ChipTone 
  * 계좌 카드 안의 "연결된 포트폴리오" 칩. 탭하면 이 계좌의 리밸런싱 화면으로 이동한다.
  * - 진행 중인 리밸런싱이 있으면 "리밸런싱 진행 중" 으로 보여주고 그 할 일 목록으로 바로 간다.
  * - 리밸런싱이 필요하면 경고 톤, 아니면 중립 톤.
+ * - 포트폴리오는 정원과 같은 2D 식물로 나타낸다.
  */
 export function LinkedPortfolioChip({
   accountId,
@@ -44,6 +44,9 @@ export function LinkedPortfolioChip({
 }) {
   const { push } = useFlow();
   const inProgress = useRebalancingStore((s) => findInProgressForAccount(s.sessions, accountId));
+  const stage = usePortfolioStore(
+    (s) => s.portfolios.find((p) => p.id === status?.portfolioId)?.growthStage ?? 0
+  );
 
   if (!status) {
     return showEmpty ? (
@@ -62,19 +65,11 @@ export function LinkedPortfolioChip({
             : push("RebalancingDetail", { id: accountId })
         }
         className={cn(
-          "t3-medium inline-flex max-w-full items-center gap-x1 rounded-full py-x1 pr-[6px] pl-x2.5",
+          "t3-medium inline-flex max-w-full items-center gap-x1 rounded-full py-x1 pr-[6px] pl-x1",
           CHIP_TONE_CLASS[tone]
         )}
       >
-        {tone === "alert" ? (
-          <Icon svg={<IconExclamationmarkCircleFill />} size="x3_5" />
-        ) : (
-          <span
-            className="size-x2 shrink-0 rounded-full"
-            style={{ backgroundColor: status.color }}
-            aria-hidden
-          />
-        )}
+        <PortfolioPlantAvatar portfolioId={status.portfolioId} stage={stage} size={20} />
         <span className="truncate">{status.name}</span>
         {tone === "progress" && <span className="shrink-0">· 리밸런싱 진행 중</span>}
         {tone === "alert" && <span className="shrink-0">· 리밸런싱 필요</span>}
