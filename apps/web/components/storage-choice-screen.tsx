@@ -40,25 +40,37 @@ interface StorageChoiceScreenProps {
   current: StorageMode | null;
   /** 저장 방식이 그대로라 바로 앱을 열면 된다. */
   onDone: () => void;
+  /**
+   * "나중에 하기" 를 보여 준다 (첫 가입 흐름). 누르면 기본값 local 로 정해 다음에 다시 묻지 않는다 —
+   * 설정에서 바꿀 수 있다.
+   */
+  allowLater?: boolean;
 }
 
 /** 저장 방식 선택 화면. 계정마다 한 번, 약관 동의 다음에 보여 준다. */
-export function StorageChoiceScreen({ current, onDone }: StorageChoiceScreenProps) {
+export function StorageChoiceScreen({
+  current,
+  onDone,
+  allowLater = false,
+}: StorageChoiceScreenProps) {
   const [selected, setSelected] = useState<StorageMode | null>(current);
-  const [pending, setPending] = useState(false);
+  const [pending, setPending] = useState<"submit" | "later" | null>(null);
   const [failed, setFailed] = useState(false);
 
-  const submit = async () => {
-    if (selected === null) return;
-    setPending(true);
+  const apply = async (mode: StorageMode, kind: "submit" | "later") => {
+    setPending(kind);
     setFailed(false);
-    const result = await applyStorageChoice(current, selected);
+    const result = await applyStorageChoice(current, mode);
     if (result === "open") onDone();
     else if (result === "reload") await reloadApp();
     else {
-      setPending(false);
+      setPending(null);
       setFailed(true);
     }
+  };
+
+  const submit = () => {
+    if (selected !== null) void apply(selected, "submit");
   };
 
   const switching = current !== null && selected !== null && selected !== current;
@@ -80,7 +92,7 @@ export function StorageChoiceScreen({ current, onDone }: StorageChoiceScreenProp
         <RadioSelectBoxRoot
           aria-label="저장 방식"
           value={selected ?? ""}
-          disabled={pending}
+          disabled={pending !== null}
           onValueChange={(value) => setSelected(value as StorageMode)}
         >
           {OPTIONS.map(({ mode, title, description }) => (
@@ -117,12 +129,23 @@ export function StorageChoiceScreen({ current, onDone }: StorageChoiceScreenProp
           <ActionButton
             variant="neutralSolid"
             size="large"
-            disabled={selected === null}
-            loading={pending}
+            disabled={selected === null || pending !== null}
+            loading={pending === "submit"}
             onClick={submit}
           >
             이대로 시작하기
           </ActionButton>
+          {allowLater && (
+            <ActionButton
+              variant="ghost"
+              size="medium"
+              disabled={pending !== null}
+              loading={pending === "later"}
+              onClick={() => void apply("local", "later")}
+            >
+              나중에 하기 (이 기기에만 저장)
+            </ActionButton>
+          )}
         </div>
       </div>
     </main>
