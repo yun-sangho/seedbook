@@ -53,7 +53,7 @@ const ENROLL_FAILURE_MESSAGE: Record<Exclude<EnrollResult, "enrolled">, string |
 /**
  * 로그인 직후 한 번 "다음부터 Face ID(지문)로 로그인할까요?" 를 묻는다. 네이티브 앱에서 생체
  * 인증을 쓸 수 있고, 이 기기에 아직 켜지 않았을 때만. "나중에" 를 고르면 다시 묻지 않는다
- * (더보기 → 생체 인증 로그인에서 켤 수 있다).
+ * (설정 → 생체 인증 로그인에서 켤 수 있다).
  */
 export function BiometricLoginOffer() {
   const deps = useBiometricLoginDeps();

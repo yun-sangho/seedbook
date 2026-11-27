@@ -38,6 +38,13 @@ vi.mock("../assets/settings/_components/data-backup-mobile", () => ({
 vi.mock("../assets/settings/_components/delete-account-mobile", () => ({
   DeleteAccountMobile: () => <p>탈퇴 화면</p>,
 }));
+vi.mock("@web/components/legal-document-view", () => ({
+  LegalDocumentView: ({ document, version }: { document: string; version?: string }) => (
+    <p>
+      {document} 문서 {version ?? "현재"}
+    </p>
+  ),
+}));
 vi.mock("../assets/investments/[id]/_components/account-detail-mobile", () => ({
   AccountDetailMobile: ({ id }: { id: string }) => <p>계좌 {id}</p>,
 }));
@@ -137,13 +144,24 @@ describe("switching tabs", () => {
   });
 });
 
+describe("tab bar", () => {
+  it("lists the four tabs without a 더보기 item", async () => {
+    await open("/assets");
+
+    const nav = screen.getByRole("navigation", { name: "주 메뉴" });
+    const labels = [...nav.querySelectorAll("button")].map((button) => button.textContent);
+    expect(labels).toEqual(["홈", "계좌", "리밸런싱", "포트폴리오"]);
+  });
+});
+
 describe("settings entry points", () => {
-  it("opens the settings menu from 더보기 and goes back to the tab", async () => {
+  it("opens the settings menu from the app bar profile button and goes back to the tab", async () => {
     const { actions } = await open("/assets/portfolio");
 
-    fireEvent.click(tabButton("더보기"));
+    fireEvent.click(screen.getByRole("button", { name: "내 프로필" }));
     await settle();
     expect(screen.queryByText("설정 화면")).not.toBeNull();
+    expect(screen.queryByText("프로필 편집")).toBeNull();
     expect(window.location.pathname).toBe("/assets/settings/");
 
     act(() => actions.pop());
@@ -152,22 +170,14 @@ describe("settings entry points", () => {
     expect(window.location.pathname).toBe("/assets/portfolio/");
   });
 
-  it("opens profile editing straight from the app bar profile button", async () => {
-    await open("/assets");
-
-    fireEvent.click(screen.getByRole("button", { name: "내 프로필" }));
-    await settle();
-
-    expect(screen.queryByText("프로필 편집")).not.toBeNull();
-    expect(screen.queryByText("설정 화면")).toBeNull();
-    expect(window.location.pathname).toBe("/assets/settings/profile/");
-  });
-
   it.each([
     ["/assets/settings/profile", "프로필 편집"],
     ["/assets/settings/storage", "저장 위치 화면"],
     ["/assets/settings/data", "백업 화면"],
     ["/assets/settings/delete-account", "탈퇴 화면"],
+    ["/assets/settings/terms", "terms 문서 현재"],
+    ["/assets/settings/privacy", "privacy 문서 현재"],
+    ["/assets/settings/terms/2026-11-25", "terms 문서 2026-11-25"],
   ])("puts the settings menu under %s", async (path, text) => {
     const { actions } = await open(path);
     expect(screen.queryByText(text)).not.toBeNull();
