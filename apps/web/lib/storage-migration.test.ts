@@ -232,3 +232,71 @@ describe("downloadAllFromCloud", () => {
     await expect(downloadAllFromCloud()).rejects.toThrow(/다운로드 실패/);
   });
 });
+
+describe("account value history on a mode switch", () => {
+  const ACCOUNT = "11111111-1111-4111-8111-111111111111";
+  const snapshot = (date: string, totalValue: number) => ({
+    accountId: ACCOUNT,
+    date,
+    stockValue: totalValue,
+    cashValue: 0,
+    totalValue,
+    holdingCount: 1,
+    missingPriceCount: 0,
+    oldestPriceDate: date,
+  });
+
+  beforeEach(() => window.localStorage.clear());
+  afterEach(() => {
+    // biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
+    delete (globalThis as any).fetch;
+  });
+
+  it("uploads the device snapshots after the accounts", async () => {
+    window.localStorage.setItem(
+      "investment-storage",
+      JSON.stringify({ state: { investments: [] }, version: 3 })
+    );
+    window.localStorage.setItem(
+      "account-snapshot-storage",
+      JSON.stringify({ state: { snapshots: [snapshot("2026-11-24", 1)] }, version: 1 })
+    );
+    const calls = mockFetch(() => jsonResponse({ ok: true }));
+
+    await uploadAllToCloud();
+
+    const writes = calls.filter((c) => c.init?.method === "PUT" || c.init?.method === "POST");
+    expect(writes.map((c) => c.url)).toEqual([
+      "/api/storage/investment-storage",
+      "/api/account-snapshots",
+    ]);
+    expect(JSON.parse(String(writes[1]!.init?.body))).toEqual({
+      snapshots: [snapshot("2026-11-24", 1)],
+    });
+  });
+
+  it("merges the server snapshots into the device when switching to local", async () => {
+    window.localStorage.setItem(
+      "account-snapshot-storage",
+      JSON.stringify({ state: { snapshots: [snapshot("2026-11-24", 1)] }, version: 1 })
+    );
+    mockFetch((call) =>
+      call.url === "/api/account-snapshots"
+        ? jsonResponse({ snapshots: [snapshot("2026-11-23", 9), snapshot("2026-11-24", 9)] })
+        : jsonResponse({ data: null })
+    );
+
+    await downloadAllFromCloud();
+
+    const stored = JSON.parse(window.localStorage.getItem("account-snapshot-storage") ?? "null");
+    expect(stored.state.snapshots.map((s: { totalValue: number }) => s.totalValue)).toEqual([9, 1]);
+  });
+
+  it("fails the switch when the snapshots cannot be downloaded", async () => {
+    mockFetch((call) =>
+      call.url === "/api/account-snapshots" ? jsonResponse({}, 500) : jsonResponse({ data: null })
+    );
+
+    await expect(downloadAllFromCloud()).rejects.toThrow(/계좌 총액 기록/);
+  });
+});

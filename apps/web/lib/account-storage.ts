@@ -1,6 +1,10 @@
 "use client";
 
 import { investmentsSyncConfig } from "@web/features/investments/sync/investments-sync-config";
+import {
+  ACCOUNT_SNAPSHOT_STORAGE_KEY,
+  HOLDINGS_HISTORY_STORAGE_KEY,
+} from "@web/features/investments/utils/account-value-history";
 import { portfolioSyncConfig } from "@web/features/portfolio/sync/portfolio-sync-config";
 import { rebalancingSyncConfig } from "@web/features/rebalancing/sync/rebalancing-sync-config";
 import type { StateStorage } from "zustand/middleware";
@@ -41,7 +45,12 @@ const ASSET_ENVELOPE_KEYS = [
   portfolioSyncConfig.storageKey,
   rebalancingSyncConfig.storageKey,
 ];
-const ACCOUNT_ENVELOPE_KEYS = [...ASSET_ENVELOPE_KEYS, "seedbook.preferences"];
+const ACCOUNT_ENVELOPE_KEYS = [
+  ...ASSET_ENVELOPE_KEYS,
+  "seedbook.preferences",
+  ACCOUNT_SNAPSHOT_STORAGE_KEY,
+  HOLDINGS_HISTORY_STORAGE_KEY,
+];
 const ACCOUNT_ITEM_KEYS = [...SYNC_META_KEYS, "seedbook.storageMode"];
 
 type Slot = { userId: string; prefix: string };
