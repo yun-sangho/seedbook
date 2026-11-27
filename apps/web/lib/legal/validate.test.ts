@@ -39,6 +39,29 @@ describe("the versions in the repo", () => {
   });
 });
 
+describe("the latest version of each document", () => {
+  const latest = (document: string) =>
+    LEGAL_DOCUMENT_VERSIONS.filter((v) => v.document === document)
+      .sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate))
+      .at(-1);
+
+  it.each(["terms", "privacy"])(
+    "%s points account deletion at the current screen (설정 → 탈퇴하기)",
+    (document) => {
+      const body = latest(document)?.body ?? "";
+      // 더보기 탭은 #86 에서 없어졌다. 탈퇴는 설정 메뉴의 "탈퇴하기" 다.
+      expect(body).not.toContain("더보기");
+      expect(body).toContain("설정의 “탈퇴하기”");
+    }
+  );
+
+  it.each(["terms", "privacy"])("%s states its own effective date in the body", (document) => {
+    const version = latest(document);
+    const [year, month, day] = (version?.effectiveDate ?? "").split("-").map(Number);
+    expect(version?.body).toContain(`${year}년 ${month}월 ${day}일부터 시행합니다`);
+  });
+});
+
 describe("findVersionProblems", () => {
   it("accepts a first version and a summarized revision", () => {
     expect(findVersionProblems([version(), revision()])).toEqual([]);
