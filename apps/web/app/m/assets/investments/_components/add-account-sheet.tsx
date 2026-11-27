@@ -7,6 +7,7 @@ import { useFlow } from "@stackflow/react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { ACCOUNT_TYPES } from "@web/features/investments/types/constants";
 import { type HoldingSeed, toHoldingSeeds } from "@web/features/investments/utils/holding-seeds";
+import { PortfolioPlantAvatar } from "@web/features/portfolio/components/portfolio-plant-avatar";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import {
   BottomSheetBody,
@@ -99,10 +100,10 @@ export function AddAccountSheet({ open, onOpenChange }: AddAccountSheetProps) {
                     <ListButtonItem
                       key={portfolio.id}
                       prefix={
-                        <span
-                          className="size-x3 block rounded-full"
-                          style={{ backgroundColor: portfolio.color }}
-                          aria-hidden
+                        <PortfolioPlantAvatar
+                          portfolioId={portfolio.id}
+                          stage={portfolio.growthStage}
+                          size={28}
                         />
                       }
                       title={portfolio.name}

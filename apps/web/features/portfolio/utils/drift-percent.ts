@@ -39,6 +39,12 @@ export function describeDriftRule(rule: DriftRuleInput): string {
     : `비중이 ${threshold}%p 넘게 차이 나면`;
 }
 
+/** 이격 경고 기준을 짧게 (한 줄 요약용). "±5%p" / "목표의 ±15%". */
+export function describeDriftRuleShort(rule: DriftRuleInput): string {
+  const threshold = formatPercentNumber(rule.driftThresholdPercent);
+  return rule.driftMode === "relative" ? `목표의 ±${threshold}%` : `±${threshold}%p`;
+}
+
 /**
  * 기준을 실제 숫자로 풀어 쓴 예시의 조각. 화면에서 "목표 20% → 17%~23% 밖이면 경고" 로 쓰고
  * 범위를 강조한다. 범위는 0% ~ 100% 안으로 자르고, 임계값이 0 이면 범위가 없다 (`null` —

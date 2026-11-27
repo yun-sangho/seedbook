@@ -126,7 +126,7 @@ export function RebalancingTradeActivity({ params }: { params: { id: string; tas
 export function PortfolioDetailActivity({ params }: DetailActivityProps) {
   const portfolio = usePortfolioStore((s) => s.portfolios.find((p) => p.id === params.id));
   return (
-    <DetailScreen title={portfolio?.name || "포트폴리오"} dotColor={portfolio?.color}>
+    <DetailScreen title={portfolio?.name || "포트폴리오"}>
       <PortfolioDetailMobile id={params.id} />
     </DetailScreen>
   );

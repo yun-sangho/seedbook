@@ -3,10 +3,8 @@
 import { useState } from "react";
 import { ConfirmDialog } from "@web/components/mobile/confirm-dialog";
 import { sanitizePercentDraft } from "@web/components/mobile/input-format";
-import { ACCOUNT_COLORS } from "@web/features/investments/types/constants";
 import { DRIFT_MODE_LABELS } from "@web/features/portfolio/types/constants";
 import type { DriftMode, PortfolioItem } from "@web/features/portfolio/types/types";
-import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
   BottomSheetBody,
@@ -101,18 +99,16 @@ export function EditDriftThresholdSheet({
   );
 }
 
-/** 포트폴리오 이름 / 색상 / 삭제. */
+/** 포트폴리오 이름 / 삭제. (화면에서는 색 대신 식물 아바타로 구분해 색상은 고르지 않는다.) */
 export function PortfolioSettingsSheet({
   open,
   onOpenChange,
   portfolio,
   onRename,
-  onColorChange,
   onDelete,
 }: SheetProps & {
   portfolio: PortfolioItem;
   onRename: (name: string) => void;
-  onColorChange: (color: string) => void;
   onDelete: () => void;
 }) {
   const [name, setName] = useState(portfolio.name);
@@ -131,27 +127,6 @@ export function PortfolioSettingsSheet({
               >
                 <TextFieldInput placeholder="포트폴리오 이름" />
               </TextField>
-              <div>
-                <p className="t4-medium text-fg-neutral mb-x2">색상</p>
-                <div className="flex flex-wrap gap-x2">
-                  {ACCOUNT_COLORS.map((color) => (
-                    <button
-                      key={color}
-                      type="button"
-                      aria-label={`색상 ${color}`}
-                      aria-pressed={portfolio.color === color}
-                      onClick={() => onColorChange(color)}
-                      className={cn(
-                        "size-x8 rounded-full border-2",
-                        portfolio.color === color
-                          ? "border-stroke-neutral-contrast"
-                          : "border-transparent"
-                      )}
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
-                </div>
-              </div>
             </div>
           </BottomSheetBody>
           <BottomSheetFooter>
