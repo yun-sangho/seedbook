@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { CONSENT_CHECK_TIMEOUT_MS } from "@web/lib/consent-client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConsentGate } from "./consent-gate";
@@ -26,6 +26,25 @@ const DOCUMENTS = [
 const required = (newSignUp: boolean, documents: unknown[] = DOCUMENTS) =>
   Response.json({ agreed: false, newSignUp, documents });
 
+/** `/api/legal/<문서>` — 문서마다 본문 한 줄. */
+function legalDocument(url: string) {
+  const document = url.split("/").at(-1)?.split("?")[0] ?? "";
+  const title = document === "terms" ? "이용약관" : "개인정보처리방침";
+  const version = {
+    document,
+    version: "2026-11-25",
+    title,
+    effectiveDate: "2026-11-25",
+    requiresConsent: true,
+    summary: null,
+    body: `${title} 본문`,
+  };
+  return Response.json({
+    today: "2026-11-28",
+    page: { shown: version, state: "current", current: version, next: null, history: [version] },
+  });
+}
+
 // 서버 경계(fetch)만 흉내 낸다.
 const requests: Array<{ method: string; body: unknown }> = [];
 let status: () => Response;
@@ -35,8 +54,9 @@ beforeEach(() => {
   requests.length = 0;
   status = () => required(true);
   submit = () => Response.json({ agreed: true });
-  vi.stubGlobal("fetch", async (_url: string, init?: RequestInit) => {
+  vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
     const method = init?.method ?? "GET";
+    if (method === "GET" && url.startsWith("/api/legal/")) return legalDocument(url);
     if (method === "GET") return status();
     requests.push({ method, body: init?.body ? JSON.parse(String(init.body)) : null });
     return submit();
@@ -125,13 +145,39 @@ describe("ConsentGate", () => {
     expect(screen.getByRole("alert")).toBeInTheDocument();
   });
 
-  it("links to each document", async () => {
+  it("opens each document over the consent screen instead of leaving the app", async () => {
     await open();
-    expect(screen.getByRole("link", { name: "이용약관 보기" })).toHaveAttribute("href", "/terms");
-    expect(screen.getByRole("link", { name: "개인정보처리방침 보기" })).toHaveAttribute(
-      "href",
-      "/privacy"
-    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "개인정보처리방침 보기" }));
+    });
+
+    const viewer = screen.getByRole("dialog", { name: "개인정보처리방침" });
+    expect(await within(viewer).findByText("개인정보처리방침 본문")).toBeInTheDocument();
+  });
+
+  it("keeps what was checked after closing a document with the back button", async () => {
+    await open();
+    fireEvent.click(box(/이용약관/));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "이용약관 보기" }));
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "뒤로" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "이용약관" })).toBeNull());
+    expect(box(/이용약관/)).toBeChecked();
+  });
+
+  it("closes a document on Escape (Android system back)", async () => {
+    await open();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "이용약관 보기" }));
+    });
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "이용약관" })).toBeNull());
   });
 
   it("shows an existing user what changed", async () => {

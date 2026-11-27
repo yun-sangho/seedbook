@@ -79,6 +79,8 @@ describe("SettingsMenuMobile", () => {
     [/백업·데모 데이터/, "DataBackup"],
     [/로그인 수단/, "LoginMethods"],
     [/탈퇴하기/, "DeleteAccount"],
+    [/이용약관/, "Terms"],
+    [/개인정보처리방침/, "Privacy"],
   ])("opens the %s screen", (name, activity) => {
     renderMenu();
 

@@ -159,6 +159,29 @@ describe("decideMobileRoute", () => {
     });
   });
 
+  it.each([
+    "/assets/settings/profile",
+    "/assets/settings/storage",
+    "/assets/settings/data",
+    "/assets/settings/delete-account",
+    "/assets/settings/terms",
+    "/assets/settings/privacy",
+    "/assets/settings/terms/2026-11-25",
+    "/assets/settings/privacy/2026-11-25",
+  ])("rewrites the settings sub screen %s into the mobile tree", (pathname) => {
+    expect(decideMobileRoute(pathname, "mobile")).toEqual({
+      type: "rewrite",
+      pathname: `/m${pathname}`,
+    });
+  });
+
+  it("sends an unknown settings sub path to the mobile home", () => {
+    expect(decideMobileRoute("/assets/settings/storage/extra", "mobile")).toEqual({
+      type: "redirect",
+      pathname: "/assets",
+    });
+  });
+
   it("sends the old admin page to the mobile settings page", () => {
     expect(decideMobileRoute("/admin", "mobile")).toEqual({
       type: "redirect",
