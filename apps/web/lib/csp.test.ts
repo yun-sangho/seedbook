@@ -45,10 +45,10 @@ describe("buildContentSecurityPolicy", () => {
     expect(policy.get("connect-src")).toEqual(["'self'"]);
   });
 
-  it("allows Kakao profile images", () => {
+  it("loads images only from the same origin (no Kakao profile images)", () => {
     const policy = directives(buildContentSecurityPolicy({ nonce: "n", isDev: false }));
 
-    expect(policy.get("img-src")).toContain("https://*.kakaocdn.net");
+    expect(policy.get("img-src")).toEqual(["'self'", "blob:", "data:"]);
   });
 
   it("upgrades insecure requests in production but not on the http dev server", () => {

@@ -101,6 +101,12 @@ export function LoginScreen() {
               개발용 빠른 로그인 (카카오 우회)
             </ActionButton>
           )}
+          {/* 로그인에서 신상 정보를 받지 않는다 (`lib/auth-privacy.ts`). */}
+          <p className="t3-regular text-fg-neutral-subtle pt-x2 text-center break-keep">
+            로그인할 때 이름·이메일·프로필 사진은 받지 않아요.
+            <br />
+            로그인을 확인하는 번호만 저장해요.
+          </p>
         </div>
       </div>
 

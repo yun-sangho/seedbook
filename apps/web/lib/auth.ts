@@ -1,5 +1,10 @@
 import { db, schema } from "@seedbook/database";
 import { createAppleClientSecret, readAppleConfig } from "@web/lib/apple-auth";
+import {
+  appleProviderOptions,
+  kakaoProviderOptions,
+  privacyDatabaseHooks,
+} from "@web/lib/auth-privacy";
 import { DEFAULT_RETURN_PATH } from "@web/lib/login-flow";
 import { deviceCredentialPlugin } from "@web/server/device-credentials/device-credential-plugin";
 import { betterAuth } from "better-auth";
@@ -33,20 +38,22 @@ export const auth = betterAuth({
   user: {
     deleteUser: { enabled: true },
   },
+  // 이름·이메일·사진·OAuth 토큰·접속 IP/User-Agent 를 저장하지 않는다 (`lib/auth-privacy.ts`).
+  // 토큰을 쓰지 않으므로 재로그인 때 계정 연결 행을 갱신하지도 않는다.
+  account: { updateAccountOnSignIn: false },
+  databaseHooks: privacyDatabaseHooks,
   socialProviders: {
-    kakao: {
+    kakao: kakaoProviderOptions({
       clientId: process.env.KAKAO_CLIENT_ID ?? "",
       clientSecret: process.env.KAKAO_CLIENT_SECRET ?? "",
-      disableDefaultScope: true,
-      scope: ["profile_nickname", "profile_image", "account_email"],
-    },
+    }),
     ...(appleConfig
       ? {
-          apple: {
+          apple: appleProviderOptions({
             clientId: appleConfig.clientId,
             clientSecret: createAppleClientSecret(appleConfig),
             appBundleIdentifier: appleConfig.appBundleIdentifier,
-          },
+          }),
         }
       : {}),
   },

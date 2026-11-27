@@ -44,7 +44,6 @@ export function deviceCredentialPlugin(options: { db: Database }) {
         async (ctx) => {
           const credential = await createDeviceCredential(db, {
             userId: ctx.context.session.user.id,
-            userAgent: ctx.headers?.get("user-agent") ?? null,
             now: new Date(),
           });
           return ctx.json(credential);

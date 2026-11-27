@@ -1,4 +1,5 @@
 import { privacy20261125 } from "./documents/privacy-2026-11-25";
+import { privacy20261128 } from "./documents/privacy-2026-11-28";
 import { terms20261125 } from "./documents/terms-2026-11-25";
 import type { LegalDocumentVersion } from "./types";
 
@@ -13,4 +14,5 @@ export * from "./validate";
 export const LEGAL_DOCUMENT_VERSIONS: readonly LegalDocumentVersion[] = [
   terms20261125,
   privacy20261125,
+  privacy20261128,
 ];

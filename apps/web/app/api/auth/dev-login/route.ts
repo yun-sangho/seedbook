@@ -4,7 +4,7 @@ import { DEV_SESSION_COOKIE_NAME, DEV_SESSION_TOKEN, ensureDevAuth } from "@seed
 /**
  * 개발 환경 전용 카카오 우회 로그인 엔드포인트.
  *
- * Better Auth API 는 타지 않는다. dev@seedbook.local 유저와 고정 토큰 세션을
+ * Better Auth API 는 타지 않는다. dev 유저 (`DEV_USER_ID`) 와 고정 토큰 세션을
  * DB 에 보장한 뒤 (로그아웃하면 세션 행이 지워지므로 매번 되살린다), Better Auth 가
  * 검증 가능한 포맷 (token.hmacBase64) 으로 서명한 쿠키를 내려준다.
  *

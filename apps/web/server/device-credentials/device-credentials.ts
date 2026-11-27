@@ -8,7 +8,7 @@ import { and, eq } from "drizzle-orm";
  * 로그인한다 (`lib/device-credential-plugin.ts`). 흔히 refresh token 을 생체 인증으로 보호하는
  * 방식과 같다 — better-auth 세션에는 refresh token 이 없어 이 토큰이 그 역할을 한다.
  *
- * 서버에는 토큰의 SHA-256 해시만 둔다. 토큰은 256 비트 난수라 솔트·느린 해시가 필요 없다.
+ * 서버에는 토큰의 SHA-256 해시만 둔다. 기기 정보(User-Agent)는 남기지 않는다. 토큰은 256 비트 난수라 솔트·느린 해시가 필요 없다.
  * 쓸 때마다 만료가 미뤄지고, `DEVICE_CREDENTIAL_IDLE_TTL_MS` 동안 쓰지 않으면 지운다.
  */
 
@@ -29,7 +29,7 @@ function tokenMatches(token: string, expectedHash: string): boolean {
 
 export async function createDeviceCredential(
   db: Database,
-  input: { userId: string; userAgent: string | null; now: Date }
+  input: { userId: string; now: Date }
 ): Promise<{ credentialId: string; token: string }> {
   const credentialId = randomBytes(ID_BYTES).toString("base64url");
   const token = randomBytes(TOKEN_BYTES).toString("base64url");
@@ -37,7 +37,6 @@ export async function createDeviceCredential(
     id: credentialId,
     userId: input.userId,
     tokenHash: hashToken(token),
-    userAgent: input.userAgent,
     createdAt: input.now,
     lastUsedAt: input.now,
   });

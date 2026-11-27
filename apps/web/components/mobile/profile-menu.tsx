@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ANONYMOUS_USER_NAME } from "@seedbook/database/anonymous-identity";
 import { authClient, useSession } from "@web/lib/auth-client";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
@@ -10,11 +11,11 @@ import {
   BottomSheetRoot,
 } from "@web/seed-design/ui/bottom-sheet";
 import { TextField, TextFieldInput } from "@web/seed-design/ui/text-field";
+import { UserRound } from "lucide-react";
 
+// 로그인에서 이름·이메일·사진을 받지 않는다 (`lib/auth-privacy.ts`). 이름은 사용자가 여기서 정한다.
 interface SessionUser {
   name?: string | null;
-  email?: string | null;
-  image?: string | null;
 }
 
 function useSessionUser(): SessionUser | undefined {
@@ -22,21 +23,15 @@ function useSessionUser(): SessionUser | undefined {
   return session?.user as SessionUser | undefined;
 }
 
-/** 프로필 사진, 없으면 이름 첫 글자. */
-function Avatar({ user, size }: { user: SessionUser | undefined; size: number }) {
-  const initial = (user?.name || user?.email || "?").trim().charAt(0).toUpperCase();
+/** 기본 아바타. */
+function Avatar({ size }: { size: number }) {
   return (
     <span
-      className="bg-bg-neutral-weak text-fg-neutral-muted t4-bold flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-cover bg-center"
-      // next/image 는 원격 도메인 설정이 필요해 배경 이미지로 그린다 (카카오 프로필 URL).
-      style={{
-        width: size,
-        height: size,
-        backgroundImage: user?.image ? `url("${user.image}")` : undefined,
-      }}
+      className="bg-bg-neutral-weak text-fg-neutral-muted flex shrink-0 items-center justify-center overflow-hidden rounded-full"
+      style={{ width: size, height: size }}
       aria-hidden
     >
-      {user?.image ? null : initial}
+      <UserRound size={Math.round(size * 0.6)} strokeWidth={1.75} />
     </span>
   );
 }
@@ -46,7 +41,6 @@ function Avatar({ user, size }: { user: SessionUser | undefined; size: number })
  * "수정" 버튼). 시트는 앱바 밖에 따로 렌더한다 (`app/m/_stack/screens.tsx`).
  */
 export function ProfileButton({ onClick }: { onClick: () => void }) {
-  const user = useSessionUser();
   return (
     <button
       type="button"
@@ -54,7 +48,7 @@ export function ProfileButton({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       className="flex size-x10 items-center justify-center"
     >
-      <Avatar user={user} size={28} />
+      <Avatar size={28} />
     </button>
   );
 }
@@ -111,12 +105,12 @@ function ProfileSheetBody({
         <BottomSheetBody>
           <div className="flex flex-col gap-x5">
             <div className="flex items-center gap-x3">
-              <Avatar user={user} size={56} />
+              <Avatar size={56} />
               <div className="min-w-0">
-                <p className="t5-bold truncate">{user?.name || "이름 없음"}</p>
-                {user?.email && (
-                  <p className="t3-regular text-fg-neutral-subtle truncate">{user.email}</p>
-                )}
+                <p className="t5-bold truncate">{user?.name || ANONYMOUS_USER_NAME}</p>
+                <p className="t3-regular text-fg-neutral-subtle break-keep">
+                  실명이 아니어도 괜찮아요
+                </p>
               </div>
             </div>
             <TextField

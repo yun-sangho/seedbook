@@ -30,7 +30,6 @@ describe("device credentials for biometric sign-in (real Postgres)", () => {
     const userId = await createTestUser();
     const { credentialId, token } = await createDeviceCredential(db, {
       userId,
-      userAgent: "SeedbookApp/1",
       now: T0,
     });
 
@@ -43,7 +42,6 @@ describe("device credentials for biometric sign-in (real Postgres)", () => {
     const userId = await createTestUser();
     const { credentialId, token } = await createDeviceCredential(db, {
       userId,
-      userAgent: null,
       now: T0,
     });
 
@@ -54,8 +52,8 @@ describe("device credentials for biometric sign-in (real Postgres)", () => {
 
   it("issues a different token every time", async () => {
     const userId = await createTestUser();
-    const first = await createDeviceCredential(db, { userId, userAgent: null, now: T0 });
-    const second = await createDeviceCredential(db, { userId, userAgent: null, now: T0 });
+    const first = await createDeviceCredential(db, { userId, now: T0 });
+    const second = await createDeviceCredential(db, { userId, now: T0 });
 
     expect(first.token).not.toBe(second.token);
     expect(first.credentialId).not.toBe(second.credentialId);
@@ -65,7 +63,6 @@ describe("device credentials for biometric sign-in (real Postgres)", () => {
     const userId = await createTestUser();
     const { credentialId, token } = await createDeviceCredential(db, {
       userId,
-      userAgent: null,
       now: T0,
     });
 
@@ -93,7 +90,6 @@ describe("device credentials for biometric sign-in (real Postgres)", () => {
     const userId = await createTestUser();
     const { credentialId, token } = await createDeviceCredential(db, {
       userId,
-      userAgent: null,
       now: T0,
     });
 
@@ -111,7 +107,6 @@ describe("device credentials for biometric sign-in (real Postgres)", () => {
     const userId = await createTestUser();
     const { credentialId, token } = await createDeviceCredential(db, {
       userId,
-      userAgent: null,
       now: T0,
     });
     const almostIdle = DEVICE_CREDENTIAL_IDLE_TTL_MS - DAY_MS;
@@ -130,7 +125,6 @@ describe("device credentials for biometric sign-in (real Postgres)", () => {
     const userId = await createTestUser();
     const { credentialId, token } = await createDeviceCredential(db, {
       userId,
-      userAgent: null,
       now: T0,
     });
 
@@ -144,7 +138,6 @@ describe("device credentials for biometric sign-in (real Postgres)", () => {
     const other = await createTestUser();
     const { credentialId, token } = await createDeviceCredential(db, {
       userId: owner,
-      userAgent: null,
       now: T0,
     });
 
@@ -157,7 +150,6 @@ describe("device credentials for biometric sign-in (real Postgres)", () => {
     const userId = await createTestUser();
     const { credentialId } = await createDeviceCredential(db, {
       userId,
-      userAgent: null,
       now: T0,
     });
 

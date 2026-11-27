@@ -13,9 +13,6 @@
 
 export const CSP_NONCE_HEADER = "x-nonce";
 
-/** 카카오 프로필 사진 (`user.image`). */
-const KAKAO_IMAGE_CDN = "https://*.kakaocdn.net";
-
 export function createCspNonce(): string {
   return btoa(crypto.randomUUID());
 }
@@ -38,7 +35,7 @@ export function buildContentSecurityPolicy({
       ...(isDev ? ["'unsafe-eval'"] : []),
     ],
     ["style-src", "'self'", "'unsafe-inline'"],
-    ["img-src", "'self'", "blob:", "data:", KAKAO_IMAGE_CDN],
+    ["img-src", "'self'", "blob:", "data:"],
     ["font-src", "'self'"],
     ["connect-src", "'self'"],
     ["worker-src", "'self'"],

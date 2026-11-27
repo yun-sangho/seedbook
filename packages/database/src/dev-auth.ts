@@ -1,3 +1,5 @@
+import { ANONYMOUS_USER_NAME, anonymousEmail } from "./anonymous-identity";
+
 /**
  * 개발 환경 전용 dev 계정/세션 상수.
  *
@@ -11,8 +13,9 @@
  */
 
 export const DEV_USER_ID = "dev-user-v1";
-export const DEV_USER_EMAIL = "dev@seedbook.local";
-export const DEV_USER_NAME = "개발자";
+// 실제 사용자처럼 신상 정보 없이 고정 값을 쓴다 (`anonymous-identity.ts`).
+export const DEV_USER_EMAIL = anonymousEmail("dev", DEV_USER_ID);
+export const DEV_USER_NAME = ANONYMOUS_USER_NAME;
 
 export const DEV_SESSION_ID = "dev-session-v1";
 // 쿠키 값의 앞부분(.앞). Better Auth 는 이 값을 session.token 과 대조한다.
