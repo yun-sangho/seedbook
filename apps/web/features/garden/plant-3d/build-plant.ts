@@ -18,9 +18,9 @@ const COLORS = {
   vein: "#B9E3B5",
   stem: "#4E9A48",
   trunk: "#8B5E3C",
-  seed: "#A26F40",
-  seedHighlight: "#C38E5C",
-  soil: "#8A5D3B",
+  seed: "#F0C070",
+  seedHighlight: "#FFE3B0",
+  soil: "#5E3F2A",
   droop: "#A9A24C",
   petal: "#F8B3CB",
   petalCenter: "#FFD66B",
@@ -210,16 +210,16 @@ function stemTube(ctx: BuildContext, height: number, radius: number, lean: numbe
 
 function buildSeed(ctx: BuildContext, body: THREE.Group) {
   const color = mixColor(COLORS.seed, "#8E7A63", ctx.options.droop * 0.6);
-  const seed = new THREE.Mesh(track(ctx, blobGeometry(0.13)), ctx.kit.get(color));
+  const seed = new THREE.Mesh(track(ctx, blobGeometry(0.16)), ctx.kit.get(color));
   seed.scale.set(1.25, 0.95, 0.95);
-  seed.position.set(0, 0.06, 0);
+  seed.position.set(0, 0.075, 0);
   seed.rotation.z = 0.5;
   body.add(seed);
   const highlight = new THREE.Mesh(
-    track(ctx, blobGeometry(0.035)),
+    track(ctx, blobGeometry(0.042)),
     ctx.kit.get(COLORS.seedHighlight)
   );
-  highlight.position.set(-0.07, 0.13, 0.07);
+  highlight.position.set(-0.085, 0.16, 0.085);
   body.add(highlight);
 }
 

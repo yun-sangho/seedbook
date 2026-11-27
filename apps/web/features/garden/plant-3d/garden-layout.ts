@@ -50,3 +50,20 @@ export function gardenLayout(count: number): GardenLayout {
     depth: Math.max(...zs) - Math.min(...zs),
   };
 }
+
+/**
+ * 식물마다 놓을 자리(`gardenLayout().spots` 의 index). 자리는 뒷줄부터 채워지므로 키 큰 식물(높은
+ * 단계)을 앞에 세우면 뒷줄 식물이 가려진다 — 큰 것부터 뒷줄에 둔다. 같은 키면 목록 순서를 지킨다.
+ * 한 줄이면 목록 순서 그대로.
+ */
+export function spotsTallestToBack(heights: readonly number[]): number[] {
+  if (perRowFor(heights.length) >= heights.length) return heights.map((_, i) => i);
+  const order = heights
+    .map((height, index) => ({ height, index }))
+    .sort((a, b) => b.height - a.height || a.index - b.index);
+  const spotOf: number[] = new Array(heights.length);
+  order.forEach(({ index }, spot) => {
+    spotOf[index] = spot;
+  });
+  return spotOf;
+}

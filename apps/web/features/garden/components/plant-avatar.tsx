@@ -8,16 +8,17 @@ import { type PlantStage, POT_COLORS, type PotColor } from "../plant-3d/plant-op
  */
 
 const LEAF_PATH = "M0 0 C-7.5 -4 -7.5 -12.5 0 -18 C7.5 -12.5 7.5 -4 0 0Z";
-const BG = "#E2F4DF";
+/** 원형 배경. 다크 모드에서는 `--plant-avatar-bg` (globals.css) 가 정원 밤하늘에 맞춘 색으로 바꾼다. */
+const BG = "var(--plant-avatar-bg, #E2F4DF)";
 const LEAF = "#3E9F4C";
 const LEAF_LIGHT = "#5DB565";
 const LEAF_DARK = "#2F8A40";
 const VEIN = "#B9E3B5";
 const STEM = "#4E9A48";
 const TRUNK = "#8B5E3C";
-const SOIL = "#8A5D3B";
-const SEED = "#A26F40";
-const SEED_HIGHLIGHT = "#C38E5C";
+const SOIL = "#5E3F2A";
+const SEED = "#F0C070";
+const SEED_HIGHLIGHT = "#FFE3B0";
 const PETAL = "#F8B3CB";
 const PETAL_CENTER = "#FFD66B";
 const FRUIT = "#E8664F";
@@ -109,8 +110,8 @@ function StageArt({ stage }: { stage: PlantStage }) {
     case "seed":
       return (
         <>
-          <ellipse cx="32" cy="43.5" rx="6.5" ry="5" fill={SEED} transform="rotate(-25 32 43.5)" />
-          <ellipse cx="29.5" cy="41.5" rx="1.8" ry="1.2" fill={SEED_HIGHLIGHT} />
+          <ellipse cx="32" cy="42.5" rx="8" ry="6" fill={SEED} transform="rotate(-25 32 42.5)" />
+          <ellipse cx="29" cy="40" rx="2.2" ry="1.4" fill={SEED_HIGHLIGHT} />
         </>
       );
     case "sprout":

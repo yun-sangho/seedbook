@@ -9,7 +9,6 @@ import {
 import { Divider, Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 import { switchTab } from "@web/app/m/_stack/stack-control";
-import { HoldingsPriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
 import { profitToneClass } from "@web/components/mobile/profit-tone";
 import { PlantAvatar } from "@web/features/garden/components/plant-avatar";
 import { PLANT_STAGES, REBALANCE_BADGE_COLOR } from "@web/features/garden/plant-3d/plant-options";
@@ -48,39 +47,101 @@ export function RebalanceMark({ size = 18 }: { size?: number }) {
   );
 }
 
-function rowCaption(row: GardenRow): string {
+function GoalBar({ row }: { row: GardenRow }) {
+  const { percent, label } = goalBar(row);
+  // 목표가 없는 씨앗은 빈 막대 대신 안내 문구만.
+  if (percent === null) {
+    return <span className="t2-medium text-fg-neutral-subtle mt-x1 block">{label}</span>;
+  }
+  return (
+    <span className="mt-x1_5 flex items-center gap-x2">
+      <span
+        role="progressbar"
+        aria-label={`${row.name} 목표 도달`}
+        aria-valuenow={percent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        className="bg-bg-neutral-weak block h-[6px] min-w-0 flex-1 overflow-hidden rounded-full"
+      >
+        <span
+          className={`block h-full rounded-full ${row.drooping ? "bg-bg-warning-solid" : "bg-bg-brand-solid"}`}
+          style={{ width: `${percent}%` }}
+        />
+      </span>
+      {label && (
+        <span className="t2-medium text-fg-neutral-subtle shrink-0 tabular-nums">{label}</span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * 목표 도달 막대: 채울 비율(%, 막대 없으면 null)과 옆 문구. 목표를 향해 자라는 중이면 막대만, 목표가
+ * 없는 씨앗은 막대 없이 문구만, 방금 달성했거나 다 자랐으면 꽉 찬 막대 + 문구.
+ */
+function goalBar(row: GardenRow): { percent: number | null; label: string | null } {
+  if (row.goalState === "complete") return { percent: 100, label: "다 자랐어요" };
+  if (row.goalState === "needs-goal") {
+    return row.stage === 0
+      ? { percent: null, label: "목표를 정하면 자라요" }
+      : { percent: 100, label: "목표 달성!" };
+  }
+  return { percent: row.goalPercent ?? 0, label: null };
+}
+
+/** 이름 옆 단계 + 시듦. */
+function stageLabel(row: GardenRow): string {
   const stage = PLANT_STAGE_LABELS[row.stage];
-  // 목표가 없으면 옆의 "목표 정하기" 버튼이 안내한다.
-  if (row.needsGoal) return row.stage === 0 ? stage : `${stage} · 목표 달성!`;
   return row.drooping ? `${stage} · 시들해요` : stage;
 }
 
 /**
+ * 바텀시트 머리: 총 평가금액·수익 (지금 시세로 다시 계산한 금액, 계좌 상세와 같은 값). 계좌가 없으면
+ * 문구만.
+ */
+export function GardenTotalHeader({ investments }: { investments: InvestmentItem[] }) {
+  const liveInvestments = useLiveAccounts(investments);
+  const totals = useMemo(() => summarizeAccounts(liveInvestments), [liveInvestments]);
+  return (
+    <section className="px-x5 pt-x1 pb-x3">
+      <p className="t4-medium text-fg-neutral-muted">총 평가금액</p>
+      {investments.length > 0 ? (
+        <div className="mt-x1 flex flex-wrap items-baseline gap-x-x2">
+          <p className="t8-bold tabular-nums">{numberToKorean(totals.current) || "0원"}</p>
+          <p className={`t4-medium tabular-nums ${profitToneClass(totals.profit)}`}>
+            {formatProfitKorean(totals.profit)} ({formatReturnRate(totals.returnRate)})
+          </p>
+        </div>
+      ) : (
+        <p className="t8-bold mt-x1">0원</p>
+      )}
+    </section>
+  );
+}
+
+/**
  * 정원 전체일 때의 목록: 총 평가금액·리밸런싱 이어하기, 그리고 포트폴리오 식물마다 한 행.
- * 행을 누르면 그 식물로 다가간다. 포트폴리오가 없으면 첫 씨앗 심기.
+ * 행을 누르면 포트폴리오 상세로 간다. 포트폴리오가 없으면 첫 씨앗 심기.
  */
 export function GardenOverviewList({
   plants,
   portfolios,
   investments,
-  onFocus,
-  onSetGoal,
+  onOpenPortfolio,
   onPlantFirstSeed,
 }: {
   plants: PortfolioPlantView[];
   portfolios: PortfolioItem[];
   investments: InvestmentItem[];
-  onFocus: (portfolioId: string) => void;
-  onSetGoal: (portfolioId: string) => void;
+  onOpenPortfolio: (portfolioId: string) => void;
   onPlantFirstSeed: () => void;
 }) {
   const { push } = useFlow();
   // 저장된 평가금액이 아니라 지금 시세로 다시 계산한 금액 (계좌 상세와 같은 값).
   const liveInvestments = useLiveAccounts(investments);
-  const totals = useMemo(() => summarizeAccounts(liveInvestments), [liveInvestments]);
   const rows = useMemo(
-    () => gardenRows(plants, portfolios, investments),
-    [plants, portfolios, investments]
+    () => gardenRows(plants, portfolios, liveInvestments),
+    [plants, portfolios, liveInvestments]
   );
 
   const sessions = useRebalancingStore((s) => s.sessions);
@@ -100,19 +161,6 @@ export function GardenOverviewList({
 
   return (
     <div className="pb-x4">
-      <HoldingsPriceAsOfBanner investments={investments} />
-      {investments.length > 0 && (
-        <section className="px-x5 pt-x5 pb-x3">
-          <p className="t4-medium text-fg-neutral-muted">총 평가금액</p>
-          <div className="mt-x1 flex flex-wrap items-baseline gap-x-x2">
-            <p className="t8-bold tabular-nums">{numberToKorean(totals.current) || "0원"}</p>
-            <p className={`t4-medium tabular-nums ${profitToneClass(totals.profit)}`}>
-              {formatProfitKorean(totals.profit)} ({formatReturnRate(totals.returnRate)})
-            </p>
-          </div>
-        </section>
-      )}
-
       {resumeBanner && (
         <div className="px-x4 pb-x3">
           <ActionableCallout
@@ -153,50 +201,50 @@ export function GardenOverviewList({
           {rows.map((row) => (
             <div key={row.portfolioId}>
               <Divider inset />
-              <div className="flex items-center pr-x4">
-                <button
-                  type="button"
-                  onClick={() => onFocus(row.portfolioId)}
-                  aria-label={`${row.name} 식물 보기`}
-                  className="active:bg-bg-layer-default-pressed flex min-w-0 flex-1 items-center gap-x3 py-x3 pl-x4 text-left"
-                >
-                  <span className="relative shrink-0">
-                    <PlantAvatar stage={PLANT_STAGES[row.stage]} pot={row.pot} size={44} />
-                    {row.needsRebalance && (
-                      <span className="absolute -top-[2px] -right-[2px]">
-                        <RebalanceMark size={16} />
-                      </span>
-                    )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="t5-bold block truncate">{row.name}</span>
+              <button
+                type="button"
+                onClick={() => onOpenPortfolio(row.portfolioId)}
+                aria-label={`${row.name} 포트폴리오 보기`}
+                className="active:bg-bg-layer-default-pressed flex w-full items-center gap-x3 px-x4 py-x3 text-left"
+              >
+                <span className="relative shrink-0">
+                  <PlantAvatar stage={PLANT_STAGES[row.stage]} pot={row.pot} size={44} />
+                  {row.needsRebalance && (
+                    <span className="absolute -top-[2px] -right-[2px]">
+                      <RebalanceMark size={16} />
+                    </span>
+                  )}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex min-w-0 items-baseline gap-x1_5">
+                    <span className="t5-bold truncate">{row.name}</span>
                     <span
-                      className={`t3-regular mt-[2px] block truncate ${row.drooping ? "text-fg-warning" : "text-fg-neutral-subtle"}`}
+                      className={`t3-regular shrink-0 ${row.drooping ? "text-fg-warning" : "text-fg-neutral-subtle"}`}
                     >
-                      {rowCaption(row)}
+                      {stageLabel(row)}
                     </span>
                   </span>
-                  <span className="shrink-0 pl-x2 text-right">
-                    {row.value === null ? (
-                      <span className="t3-regular text-fg-neutral-subtle">연결 계좌 없음</span>
-                    ) : (
-                      <span className="t5-bold tabular-nums">
+                  <GoalBar row={row} />
+                </span>
+                <span className="shrink-0 pl-x2 text-right">
+                  {row.value === null ? (
+                    <span className="t3-regular text-fg-neutral-subtle">연결 계좌 없음</span>
+                  ) : (
+                    <>
+                      <span className="t5-bold block tabular-nums">
                         {numberToKorean(row.value) || "0원"}
                       </span>
-                    )}
-                  </span>
-                </button>
-                {row.needsGoal && (
-                  <ActionButton
-                    variant="neutralWeak"
-                    size="xsmall"
-                    onClick={() => onSetGoal(row.portfolioId)}
-                    aria-label={`${row.name} 목표 정하기`}
-                  >
-                    목표 정하기
-                  </ActionButton>
-                )}
-              </div>
+                      {row.returnRate !== null && (
+                        <span
+                          className={`t3-medium mt-[2px] block tabular-nums ${profitToneClass(row.returnRate)}`}
+                        >
+                          {formatReturnRate(row.returnRate)}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </span>
+              </button>
             </div>
           ))}
           <Divider />
