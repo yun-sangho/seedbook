@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useEffect, useState } from "react";
+import { AccountValueHistoryRunner } from "@web/components/account-value-history-runner";
 import { sessionStorageOrNull } from "@web/components/biometric-sign-in-button";
 import { ConsentGate } from "@web/components/consent-gate";
 import { EntitySyncRunner } from "@web/components/entity-sync-runner";
@@ -61,6 +62,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
           <StorageModeSync />
           <PreferencesSync />
           <EntitySyncRunner />
+          <AccountValueHistoryRunner />
           {children}
         </StorageChoiceGate>
         {/* 네이티브 앱에서 앱 잠금을 켰을 때만 그려진다. */}

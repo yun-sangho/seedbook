@@ -14,6 +14,7 @@ const DEVICE_ONLY_COLUMNS: Record<string, string[]> = { user_preference: ["id"] 
 const MIRRORED_TABLES: PgTable[] = [
   schema.investmentAccount,
   schema.investmentRecord,
+  schema.investmentAccountSnapshot,
   schema.stockHolding,
   schema.cashItem,
   schema.portfolio,

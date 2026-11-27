@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  downloadAccountSnapshots,
+  fillMissingSnapshots,
+  uploadAccountSnapshots,
+} from "@web/features/investments/utils/account-value-history-storage";
 import { accountFetch, accountStorage } from "@web/lib/account-storage";
 import { CLOUD_STORE_KEYS, type CloudStoreKey } from "@web/lib/storage-mode";
 import { itemIds, mergeEnvelopes, type PersistEnvelope } from "./storage-merge";
@@ -13,6 +18,8 @@ import { clearEntitySyncState } from "./sync/managed-stores";
  *     (`mergeEnvelopes`: 합집합, 같은 항목은 로컬 우선).
  *   - 모든 key 를 **순차적**으로 처리 (병렬 실패 복구가 복잡해지므로).
  *   - 각 단계 진행 상황을 `onProgress` 콜백으로 노출.
+ *   - 계좌 총액 일별 기록(local 은 기기, cloud 는 서버가 기록)도 같은 규칙으로 합친다 — 자산을
+ *     옮긴 뒤(서버에 계좌가 생긴 뒤) 마지막에 한다.
  *   - 실패 시 에러를 throw — 호출자는 모드를 바꾸지 않고 재시도하게 한다
  *     (합치기는 몇 번을 다시 해도 결과가 같다).
  */
@@ -57,6 +64,9 @@ export async function uploadAllToCloud(onProgress?: (p: MigrationProgress) => vo
     }
     onProgress?.({ index: i, total: CLOUD_STORE_KEYS.length, key, phase: "done" });
   }
+  // 올리기 전에 빠진 날을 채운다. 종가를 못 받아도 전환은 막지 않는다 (있는 기록만 올린다).
+  await fillMissingSnapshots().catch(() => 0);
+  await uploadAccountSnapshots();
   clearEntitySyncState();
 }
 
@@ -77,6 +87,7 @@ export async function downloadAllFromCloud(
     if (merged !== null) await writeLocalEnvelope(key, JSON.stringify(merged));
     onProgress?.({ index: i, total: CLOUD_STORE_KEYS.length, key, phase: "done" });
   }
+  await downloadAccountSnapshots();
   clearEntitySyncState();
 }
 

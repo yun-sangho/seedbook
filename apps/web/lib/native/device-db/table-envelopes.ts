@@ -1,6 +1,16 @@
 import { formatDate } from "@web/app/api/storage/_translators/types";
 import { normalizeHoldingsSortOption } from "@web/features/investments/types/holdings-sort";
+import {
+  ACCOUNT_SNAPSHOT_STORAGE_KEY,
+  HOLDINGS_HISTORY_STORAGE_KEY,
+  type HoldingsEntry,
+} from "@web/features/investments/utils/account-value-history";
 import { dedupePortfolioLinks } from "@web/features/portfolio/utils/portfolio-links";
+import {
+  type AccountSnapshotPayload,
+  isDateString,
+  parseSnapshotPayloads,
+} from "@web/server/account-snapshots/account-snapshot-record";
 import {
   investmentChildRows,
   investmentFieldsToColumns,
@@ -34,13 +44,23 @@ const PORTFOLIO_KEY = "portfolio-storage";
 const REBALANCING_KEY = "rebalancing-storage";
 const PREFERENCES_KEY = "seedbook.preferences";
 
-const TABLE_ENVELOPE_KEYS = [INVESTMENT_KEY, PORTFOLIO_KEY, REBALANCING_KEY, PREFERENCES_KEY];
+const TABLE_ENVELOPE_KEYS = [
+  INVESTMENT_KEY,
+  PORTFOLIO_KEY,
+  REBALANCING_KEY,
+  PREFERENCES_KEY,
+  ACCOUNT_SNAPSHOT_STORAGE_KEY,
+  HOLDINGS_HISTORY_STORAGE_KEY,
+];
 
 /** 서버 번역기의 envelope version 과 같다. */
 const INVESTMENT_VERSION = 4;
 const PORTFOLIO_VERSION = 3;
 const REBALANCING_VERSION = 1;
 const PREFERENCES_VERSION = 1;
+/** 계좌 총액 기록은 기기에만 envelope 로 둔다 (`account-value-history-storage.ts` 와 같은 version). */
+const ACCOUNT_SNAPSHOT_VERSION = 1;
+const HOLDINGS_HISTORY_VERSION = 1;
 
 /** `user_list_order.domain` — 서버 번역기와 같은 이름. */
 const INVESTMENT_LIST = "investment-accounts";
@@ -568,6 +588,76 @@ function preferencesStatements(state: State): SqlStatement[] {
   return Object.keys(columns).length > 0 ? [preferenceStatement(columns)] : [];
 }
 
+// ─── account-snapshot-storage · holdings-history-storage ────────────────────
+
+async function readAccountSnapshots(driver: SqlDriver): Promise<string | null> {
+  const rows = await driver.query<AccountSnapshotPayload>(
+    `SELECT accountId, date, stockValue, cashValue, totalValue, holdingCount, missingPriceCount,
+            oldestPriceDate
+     FROM investment_account_snapshot ORDER BY date, accountId`
+  );
+  if (rows.length === 0) return null;
+  return serialize({ snapshots: rows }, ACCOUNT_SNAPSHOT_VERSION);
+}
+
+async function accountSnapshotStatements(driver: SqlDriver, state: State): Promise<SqlStatement[]> {
+  const snapshots = parseSnapshotPayloads(state.snapshots) ?? [];
+  const existing = await driver.query<{ accountId: string; date: string; createdAt: string }>(
+    "SELECT accountId, date, createdAt FROM investment_account_snapshot"
+  );
+  const createdAt = new Map(existing.map((r) => [`${r.accountId}|${r.date}`, r.createdAt]));
+  const now = nowIso();
+  const statements: SqlStatement[] = [{ sql: "DELETE FROM investment_account_snapshot" }];
+  for (const s of snapshots) {
+    statements.push({
+      sql: `INSERT OR REPLACE INTO investment_account_snapshot (accountId, date, stockValue, cashValue,
+              totalValue, holdingCount, missingPriceCount, oldestPriceDate, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      params: [
+        s.accountId,
+        s.date,
+        s.stockValue,
+        s.cashValue,
+        s.totalValue,
+        s.holdingCount,
+        s.missingPriceCount,
+        s.oldestPriceDate,
+        createdAt.get(`${s.accountId}|${s.date}`) ?? now,
+        now,
+      ],
+    });
+  }
+  return statements;
+}
+
+async function readHoldingsHistory(driver: SqlDriver): Promise<string | null> {
+  const rows = await driver.query<{ date: string; accounts: string | null }>(
+    "SELECT date, accounts FROM investment_holding_history ORDER BY date"
+  );
+  if (rows.length === 0) return null;
+  const entries: HoldingsEntry[] = rows.map((r) => ({
+    date: r.date,
+    accounts: r.accounts === null ? null : (parseJson(r.accounts) as HoldingsEntry["accounts"]),
+  }));
+  return serialize({ entries }, HOLDINGS_HISTORY_VERSION);
+}
+
+function holdingsHistoryStatements(state: State): SqlStatement[] {
+  const raw = Array.isArray(state.entries) ? (state.entries as unknown[]) : [];
+  const statements: SqlStatement[] = [{ sql: "DELETE FROM investment_holding_history" }];
+  for (const item of raw) {
+    const entry = item as Partial<HoldingsEntry> | null;
+    if (!entry || !isDateString(entry.date)) continue;
+    const accounts = typeof entry.accounts === "object" ? entry.accounts : undefined;
+    if (accounts === undefined) continue;
+    statements.push({
+      sql: "INSERT OR REPLACE INTO investment_holding_history (date, accounts) VALUES (?, ?)",
+      params: [entry.date, accounts === null ? null : JSON.stringify(accounts)],
+    });
+  }
+  return statements;
+}
+
 // ─── public API ─────────────────────────────────────────────────────────────
 
 /** 테이블에서 envelope 를 조립한다. 저장된 것이 없으면 null. */
@@ -576,6 +666,8 @@ export async function readTableEnvelope(driver: SqlDriver, key: string): Promise
   if (key === PORTFOLIO_KEY) return readPortfolios(driver);
   if (key === REBALANCING_KEY) return readRebalancings(driver);
   if (key === PREFERENCES_KEY) return readPreferences(driver);
+  if (key === ACCOUNT_SNAPSHOT_STORAGE_KEY) return readAccountSnapshots(driver);
+  if (key === HOLDINGS_HISTORY_STORAGE_KEY) return readHoldingsHistory(driver);
   return null;
 }
 
@@ -592,6 +684,9 @@ export async function writeTableEnvelope(
   else if (key === PORTFOLIO_KEY) statements = portfolioStatements(state);
   else if (key === REBALANCING_KEY) statements = await rebalancingStatements(driver, state);
   else if (key === PREFERENCES_KEY) statements = preferencesStatements(state);
+  else if (key === ACCOUNT_SNAPSHOT_STORAGE_KEY) {
+    statements = await accountSnapshotStatements(driver, state);
+  } else if (key === HOLDINGS_HISTORY_STORAGE_KEY) statements = holdingsHistoryStatements(state);
   if (statements.length > 0) await driver.batch(statements);
 }
 
@@ -625,6 +720,10 @@ export async function removeTableEnvelope(driver: SqlDriver, key: string): Promi
               rebalancingTaskSort = 'nameDesc', rebalancingCollapsedSections = '[]'`,
       },
     ]);
+  } else if (key === ACCOUNT_SNAPSHOT_STORAGE_KEY) {
+    await driver.batch([{ sql: "DELETE FROM investment_account_snapshot" }]);
+  } else if (key === HOLDINGS_HISTORY_STORAGE_KEY) {
+    await driver.batch([{ sql: "DELETE FROM investment_holding_history" }]);
   }
 }
 
@@ -636,6 +735,8 @@ export async function clearDeviceTables(driver: SqlDriver): Promise<void> {
       "stock_holding",
       "cash_item",
       "investment_account",
+      "investment_account_snapshot",
+      "investment_holding_history",
       "portfolio_allocation",
       "portfolio",
       "rebalancing",

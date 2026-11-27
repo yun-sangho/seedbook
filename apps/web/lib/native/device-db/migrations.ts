@@ -118,6 +118,31 @@ export const DEVICE_MIGRATIONS: DeviceMigration[] = [
     version: 2,
     statements: ["ALTER TABLE user_preference ADD COLUMN storageModeChosenAt TEXT"],
   },
+  {
+    version: 3,
+    statements: [
+      // local 모드 계좌 총액 일별 기록. 서버와 달리 계좌를 지워도 남긴다 (서버는 계좌를 소프트 삭제).
+      `CREATE TABLE investment_account_snapshot (
+        accountId TEXT NOT NULL,
+        date TEXT NOT NULL,
+        stockValue INTEGER NOT NULL,
+        cashValue INTEGER NOT NULL,
+        totalValue INTEGER NOT NULL,
+        holdingCount INTEGER NOT NULL,
+        missingPriceCount INTEGER NOT NULL,
+        oldestPriceDate TEXT,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL,
+        PRIMARY KEY (accountId, date)
+      )`,
+      // 기기에만 있는 표: 보유 종목·현금이 바뀐 날마다 그 날의 계좌별 보유 내역 (JSON).
+      // accounts 가 NULL 이면 그 날부터 기록 중단 (cloud 모드).
+      `CREATE TABLE investment_holding_history (
+        date TEXT PRIMARY KEY NOT NULL,
+        accounts TEXT
+      )`,
+    ],
+  },
 ];
 
 const CREATE_MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS device_schema_migration (
