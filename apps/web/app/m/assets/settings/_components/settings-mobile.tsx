@@ -5,9 +5,11 @@ import {
   IconCheckmarkLine,
   IconDocumentArrowLeftLine,
   IconDocumentPlusLine,
+  IconKeyholeShieldLine,
   IconSparkle2Line,
 } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
+import { useFlow } from "@stackflow/react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
@@ -75,6 +77,7 @@ type DataDialog =
 
 /** 더보기 → 설정. 저장소 모드 전환과 데이터 백업 (예전 PC 관리 화면). */
 export function SettingsMobile() {
+  const { push } = useFlow();
   const storage = useStorageModeSwitch();
   const [dataDialog, setDataDialog] = useState<DataDialog>({ kind: "closed" });
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -179,7 +182,17 @@ export function SettingsMobile() {
 
   return (
     <div className="pb-x6">
-      <ListHeader>저장 위치</ListHeader>
+      <ListHeader>계정</ListHeader>
+      <List>
+        <ListButtonItem
+          prefix={<Icon svg={<IconKeyholeShieldLine />} />}
+          title="로그인 수단"
+          detail="다른 로그인 수단을 연결해 같은 계정으로 로그인해요"
+          onClick={() => push("LoginMethods", {})}
+        />
+      </List>
+
+      <ListHeader className="mt-x4">저장 위치</ListHeader>
       <List>
         <ListButtonItem
           title="이 기기에만 저장"

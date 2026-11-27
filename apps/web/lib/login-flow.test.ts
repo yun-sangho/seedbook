@@ -51,8 +51,8 @@ describe("loginErrorMessage", () => {
     expect(loginErrorMessage("email_not_found")).toContain("이메일");
   });
 
-  it("points to the original sign-in method when the email is already used", () => {
-    expect(loginErrorMessage("account_not_linked")).toContain("이미 가입");
+  it("explains that an unlinked login method cannot sign in", () => {
+    expect(loginErrorMessage("account_not_linked")).toContain("연결을 해제한 로그인 수단");
   });
 
   it.each(["state_mismatch", "state_not_found", "state_invalid"])(

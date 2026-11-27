@@ -3,8 +3,10 @@ import { defineConfig } from "@stackflow/config";
 import { historySyncPlugin } from "@stackflow/plugin-history-sync";
 import { basicRendererPlugin } from "@stackflow/plugin-renderer-basic";
 import { stackflow } from "@stackflow/react";
+import type { LinkResultParams } from "@web/lib/login-methods";
 import {
   AccountDetailActivity,
+  LoginMethodsActivity,
   PortfolioDetailActivity,
   RebalancingDetailActivity,
   RebalancingNewActivity,
@@ -36,6 +38,8 @@ declare module "@stackflow/config" {
     RebalancingTrade: { id: string; taskId: string };
     PortfolioDetail: { id: string };
     Settings: Record<string, never>;
+    /** 연결하고 돌아오면 better-auth 가 붙인 결과 쿼리 (`lib/login-methods.ts`). */
+    LoginMethods: LinkResultParams;
   }
 }
 
@@ -89,6 +93,17 @@ const config = defineConfig({
       route: { path: "/assets/settings", defaultHistory: underTab("home") },
     },
     {
+      // 로그인 수단 연결은 제공자 화면을 다녀와 이 주소로 돌아온다 (`lib/login-methods.ts`).
+      name: "LoginMethods",
+      route: {
+        path: "/assets/settings/login-methods",
+        defaultHistory: () => [
+          ...underTab("home")(),
+          { activityName: "Settings" as const, activityParams: {} },
+        ],
+      },
+    },
+    {
       // `/assets` 와 `/assets/<탭>`. 같은 모양의 다른 경로(settings)보다 뒤에 둬야 그쪽이 먼저
       // 매칭된다. 모르는 탭은 홈으로 연다.
       name: "Tabs",
@@ -109,6 +124,7 @@ export const { Stack, actions } = stackflow({
     RebalancingTrade: RebalancingTradeActivity,
     PortfolioDetail: PortfolioDetailActivity,
     Settings: SettingsActivity,
+    LoginMethods: LoginMethodsActivity,
   },
   plugins: [
     basicRendererPlugin(),

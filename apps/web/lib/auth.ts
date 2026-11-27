@@ -3,6 +3,7 @@ import { createAppleClientSecret, readAppleConfig } from "@web/lib/apple-auth";
 import {
   appleProviderOptions,
   kakaoProviderOptions,
+  privacyAccountOptions,
   privacyDatabaseHooks,
 } from "@web/lib/auth-privacy";
 import { DEFAULT_RETURN_PATH } from "@web/lib/login-flow";
@@ -39,8 +40,8 @@ export const auth = betterAuth({
     deleteUser: { enabled: true },
   },
   // 이름·이메일·사진·OAuth 토큰·접속 IP/User-Agent 를 저장하지 않는다 (`lib/auth-privacy.ts`).
-  // 토큰을 쓰지 않으므로 재로그인 때 계정 연결 행을 갱신하지도 않는다.
-  account: { updateAccountOnSignIn: false },
+  // 로그인 수단 연결(카카오 ↔ Apple)은 로그인한 사용자가 직접 할 때만 된다 (`privacyAccountOptions`).
+  account: privacyAccountOptions,
   databaseHooks: privacyDatabaseHooks,
   socialProviders: {
     kakao: kakaoProviderOptions({

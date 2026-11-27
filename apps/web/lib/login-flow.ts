@@ -33,9 +33,11 @@ const LOGIN_ERROR_MESSAGES = new Map([
     "email_not_found",
     "이메일을 받지 못해 로그인할 수 없어요. 다시 로그인할 때 이메일 제공에 동의해 주세요.",
   ],
+  // 이메일로는 계정을 잇지 않으므로 (`privacyAccountOptions`) 이 코드는 연결을 해제한 수단으로 다시
+  // 로그인할 때만 온다.
   [
     "account_not_linked",
-    "같은 이메일로 이미 가입한 계정이 있어요. 전에 쓰던 방법으로 로그인해 주세요.",
+    "연결을 해제한 로그인 수단이에요. 계정에 연결해 둔 다른 수단으로 로그인해 주세요.",
   ],
   ["state_mismatch", START_OVER],
   ["state_not_found", START_OVER],

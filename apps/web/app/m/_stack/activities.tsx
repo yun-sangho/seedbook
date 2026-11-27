@@ -1,7 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
-import type { StaticActivityComponentType } from "@stackflow/react";
+import { type ReactNode, useCallback } from "react";
+import { type StaticActivityComponentType, useStepFlow } from "@stackflow/react";
 import { LegalNoticeBanner } from "@web/components/mobile/legal-notice-banner";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
@@ -16,6 +16,7 @@ import { RebalancingListMobile } from "../assets/rebalancing/_components/rebalan
 import { RebalancingDetailMobile } from "../assets/rebalancing/[id]/_components/rebalancing-detail-mobile";
 import { RebalancingSessionMobile } from "../assets/rebalancing/sessions/[id]/_components/rebalancing-session-mobile";
 import { TradeEntryMobile } from "../assets/rebalancing/sessions/[id]/_components/trade-entry-mobile";
+import { LoginMethodsMobile } from "../assets/settings/_components/login-methods-mobile";
 import { SettingsMobile } from "../assets/settings/_components/settings-mobile";
 import { DetailScreen, TabsScreen } from "./screens";
 import { type TabKey, type TabsParams, tabOf } from "./tabs";
@@ -130,3 +131,15 @@ export function SettingsActivity() {
     </DetailScreen>
   );
 }
+
+/** 더보기 → 설정 → 로그인 수단 (카카오·Apple 연결·해제). */
+export const LoginMethodsActivity: StaticActivityComponentType<"LoginMethods"> = ({ params }) => {
+  // 같은 화면에서 params 만 비워 주소의 결과 쿼리를 지운다 (다시 그려지지 않는다).
+  const { replaceStep } = useStepFlow("LoginMethods");
+  const clearReturnParams = useCallback(() => replaceStep({}), [replaceStep]);
+  return (
+    <DetailScreen title="로그인 수단">
+      <LoginMethodsMobile returnParams={params} onReturnParamsShown={clearReturnParams} />
+    </DetailScreen>
+  );
+};
