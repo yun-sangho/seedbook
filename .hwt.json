@@ -30,7 +30,11 @@
   },
   "mergeQueue": {
     "method": "squash",
-    "verify": "node scripts/check-deploy.mjs \"$HWT_MQ_SHA\"",
+    "deploy": {
+      "workflows": ["deploy.yml"],
+      "urls": ["https://seedbook.boogie.ing"],
+      "cancelledOk": false
+    },
     "gc": "pnpm wt:gc",
     "cleanup": true,
     "maxUpdates": 3
