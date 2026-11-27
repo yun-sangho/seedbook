@@ -26,25 +26,29 @@ vi.mock("../assets/rebalancing/_components/rebalancing-home-mobile", () => ({
 vi.mock("../assets/portfolio/_components/portfolio-list-mobile", () => ({
   PortfolioListMobile: () => <FakeTab name="portfolio" />,
 }));
-vi.mock("../assets/settings/_components/settings-mobile", () => ({
-  SettingsMobile: () => <p>설정 화면</p>,
+vi.mock("../assets/settings/_components/settings-menu-mobile", () => ({
+  SettingsMenuMobile: () => <p>설정 화면</p>,
+}));
+vi.mock("../assets/settings/_components/storage-mode-mobile", () => ({
+  StorageModeMobile: () => <p>저장 위치 화면</p>,
+}));
+vi.mock("../assets/settings/_components/data-backup-mobile", () => ({
+  DataBackupMobile: () => <p>백업 화면</p>,
+}));
+vi.mock("../assets/settings/_components/delete-account-mobile", () => ({
+  DeleteAccountMobile: () => <p>탈퇴 화면</p>,
 }));
 vi.mock("../assets/investments/[id]/_components/account-detail-mobile", () => ({
   AccountDetailMobile: ({ id }: { id: string }) => <p>계좌 {id}</p>,
 }));
 vi.mock("@web/components/mobile/profile-menu", () => ({
-  ProfileButton: () => null,
-  ProfileSheet: () => null,
-}));
-vi.mock("@web/components/mobile/mobile-more-sheet", () => ({ MobileMoreSheet: () => null }));
-
-vi.mock("@web/hooks/use-pwa-install", () => ({
-  usePwaInstall: () => ({
-    mode: "none",
-    install: async () => {},
-    isIOS: false,
-    isNativeApp: false,
-  }),
+  ProfileButton: ({ onClick }: { onClick: () => void }) => (
+    <button type="button" onClick={onClick}>
+      내 프로필
+    </button>
+  ),
+  ProfileEditor: () => <p>프로필 편집</p>,
+  useSessionUser: () => undefined,
 }));
 
 // jsdom 에는 Web Animations 가 없다.
@@ -130,6 +134,48 @@ describe("switching tabs", () => {
     expect(screen.getByRole("button", { current: "page" }).textContent).toBe("포트폴리오");
     expect(window.location.pathname).toBe("/assets/portfolio/");
     expect(window.history.length).toBe(length);
+  });
+});
+
+describe("settings entry points", () => {
+  it("opens the settings menu from 더보기 and goes back to the tab", async () => {
+    const { actions } = await open("/assets/portfolio");
+
+    fireEvent.click(tabButton("더보기"));
+    await settle();
+    expect(screen.queryByText("설정 화면")).not.toBeNull();
+    expect(window.location.pathname).toBe("/assets/settings/");
+
+    act(() => actions.pop());
+    await settle();
+    expect(screen.queryByText("설정 화면")).toBeNull();
+    expect(window.location.pathname).toBe("/assets/portfolio/");
+  });
+
+  it("opens profile editing straight from the app bar profile button", async () => {
+    await open("/assets");
+
+    fireEvent.click(screen.getByRole("button", { name: "내 프로필" }));
+    await settle();
+
+    expect(screen.queryByText("프로필 편집")).not.toBeNull();
+    expect(screen.queryByText("설정 화면")).toBeNull();
+    expect(window.location.pathname).toBe("/assets/settings/profile/");
+  });
+
+  it.each([
+    ["/assets/settings/profile", "프로필 편집"],
+    ["/assets/settings/storage", "저장 위치 화면"],
+    ["/assets/settings/data", "백업 화면"],
+    ["/assets/settings/delete-account", "탈퇴 화면"],
+  ])("puts the settings menu under %s", async (path, text) => {
+    const { actions } = await open(path);
+    expect(screen.queryByText(text)).not.toBeNull();
+
+    act(() => actions.pop());
+    await settle();
+
+    expect(window.location.pathname).toBe("/assets/settings/");
   });
 });
 

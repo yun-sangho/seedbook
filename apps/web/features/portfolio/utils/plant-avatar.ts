@@ -51,7 +51,7 @@ export function resolveProfileAvatar(
   return resolveAvatar(parseProfileImage(image), plants);
 }
 
-/** `resolveProfileAvatar` 의 파싱한 값 버전 (프로필 시트의 아직 저장하지 않은 선택). */
+/** `resolveProfileAvatar` 의 파싱한 값 버전 (프로필 편집 화면의 아직 저장하지 않은 선택). */
 export function resolveAvatar(
   { seed, plantPortfolioId }: ProfileImage,
   plants: readonly AvatarPlant[]

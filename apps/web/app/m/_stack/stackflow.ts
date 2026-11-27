@@ -6,13 +6,17 @@ import { stackflow } from "@stackflow/react";
 import type { LinkResultParams } from "@web/lib/login-methods";
 import {
   AccountDetailActivity,
+  DataBackupActivity,
+  DeleteAccountActivity,
   LoginMethodsActivity,
   PortfolioDetailActivity,
+  ProfileActivity,
   RebalancingDetailActivity,
   RebalancingNewActivity,
   RebalancingSessionActivity,
   RebalancingTradeActivity,
   SettingsActivity,
+  StorageModeActivity,
   TabsActivity,
 } from "./activities";
 import { createNextAwareHistory } from "./next-aware-history";
@@ -38,6 +42,10 @@ declare module "@stackflow/config" {
     RebalancingTrade: { id: string; taskId: string };
     PortfolioDetail: { id: string };
     Settings: Record<string, never>;
+    Profile: Record<string, never>;
+    StorageMode: Record<string, never>;
+    DataBackup: Record<string, never>;
+    DeleteAccount: Record<string, never>;
     /** 연결하고 돌아오면 better-auth 가 붙인 결과 쿼리 (`lib/login-methods.ts`). */
     LoginMethods: LinkResultParams;
   }
@@ -46,6 +54,11 @@ declare module "@stackflow/config" {
 /** 상세 URL 로 바로 들어와도 뒤로가기가 해당 탭 목록으로 가도록 아래에 깔 화면. */
 function underTab(tab: TabKey) {
   return () => [{ activityName: "Tabs" as const, activityParams: tabParams(tab) }];
+}
+
+/** 설정의 하위 화면: 바로 들어와도 뒤로가기가 설정 메뉴 → 홈으로 간다. */
+function underSettings() {
+  return [...underTab("home")(), { activityName: "Settings" as const, activityParams: {} }];
 }
 
 const config = defineConfig({
@@ -95,13 +108,23 @@ const config = defineConfig({
     {
       // 로그인 수단 연결은 제공자 화면을 다녀와 이 주소로 돌아온다 (`lib/login-methods.ts`).
       name: "LoginMethods",
-      route: {
-        path: "/assets/settings/login-methods",
-        defaultHistory: () => [
-          ...underTab("home")(),
-          { activityName: "Settings" as const, activityParams: {} },
-        ],
-      },
+      route: { path: "/assets/settings/login-methods", defaultHistory: underSettings },
+    },
+    {
+      name: "Profile",
+      route: { path: "/assets/settings/profile", defaultHistory: underSettings },
+    },
+    {
+      name: "StorageMode",
+      route: { path: "/assets/settings/storage", defaultHistory: underSettings },
+    },
+    {
+      name: "DataBackup",
+      route: { path: "/assets/settings/data", defaultHistory: underSettings },
+    },
+    {
+      name: "DeleteAccount",
+      route: { path: "/assets/settings/delete-account", defaultHistory: underSettings },
     },
     {
       // `/assets` 와 `/assets/<탭>`. 같은 모양의 다른 경로(settings)보다 뒤에 둬야 그쪽이 먼저
@@ -125,6 +148,10 @@ export const { Stack, actions } = stackflow({
     PortfolioDetail: PortfolioDetailActivity,
     Settings: SettingsActivity,
     LoginMethods: LoginMethodsActivity,
+    Profile: ProfileActivity,
+    StorageMode: StorageModeActivity,
+    DataBackup: DataBackupActivity,
+    DeleteAccount: DeleteAccountActivity,
   },
   plugins: [
     basicRendererPlugin(),

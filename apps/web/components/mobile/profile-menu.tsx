@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ANONYMOUS_USER_NAME } from "@seedbook/database/anonymous-identity";
+import { BottomAction } from "@web/components/mobile/bottom-action";
 import { PlantAvatarPicker } from "@web/components/mobile/plant-avatar-picker";
 import { ProfileAvatarImage } from "@web/components/profile-avatar";
 import { ProfileFields, useProfileDraft } from "@web/components/profile-editor";
@@ -12,12 +13,6 @@ import type { ProfileUser } from "@web/lib/seed-identity/profile";
 import { parseProfileImage } from "@web/lib/seed-identity/profile-image";
 import { randomSeedAvatar } from "@web/lib/seed-identity/seed-avatar";
 import { ActionButton } from "@web/seed-design/ui/action-button";
-import {
-  BottomSheetBody,
-  BottomSheetContent,
-  BottomSheetFooter,
-  BottomSheetRoot,
-} from "@web/seed-design/ui/bottom-sheet";
 
 // 로그인에서 이름·이메일·사진을 받지 않는다 (`lib/auth-privacy.ts`). 씨앗 아바타와 닉네임은 가입
 // 단계(`components/profile-setup-gate.tsx`)에서 정하고, 여기서 다시 바꾼다.
@@ -36,10 +31,8 @@ export function SessionUserAvatar({ size }: { size: number }) {
   return <ProfileAvatarImage avatar={resolveProfileAvatar(image, plants)} size={size} />;
 }
 
-/**
- * 앱바 오른쪽의 계정 버튼. 하단 탭의 최상위 화면에서만 보인다 (상세 화면은 같은 자리에
- * "수정" 버튼). 시트는 앱바 밖에 따로 렌더한다 (`app/m/_stack/screens.tsx`).
- */
+/** 앱바 오른쪽의 계정 버튼 → 프로필 편집 화면. 하단 탭의 최상위 화면에서만 보인다 (상세 화면은 같은
+ * 자리에 "수정" 버튼). */
 export function ProfileButton({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -53,29 +46,12 @@ export function ProfileButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-/** 프로필(아바타·닉네임) 편집 시트. 열 때마다 현재 값으로 폼을 초기화한다. */
-export function ProfileSheet({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
+/**
+ * 프로필(아바타·닉네임) 편집 화면 본문. 세션의 지금 값으로 시작하고, 저장 버튼은 화면 하단에 고정한다
+ * (`BottomAction`). 저장하면 `onSaved` (화면을 닫는다).
+ */
+export function ProfileEditor({ onSaved }: { onSaved: () => void }) {
   const user = useSessionUser();
-  return (
-    <ProfileSheetBody key={String(open)} open={open} onOpenChange={onOpenChange} user={user} />
-  );
-}
-
-function ProfileSheetBody({
-  open,
-  onOpenChange,
-  user,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  user: ProfileUser | undefined;
-}) {
   const [initial] = useState(() => {
     const image = parseProfileImage(user?.image);
     return {
@@ -92,36 +68,32 @@ function ProfileSheetBody({
     draft.nickname === initial.nickname;
 
   const save = async () => {
-    if (await draft.save()) onOpenChange(false);
+    if (await draft.save()) onSaved();
   };
 
   return (
-    <BottomSheetRoot open={open} onOpenChange={onOpenChange}>
-      <BottomSheetContent title="내 프로필" showHandle>
-        <BottomSheetBody>
-          <ProfileFields
-            draft={draft}
-            rerollNickname={false}
-            avatarSize={88}
-            avatarPicker={
-              plants.length > 0 ? (
-                <PlantAvatarPicker draft={draft} plants={plants} avatarSize={88} />
-              ) : undefined
-            }
-          />
-        </BottomSheetBody>
-        <BottomSheetFooter>
-          <ActionButton
-            size="large"
-            className="w-full"
-            loading={draft.saving}
-            disabled={draft.saving || unchanged}
-            onClick={save}
-          >
-            저장
-          </ActionButton>
-        </BottomSheetFooter>
-      </BottomSheetContent>
-    </BottomSheetRoot>
+    <div className="px-x4 pt-x6 pb-x8">
+      <ProfileFields
+        draft={draft}
+        rerollNickname={false}
+        avatarSize={88}
+        avatarPicker={
+          plants.length > 0 ? (
+            <PlantAvatarPicker draft={draft} plants={plants} avatarSize={88} />
+          ) : undefined
+        }
+      />
+      <BottomAction>
+        <ActionButton
+          size="large"
+          className="w-full"
+          loading={draft.saving}
+          disabled={draft.saving || unchanged}
+          onClick={save}
+        >
+          저장
+        </ActionButton>
+      </BottomAction>
+    </div>
   );
 }

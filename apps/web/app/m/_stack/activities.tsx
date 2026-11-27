@@ -1,8 +1,9 @@
 "use client";
 
 import { type ReactNode, useCallback } from "react";
-import { type StaticActivityComponentType, useStepFlow } from "@stackflow/react";
+import { type StaticActivityComponentType, useFlow, useStepFlow } from "@stackflow/react";
 import { LegalNoticeBanner } from "@web/components/mobile/legal-notice-banner";
+import { ProfileEditor } from "@web/components/mobile/profile-menu";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { PortfolioPlantAvatar } from "@web/features/portfolio/components/portfolio-plant-avatar";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
@@ -17,8 +18,11 @@ import { RebalancingListMobile } from "../assets/rebalancing/_components/rebalan
 import { RebalancingDetailMobile } from "../assets/rebalancing/[id]/_components/rebalancing-detail-mobile";
 import { RebalancingSessionMobile } from "../assets/rebalancing/sessions/[id]/_components/rebalancing-session-mobile";
 import { TradeEntryMobile } from "../assets/rebalancing/sessions/[id]/_components/trade-entry-mobile";
+import { DataBackupMobile } from "../assets/settings/_components/data-backup-mobile";
+import { DeleteAccountMobile } from "../assets/settings/_components/delete-account-mobile";
 import { LoginMethodsMobile } from "../assets/settings/_components/login-methods-mobile";
-import { SettingsMobile } from "../assets/settings/_components/settings-mobile";
+import { SettingsMenuMobile } from "../assets/settings/_components/settings-menu-mobile";
+import { StorageModeMobile } from "../assets/settings/_components/storage-mode-mobile";
 import { DetailScreen, TabsScreen } from "./screens";
 import { type TabKey, type TabsParams, tabOf } from "./tabs";
 
@@ -140,16 +144,53 @@ export function PortfolioDetailActivity({ params }: DetailActivityProps) {
   );
 }
 
-/** 더보기 → 설정 (저장 위치·데이터 백업). */
+/** 하단 탭 "더보기" → 설정 메뉴 (프로필 카드 + 앱·데이터·계정·정보). */
 export function SettingsActivity() {
   return (
-    <DetailScreen title="설정">
-      <SettingsMobile />
+    <DetailScreen title="설정" basement>
+      <SettingsMenuMobile />
     </DetailScreen>
   );
 }
 
-/** 더보기 → 설정 → 로그인 수단 (카카오·Apple 연결·해제). */
+/** 앱바 프로필 버튼 · 설정 → 프로필 카드: 아바타·닉네임 편집. 저장하면 닫는다. */
+export function ProfileActivity() {
+  const { pop } = useFlow();
+  return (
+    <DetailScreen title="프로필">
+      <ProfileEditor onSaved={() => pop()} />
+    </DetailScreen>
+  );
+}
+
+/** 설정 → 저장 위치 (이 기기 / 클라우드). */
+export function StorageModeActivity() {
+  return (
+    <DetailScreen title="저장 위치">
+      <StorageModeMobile />
+    </DetailScreen>
+  );
+}
+
+/** 설정 → 백업·데모 데이터. */
+export function DataBackupActivity() {
+  return (
+    <DetailScreen title="백업·데모 데이터">
+      <DataBackupMobile />
+    </DetailScreen>
+  );
+}
+
+/** 설정 → 탈퇴하기. */
+export function DeleteAccountActivity() {
+  return (
+    <DetailScreen title="탈퇴하기">
+      <DeleteAccountMobile />
+    </DetailScreen>
+  );
+}
+
+/** 설정 → 로그인 수단 (카카오·Apple 연결·해제). */
 export const LoginMethodsActivity: StaticActivityComponentType<"LoginMethods"> = ({ params }) => {
   // 같은 화면에서 params 만 비워 주소의 결과 쿼리를 지운다 (다시 그려지지 않는다).
   const { replaceStep } = useStepFlow("LoginMethods");
