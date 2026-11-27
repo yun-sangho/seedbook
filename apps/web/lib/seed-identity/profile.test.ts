@@ -65,6 +65,21 @@ describe("profileImageError", () => {
   it("rejects an unknown variant", () => {
     expect(profileImageError("seed:tree-9-black")).toBe("invalid");
   });
+
+  it("accepts a chosen plant that keeps the seed avatar", () => {
+    expect(
+      profileImageError("plant:11111111-1111-4111-8111-111111111111|seed:pot-3-mint")
+    ).toBeNull();
+  });
+
+  it.each([
+    ["a plant without its seed", "plant:11111111-1111-4111-8111-111111111111"],
+    ["a plant id that is not a UUID", "plant:abc|seed:pot-3-mint"],
+    ["a plant with a broken seed", "plant:11111111-1111-4111-8111-111111111111|seed:tree-9-black"],
+    ["extra parts", "plant:11111111-1111-4111-8111-111111111111|seed:pot-3-mint|x"],
+  ])("rejects %s", (_label, image) => {
+    expect(profileImageError(image)).toBe("invalid");
+  });
 });
 
 describe("needsProfileSetup", () => {
@@ -78,6 +93,15 @@ describe("needsProfileSetup", () => {
 
   it("is false once a seed avatar is set", () => {
     expect(needsProfileSetup({ name: "푸른 새싹", image: "seed:sprout-2-green" })).toBe(false);
+  });
+
+  it("is false after choosing a plant as the avatar", () => {
+    expect(
+      needsProfileSetup({
+        name: "푸른 새싹",
+        image: "plant:11111111-1111-4111-8111-111111111111|seed:sprout-2-green",
+      })
+    ).toBe(false);
   });
 });
 

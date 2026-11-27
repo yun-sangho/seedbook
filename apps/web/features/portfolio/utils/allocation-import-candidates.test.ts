@@ -4,6 +4,7 @@ import {
   stockPriceKey,
 } from "@web/features/investments/utils/use-stock-prices";
 import { describe, expect, it } from "vitest";
+import { INITIAL_PLANT_PROGRESS } from "../types/constants";
 import type { PortfolioAllocation, PortfolioItem } from "../types/types";
 import { candidatesFromAccount, candidatesFromPortfolio } from "./allocation-import-candidates";
 
@@ -48,6 +49,7 @@ function portfolio(allocations: PortfolioAllocation[]): PortfolioItem {
     accountIds: [],
     driftMode: "absolute",
     driftThresholdPercent: 5,
+    ...INITIAL_PLANT_PROGRESS,
     note: "",
     createdAt: "",
     updatedAt: "",

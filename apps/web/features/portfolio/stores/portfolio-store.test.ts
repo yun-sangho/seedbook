@@ -123,6 +123,79 @@ describe("Portfolio Store", () => {
       expect(state.portfolios[0]!.driftMode).toBe(LEGACY_DRIFT_MODE);
       expect(LEGACY_DRIFT_MODE).toBe("absolute");
     });
+
+    it("makes portfolios saved before plants existed a seed without a goal", () => {
+      // biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
+      const persistApi = (usePortfolioStore as any).persist;
+      const onRehydrate = persistApi.getOptions().onRehydrateStorage() as (state: unknown) => void;
+      const state = { portfolios: [{ id: "old", name: "old" } as PortfolioItem] };
+
+      onRehydrate(state);
+
+      expect(state.portfolios[0]).toMatchObject({
+        goalAmount: null,
+        growthStage: 0,
+        goalHistory: [],
+      });
+    });
+  });
+
+  describe("plant", () => {
+    it("starts a new portfolio as a seed without a goal", () => {
+      usePortfolioStore.getState().addPortfolio();
+
+      expect(usePortfolioStore.getState().portfolios[0]).toMatchObject({
+        goalAmount: null,
+        growthStage: 0,
+        goalHistory: [],
+      });
+    });
+
+    it("sets and clears the goal", () => {
+      const id = usePortfolioStore.getState().addPortfolio();
+
+      expect(usePortfolioStore.getState().setPlantGoal(id, 1_000_000)).toBe(true);
+      expect(usePortfolioStore.getState().portfolios[0]!.goalAmount).toBe(1_000_000);
+
+      usePortfolioStore.getState().setPlantGoal(id, null);
+      expect(usePortfolioStore.getState().portfolios[0]!.goalAmount).toBeNull();
+    });
+
+    it("refuses a goal that breaks the goal rules", () => {
+      const id = usePortfolioStore.getState().addPortfolio();
+
+      expect(usePortfolioStore.getState().setPlantGoal(id, 0)).toBe(false);
+      expect(usePortfolioStore.getState().portfolios[0]!.goalAmount).toBeNull();
+    });
+
+    it("grows the plants whose goal is reached", () => {
+      const reachedId = usePortfolioStore.getState().addPortfolio("reached");
+      const shortId = usePortfolioStore.getState().addPortfolio("short");
+      usePortfolioStore.getState().setPlantGoal(reachedId, 1000);
+      usePortfolioStore.getState().setPlantGoal(shortId, 1000);
+
+      usePortfolioStore.getState().growPlants(
+        new Map([
+          [reachedId, 1500],
+          [shortId, 500],
+        ])
+      );
+
+      const byId = new Map(usePortfolioStore.getState().portfolios.map((p) => [p.id, p]));
+      expect(byId.get(reachedId)).toMatchObject({ growthStage: 1, goalAmount: null });
+      expect(byId.get(reachedId)!.goalHistory.map((g) => g.amount)).toEqual([1000]);
+      expect(byId.get(shortId)).toMatchObject({ growthStage: 0, goalAmount: 1000 });
+    });
+
+    it("leaves the state untouched when nothing grows", () => {
+      const id = usePortfolioStore.getState().addPortfolio();
+      usePortfolioStore.getState().setPlantGoal(id, 1000);
+      const before = usePortfolioStore.getState().portfolios;
+
+      usePortfolioStore.getState().growPlants(new Map([[id, 10]]));
+
+      expect(usePortfolioStore.getState().portfolios).toBe(before);
+    });
   });
 
   describe("setPortfolioAccountIds", () => {

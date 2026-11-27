@@ -506,6 +506,16 @@ export const portfolio = seedbook.table(
       .notNull()
       .default("absolute"),
     driftThresholdPercent: doublePrecision("driftThresholdPercent").notNull().default(5),
+    // 포트폴리오 식물. 지금 목표 금액(원)을 달성하면 한 단계 자라고 목표는 비워진다 — 사용자가
+    // 다음 목표를 새로 정한다. 목표가 없으면 식물은 그 단계에 머문다.
+    goalAmount: bigint("goalAmount", { mode: "number" }),
+    // 도달한 성장 단계 0(씨앗)~4(꽃·열매). 올라가기만 한다.
+    growthStage: integer("growthStage").notNull().default(0),
+    // 달성한 목표들 [{ amount, reachedAt }] (오래된 순). 마지막 항목이 처짐 판정 기준.
+    goalHistory: jsonb("goalHistory")
+      .$type<Array<{ amount: number; reachedAt: string }>>()
+      .notNull()
+      .default([]),
     ...syncColumns(),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })

@@ -19,6 +19,9 @@ const item: PortfolioItem = {
   accountIds: ["acc-1"],
   driftMode: "relative",
   driftThresholdPercent: 5,
+  goalAmount: 30_000_000,
+  growthStage: 1,
+  goalHistory: [{ amount: 10_000_000, reachedAt: "2026-10-15T06:30:00.000Z" }],
   note: "",
   createdAt: "2026-10-01T00:00:00.000Z",
   updatedAt: "2026-11-01T00:00:00.000Z",
@@ -60,5 +63,32 @@ describe("portfolioSyncConfig", () => {
     delete pulled.driftMode;
 
     expect(portfolioSyncConfig.fromData("p-1", pulled).driftMode).toBe("absolute");
+  });
+
+  it("sends and reads back the plant's goal, stage and reached goals", () => {
+    const data = portfolioSyncConfig.toData(item);
+
+    expect(data).toMatchObject({
+      goalAmount: 30_000_000,
+      growthStage: 1,
+      goalHistory: [{ amount: 10_000_000, reachedAt: "2026-10-15T06:30:00.000Z" }],
+    });
+  });
+
+  it("reads a portfolio pulled without a plant as a seed", () => {
+    const pulled: Record<string, unknown> = {
+      ...portfolioSyncConfig.toData(item),
+      createdAt: "2026-10-01T00:00:00.000Z",
+      updatedAt: "2026-11-01T00:00:00.000Z",
+    };
+    delete pulled.goalAmount;
+    delete pulled.growthStage;
+    delete pulled.goalHistory;
+
+    expect(portfolioSyncConfig.fromData("p-1", pulled)).toMatchObject({
+      goalAmount: null,
+      growthStage: 0,
+      goalHistory: [],
+    });
   });
 });

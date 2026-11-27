@@ -7,6 +7,7 @@ import { ConsentGate } from "@web/components/consent-gate";
 import { EntitySyncRunner } from "@web/components/entity-sync-runner";
 import { LoginScreen } from "@web/components/login-screen";
 import { AppLockOverlay } from "@web/components/mobile/app-lock";
+import { PortfolioPlantGrowthRunner } from "@web/components/portfolio-plant-growth-runner";
 import { PreferencesSync } from "@web/components/preferences-sync";
 import { ProfileSetupGate } from "@web/components/profile-setup-gate";
 import { StorageChoiceGate } from "@web/components/storage-choice-gate";
@@ -86,6 +87,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
             <PreferencesSync />
             <EntitySyncRunner />
             <AccountValueHistoryRunner />
+            <PortfolioPlantGrowthRunner />
             {children}
           </StorageChoiceGate>
         </ProfileSetupGate>

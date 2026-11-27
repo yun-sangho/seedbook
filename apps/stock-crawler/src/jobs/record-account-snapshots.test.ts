@@ -5,11 +5,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * apps/web/server/account-snapshots) 에 맡긴다. 여기서는 날짜 고르기와 실패를 삼키는지만 본다.
  */
 
-const mocks = vi.hoisted(() => ({ recordAccountSnapshots: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  recordAccountSnapshots: vi.fn(),
+  growPortfolioPlants: vi.fn(),
+}));
 
 vi.mock("@seedbook/database", async () => {
   const actual = await vi.importActual<typeof import("@seedbook/database")>("@seedbook/database");
-  return { ...actual, db: {}, recordAccountSnapshots: mocks.recordAccountSnapshots };
+  return {
+    ...actual,
+    db: {},
+    recordAccountSnapshots: mocks.recordAccountSnapshots,
+    growPortfolioPlants: mocks.growPortfolioPlants,
+  };
 });
 
 const { snapshotAccounts } = await import("./record-account-snapshots.js");
@@ -29,6 +37,13 @@ describe("snapshotAccounts", () => {
     mocks.recordAccountSnapshots
       .mockReset()
       .mockResolvedValue({ accounts: 0, accountsWithMissingPrices: 0 });
+    mocks.growPortfolioPlants.mockReset().mockResolvedValue({ grown: 0 });
+  });
+
+  it("grows portfolio plants from the day it recorded", async () => {
+    await at("2026-11-27T07:40:00Z", () => snapshotAccounts());
+
+    expect(mocks.growPortfolioPlants).toHaveBeenCalledWith({}, "2026-11-27");
   });
 
   it("records today's KST date on a weekday", async () => {

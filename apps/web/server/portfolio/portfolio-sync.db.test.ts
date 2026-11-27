@@ -72,7 +72,14 @@ describe("portfolio entity sync", () => {
         id,
         version: 1,
         deletedAt: null,
-        data: { ...data, createdAt: expect.any(String), updatedAt: expect.any(String) },
+        data: {
+          ...data,
+          goalAmount: null,
+          growthStage: 0,
+          goalHistory: [],
+          createdAt: expect.any(String),
+          updatedAt: expect.any(String),
+        },
       },
     ]);
   });
@@ -152,6 +159,89 @@ describe("portfolio envelope translator (mode switching)", () => {
     expect(changes.portfolio!.find((p) => p.id === dropped)).toMatchObject({
       deletedAt: expect.any(String),
       data: null,
+    });
+  });
+
+  describe("plant", () => {
+    const reached = (amount: number) => ({ amount, reachedAt: "2026-11-20T06:30:00.000Z" });
+
+    async function pulledPortfolio(userId: string) {
+      const { changes } = await pullChanges(db, userId, null);
+      return changes.portfolio?.[0]?.data as Record<string, unknown> | undefined;
+    }
+
+    it("round-trips the goal, stage and reached goals", async () => {
+      const userId = await createTestUser();
+      const id = randomUUID();
+      const plant = { goalAmount: 30_000_000, growthStage: 1, goalHistory: [reached(10_000_000)] };
+
+      await upsert(userId, id, portfolioData(plant));
+
+      expect(await pulledPortfolio(userId)).toMatchObject(plant);
+    });
+
+    it("keeps the stored plant when an older client sends none", async () => {
+      const userId = await createTestUser();
+      const id = randomUUID();
+      const plant = { goalAmount: 30_000_000, growthStage: 1, goalHistory: [reached(10_000_000)] };
+      await upsert(userId, id, portfolioData(plant));
+
+      await upsert(userId, id, portfolioData({ name: "이름만 바꿈" }));
+
+      expect(await pulledPortfolio(userId)).toMatchObject({ name: "이름만 바꿈", ...plant });
+    });
+
+    it("does not let a stale device shrink a plant, but still saves its other changes", async () => {
+      const userId = await createTestUser();
+      const id = randomUUID();
+      const grown = {
+        goalAmount: null,
+        growthStage: 2,
+        goalHistory: [reached(1000), reached(2000)],
+      };
+      await upsert(userId, id, portfolioData(grown));
+
+      const result = await upsert(
+        userId,
+        id,
+        portfolioData({
+          name: "오래된 기기",
+          goalAmount: 2000,
+          growthStage: 1,
+          goalHistory: [reached(1000)],
+        })
+      );
+
+      // version 을 주지 않아 다음 pull 이 서버의 식물을 다시 내려준다.
+      expect(result).toEqual({ status: "ok" });
+      expect(await pulledPortfolio(userId)).toMatchObject({ name: "오래된 기기", ...grown });
+    });
+
+    it("saves a new goal set at the same stage", async () => {
+      const userId = await createTestUser();
+      const id = randomUUID();
+      await upsert(
+        userId,
+        id,
+        portfolioData({ goalAmount: null, growthStage: 1, goalHistory: [reached(1000)] })
+      );
+
+      const result = await upsert(
+        userId,
+        id,
+        portfolioData({ goalAmount: 5000, growthStage: 1, goalHistory: [reached(1000)] })
+      );
+
+      expect(result).toEqual({ status: "ok", version: 2 });
+      expect(await pulledPortfolio(userId)).toMatchObject({ goalAmount: 5000, growthStage: 1 });
+    });
+
+    it("rejects a malformed plant", async () => {
+      const userId = await createTestUser();
+
+      const result = await upsert(userId, randomUUID(), portfolioData({ growthStage: 7 }));
+
+      expect(result.status).toBe("rejected");
     });
   });
 });

@@ -1,4 +1,4 @@
-import type { DriftMode } from "./types";
+import type { DriftMode, PlantProgress, PlantStage } from "./types";
 
 /**
  * 포트폴리오 합계 비중 상한 (단위: %).
@@ -38,3 +38,22 @@ export const DEFAULT_DRIFT_MODE: DriftMode = "relative";
  * 같은 임계값이 같은 의미를 갖도록 `absolute` 로 둔다. (서버 컬럼 기본값과 같다.)
  */
 export const LEGACY_DRIFT_MODE: DriftMode = "absolute";
+
+/** 꽃·열매 — 식물이 다 자란 단계. 목표는 이만큼 달성할 수 있다. */
+export const MAX_PLANT_STAGE: PlantStage = 4;
+
+/** 식물 단계 표시 이름. */
+export const PLANT_STAGE_LABELS: Record<PlantStage, string> = {
+  0: "씨앗",
+  1: "새싹",
+  2: "묘목",
+  3: "나무",
+  4: "꽃·열매",
+};
+
+/** 목표를 정하기 전의 식물 — 씨앗. */
+export const INITIAL_PLANT_PROGRESS: PlantProgress = {
+  goalAmount: null,
+  growthStage: 0,
+  goalHistory: [],
+};

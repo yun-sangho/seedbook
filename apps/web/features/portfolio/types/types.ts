@@ -20,13 +20,34 @@ export interface PortfolioAllocation {
  */
 export type DriftMode = "relative" | "absolute";
 
+/** 포트폴리오 식물의 성장 단계: 씨앗 0 → 새싹 1 → 묘목 2 → 나무 3 → 꽃·열매 4. */
+export type PlantStage = 0 | 1 | 2 | 3 | 4;
+
+/** 달성한 목표 하나. `amount` 는 원, `reachedAt` 은 달성을 기록한 ISO 시각. */
+export interface PlantGoal {
+  amount: number;
+  reachedAt: string;
+}
+
+/**
+ * 포트폴리오 식물의 진행. 지금 목표(`goalAmount`)를 달성하면 한 단계 자라고 목표는 비워진다 —
+ * 사용자가 다음 목표를 새로 정한다 (최대 4번). 도달한 단계는 내려가지 않는다.
+ */
+export interface PlantProgress {
+  /** 지금 목표 금액 (원). 정하지 않았거나 방금 달성했으면 null. */
+  goalAmount: number | null;
+  growthStage: PlantStage;
+  /** 달성한 목표들 (오래된 순). */
+  goalHistory: PlantGoal[];
+}
+
 /**
  * 모델 포트폴리오 정의.
  *
  * 사용자가 원하는 자산 배분(allocations) + 메타데이터를 묶는 단위.
  * asset-plan 처럼 여러 개를 만들고 비교할 수 있다.
  */
-export interface PortfolioItem {
+export interface PortfolioItem extends PlantProgress {
   id: string;
   name: string; // "안정형", "공격형", "AI 테마" 등
   color: string; // ACCOUNT_COLORS 에서 자동 할당

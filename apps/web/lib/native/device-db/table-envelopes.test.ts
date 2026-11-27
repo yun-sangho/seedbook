@@ -243,6 +243,9 @@ describe("portfolio-storage", () => {
     accountIds: [ACCOUNT_A],
     driftMode: "relative",
     driftThresholdPercent: 5,
+    goalAmount: 30_000_000,
+    growthStage: 1,
+    goalHistory: [{ amount: 10_000_000, reachedAt: "2026-11-01T06:30:00.000Z" }],
     allocations: [
       {
         id: ALLOCATION,
@@ -256,6 +259,23 @@ describe("portfolio-storage", () => {
     createdAt: "2026-11-01T00:00:00.000Z",
     updatedAt: "2026-11-02T00:00:00.000Z",
   };
+
+  it("reads back a portfolio saved without a plant as a seed", async () => {
+    const { goalAmount: _g, growthStage: _s, goalHistory: _h, ...withoutPlant } = portfolio;
+    await writeTableEnvelope(
+      driver,
+      "portfolio-storage",
+      envelope({ portfolios: [withoutPlant] }, 3)
+    );
+
+    const result = await read(driver, "portfolio-storage");
+
+    expect((result!.state.portfolios as unknown[])[0]).toMatchObject({
+      goalAmount: null,
+      growthStage: 0,
+      goalHistory: [],
+    });
+  });
 
   it("reads back portfolios with their target allocations", async () => {
     await writeTableEnvelope(driver, "portfolio-storage", envelope({ portfolios: [portfolio] }, 3));

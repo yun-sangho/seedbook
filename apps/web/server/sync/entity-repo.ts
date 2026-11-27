@@ -23,6 +23,11 @@ export type EntityRepoOptions<Fields, Data> = {
   table: unknown;
   /** 입력 필드 → 최상위 행 컬럼 (id / userId / 동기화 컬럼 제외). */
   toColumns: (fields: Fields) => Record<string, unknown>;
+  /**
+   * 있던 행을 덮어쓸 때 쓸 컬럼 (기본: `toColumns` 그대로 — 마지막 저장이 이긴다). 올라가기만 하는
+   * 값처럼 저장된 값과 견줘야 하는 컬럼을 SQL 식으로 바꾼다 (`excluded."col"` 이 들어온 값).
+   */
+  conflictSet?: (columns: Record<string, unknown>) => Record<string, unknown>;
   /** 최상위 행을 쓴 뒤 하위 테이블(기록·보유종목 등)을 같은 트랜잭션에서 다시 쓴다. */
   writeChildren?: (tx: Tx, id: string, fields: Fields) => Promise<void>;
   /** 저장·삭제 뒤 같은 트랜잭션에서 맞출 파생 데이터 (예: 계좌 ↔ 포트폴리오 연결). */
@@ -64,7 +69,12 @@ export function createEntityRepo<Fields, Data>(
           target: t.id,
           // 남의 행이면 갱신하지 않는다 → 아무 행도 돌아오지 않는다.
           where: eq(t.userId, userId),
-          set: { ...columns, deletedAt: null, updatedAt: now, version: sql`${t.version} + 1` },
+          set: {
+            ...(options.conflictSet ? options.conflictSet(columns) : columns),
+            deletedAt: null,
+            updatedAt: now,
+            version: sql`${t.version} + 1`,
+          },
         })
         .returning({ version: t.version });
       if (!row) return { status: "rejected", reason: "forbidden" };

@@ -1,6 +1,7 @@
 import type { ManagedStoreConfig } from "@web/lib/sync/managed-store-config";
 import { LEGACY_DRIFT_MODE } from "../types/constants";
 import type { DriftMode, PortfolioItem } from "../types/types";
+import { readPlantProgress } from "../utils/portfolio-plant";
 
 const num = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : 0);
 const text = (value: unknown) => (typeof value === "string" ? value : "");
@@ -29,6 +30,7 @@ export const portfolioSyncConfig: ManagedStoreConfig<PortfolioItem> = {
     accountIds: (item.accountIds ?? []).filter((id) => typeof id === "string"),
     driftMode: driftMode(item.driftMode),
     driftThresholdPercent: num(item.driftThresholdPercent),
+    ...readPlantProgress(item),
     allocations: (item.allocations ?? []).map((a) => ({
       id: text(a.id),
       market: text(a.market),
@@ -58,6 +60,7 @@ export const portfolioSyncConfig: ManagedStoreConfig<PortfolioItem> = {
       : [],
     driftMode: driftMode(data.driftMode),
     driftThresholdPercent: num(data.driftThresholdPercent),
+    ...readPlantProgress(data),
     note: text(data.note),
     createdAt: text(data.createdAt),
     updatedAt: text(data.updatedAt),

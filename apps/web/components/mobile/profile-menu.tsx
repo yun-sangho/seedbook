@@ -5,7 +5,8 @@ import { ANONYMOUS_USER_NAME } from "@seedbook/database/anonymous-identity";
 import { ProfileFields, UserAvatar, useProfileDraft } from "@web/components/profile-editor";
 import { useSession } from "@web/lib/auth-client";
 import type { ProfileUser } from "@web/lib/seed-identity/profile";
-import { parseSeedAvatarKey, randomSeedAvatar } from "@web/lib/seed-identity/seed-avatar";
+import { parseProfileImage } from "@web/lib/seed-identity/profile-image";
+import { randomSeedAvatar } from "@web/lib/seed-identity/seed-avatar";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
   BottomSheetBody,
@@ -66,10 +67,14 @@ function ProfileSheetBody({
   onOpenChange: (open: boolean) => void;
   user: ProfileUser | undefined;
 }) {
-  const [initial] = useState(() => ({
-    avatar: parseSeedAvatarKey(user?.image) ?? randomSeedAvatar(),
-    nickname: user?.name ?? ANONYMOUS_USER_NAME,
-  }));
+  const [initial] = useState(() => {
+    const image = parseProfileImage(user?.image);
+    return {
+      avatar: image.seed ?? randomSeedAvatar(),
+      plantPortfolioId: image.plantPortfolioId,
+      nickname: user?.name ?? ANONYMOUS_USER_NAME,
+    };
+  });
   const draft = useProfileDraft(initial);
   const unchanged = draft.avatar === initial.avatar && draft.nickname === initial.nickname;
 

@@ -10,10 +10,12 @@ import {
   DEFAULT_DRIFT_MODE,
   DEFAULT_DRIFT_THRESHOLD_PERCENT,
   DEFAULT_PORTFOLIO_NAME_PREFIX,
+  INITIAL_PLANT_PROGRESS,
   LEGACY_DRIFT_MODE,
 } from "../types/constants";
 import type { DriftMode, PortfolioAllocation, PortfolioItem } from "../types/types";
 import { dedupePortfolioLinks } from "../utils/portfolio-links";
+import { growPlant, plantGoalError, readPlantProgress } from "../utils/portfolio-plant";
 
 const nowIso = () => new Date().toISOString();
 
@@ -55,6 +57,16 @@ interface PortfolioState {
   toggleAccountLink: (portfolioId: string, accountId: string) => void;
   setDriftThreshold: (portfolioId: string, value: number) => void;
   setDriftMode: (portfolioId: string, mode: DriftMode) => void;
+  /**
+   * 식물의 지금 목표 금액 (원) 을 정한다. `null` 이면 목표를 지운다. 규칙(`plantGoalError`)에
+   * 어긋나면 바꾸지 않고 false.
+   */
+  setPlantGoal: (portfolioId: string, amount: number | null) => boolean;
+  /**
+   * 포트폴리오 평가 금액 (id → 원) 으로 목표를 달성한 식물을 한 단계 키운다. 자란 것이 없으면
+   * 상태를 바꾸지 않는다 (동기화 대기열에도 남지 않는다).
+   */
+  growPlants: (values: ReadonlyMap<string, number>) => void;
 
   resetStore: () => void;
 }
@@ -86,6 +98,7 @@ export const usePortfolioStore = create<PortfolioState>()(
           accountIds: [],
           driftMode: DEFAULT_DRIFT_MODE,
           driftThresholdPercent: DEFAULT_DRIFT_THRESHOLD_PERCENT,
+          ...INITIAL_PLANT_PROGRESS,
           note: "",
           createdAt: nowIso(),
           updatedAt: nowIso(),
@@ -202,6 +215,30 @@ export const usePortfolioStore = create<PortfolioState>()(
         }));
       },
 
+      setPlantGoal: (portfolioId, amount) => {
+        const portfolio = get().portfolios.find((p) => p.id === portfolioId);
+        if (!portfolio) return false;
+        if (amount !== null && plantGoalError(portfolio, amount)) return false;
+        set((state) => ({
+          portfolios: state.portfolios.map((p) =>
+            p.id === portfolioId ? touch({ ...p, goalAmount: amount }) : p
+          ),
+        }));
+        return true;
+      },
+
+      growPlants: (values) => {
+        const now = nowIso();
+        const { portfolios } = get();
+        const next = portfolios.map((p) => {
+          const value = values.get(p.id);
+          if (value === undefined) return p;
+          const grown = growPlant(p, value, now);
+          return grown === p ? p : touch(grown);
+        });
+        if (next.some((p, i) => p !== portfolios[i])) set({ portfolios: next });
+      },
+
       resetStore: () => {
         set({ portfolios: [] });
       },
@@ -238,6 +275,8 @@ export const usePortfolioStore = create<PortfolioState>()(
           // 계산 방식이 생기기 전 포트폴리오는 그때처럼 %p 차이로 판정한다.
           driftMode: p.driftMode ?? LEGACY_DRIFT_MODE,
           driftThresholdPercent: p.driftThresholdPercent ?? DEFAULT_DRIFT_THRESHOLD_PERCENT,
+          // 식물이 생기기 전 포트폴리오는 씨앗이다.
+          ...readPlantProgress(p),
           note: p.note ?? "",
           createdAt: p.createdAt ?? nowIso(),
           updatedAt: p.updatedAt ?? nowIso(),

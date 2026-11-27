@@ -1,5 +1,5 @@
 import { ANONYMOUS_USER_NAME } from "@seedbook/database/anonymous-identity";
-import { parseSeedAvatarKey } from "@web/lib/seed-identity/seed-avatar";
+import { isProfileImageKey, parseProfileImage } from "@web/lib/seed-identity/profile-image";
 
 /**
  * 프로필(닉네임·씨앗 아바타) 규칙. 클라이언트 폼과 서버(`lib/auth-privacy.ts` 의 user update 훅)가
@@ -60,10 +60,13 @@ export function nicknameError(name: string): NicknameError | null {
   return null;
 }
 
-/** `user.image` 는 비우거나 씨앗 아바타 키만 쓴다 — 사진 URL 은 받지 않는다. */
+/**
+ * `user.image` 는 비우거나 씨앗 아바타 키 / 식물 아바타 키(`profile-image.ts`)만 쓴다 — 사진 URL 은
+ * 받지 않는다. 식물이 본인 포트폴리오인지는 서버 훅(`lib/auth-privacy.ts`)이 따로 본다.
+ */
 export function profileImageError(image: string | null): "invalid" | null {
   if (image === null) return null;
-  return parseSeedAvatarKey(image) ? null : "invalid";
+  return isProfileImageKey(image) ? null : "invalid";
 }
 
 export interface ProfileUser {
@@ -73,7 +76,7 @@ export interface ProfileUser {
 
 /** 씨앗 아바타가 없으면 가입 단계(아바타·닉네임 정하기)를 한 번 거친다 — 새·기존 사용자 모두. */
 export function needsProfileSetup(user: ProfileUser): boolean {
-  return parseSeedAvatarKey(user.image) === null;
+  return parseProfileImage(user.image).seed === null;
 }
 
 /** 가입 단계의 닉네임 초기값. 기본 이름이면 새로 뽑고, 직접 정한 이름은 그대로 둔다. */

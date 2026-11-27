@@ -29,7 +29,7 @@ const auth = betterAuth({
     },
   }),
   account: privacyAccountOptions,
-  databaseHooks: privacyDatabaseHooks,
+  databaseHooks: privacyDatabaseHooks(db),
   socialProviders: {
     kakao: kakaoProviderOptions({ clientId: "kakao-client", clientSecret: "kakao-secret" }),
     apple: appleProviderOptions({
@@ -328,6 +328,53 @@ describe("profile update keeps only a nickname and a seed avatar", () => {
       name: "알뜰한 도토리",
       image: "seed:seed-1-sun",
     });
+  });
+
+  async function insertPortfolio(userId: string) {
+    const id = randomUUID();
+    await db.insert(schema.portfolio).values({ id, userId, name: "안정형", color: "#111" });
+    return id;
+  }
+
+  it("stores a plant of the user's own portfolio with the seed avatar", async () => {
+    const cookie = await kakaoSessionCookie(randomInt(1, 2 ** 40));
+    const userId = await sessionUserId(cookie);
+    const image = `plant:${await insertPortfolio(userId)}|seed:pot-2-mint`;
+
+    const response = await updateUser(cookie, { image });
+
+    expect(response.status).toBe(200);
+    expect((await userRow(userId))?.image).toBe(image);
+  });
+
+  it("accepts a plant of a portfolio the server does not have (local mode)", async () => {
+    const cookie = await kakaoSessionCookie(randomInt(1, 2 ** 40));
+
+    const response = await updateUser(cookie, { image: `plant:${randomUUID()}|seed:pot-2-mint` });
+
+    expect(response.status).toBe(200);
+  });
+
+  it("rejects a plant of another user's portfolio", async () => {
+    const owner = await sessionUserId(await kakaoSessionCookie(randomInt(1, 2 ** 40)));
+    const cookie = await kakaoSessionCookie(randomInt(1, 2 ** 40));
+    const userId = await sessionUserId(cookie);
+
+    const response = await updateUser(cookie, {
+      image: `plant:${await insertPortfolio(owner)}|seed:pot-2-mint`,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await userRow(userId))?.image).toBeNull();
+  });
+
+  it("rejects a plant without the seed avatar", async () => {
+    const cookie = await kakaoSessionCookie(randomInt(1, 2 ** 40));
+    const userId = await sessionUserId(cookie);
+
+    const response = await updateUser(cookie, { image: `plant:${await insertPortfolio(userId)}` });
+
+    expect(response.status).toBe(400);
   });
 });
 

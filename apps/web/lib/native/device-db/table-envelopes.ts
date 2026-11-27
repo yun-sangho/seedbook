@@ -5,7 +5,9 @@ import {
   HOLDINGS_HISTORY_STORAGE_KEY,
   type HoldingsEntry,
 } from "@web/features/investments/utils/account-value-history";
+import { INITIAL_PLANT_PROGRESS } from "@web/features/portfolio/types/constants";
 import { dedupePortfolioLinks } from "@web/features/portfolio/utils/portfolio-links";
+import { readPlantProgress } from "@web/features/portfolio/utils/portfolio-plant";
 import {
   type AccountSnapshotPayload,
   isDateString,
@@ -337,6 +339,9 @@ type PortfolioRow = {
   accountIds: string;
   driftMode: "relative" | "absolute";
   driftThresholdPercent: number;
+  goalAmount: number | null;
+  growthStage: number;
+  goalHistory: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -367,6 +372,9 @@ async function readPortfolios(driver: SqlDriver): Promise<string | null> {
         accountIds: parseJsonArray(p.accountIds).filter(
           (id): id is string => typeof id === "string"
         ),
+        goalHistory: readPlantProgress({
+          goalHistory: parseJsonArray(p.goalHistory),
+        }).goalHistory,
         version: 1,
         deletedAt: null,
         createdAt: new Date(p.createdAt),
@@ -426,11 +434,13 @@ function portfolioStatements(state: State): SqlStatement[] {
     const columns = portfolioFieldsToColumns(fields);
     statements.push({
       sql: `INSERT INTO portfolio (id, name, color, note, accountIds, driftMode, driftThresholdPercent,
-              createdAt, updatedAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+              goalAmount, growthStage, goalHistory, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET name = excluded.name, color = excluded.color,
               note = excluded.note, accountIds = excluded.accountIds, driftMode = excluded.driftMode,
               driftThresholdPercent = excluded.driftThresholdPercent,
+              goalAmount = excluded.goalAmount, growthStage = excluded.growthStage,
+              goalHistory = excluded.goalHistory,
               createdAt = excluded.createdAt, updatedAt = excluded.updatedAt`,
       params: [
         id,
@@ -440,6 +450,10 @@ function portfolioStatements(state: State): SqlStatement[] {
         JSON.stringify(columns.accountIds),
         columns.driftMode,
         columns.driftThresholdPercent,
+        // 기기 envelope 은 늘 지금 앱이 쓴 것이라 식물이 있다. 없으면 씨앗으로 둔다.
+        fields.plant?.goalAmount ?? INITIAL_PLANT_PROGRESS.goalAmount,
+        fields.plant?.growthStage ?? INITIAL_PLANT_PROGRESS.growthStage,
+        JSON.stringify(fields.plant?.goalHistory ?? INITIAL_PLANT_PROGRESS.goalHistory),
         timestampOr(createdAt, now),
         timestampOr(updatedAt, now),
       ],
