@@ -9,6 +9,7 @@ import { portfolioSyncConfig } from "@web/features/portfolio/sync/portfolio-sync
 import { rebalancingSyncConfig } from "@web/features/rebalancing/sync/rebalancing-sync-config";
 import type { StateStorage } from "zustand/middleware";
 import { ACCOUNT_HEADER } from "./account-header";
+import { apiFetch } from "./api-client";
 import {
   afterDeviceStorageReady,
   type DeviceStorage,
@@ -247,8 +248,8 @@ export async function releaseAccountSlot(): Promise<void> {
  * 계정)에는 서버가 거절하게 한다.
  */
 export const accountFetch: typeof fetch = (input, init) => {
-  if (!requestAccount) return fetch(input, init);
-  return fetch(input, {
+  if (!requestAccount) return apiFetch(input, init);
+  return apiFetch(input, {
     ...init,
     headers: { ...(init?.headers as Record<string, string>), [ACCOUNT_HEADER]: requestAccount },
   });
