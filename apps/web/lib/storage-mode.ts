@@ -16,22 +16,6 @@ export const STORAGE_MODE_KEY = "seedbook.storageMode";
 export type StorageMode = "local" | "cloud";
 
 /**
- * Zustand persist 에 배선된 store 들의 key. 이 배열은 **closed set** 이며
- * API 라우트가 임의의 key 요청을 거부하는 화이트리스트이기도 하다.
- */
-export const CLOUD_STORE_KEYS = [
-  "investment-storage",
-  "portfolio-storage",
-  "rebalancing-storage",
-] as const;
-
-export type CloudStoreKey = (typeof CLOUD_STORE_KEYS)[number];
-
-export function isCloudStoreKey(value: string): value is CloudStoreKey {
-  return (CLOUD_STORE_KEYS as readonly string[]).includes(value);
-}
-
-/**
  * 현재 저장소 모드를 반환한다. SSR / 값 없음 / 잘못된 값은 모두 `local` 로
  * 폴백한다 (기존 동작과 동일).
  */

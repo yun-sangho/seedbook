@@ -5,8 +5,7 @@ import {
   fillMissingSnapshots,
   uploadAccountSnapshots,
 } from "@web/features/investments/utils/account-value-history-storage";
-import { clearEntitySyncState } from "./sync/managed-stores";
-import { ensureRecordsImported, getRecordLayer, getSyncEngine } from "./sync/record-sync";
+import { getRecordLayer, getSyncEngine } from "./sync/record-sync";
 import { finishCloudForLocal, mergeLocalIntoCloud } from "./sync/v2/mode-switch";
 
 /**
@@ -27,13 +26,11 @@ export type MigrationProgress = { step: MigrationStep };
 /** 로컬 → 클라우드: 기기 레코드를 서버와 합친다. */
 export async function uploadAllToCloud(onProgress?: (p: MigrationProgress) => void): Promise<void> {
   onProgress?.({ step: "records" });
-  await ensureRecordsImported();
   await mergeLocalIntoCloud(getSyncEngine(), getRecordLayer());
   onProgress?.({ step: "history" });
   // 올리기 전에 빠진 날을 채운다. 종가를 못 받아도 전환은 막지 않는다 (있는 기록만 올린다).
   await fillMissingSnapshots().catch(() => 0);
   await uploadAccountSnapshots();
-  clearEntitySyncState();
 }
 
 /**
@@ -44,11 +41,9 @@ export async function downloadAllFromCloud(
   onProgress?: (p: MigrationProgress) => void
 ): Promise<void> {
   onProgress?.({ step: "records" });
-  await ensureRecordsImported();
   await finishCloudForLocal(getSyncEngine(), getRecordLayer());
   onProgress?.({ step: "history" });
   await downloadAccountSnapshots();
-  clearEntitySyncState();
 }
 
 /** 서버에 이 계정의 것으로 있는 항목(계좌·포트폴리오·리밸런싱)의 id. 저장소 모드와 상관없다. */
@@ -62,6 +57,5 @@ export async function fetchCloudItemIds(): Promise<Set<string>> {
  * 이 기기에 자산 데이터가 있는지 — 없으면 클라우드로 바꿀 때 확인을 건너뛴다.
  */
 export async function hasAnyLocalData(): Promise<boolean> {
-  await ensureRecordsImported();
   return (await getRecordLayer().loadRecords()).size > 0;
 }

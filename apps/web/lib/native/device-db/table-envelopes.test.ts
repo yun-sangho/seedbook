@@ -5,7 +5,6 @@ import type { SqlDriver } from "./sql-driver";
 import {
   clearDeviceTables,
   isTableEnvelopeKey,
-  readQuarantinedItems,
   readTableEnvelope,
   removeTableEnvelope,
   writeTableEnvelope,
@@ -13,30 +12,6 @@ import {
 import { createNodeSqliteDriver } from "./testing/node-sqlite-driver";
 
 const ACCOUNT_A = "11111111-1111-4111-8111-111111111111";
-const ACCOUNT_B = "22222222-2222-4222-8222-222222222222";
-const HOLDING_A = "33333333-3333-4333-8333-333333333333";
-const CASH_A = "44444444-4444-4444-8444-444444444444";
-const PORTFOLIO = "55555555-5555-4555-8555-555555555555";
-const ALLOCATION = "66666666-6666-4666-8666-666666666666";
-const SESSION = "77777777-7777-4777-8777-777777777777";
-
-function account(id: string, name: string, extra: Record<string, unknown> = {}) {
-  return {
-    id,
-    accountName: name,
-    accountType: "일반 투자 계좌",
-    currency: "KRW",
-    initialInvestment: 1_000_000,
-    currentValue: 1_200_000,
-    note: "",
-    color: "#ff0000",
-    sellCostPercent: 0.2,
-    records: [],
-    holdings: [],
-    cashItems: [],
-    ...extra,
-  };
-}
 
 function envelope(state: Record<string, unknown>, version: number) {
   return JSON.stringify({ state, version });
@@ -57,351 +32,12 @@ beforeEach(async () => {
 });
 
 describe("isTableEnvelopeKey", () => {
-  it("covers the asset stores, preferences and account value history only", () => {
-    expect(isTableEnvelopeKey("investment-storage")).toBe(true);
+  it("covers the account value history only (assets are records)", () => {
     expect(isTableEnvelopeKey("account-snapshot-storage")).toBe(true);
     expect(isTableEnvelopeKey("holdings-history-storage")).toBe(true);
-    expect(isTableEnvelopeKey("portfolio-storage")).toBe(true);
-    expect(isTableEnvelopeKey("rebalancing-storage")).toBe(true);
-    expect(isTableEnvelopeKey("seedbook.preferences")).toBe(true);
+    expect(isTableEnvelopeKey("investment-storage")).toBe(false);
+    expect(isTableEnvelopeKey("seedbook.preferences")).toBe(false);
     expect(isTableEnvelopeKey("stock-price-cache")).toBe(false);
-  });
-});
-
-describe("investment-storage", () => {
-  it("returns null when nothing has been saved", async () => {
-    expect(await readTableEnvelope(driver, "investment-storage")).toBeNull();
-  });
-
-  it("stores accounts, holdings, cash and records in the server's tables", async () => {
-    await writeTableEnvelope(
-      driver,
-      "investment-storage",
-      envelope(
-        {
-          investments: [
-            account(ACCOUNT_A, "증권 계좌", {
-              records: [{ date: "2026-11-01", initialInvestment: 900_000, currentValue: 950_000 }],
-              holdings: [
-                {
-                  id: HOLDING_A,
-                  market: "KRX",
-                  ticker: "005930",
-                  name: "삼성전자",
-                  currency: "KRW",
-                  quantity: 10,
-                  memo: "",
-                },
-              ],
-              cashItems: [{ id: CASH_A, label: "예수금", amount: 50_000 }],
-            }),
-          ],
-        },
-        6
-      )
-    );
-
-    const accounts = await driver.query(
-      "SELECT id, accountName, initialInvestment FROM investment_account"
-    );
-    const holdings = await driver.query("SELECT ticker, quantity FROM stock_holding");
-    const cash = await driver.query("SELECT label, amount FROM cash_item");
-    const records = await driver.query("SELECT date, currentValue FROM investment_record");
-    expect(accounts).toEqual([
-      { id: ACCOUNT_A, accountName: "증권 계좌", initialInvestment: 1_000_000 },
-    ]);
-    expect(holdings).toEqual([{ ticker: "005930", quantity: 10 }]);
-    expect(cash).toEqual([{ label: "예수금", amount: 50_000 }]);
-    expect(records).toEqual([{ date: "2026-11-01", currentValue: 950_000 }]);
-  });
-
-  it("reads back the same accounts in the saved order", async () => {
-    const investments = [
-      account(ACCOUNT_B, "두 번째", {
-        holdings: [
-          {
-            id: HOLDING_A,
-            market: "KRX",
-            ticker: "005930",
-            name: "삼성전자",
-            currency: "KRW",
-            quantity: 3.5,
-            memo: "메모",
-          },
-        ],
-        cashItems: [{ id: CASH_A, label: "예수금", amount: 7 }],
-        records: [
-          { date: "2026-10-01", initialInvestment: 1, currentValue: 2 },
-          { date: "2026-11-01", initialInvestment: 3, currentValue: 4 },
-        ],
-      }),
-      account(ACCOUNT_A, "첫 번째"),
-    ];
-    await writeTableEnvelope(driver, "investment-storage", envelope({ investments }, 6));
-
-    const result = await read(driver, "investment-storage");
-
-    expect(result?.version).toBe(4);
-    expect(result?.state.investments).toEqual([
-      {
-        ...investments[0],
-        // 기록은 최신 날짜가 먼저 (서버 번역기와 같다).
-        records: [
-          { date: "2026-11-01", initialInvestment: 3, currentValue: 4 },
-          { date: "2026-10-01", initialInvestment: 1, currentValue: 2 },
-        ],
-      },
-      investments[1],
-    ]);
-  });
-
-  it("deletes an account and its holdings when it leaves the list", async () => {
-    const withHolding = account(ACCOUNT_A, "지울 계좌", {
-      holdings: [
-        {
-          id: HOLDING_A,
-          market: "KRX",
-          ticker: "005930",
-          name: "삼성전자",
-          currency: "KRW",
-          quantity: 1,
-          memo: "",
-        },
-      ],
-    });
-    await writeTableEnvelope(
-      driver,
-      "investment-storage",
-      envelope({ investments: [withHolding, account(ACCOUNT_B, "남길 계좌")] }, 6)
-    );
-
-    await writeTableEnvelope(
-      driver,
-      "investment-storage",
-      envelope({ investments: [account(ACCOUNT_B, "남길 계좌")] }, 6)
-    );
-
-    expect(await driver.query("SELECT id FROM investment_account")).toEqual([{ id: ACCOUNT_B }]);
-    expect(await driver.query("SELECT id FROM stock_holding")).toEqual([]);
-  });
-
-  it("keeps an account's creation time across saves", async () => {
-    await writeTableEnvelope(
-      driver,
-      "investment-storage",
-      envelope({ investments: [account(ACCOUNT_A, "계좌")] }, 6)
-    );
-    const [first] = await driver.query<{ createdAt: string }>(
-      "SELECT createdAt FROM investment_account"
-    );
-
-    await writeTableEnvelope(
-      driver,
-      "investment-storage",
-      envelope({ investments: [account(ACCOUNT_A, "이름 바꿈")] }, 6)
-    );
-
-    const [second] = await driver.query<{ createdAt: string }>(
-      "SELECT createdAt FROM investment_account"
-    );
-    expect(second?.createdAt).toBe(first?.createdAt);
-  });
-
-  it("skips an account the server would reject and keeps the rest", async () => {
-    await writeTableEnvelope(
-      driver,
-      "investment-storage",
-      envelope({ investments: [account(ACCOUNT_A, "정상"), { id: ACCOUNT_B, accountName: 42 }] }, 6)
-    );
-
-    expect(await driver.query("SELECT id FROM investment_account")).toEqual([{ id: ACCOUNT_A }]);
-  });
-
-  it("ignores a value that is not an envelope", async () => {
-    await writeTableEnvelope(
-      driver,
-      "investment-storage",
-      envelope({ investments: [account(ACCOUNT_A, "계좌")] }, 6)
-    );
-
-    await writeTableEnvelope(driver, "investment-storage", "not json");
-
-    expect(await driver.query("SELECT id FROM investment_account")).toEqual([{ id: ACCOUNT_A }]);
-  });
-});
-
-describe("portfolio-storage", () => {
-  const portfolio = {
-    id: PORTFOLIO,
-    name: "안정형",
-    color: "#00ff00",
-    note: "",
-    accountIds: [ACCOUNT_A],
-    driftMode: "relative",
-    driftThresholdPercent: 5,
-    goalAmount: 30_000_000,
-    growthStage: 1,
-    goalHistory: [{ amount: 10_000_000, reachedAt: "2026-11-01T06:30:00.000Z" }],
-    allocations: [
-      {
-        id: ALLOCATION,
-        market: "KRX",
-        ticker: "005930",
-        name: "삼성전자",
-        currency: "KRW",
-        targetPercent: 100,
-      },
-    ],
-    createdAt: "2026-11-01T00:00:00.000Z",
-    updatedAt: "2026-11-02T00:00:00.000Z",
-  };
-
-  it("reads back a portfolio saved without a plant as a seed", async () => {
-    const { goalAmount: _g, growthStage: _s, goalHistory: _h, ...withoutPlant } = portfolio;
-    await writeTableEnvelope(
-      driver,
-      "portfolio-storage",
-      envelope({ portfolios: [withoutPlant] }, 3)
-    );
-
-    const result = await read(driver, "portfolio-storage");
-
-    expect((result!.state.portfolios as unknown[])[0]).toMatchObject({
-      goalAmount: null,
-      growthStage: 0,
-      goalHistory: [],
-    });
-  });
-
-  it("reads back portfolios with their target allocations", async () => {
-    await writeTableEnvelope(driver, "portfolio-storage", envelope({ portfolios: [portfolio] }, 3));
-
-    const result = await read(driver, "portfolio-storage");
-
-    expect(result).toEqual({ state: { portfolios: [portfolio] }, version: 3 });
-    expect(await driver.query("SELECT targetPercent FROM portfolio_allocation")).toEqual([
-      { targetPercent: 100 },
-    ]);
-  });
-
-  it("links the account to the portfolio like the server's portfolioId column", async () => {
-    await writeTableEnvelope(
-      driver,
-      "investment-storage",
-      envelope({ investments: [account(ACCOUNT_A, "계좌"), account(ACCOUNT_B, "다른 계좌")] }, 6)
-    );
-    await writeTableEnvelope(driver, "portfolio-storage", envelope({ portfolios: [portfolio] }, 3));
-
-    // 계좌를 다시 저장해도 연결은 유지된다.
-    await writeTableEnvelope(
-      driver,
-      "investment-storage",
-      envelope(
-        { investments: [account(ACCOUNT_A, "이름 바꿈"), account(ACCOUNT_B, "다른 계좌")] },
-        6
-      )
-    );
-
-    expect(
-      await driver.query("SELECT id, portfolioId FROM investment_account ORDER BY accountName")
-    ).toEqual([
-      { id: ACCOUNT_B, portfolioId: null },
-      { id: ACCOUNT_A, portfolioId: PORTFOLIO },
-    ]);
-  });
-});
-
-describe("rebalancing-storage", () => {
-  it("reads back sessions with their tasks and result", async () => {
-    const session = {
-      id: SESSION,
-      accountId: ACCOUNT_A,
-      accountName: "계좌",
-      portfolioId: PORTFOLIO,
-      portfolioName: "안정형",
-      cashDelta: -1200,
-      tasks: [
-        {
-          id: "task-1",
-          market: "KRX",
-          ticker: "005930",
-          name: "삼성전자",
-          action: "매수",
-          amount: 70_000,
-          price: 70_000,
-          quantity: 1,
-          priceAsOf: null,
-          priceKind: null,
-          executedQuantity: null,
-          executedPrice: null,
-          orderedQuantity: null,
-          orderedPrice: null,
-          filledQuantity: null,
-          filledAmount: null,
-          done: false,
-        },
-      ],
-      startedAt: "2026-11-10T01:02:03.000Z",
-      completedAt: null,
-      result: null,
-    };
-
-    await writeTableEnvelope(driver, "rebalancing-storage", envelope({ sessions: [session] }, 1));
-
-    expect(await read(driver, "rebalancing-storage")).toEqual({
-      state: { sessions: [session] },
-      version: 1,
-    });
-  });
-});
-
-describe("seedbook.preferences", () => {
-  it("keeps the holdings sort apart from the accounts (writing accounts does not reset it)", async () => {
-    await writeTableEnvelope(
-      driver,
-      "seedbook.preferences",
-      envelope({ holdingsSortOption: "nameAsc", rebalancingTaskSort: "evalAsc" }, 1)
-    );
-    await writeTableEnvelope(driver, "investment-storage", envelope({ investments: [] }, 6));
-
-    expect((await read(driver, "seedbook.preferences"))?.state).toMatchObject({
-      holdingsSortOption: "nameAsc",
-      rebalancingTaskSort: "evalAsc",
-    });
-    expect((await read(driver, "investment-storage"))?.state).not.toHaveProperty(
-      "holdingsSortOption"
-    );
-  });
-
-  it("keeps the list sorts and chart range", async () => {
-    const state = {
-      rebalancingTaskSort: "nameDesc",
-      rebalancingCollapsedSections: [],
-      accountSortOption: "evalAsc",
-      portfolioStockSortOption: "nameAsc",
-      investmentTrendRange: "1year",
-      holdingsSortOption: "priceDesc",
-    };
-
-    await writeTableEnvelope(driver, "seedbook.preferences", envelope(state, 1));
-
-    expect(await read(driver, "seedbook.preferences")).toEqual({ state, version: 1 });
-  });
-
-  it("resets every preference to its default when removed", async () => {
-    await writeTableEnvelope(
-      driver,
-      "seedbook.preferences",
-      envelope({ accountSortOption: "evalAsc", investmentTrendRange: "all" }, 1)
-    );
-
-    await removeTableEnvelope(driver, "seedbook.preferences");
-
-    expect((await read(driver, "seedbook.preferences"))?.state).toMatchObject({
-      accountSortOption: "evalDesc",
-      portfolioStockSortOption: "driftDesc",
-      investmentTrendRange: "3months",
-    });
   });
 });
 
@@ -501,198 +137,52 @@ describe("holdings-history-storage", () => {
   });
 });
 
+describe("removeTableEnvelope", () => {
+  it("removes the daily values", async () => {
+    await writeTableEnvelope(
+      driver,
+      "account-snapshot-storage",
+      envelope(
+        {
+          snapshots: [
+            {
+              accountId: ACCOUNT_A,
+              date: "2026-11-24",
+              stockValue: 1,
+              cashValue: 0,
+              totalValue: 1,
+              holdingCount: 1,
+              missingPriceCount: 0,
+              oldestPriceDate: null,
+            },
+          ],
+        },
+        1
+      )
+    );
+
+    await removeTableEnvelope(driver, "account-snapshot-storage");
+
+    expect(await readTableEnvelope(driver, "account-snapshot-storage")).toBeNull();
+  });
+});
+
 describe("clearDeviceTables", () => {
   it("removes every saved row", async () => {
     await writeTableEnvelope(
       driver,
-      "investment-storage",
-      envelope({ investments: [account(ACCOUNT_A, "계좌")] }, 6)
+      "holdings-history-storage",
+      envelope({ entries: [{ date: "2026-11-24", accounts: null }] }, 1)
     );
-
-    await clearDeviceTables(driver);
-
-    expect(await readTableEnvelope(driver, "investment-storage")).toBeNull();
-    expect(await driver.query("SELECT * FROM user_list_order")).toEqual([]);
-  });
-});
-
-describe("items that fail validation (local mode keeps the only copy)", () => {
-  const holding = {
-    id: HOLDING_A,
-    market: "KRX",
-    ticker: "005930",
-    name: "삼성전자",
-    currency: "KRW",
-    quantity: 10,
-    memo: "",
-  };
-
-  // persist 는 JSON 으로 직렬화한다 — 메모리의 NaN 은 null 이 되어 들어온다.
-  const saveInvestments = (investments: unknown[]) =>
-    writeTableEnvelope(driver, "investment-storage", envelope({ investments }, 6));
-
-  async function savedAccounts() {
-    const result = await read(driver, "investment-storage");
-    return (result?.state.investments ?? []) as Array<ReturnType<typeof account>>;
-  }
-
-  it("keeps the last saved account when its update has a NaN amount", async () => {
-    await saveInvestments([account(ACCOUNT_A, "A"), account(ACCOUNT_B, "B")]);
-
-    await saveInvestments([
-      account(ACCOUNT_A, "A", { currentValue: null }),
-      account(ACCOUNT_B, "B 이름 바꿈"),
-    ]);
-
-    const accounts = await savedAccounts();
-    expect(accounts.map((a) => [a.id, a.accountName, a.currentValue])).toEqual([
-      [ACCOUNT_A, "A", 1_200_000],
-      [ACCOUNT_B, "B 이름 바꿈", 1_200_000],
-    ]);
-  });
-
-  it("keeps the last saved account when sellCostPercent is out of range", async () => {
-    await saveInvestments([account(ACCOUNT_A, "A")]);
-
-    await saveInvestments([account(ACCOUNT_A, "A", { sellCostPercent: 100 })]);
-
-    expect((await savedAccounts()).map((a) => a.sellCostPercent)).toEqual([0.2]);
-  });
-
-  it("keeps the account and its holdings when one holding quantity is NaN", async () => {
-    await saveInvestments([account(ACCOUNT_A, "A", { holdings: [holding] })]);
-
-    await saveInvestments([
-      account(ACCOUNT_A, "A", { holdings: [{ ...holding, quantity: null }] }),
-    ]);
-
-    const [saved] = await savedAccounts();
-    expect(saved?.holdings).toEqual([holding]);
-  });
-
-  it("quarantines the original item that could not be saved", async () => {
-    await saveInvestments([account(ACCOUNT_A, "A")]);
-    const broken = account(ACCOUNT_A, "A", { currentValue: null, futureField: "x" });
-
-    await saveInvestments([broken]);
-
-    expect(await readQuarantinedItems(driver)).toEqual([
+    await driver.batch([
       {
-        storageKey: "investment-storage",
-        itemId: ACCOUNT_A,
-        item: broken,
-        quarantinedAt: expect.any(String),
+        sql: "INSERT INTO device_kv (key, value, updatedAt) VALUES ('k', 'v', '2026-11-28')",
       },
     ]);
-  });
-
-  it("keeps only the latest failed version of an item", async () => {
-    await saveInvestments([account(ACCOUNT_A, "첫 번째", { currentValue: null })]);
-    await saveInvestments([account(ACCOUNT_A, "두 번째", { currentValue: null })]);
-
-    const quarantined = await readQuarantinedItems(driver);
-    expect(quarantined.map((q) => (q.item as { accountName: string }).accountName)).toEqual([
-      "두 번째",
-    ]);
-  });
-
-  it("quarantines a new account that fails validation without saving it", async () => {
-    await saveInvestments([account(ACCOUNT_A, "A"), { id: ACCOUNT_B, accountName: 42 }]);
-
-    expect((await savedAccounts()).map((a) => a.id)).toEqual([ACCOUNT_A]);
-    expect((await readQuarantinedItems(driver)).map((q) => q.itemId)).toEqual([ACCOUNT_B]);
-  });
-
-  it("drops the quarantined copy when the user deletes the item", async () => {
-    await saveInvestments([account(ACCOUNT_A, "A", { currentValue: null })]);
-
-    await saveInvestments([]);
-
-    expect(await readQuarantinedItems(driver)).toEqual([]);
-  });
-
-  it("does not touch the accounts when the list is missing from the envelope", async () => {
-    await saveInvestments([account(ACCOUNT_A, "A")]);
-
-    await writeTableEnvelope(driver, "investment-storage", envelope({}, 6));
-
-    expect((await savedAccounts()).map((a) => a.id)).toEqual([ACCOUNT_A]);
-  });
-
-  it("keeps the last saved portfolio, its allocations and account link", async () => {
-    const portfolio = {
-      id: PORTFOLIO,
-      name: "안정형",
-      color: "#00ff00",
-      note: "",
-      accountIds: [ACCOUNT_A],
-      driftMode: "relative",
-      driftThresholdPercent: 5,
-      allocations: [
-        {
-          id: ALLOCATION,
-          market: "KRX",
-          ticker: "005930",
-          name: "삼성전자",
-          currency: "KRW",
-          targetPercent: 100,
-        },
-      ],
-    };
-    await saveInvestments([account(ACCOUNT_A, "A")]);
-    await writeTableEnvelope(driver, "portfolio-storage", envelope({ portfolios: [portfolio] }, 3));
-
-    await writeTableEnvelope(
-      driver,
-      "portfolio-storage",
-      envelope({ portfolios: [{ ...portfolio, driftThresholdPercent: null }] }, 3)
-    );
-
-    const result = await read(driver, "portfolio-storage");
-    expect(result?.state.portfolios).toMatchObject([
-      { id: PORTFOLIO, driftThresholdPercent: 5, allocations: [{ id: ALLOCATION }] },
-    ]);
-    expect(await driver.query("SELECT portfolioId FROM investment_account")).toEqual([
-      { portfolioId: PORTFOLIO },
-    ]);
-    expect((await readQuarantinedItems(driver)).map((q) => q.storageKey)).toEqual([
-      "portfolio-storage",
-    ]);
-  });
-
-  it("keeps the last saved rebalancing session", async () => {
-    const session = {
-      id: SESSION,
-      accountId: ACCOUNT_A,
-      accountName: "계좌",
-      portfolioId: PORTFOLIO,
-      portfolioName: "안정형",
-      cashDelta: -1200,
-      tasks: [],
-      startedAt: "2026-11-10T01:02:03.000Z",
-      completedAt: null,
-      result: null,
-    };
-    await writeTableEnvelope(driver, "rebalancing-storage", envelope({ sessions: [session] }, 1));
-
-    await writeTableEnvelope(
-      driver,
-      "rebalancing-storage",
-      envelope({ sessions: [{ ...session, cashDelta: null }] }, 1)
-    );
-
-    const result = await read(driver, "rebalancing-storage");
-    expect(result?.state.sessions).toMatchObject([{ id: SESSION, cashDelta: -1200 }]);
-    expect((await readQuarantinedItems(driver)).map((q) => q.storageKey)).toEqual([
-      "rebalancing-storage",
-    ]);
-  });
-
-  it("is cleared with the rest of the device tables", async () => {
-    await saveInvestments([account(ACCOUNT_A, "A", { currentValue: null })]);
 
     await clearDeviceTables(driver);
 
-    expect(await readQuarantinedItems(driver)).toEqual([]);
+    expect(await readTableEnvelope(driver, "holdings-history-storage")).toBeNull();
+    expect(await driver.query("SELECT * FROM device_kv")).toEqual([]);
   });
 });

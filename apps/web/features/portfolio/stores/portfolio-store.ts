@@ -14,7 +14,6 @@ import {
   LEGACY_DRIFT_MODE,
 } from "../types/constants";
 import type { DriftMode, PortfolioAllocation, PortfolioItem } from "../types/types";
-import { dedupePortfolioLinks } from "../utils/portfolio-links";
 import { growPlant, plantGoalError, readPlantProgress } from "../utils/portfolio-plant";
 
 const nowIso = () => new Date().toISOString();
@@ -246,25 +245,9 @@ export const usePortfolioStore = create<PortfolioState>()(
     {
       name: "portfolio-storage",
       storage: createJSONStorage(() => createHybridStorage("portfolio-storage")),
-      version: 3,
       partialize: (state) => ({
         portfolios: state.portfolios,
       }),
-      migrate: (persisted, version) => {
-        const state = (persisted ?? {}) as { portfolios?: PortfolioItem[] };
-        if (version < 2) {
-          state.portfolios = (state.portfolios ?? []).map((p) => ({
-            ...p,
-            accountIds: p.accountIds ?? [],
-            driftThresholdPercent: p.driftThresholdPercent ?? DEFAULT_DRIFT_THRESHOLD_PERCENT,
-          }));
-        }
-        if (version < 3) {
-          // v3: 한 계좌는 하나의 포트폴리오에만 연결된다.
-          state.portfolios = dedupePortfolioLinks(state.portfolios ?? []);
-        }
-        return state;
-      },
       onRehydrateStorage: () => (state) => {
         if (!state) return;
         state.portfolios = (state.portfolios ?? []).map((p, i) => ({

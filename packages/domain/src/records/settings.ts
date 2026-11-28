@@ -19,15 +19,6 @@ export const PORTFOLIO_STOCK_SORT_OPTIONS = [
   "nameAsc",
   "nameDesc",
 ] as const;
-export const INVESTMENT_TREND_RANGES = [
-  "1month",
-  "3months",
-  "1year",
-  "5years",
-  "10years",
-  "all",
-] as const;
-
 /**
  * 계정의 화면 설정 (`user_preference`, 사용자당 하나). 저장 모드(`storageMode`·
  * `storageModeChosenAt`) 는 동기화를 켜고 끄는 계정 상태라 레코드에 넣지 않는다 (사용자 결정
@@ -43,6 +34,5 @@ export const settings = defineRecord({
     rebalancingCollapsedSections: f.enumList(REBALANCING_TASK_SECTIONS, { default: [] }),
     accountSortOption: f.enum(ACCOUNT_SORT_OPTIONS, { default: "evalDesc" }),
     portfolioStockSortOption: f.enum(PORTFOLIO_STOCK_SORT_OPTIONS, { default: "driftDesc" }),
-    investmentTrendRange: f.enum(INVESTMENT_TREND_RANGES, { default: "3months" }),
   },
 });

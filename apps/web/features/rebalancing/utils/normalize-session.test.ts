@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RebalancingSession } from "../types/types";
-import { rebalancingSyncConfig } from "./rebalancing-sync-config";
+import { normalizeSession } from "./normalize-session";
 
 const session: RebalancingSession = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -50,16 +50,16 @@ const session: RebalancingSession = {
   },
 };
 
-describe("rebalancingSyncConfig.normalizeItem", () => {
+describe("normalizeSession", () => {
   const broken = (patch: Record<string, unknown>) =>
     ({ ...session, ...patch }) as RebalancingSession;
 
   it("turns a NaN cash delta into 0", () => {
-    expect(rebalancingSyncConfig.normalizeItem(broken({ cashDelta: null })).cashDelta).toBe(0);
+    expect(normalizeSession(broken({ cashDelta: null })).cashDelta).toBe(0);
   });
 
   it("turns a NaN task amount into 0 and a NaN optional number into null", () => {
-    const [task] = rebalancingSyncConfig.normalizeItem(
+    const [task] = normalizeSession(
       broken({ tasks: [{ ...session.tasks[0], amount: null, executedQuantity: Number.NaN }] })
     ).tasks;
 
@@ -67,7 +67,7 @@ describe("rebalancingSyncConfig.normalizeItem", () => {
   });
 
   it("fixes NaN numbers in the result", () => {
-    const normalized = rebalancingSyncConfig.normalizeItem(
+    const normalized = normalizeSession(
       broken({
         result: {
           ...session.result,
@@ -84,12 +84,6 @@ describe("rebalancingSyncConfig.normalizeItem", () => {
   it("leaves a valid session as it is, including fields it does not know", () => {
     const withUnknown = { ...session, futureField: true } as RebalancingSession;
 
-    expect(rebalancingSyncConfig.normalizeItem(withUnknown)).toEqual(withUnknown);
-  });
-
-  it("round-trips a session through toData and fromData", () => {
-    expect(
-      rebalancingSyncConfig.fromData(session.id, rebalancingSyncConfig.toData(session))
-    ).toEqual(session);
+    expect(normalizeSession(withUnknown)).toEqual(withUnknown);
   });
 });

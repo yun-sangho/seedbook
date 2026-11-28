@@ -16,8 +16,9 @@ import {
 } from "@seedbook/domain";
 import { and, desc, eq, gt, isNotNull, isNull, lte, or, type SQL, sql } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
-import type { Tx } from "../entity-repo";
 import { fromColumnValue, RECORD_TABLES, type RecordTable, toColumnValue } from "./record-tables";
+
+export type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
 /**
  * 동기화 v2 공용 레코드 repo (설계 §4.2·§6). 레코드 9종을 정의 하나로 같은 규칙으로 다룬다.
@@ -55,7 +56,7 @@ function asTable(rt: RecordTable): PgTable {
 
 async function selectOne(tx: Tx, rt: RecordTable, where: SQL | undefined): Promise<Row | null> {
   const rows = (await tx
-    .select()
+    .select(rt.selection)
     .from(asTable(rt) as never)
     .where(where)
     .limit(1)) as Row[];
@@ -388,7 +389,7 @@ export async function listChanges(
   // 테이블마다 차례로 (연결 수를 아낀다 — 운영 풀은 작다).
   for (const rt of RECORD_TABLES.values()) {
     const rows = (await db
-      .select()
+      .select(rt.selection)
       .from(asTable(rt) as never)
       .where(
         and(

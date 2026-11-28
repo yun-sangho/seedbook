@@ -16,6 +16,41 @@ describe("device database schema", () => {
     expect(applied).toHaveLength(DEVICE_MIGRATIONS.length);
   });
 
+  it("drops the old asset tables, list order and old quarantine but keeps the device tables", async () => {
+    const driver = createNodeSqliteDriver();
+
+    await migrateDeviceDatabase(driver);
+
+    const tables = await driver.query<{ name: string }>(
+      "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name"
+    );
+    const names = tables.map((t) => t.name);
+    for (const gone of [
+      "investment_account",
+      "stock_holding",
+      "cash_item",
+      "investment_record",
+      "portfolio",
+      "portfolio_allocation",
+      "rebalancing",
+      "user_list_order",
+      "device_quarantine",
+    ]) {
+      expect(names).not.toContain(gone);
+    }
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "records",
+        "records_history",
+        "records_quarantine",
+        "device_kv",
+        "user_preference",
+        "investment_account_snapshot",
+        "investment_holding_history",
+      ])
+    );
+  });
+
   it("applies only the versions added since the last launch", async () => {
     const driver = createNodeSqliteDriver();
     await migrateDeviceDatabase(driver, [{ version: 1, statements: ["CREATE TABLE a (x TEXT)"] }]);

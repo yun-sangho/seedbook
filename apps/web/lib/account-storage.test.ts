@@ -226,19 +226,21 @@ describe.each(["web", "native"] as const)("account storage (%s)", (platform) => 
 });
 
 describe("account storage on the native app", () => {
-  it("keeps the second account out of the asset records", async () => {
+  it("keeps the second account out of the device records", async () => {
     await migrateDeviceDatabase(driver);
+    const preferences = (sort: string) =>
+      JSON.stringify({ state: { accountSortOption: sort }, version: 1 });
     const a = await launch("user-a", "native");
-    await a.accountStorage.writeEnvelope("investment-storage", envelope("A의 계좌"));
+    await a.accountStorage.writeEnvelope("seedbook.preferences", preferences("A의 정렬"));
     const b = await launch("user-b", "native");
-    await b.accountStorage.writeEnvelope("investment-storage", envelope("B의 계좌"));
+    await b.accountStorage.writeEnvelope("seedbook.preferences", preferences("B의 정렬"));
     await b.device.flush();
 
     expect(
       await driver.query(
-        "SELECT json_extract(data, '$.accountName') AS accountName FROM records WHERE type = 'account'"
+        "SELECT json_extract(data, '$.accountSortOption') AS sort FROM records WHERE type = 'settings'"
       )
-    ).toEqual([{ accountName: "A의 계좌" }]);
+    ).toEqual([{ sort: "A의 정렬" }]);
   });
 });
 

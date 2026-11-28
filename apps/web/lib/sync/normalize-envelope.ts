@@ -1,30 +1,40 @@
-import { getManagedStoreConfig } from "./managed-stores";
+import { normalizeInvestment } from "@web/features/investments/utils/normalize-investment";
+import { normalizePortfolio } from "@web/features/portfolio/utils/normalize-portfolio";
+import { normalizeSession } from "@web/features/rebalancing/utils/normalize-session";
+import { type RecordStoreKey, STORE_SHAPES } from "./v2/store-records";
+
+/** store 별 목록 항목 정리 (입력 도중의 NaN·null 등을 레코드 정의가 받는 값으로). */
+// biome-ignore lint/suspicious/noExplicitAny: store 마다 항목 타입이 달라 한 표에 담는다.
+const NORMALIZE_ITEM: Record<RecordStoreKey, (item: any) => unknown> = {
+  "investment-storage": normalizeInvestment,
+  "portfolio-storage": normalizePortfolio,
+  "rebalancing-storage": normalizeSession,
+};
 
 /**
- * persist envelope (`{ state, version }`) 의 목록 항목을 저장 전에 정리한다 (`normalizeItem`).
- * 저장소 모드와 상관없이 같은 규칙이다 — 브라우저 local(localStorage), 앱 local(SQLite),
- * cloud 캐시 모두 이 값을 쓴다. 동기화 설정이 없는 store, envelope 가 아닌 값, store 의 지금
- * persist version 이 아닌 envelope (옛 모양 — store 의 `migrate` 가 먼저 돌아야 한다) 는 그대로 둔다.
- * 고칠 것이 없으면 받은 문자열을 그대로 돌려준다.
+ * persist envelope (`{ state, version }`) 의 목록 항목을 저장 전·읽은 뒤에 정리한다. 레코드 정의는
+ * `null` 을 받지 않으므로(검증에 걸리면 격리) 화면이 만든 NaN(직렬화하면 null) 은 여기서 0 으로 고친다.
+ * 기기 레코드에 두는 store 가 아니거나 envelope 가 아닌 값은 그대로 둔다. 고칠 것이 없으면 받은
+ * 문자열을 그대로 돌려준다.
  */
 export function normalizePersistedEnvelope(key: string, value: string): string {
-  const config = getManagedStoreConfig(key);
-  if (!config) return value;
-  let envelope: { state?: Record<string, unknown>; version?: unknown } & Record<string, unknown>;
+  if (!Object.hasOwn(NORMALIZE_ITEM, key)) return value;
+  const normalizeItem = NORMALIZE_ITEM[key as RecordStoreKey];
+  const itemsField = STORE_SHAPES[key as RecordStoreKey].listField;
+  let envelope: { state?: Record<string, unknown> } & Record<string, unknown>;
   try {
     envelope = JSON.parse(value);
   } catch {
     return value;
   }
-  if (envelope?.version !== config.persistVersion) return value;
-  const items = envelope.state?.[config.itemsField];
+  const items = envelope?.state?.[itemsField];
   if (!Array.isArray(items)) return value;
 
-  const normalized = items.map((item) => config.normalizeItem(item));
+  const normalized = items.map((item) => normalizeItem(item));
   // 값이 같으면 원래 문자열을 그대로 둔다 (불필요한 재직렬화 차이를 만들지 않는다).
   if (JSON.stringify(normalized) === JSON.stringify(items)) return value;
   return JSON.stringify({
     ...envelope,
-    state: { ...envelope.state, [config.itemsField]: normalized },
+    state: { ...envelope.state, [itemsField]: normalized },
   });
 }

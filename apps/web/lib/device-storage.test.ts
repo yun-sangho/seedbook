@@ -3,43 +3,20 @@ import { createNativeDeviceStorage } from "./device-storage";
 import { META_LAST_QUICK_CHECK, readMeta } from "./native/device-db/device-meta";
 import { DEVICE_MIGRATIONS, migrateDeviceDatabase } from "./native/device-db/migrations";
 import type { SqlDriver, SqlStatement } from "./native/device-db/sql-driver";
-import { writeTableEnvelope } from "./native/device-db/table-envelopes";
 import { createMemorySnapshotStore } from "./native/device-db/testing/memory-snapshot-store";
 import { createNodeSqliteDriver } from "./native/device-db/testing/node-sqlite-driver";
 
-const ACCOUNT = "11111111-1111-4111-8111-111111111111";
-
-const investmentEnvelope = (name: string) =>
-  JSON.stringify({
-    state: {
-      investments: [
-        {
-          id: ACCOUNT,
-          accountName: name,
-          accountType: "일반 투자 계좌",
-          currency: "KRW",
-          initialInvestment: 0,
-          currentValue: 0,
-          note: "",
-          color: "#000000",
-          sellCostPercent: 0,
-          records: [],
-          holdings: [],
-          cashItems: [],
-        },
-      ],
-      holdingsSortOption: "evalDesc",
-    },
-    version: 6,
-  });
+/** 계정 설정 envelope — SQLite 에 레코드(`settings`)로 두는 envelope. */
+const preferencesEnvelope = (accountSortOption: string) =>
+  JSON.stringify({ state: { accountSortOption }, version: 1 });
 
 let driver: SqlDriver;
 
-/** 기기에 저장된 계좌 이름 (레코드). */
-const accountNames = () =>
+/** 기기에 저장된 계정 설정의 계좌 정렬 (레코드). */
+const savedSorts = () =>
   driver.query(
-    `SELECT json_extract(data, '$.accountName') AS accountName FROM records
-      WHERE type = 'account' AND deletedAt IS NULL`
+    `SELECT json_extract(data, '$.accountSortOption') AS sort FROM records
+      WHERE type = 'settings' AND deletedAt IS NULL`
   );
 
 beforeEach(() => {
@@ -73,21 +50,10 @@ function recordingDriver(inner: SqlDriver) {
 }
 
 describe("createNativeDeviceStorage startup", () => {
-  it("moves an earlier build's asset tables into records and reads them back", async () => {
-    await migrateDeviceDatabase(driver, DEVICE_MIGRATIONS.slice(0, 6));
-    await writeTableEnvelope(driver, "investment-storage", investmentEnvelope("옛 표 계좌"));
-    const storage = nativeStorage();
-
-    const read = JSON.parse((await storage.readEnvelope("investment-storage")) as string);
-
-    expect(read.state.investments[0].accountName).toBe("옛 표 계좌");
-    expect(await accountNames()).toEqual([{ accountName: "옛 표 계좌" }]);
-  });
-
   it("snapshots the records before a storage migration and once a day", async () => {
     await migrateDeviceDatabase(driver);
     const snapshots = createMemorySnapshotStore();
-    await nativeStorage().writeEnvelope("investment-storage", investmentEnvelope("계좌"));
+    await nativeStorage().writeEnvelope("seedbook.preferences", preferencesEnvelope("계좌"));
     const extra = { version: 99, statements: ["CREATE TABLE later_table (x TEXT)"] };
     DEVICE_MIGRATIONS.push(extra);
     try {
@@ -121,9 +87,9 @@ describe("createNativeDeviceStorage startup", () => {
       },
     });
 
-    await storage.writeEnvelope("investment-storage", investmentEnvelope("계좌"));
+    await storage.writeEnvelope("seedbook.preferences", preferencesEnvelope("계좌"));
 
-    expect(await accountNames()).toEqual([{ accountName: "계좌" }]);
+    expect(await savedSorts()).toEqual([{ sort: "계좌" }]);
   });
 });
 
@@ -156,15 +122,14 @@ describe("createNativeDeviceStorage", () => {
     expect(window.localStorage.length).toBe(0);
   });
 
-  it("saves asset envelopes as records", async () => {
+  it("saves the account preferences as the settings record", async () => {
     const storage = nativeStorage();
 
-    await storage.writeEnvelope("investment-storage", investmentEnvelope("증권 계좌"));
+    await storage.writeEnvelope("seedbook.preferences", preferencesEnvelope("증권 계좌"));
 
-    expect(await accountNames()).toEqual([{ accountName: "증권 계좌" }]);
-    expect(await driver.query("SELECT id FROM investment_account")).toEqual([]);
-    const read = JSON.parse((await storage.readEnvelope("investment-storage")) as string);
-    expect(read.state.investments[0].accountName).toBe("증권 계좌");
+    expect(await savedSorts()).toEqual([{ sort: "증권 계좌" }]);
+    const read = JSON.parse((await storage.readEnvelope("seedbook.preferences")) as string);
+    expect(read.state.accountSortOption).toBe("증권 계좌");
   });
 
   it("keeps other persisted stores (price cache) in device_kv", async () => {
@@ -194,26 +159,26 @@ describe("createNativeDeviceStorage", () => {
   });
 
   it("moves data an earlier app build left in localStorage into SQLite and empties localStorage", async () => {
-    window.localStorage.setItem("investment-storage", investmentEnvelope("예전 계좌"));
+    window.localStorage.setItem("seedbook.preferences", preferencesEnvelope("예전 계좌"));
     window.localStorage.setItem("seedbook.app-lock", "on");
     const storage = nativeStorage();
 
     await storage.whenReady();
 
-    expect(await accountNames()).toEqual([{ accountName: "예전 계좌" }]);
+    expect(await savedSorts()).toEqual([{ sort: "예전 계좌" }]);
     expect(storage.getItem("seedbook.app-lock")).toBe("on");
     expect(window.localStorage.length).toBe(0);
   });
 
   it("does not overwrite data already in SQLite with a leftover localStorage copy", async () => {
     const first = nativeStorage();
-    await first.writeEnvelope("investment-storage", investmentEnvelope("SQLite 계좌"));
-    window.localStorage.setItem("investment-storage", investmentEnvelope("남은 계좌"));
+    await first.writeEnvelope("seedbook.preferences", preferencesEnvelope("SQLite 계좌"));
+    window.localStorage.setItem("seedbook.preferences", preferencesEnvelope("남은 계좌"));
 
     const relaunched = nativeStorage();
     await relaunched.whenReady();
 
-    expect(await accountNames()).toEqual([{ accountName: "SQLite 계좌" }]);
+    expect(await savedSorts()).toEqual([{ sort: "SQLite 계좌" }]);
   });
 
   it("keeps a write made before the database finished loading", async () => {
@@ -237,32 +202,32 @@ describe("createNativeDeviceStorage", () => {
   it("applies envelope writes in call order", async () => {
     const storage = nativeStorage();
 
-    void storage.writeEnvelope("investment-storage", investmentEnvelope("처음"));
-    void storage.writeEnvelope("investment-storage", investmentEnvelope("나중"));
+    void storage.writeEnvelope("seedbook.preferences", preferencesEnvelope("처음"));
+    void storage.writeEnvelope("seedbook.preferences", preferencesEnvelope("나중"));
 
-    const read = JSON.parse((await storage.readEnvelope("investment-storage")) as string);
-    expect(read.state.investments[0].accountName).toBe("나중");
+    const read = JSON.parse((await storage.readEnvelope("seedbook.preferences")) as string);
+    expect(read.state.accountSortOption).toBe("나중");
   });
 
   it("writes only the latest envelope when several are waiting for the same key", async () => {
     const recording = recordingDriver(driver);
     const storage = createNativeDeviceStorage(async () => recording.driver, window.localStorage);
 
-    void storage.writeEnvelope("investment-storage", investmentEnvelope("1"));
-    void storage.writeEnvelope("investment-storage", investmentEnvelope("2"));
-    void storage.writeEnvelope("investment-storage", investmentEnvelope("3"));
+    void storage.writeEnvelope("seedbook.preferences", preferencesEnvelope("1"));
+    void storage.writeEnvelope("seedbook.preferences", preferencesEnvelope("2"));
+    void storage.writeEnvelope("seedbook.preferences", preferencesEnvelope("3"));
     await storage.flush();
 
     expect(recording.writesTo("records")).toBe(1);
-    expect(await accountNames()).toEqual([{ accountName: "3" }]);
+    expect(await savedSorts()).toEqual([{ sort: "3" }]);
   });
 
-  it("does not rewrite the records when the envelope did not change", async () => {
+  it("does not rewrite the record when the envelope did not change", async () => {
     const recording = recordingDriver(driver);
     const storage = createNativeDeviceStorage(async () => recording.driver, window.localStorage);
-    await storage.writeEnvelope("investment-storage", investmentEnvelope("계좌"));
+    await storage.writeEnvelope("seedbook.preferences", preferencesEnvelope("계좌"));
 
-    await storage.writeEnvelope("investment-storage", investmentEnvelope("계좌"));
+    await storage.writeEnvelope("seedbook.preferences", preferencesEnvelope("계좌"));
 
     expect(recording.writesTo("records")).toBe(1);
   });
@@ -323,13 +288,13 @@ describe("createNativeDeviceStorage", () => {
   it("reads back an envelope whose write failed instead of the older saved copy", async () => {
     const recording = recordingDriver(driver);
     const storage = createNativeDeviceStorage(async () => recording.driver, window.localStorage);
-    await storage.writeEnvelope("investment-storage", investmentEnvelope("예전"));
+    await storage.writeEnvelope("seedbook.preferences", preferencesEnvelope("예전"));
     recording.control.failNext = 1;
 
-    await storage.writeEnvelope("investment-storage", investmentEnvelope("새"));
+    await storage.writeEnvelope("seedbook.preferences", preferencesEnvelope("새"));
 
-    const read = JSON.parse((await storage.readEnvelope("investment-storage")) as string);
-    expect(read.state.investments[0].accountName).toBe("새");
+    const read = JSON.parse((await storage.readEnvelope("seedbook.preferences")) as string);
+    expect(read.state.accountSortOption).toBe("새");
   });
 
   it("retries a failed write on its own after a delay", async () => {
@@ -353,13 +318,13 @@ describe("createNativeDeviceStorage", () => {
 
   it("clears every table and the in-memory state", async () => {
     const storage = nativeStorage();
-    await storage.writeEnvelope("investment-storage", investmentEnvelope("계좌"));
+    await storage.writeEnvelope("seedbook.preferences", preferencesEnvelope("계좌"));
     storage.setItem("seedbook.app-lock", "on");
 
     await storage.clear();
 
     expect(storage.getItem("seedbook.app-lock")).toBeNull();
-    expect(await storage.readEnvelope("investment-storage")).toBeNull();
+    expect(await storage.readEnvelope("seedbook.preferences")).toBeNull();
     expect(await driver.query("SELECT * FROM device_kv")).toEqual([]);
   });
 

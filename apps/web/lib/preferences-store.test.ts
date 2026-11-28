@@ -8,7 +8,6 @@ const DEFAULTS = {
   rebalancingCollapsedSections: [],
   accountSortOption: "evalDesc",
   portfolioStockSortOption: "driftDesc",
-  investmentTrendRange: "3months",
   holdingsSortOption: "evalDesc",
 } as const;
 
@@ -23,7 +22,6 @@ describe("preferences store", () => {
       rebalancingCollapsedSections,
       accountSortOption,
       portfolioStockSortOption,
-      investmentTrendRange,
       holdingsSortOption,
     } = usePreferencesStore.getState();
 
@@ -32,7 +30,6 @@ describe("preferences store", () => {
       rebalancingCollapsedSections,
       accountSortOption,
       portfolioStockSortOption,
-      investmentTrendRange,
       holdingsSortOption,
     }).toEqual(DEFAULTS);
   });
@@ -59,12 +56,6 @@ describe("preferences store", () => {
     usePreferencesStore.getState().applyPreferences({ holdingsSortOption: "priceAsc" });
 
     expect(usePreferencesStore.getState().holdingsSortOption).toBe("priceAsc");
-  });
-
-  it("updates the investment trend range", () => {
-    usePreferencesStore.getState().applyPreferences({ investmentTrendRange: "1year" });
-
-    expect(usePreferencesStore.getState().investmentTrendRange).toBe("1year");
   });
 
   it("ignores values that are not an option (e.g. a removed one from an old cache)", () => {
@@ -96,7 +87,6 @@ describe("preferences store", () => {
         state: {
           accountSortOption: "evalAsc",
           portfolioStockSortOption: "nameDesc",
-          investmentTrendRange: "all",
           rebalancingTaskSort: "evalAsc",
         },
         version: 1,
@@ -108,7 +98,6 @@ describe("preferences store", () => {
     expect(usePreferencesStore.getState()).toMatchObject({
       accountSortOption: "evalAsc",
       portfolioStockSortOption: "nameDesc",
-      investmentTrendRange: "all",
       rebalancingTaskSort: "evalAsc",
     });
   });

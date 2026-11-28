@@ -122,10 +122,9 @@ export const useRebalancingStore = create<RebalancingState>()(
       },
     }),
     {
-      // local 모드면 localStorage, cloud 모드면 엔티티 동기화 (`rebalancing-sync-config.ts`).
+      // 기기 레코드에 둔다 (`lib/hybrid-storage.ts`, cloud 모드면 동기화 v2).
       name: "rebalancing-storage",
       storage: createJSONStorage(() => createHybridStorage("rebalancing-storage")),
-      version: 1,
       partialize: (state) => ({ sessions: state.sessions }),
     }
   )

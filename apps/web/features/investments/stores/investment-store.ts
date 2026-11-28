@@ -438,54 +438,11 @@ export const useInvestmentStore = create<InvestmentState>()(
       },
     }),
     {
-      name: "investment-storage", // 저장 backend key (local 모드면 localStorage, cloud 모드면 /api/storage)
+      // 기기 레코드에 둔다 (`lib/hybrid-storage.ts`). persist version 은 두지 않는다 — 모양은 레코드 정의가 정한다.
+      name: "investment-storage",
       storage: createJSONStorage(() => createHybridStorage("investment-storage")),
-      version: 6,
       // 보유 종목 정렬 같은 화면 설정은 계정 설정(`lib/preferences-store.ts`)에 둔다.
       partialize: (state) => ({ investments: state.investments }),
-      // v0~v3 에서 v4 로의 정규화 마이그레이션은 `lib/local-id-upgrade.ts` 가
-      // hybrid-storage 보다 먼저 실행되어 localStorage envelope 을 재작성한다.
-      // 여기선 하이드레이션 실패를 막는 안전망만 둔다.
-      migrate: (persisted, version) => {
-        const state = persisted as { investments?: InvestmentItem[] } & Record<string, unknown>;
-        if (!state.investments) state.investments = [];
-        // v4 이전 envelope 은 bootstrap 단계에서 이미 업그레이드 됐어야 함.
-        // 혹시라도 누락된 경우를 대비해 방어적으로 ID 가 없는 항목에 UUID 를 부여.
-        if (version < 4) {
-          state.investments = state.investments.map((inv) => ({
-            ...inv,
-            id: typeof inv.id === "string" && inv.id ? inv.id : crypto.randomUUID(),
-            holdings: (inv.holdings ?? []).map((h) => ({
-              ...h,
-              id: typeof h.id === "string" && h.id ? h.id : crypto.randomUUID(),
-            })),
-            cashItems: (inv.cashItems ?? []).map((c) => ({
-              ...c,
-              id: typeof c.id === "string" && c.id ? c.id : crypto.randomUUID(),
-            })),
-          }));
-          // 레거시 필드 제거
-          delete (state as { lastInvestmentId?: unknown }).lastInvestmentId;
-        }
-        if (version < 5) {
-          state.investments = state.investments.map((inv) => {
-            const next = { ...inv } as InvestmentItem & { accountOwner?: unknown };
-            delete next.accountOwner;
-            return next;
-          });
-        }
-        if (version < 6) {
-          // 현금 항목이 없는 기존 계좌에 기본 예수금을 채운다. 클라우드 envelope 은
-          // 항상 낮은 version 으로 내려오므로 매 로드마다 실행돼도 안전해야 한다
-          // (이미 현금 항목이 있으면 건드리지 않는다).
-          state.investments = state.investments.map((inv) =>
-            (inv.cashItems ?? []).length > 0
-              ? inv
-              : { ...inv, cashItems: [createDefaultCashItem()] }
-          );
-        }
-        return state;
-      },
       // 예전 버전이 계좌와 함께 저장한 보유 종목 정렬은 버린다 (지금은 계정 설정).
       merge: (persisted, current) => {
         const { holdingsSortOption: _, ...saved } = (persisted ??

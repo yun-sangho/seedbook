@@ -13,7 +13,6 @@ const account = {
   cashItems: [],
   note: "",
   color: "#ff0000",
-  sellCostPercent: 0.2,
 };
 
 describe("normalizePersistedEnvelope", () => {
@@ -21,17 +20,17 @@ describe("normalizePersistedEnvelope", () => {
     // persist 는 메모리의 NaN 을 JSON null 로 직렬화한다.
     const value = JSON.stringify({
       state: { investments: [{ ...account, currentValue: null }], holdingsSortOption: "nameAsc" },
-      version: 6,
+      version: 0,
     });
 
     expect(JSON.parse(normalizePersistedEnvelope("investment-storage", value))).toEqual({
       state: { investments: [{ ...account, currentValue: 0 }], holdingsSortOption: "nameAsc" },
-      version: 6,
+      version: 0,
     });
   });
 
   it("returns the same string when nothing needs fixing", () => {
-    const value = JSON.stringify({ state: { investments: [account] }, version: 6 });
+    const value = JSON.stringify({ state: { investments: [account] }, version: 0 });
 
     expect(normalizePersistedEnvelope("investment-storage", value)).toBe(value);
   });
@@ -42,14 +41,5 @@ describe("normalizePersistedEnvelope", () => {
     expect(normalizePersistedEnvelope("seedbook.preferences", other)).toBe(other);
     expect(normalizePersistedEnvelope("investment-storage", "not json")).toBe("not json");
     expect(normalizePersistedEnvelope("investment-storage", '{"state":{}}')).toBe('{"state":{}}');
-  });
-
-  it("leaves an envelope of an older persist version for the store's migrate", () => {
-    const legacy = JSON.stringify({
-      state: { investments: [{ ...account, currentValue: null }] },
-      version: 4,
-    });
-
-    expect(normalizePersistedEnvelope("investment-storage", legacy)).toBe(legacy);
   });
 });

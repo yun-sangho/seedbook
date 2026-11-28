@@ -6,10 +6,10 @@ import type { SqlDriver } from "./sql-driver";
  * - **버전 7 부터 자산은 `records` 레코드 JSON 테이블 하나**에 둔다 (설계 §2.5, `record-store.ts`).
  *   레코드 필드가 늘어도 기기 마이그레이션은 없다 — 여기에 새 버전을 더하는 것은 `records`·이력·
  *   outbox 같은 저장 틀이 바뀔 때뿐이다.
- * - 버전 1~6 의 자산 테이블(서버 Postgres 와 같은 모양)은 `records` 로 옮긴 뒤(`records-migration.ts`)
- *   읽지 않는 옛 사본이다. 옮기기가 실패한 기기만 계속 쓰고, v2-5 에서 지운다. 서버 컬럼이 바뀌어도
- *   더는 따라 고치지 않는다. 계좌 총액 기록(`investment_account_snapshot`·`investment_holding_history`),
- *   저장소 모드(`user_preference.storageMode`), `device_kv` 는 계속 쓴다 (레코드가 아닌 기기 상태).
+ * - 버전 1~6 의 자산 테이블(서버 Postgres 와 같은 모양)·`user_list_order`·`device_quarantine` 은
+ *   버전 8 이 지운다 (동기화 v2-5). 버전 1~6 의 문장은 이미 나간 기록이라 그대로 둔다.
+ *   계좌 총액 기록(`investment_account_snapshot`·`investment_holding_history`), 저장소 모드
+ *   (`user_preference.storageMode`), `device_kv` 는 계속 쓴다 (레코드가 아닌 기기 상태).
  */
 export interface DeviceMigration {
   version: number;
@@ -216,7 +216,7 @@ export const DEVICE_MIGRATIONS: DeviceMigration[] = [
       "CREATE INDEX records_history_record_idx ON records_history (type, id, seq)",
       // 쓰지 못한 값(필드 검증 실패·직렬화 실패)과 읽지 못한 행(체크섬·검증 실패)의 원본.
       // value 는 깨진 값일 수 있어 JSON 제약을 두지 않는다. 같은 자리는 마지막 것 하나.
-      // device_quarantine (버전 5) 의 항목은 옮겨 오고(source = 'legacy') 그 표는 더 쓰지 않는다.
+      // device_quarantine (버전 5) 의 항목은 옮겨 왔고(source = 'legacy') 그 표는 버전 8 이 지운다.
       `CREATE TABLE records_quarantine (
         type TEXT NOT NULL,
         id TEXT NOT NULL,
@@ -255,10 +255,22 @@ export const DEVICE_MIGRATIONS: DeviceMigration[] = [
       )`,
     ],
   },
+  {
+    version: 8,
+    statements: [
+      // 동기화 v2-5 (contract): 레코드로 옮긴 옛 자산 표·목록 순서·옛 격리 표를 지운다. 자식 표부터.
+      "DROP TABLE IF EXISTS investment_record",
+      "DROP TABLE IF EXISTS stock_holding",
+      "DROP TABLE IF EXISTS cash_item",
+      "DROP TABLE IF EXISTS portfolio_allocation",
+      "DROP TABLE IF EXISTS rebalancing",
+      "DROP TABLE IF EXISTS investment_account",
+      "DROP TABLE IF EXISTS portfolio",
+      "DROP TABLE IF EXISTS user_list_order",
+      "DROP TABLE IF EXISTS device_quarantine",
+    ],
+  },
 ];
-
-/** 이 버전 이상이면 `records` 테이블이 있다. */
-export const RECORDS_SCHEMA_VERSION = 7;
 
 const CREATE_MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS device_schema_migration (
   version INTEGER PRIMARY KEY NOT NULL,

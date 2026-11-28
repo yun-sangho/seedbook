@@ -42,7 +42,7 @@ describe("hasAnyLocalData", () => {
   });
 
   it("자산이 하나라도 있으면 true", async () => {
-    window.localStorage.setItem(
+    await getRecordLayer().saveStore(
       "investment-storage",
       JSON.stringify({
         state: {
@@ -58,7 +58,7 @@ describe("hasAnyLocalData", () => {
             },
           ],
         },
-        version: 6,
+        version: 0,
       })
     );
     expect(await hasAnyLocalData()).toBe(true);
@@ -136,7 +136,11 @@ function fakeSyncServer(
 }
 
 const investmentEnvelope = (...items: unknown[]) =>
-  JSON.stringify({ state: { investments: items }, version: 6 });
+  JSON.stringify({ state: { investments: items }, version: 0 });
+
+/** 이 기기의 자산 레코드로 저장한다 (화면 store 가 저장하는 길). */
+const saveLocal = (...items: unknown[]) =>
+  getRecordLayer().saveStore("investment-storage", investmentEnvelope(...items));
 
 describe("uploadAllToCloud", () => {
   beforeEach(() => window.localStorage.clear());
@@ -146,10 +150,7 @@ describe("uploadAllToCloud", () => {
   });
 
   it("creates the device's records on the server and keeps the cloud-only ones", async () => {
-    window.localStorage.setItem(
-      "investment-storage",
-      investmentEnvelope(accountItem(LOCAL, "로컬"))
-    );
+    await saveLocal(accountItem(LOCAL, "로컬"));
     const { pushed } = fakeSyncServer([serverAccount(CLOUD, "클라우드")]);
 
     await uploadAllToCloud();
@@ -160,10 +161,7 @@ describe("uploadAllToCloud", () => {
   });
 
   it("sends only the fields that differ for a record the server already has (local wins)", async () => {
-    window.localStorage.setItem(
-      "investment-storage",
-      investmentEnvelope(accountItem(LOCAL, "새 이름"))
-    );
+    await saveLocal(accountItem(LOCAL, "새 이름"));
     const { pushed } = fakeSyncServer([serverAccount(LOCAL, "옛 이름")]);
 
     await uploadAllToCloud();
@@ -174,25 +172,10 @@ describe("uploadAllToCloud", () => {
   });
 
   it("throws when the server does not take the data", async () => {
-    window.localStorage.setItem(
-      "investment-storage",
-      investmentEnvelope(accountItem(LOCAL, "로컬"))
-    );
+    await saveLocal(accountItem(LOCAL, "로컬"));
     fakeSyncServer([], { pushStatus: 500 });
 
     await expect(uploadAllToCloud()).rejects.toThrow(/올리지 못했어요/);
-  });
-
-  it("clears the old v1 sync queue after switching", async () => {
-    window.localStorage.setItem(
-      "seedbook.sync.rebalancing",
-      JSON.stringify({ userId: "u", meta: {} })
-    );
-    fakeSyncServer();
-
-    await uploadAllToCloud();
-
-    expect(window.localStorage.getItem("seedbook.sync.rebalancing")).toBeNull();
   });
 });
 
@@ -204,10 +187,7 @@ describe("downloadAllFromCloud", () => {
   });
 
   it("keeps the device records and adds the cloud ones", async () => {
-    window.localStorage.setItem(
-      "investment-storage",
-      investmentEnvelope(accountItem(LOCAL, "로컬"))
-    );
+    await saveLocal(accountItem(LOCAL, "로컬"));
     fakeSyncServer([serverAccount(CLOUD, "클라우드")]);
 
     await downloadAllFromCloud();
@@ -261,10 +241,6 @@ describe("account value history on a mode switch", () => {
   });
 
   it("uploads the device snapshots after the accounts", async () => {
-    window.localStorage.setItem(
-      "investment-storage",
-      JSON.stringify({ state: { investments: [] }, version: 3 })
-    );
     window.localStorage.setItem(
       "account-snapshot-storage",
       JSON.stringify({ state: { snapshots: [snapshot("2026-11-24", 1)] }, version: 1 })

@@ -1,12 +1,9 @@
 "use client";
 
-import { investmentsSyncConfig } from "@web/features/investments/sync/investments-sync-config";
 import {
   ACCOUNT_SNAPSHOT_STORAGE_KEY,
   HOLDINGS_HISTORY_STORAGE_KEY,
 } from "@web/features/investments/utils/account-value-history";
-import { portfolioSyncConfig } from "@web/features/portfolio/sync/portfolio-sync-config";
-import { rebalancingSyncConfig } from "@web/features/rebalancing/sync/rebalancing-sync-config";
 import type { StateStorage } from "zustand/middleware";
 import { ACCOUNT_HEADER } from "./account-header";
 import { apiFetch } from "./api-client";
@@ -23,6 +20,7 @@ import {
 } from "./native/biometric-login";
 import type { DeviceRecordStore } from "./sync/v2/device-record-store";
 import { QUARANTINE_KEY, SYNC_STATE_KEY } from "./sync/v2/record-layer";
+import { RECORD_STORE_KEYS } from "./sync/v2/store-records";
 
 /**
  * 계정별 기기 데이터. 한 기기에서 여러 계정이 로그인해도 자산·동기화 대기열·저장소 모드·개인
@@ -39,16 +37,17 @@ import { QUARANTINE_KEY, SYNC_STATE_KEY } from "./sync/v2/record-layer";
 export const DEVICE_OWNER_KEY = "seedbook.owner";
 const ACCOUNT_PREFIX = "seedbook.account.";
 
+/**
+ * 예전 버전(동기화 v1)이 남긴 동기화 대기열 키. 읽지 않지만 기본 자리의 주인을 정하는 근거이고,
+ * 탈퇴 때 함께 지운다.
+ */
 const SYNC_META_KEYS = [
-  investmentsSyncConfig.metaKey,
-  portfolioSyncConfig.metaKey,
-  rebalancingSyncConfig.metaKey,
+  "seedbook.sync.investment",
+  "seedbook.sync.portfolio",
+  "seedbook.sync.rebalancing",
 ];
-const ASSET_ENVELOPE_KEYS = [
-  investmentsSyncConfig.storageKey,
-  portfolioSyncConfig.storageKey,
-  rebalancingSyncConfig.storageKey,
-];
+/** 자산 store 의 persist 키. 자산은 레코드(`RECORD_DOCUMENT_KEY`)에 두고, 예전 버전의 envelope 가 남아 있을 수 있다. */
+const ASSET_ENVELOPE_KEYS = RECORD_STORE_KEYS;
 const ACCOUNT_ENVELOPE_KEYS = [
   ...ASSET_ENVELOPE_KEYS,
   "seedbook.preferences",

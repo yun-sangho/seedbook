@@ -14,14 +14,13 @@ import {
   takeSnapshot,
 } from "./native/device-db/integrity";
 import { DEVICE_MIGRATIONS, migrateDeviceDatabase } from "./native/device-db/migrations";
-import {
-  isRecordEnvelopeKey,
-  readRecordEnvelope,
-  removeRecordEnvelope,
-  writeRecordEnvelope,
-} from "./native/device-db/record-envelopes";
 import { clearRecords } from "./native/device-db/record-store";
-import { migrateTablesToRecords } from "./native/device-db/records-migration";
+import {
+  isSettingsEnvelopeKey,
+  readSettingsEnvelope,
+  removeSettingsEnvelope,
+  writeSettingsEnvelope,
+} from "./native/device-db/settings-envelope";
 import type { SqlDriver, SqlStatement } from "./native/device-db/sql-driver";
 import {
   isDevSqliteOptIn,
@@ -48,13 +47,14 @@ import {
  *   - `getItem` / `setItem` / `removeItem`: 작은 기기 상태 (동기화 대기열, 저장소 모드, 앱 잠금,
  *     화면 설정). 동기 API 라 앱에서는 시작할 때 SQLite 에서 메모리로 한 번 읽고, 쓰기는 메모리에
  *     바로 반영한 뒤 SQLite 에 차례로 저장한다. 저장소 모드는 서버처럼 `user_preference.storageMode`.
- *   - `readEnvelope` / `writeEnvelope`: Zustand persist envelope. 자산 store·계정 설정은 레코드 JSON
- *     (`records`, `native/device-db/record-envelopes.ts` 가 나누고 묶는다 — 쓰기는 `writeRecords()`
- *     하나로 검증·체크섬·이력), 계좌 총액 기록은 기기 표(`table-envelopes.ts`), 나머지(시세 캐시)는
- *     `device_kv`. 레코드 이전에 실패한 기기는 자산도 옛 표를 계속 쓴다.
+ *   - `readEnvelope` / `writeEnvelope`: Zustand persist envelope. 계정 설정은 레코드 `settings`
+ *     (`native/device-db/settings-envelope.ts` — 쓰기는 `writeRecords()` 하나로 검증·체크섬·이력),
+ *     계좌 총액 기록은 기기 표(`table-envelopes.ts`), 나머지(시세 캐시)는 `device_kv`.
+ *   - `recordStore`: 자산 레코드 (`records`, 동기화 v2 의 기기 저장소). 자산 store 는 envelope 를 쓰지
+ *     않는다 (`lib/hybrid-storage.ts`).
  *
- * 시작할 때 저장 틀 마이그레이션(바꾸기 전 스냅샷) → `PRAGMA quick_check` → 옛 표 → `records` 이전 →
- * 하루 1회 스냅샷 순서로 준비한다 (`native/device-db/integrity.ts`).
+ * 시작할 때 저장 틀 마이그레이션(바꾸기 전 스냅샷) → `PRAGMA quick_check` → 하루 1회 스냅샷 순서로
+ * 준비한다 (`native/device-db/integrity.ts`).
  *
  * 계정 데이터(자산·동기화 대기열·저장소 모드·개인 설정)는 여기를 직접 쓰지 말고 계정별로 나누는
  * `account-storage.ts` 를 쓴다.
@@ -178,28 +178,21 @@ async function loadDeviceState(driver: SqlDriver): Promise<Map<string, string>> 
   return state;
 }
 
-/** 자산 envelope 을 어디에 두나 — 레코드로 옮긴 기기는 `records`, 아니면 옛 표. */
-interface EnvelopeTables {
-  read: (driver: SqlDriver, key: string) => Promise<string | null>;
-  write: (driver: SqlDriver, key: string, value: string) => Promise<void>;
-  remove: (driver: SqlDriver, key: string) => Promise<void>;
-}
+/** SQLite 에 envelope 로 두는 키 (그 밖은 `device_kv`). */
+const isSqlEnvelopeKey = (key: string) => isTableEnvelopeKey(key) || isSettingsEnvelopeKey(key);
 
-function envelopeTables(usesRecords: boolean): EnvelopeTables {
-  const records = (key: string) => usesRecords && isRecordEnvelopeKey(key);
-  return {
-    read: (driver, key) =>
-      records(key) ? readRecordEnvelope(driver, key) : readTableEnvelope(driver, key),
-    write: (driver, key, value) =>
-      records(key)
-        ? writeRecordEnvelope(driver, key, value, APP_BUILD)
-        : writeTableEnvelope(driver, key, value),
-    remove: (driver, key) =>
-      records(key)
-        ? removeRecordEnvelope(driver, key, APP_BUILD)
-        : removeTableEnvelope(driver, key),
-  };
-}
+const sqlEnvelopes = {
+  read: (driver: SqlDriver, key: string) =>
+    isSettingsEnvelopeKey(key) ? readSettingsEnvelope(driver) : readTableEnvelope(driver, key),
+  write: (driver: SqlDriver, key: string, value: string) =>
+    isSettingsEnvelopeKey(key)
+      ? writeSettingsEnvelope(driver, value, APP_BUILD)
+      : writeTableEnvelope(driver, key, value),
+  remove: (driver: SqlDriver, key: string) =>
+    isSettingsEnvelopeKey(key)
+      ? removeSettingsEnvelope(driver, APP_BUILD)
+      : removeTableEnvelope(driver, key),
+};
 
 /**
  * 이전 앱 빌드가 localStorage 에 남긴 값을 SQLite 로 옮긴다. `clear` 면 옮긴 뒤 localStorage 를
@@ -207,7 +200,6 @@ function envelopeTables(usesRecords: boolean): EnvelopeTables {
  */
 async function moveLegacyStorage(
   driver: SqlDriver,
-  tables: EnvelopeTables,
   legacy: LegacyStorage,
   memory: Map<string, string>,
   clear: boolean
@@ -215,9 +207,9 @@ async function moveLegacyStorage(
   for (const key of storageKeys(legacy)) {
     const value = safe(() => legacy.getItem(key), null);
     if (value === null) continue;
-    if (isTableEnvelopeKey(key)) {
-      if ((await tables.read(driver, key)) === null) {
-        await tables.write(driver, key, value);
+    if (isSqlEnvelopeKey(key)) {
+      if ((await sqlEnvelopes.read(driver, key)) === null) {
+        await sqlEnvelopes.write(driver, key, value);
       }
     } else if (!memory.has(key)) {
       memory.set(key, value);
@@ -236,12 +228,9 @@ export interface NativeStorageOptions {
 
 /**
  * 데이터베이스를 쓸 수 있게 준비한다. 스냅샷·무결성 검사가 실패해도 시작은 계속한다 — 그것 때문에
- * localStorage 로 돌아가면 기기 데이터가 안 보인다. 레코드를 쓰는지 돌려준다.
+ * localStorage 로 돌아가면 기기 데이터가 안 보인다.
  */
-async function prepareDatabase(
-  driver: SqlDriver,
-  options: NativeStorageOptions
-): Promise<{ usesRecords: boolean }> {
+async function prepareDatabase(driver: SqlDriver, options: NativeStorageOptions): Promise<void> {
   const snapshots = await (options.openSnapshots?.() ?? Promise.resolve(null)).catch(
     (error: unknown) => {
       console.warn("[seedbook] snapshot store unavailable", error);
@@ -257,15 +246,12 @@ async function prepareDatabase(
     },
   });
   const check = await runQuickCheck(driver);
-  const migration = await migrateTablesToRecords(driver, { writtenBy: APP_BUILD });
-  const usesRecords = migration.status !== "failed";
   // 손상이 보이면 스냅샷을 새로 만들지 않는다 — 좋은 스냅샷이 밀려나지 않게.
-  if (snapshots && check.ok && usesRecords) {
+  if (snapshots && check.ok) {
     await ensureDailySnapshot(driver, snapshots).catch((error: unknown) =>
       console.warn("[seedbook] daily snapshot failed", error)
     );
   }
-  return { usesRecords };
 }
 
 /** 실패한 쓰기를 다시 시도하기까지 기다리는 시간 (실패할 때마다 두 배, 최대값까지). */
@@ -286,8 +272,6 @@ export function createNativeDeviceStorage(
   const memory = new Map<string, string>();
   const fallback = createBrowserStorage(legacy);
   let driver: SqlDriver | null = null;
-  let tables = envelopeTables(false);
-  let usesRecords = false;
   let usingFallback = false;
   let ready = false;
 
@@ -298,12 +282,11 @@ export function createNativeDeviceStorage(
         usingFallback = true;
         return;
       }
-      ({ usesRecords } = await prepareDatabase(opened, options));
-      tables = envelopeTables(usesRecords);
+      await prepareDatabase(opened, options);
       const saved = await loadDeviceState(opened);
       // 준비 전에 쓴 값이 이긴다 (그 쓰기는 대기열에서 곧 저장된다).
       for (const [key, value] of saved) if (!memory.has(key)) memory.set(key, value);
-      await moveLegacyStorage(opened, tables, legacy, memory, options.clearLegacy ?? true);
+      await moveLegacyStorage(opened, legacy, memory, options.clearLegacy ?? true);
       driver = opened;
     } catch (error) {
       console.warn("[seedbook] SQLite unavailable, using localStorage", error);
@@ -322,9 +305,9 @@ export function createNativeDeviceStorage(
   let retryDelay = RETRY_BASE_MS;
 
   const save = async (db: SqlDriver, key: string, value: string | null) => {
-    if (!isTableEnvelopeKey(key)) await db.batch([kvWrite(key, value)]);
-    else if (value === null) await tables.remove(db, key);
-    else await tables.write(db, key, value);
+    if (!isSqlEnvelopeKey(key)) await db.batch([kvWrite(key, value)]);
+    else if (value === null) await sqlEnvelopes.remove(db, key);
+    else await sqlEnvelopes.write(db, key, value);
   };
 
   const saveToFallback = (key: string, value: string | null) => {
@@ -403,17 +386,17 @@ export function createNativeDeviceStorage(
     readEnvelope: async (key) => {
       await drain();
       if (!driver) return fallback.getItem(key);
-      if (!isTableEnvelopeKey(key)) return memory.get(key) ?? null;
+      if (!isSqlEnvelopeKey(key)) return memory.get(key) ?? null;
       // 저장에 실패해 대기 중인 값이 테이블보다 최신이다.
       if (pending.has(key)) return pending.get(key) ?? null;
-      return tables.read(driver, key);
+      return sqlEnvelopes.read(driver, key);
     },
     writeEnvelope: (key, value) => {
-      if (!isTableEnvelopeKey(key)) memory.set(key, value);
+      if (!isSqlEnvelopeKey(key)) memory.set(key, value);
       return enqueue(key, value);
     },
     removeEnvelope: (key) => {
-      if (!isTableEnvelopeKey(key)) memory.delete(key);
+      if (!isSqlEnvelopeKey(key)) memory.delete(key);
       return enqueue(key, null);
     },
     keys: () => (usingFallback ? fallback.keys() : [...memory.keys()]),
@@ -438,8 +421,8 @@ export function createNativeDeviceStorage(
     },
     recordStore: (prefix) => {
       if (usingFallback) return fallback.recordStore(prefix);
-      // 기본 자리는 레코드 테이블 (옛 표에서 옮기지 못한 기기는 레코드를 쓰지 않는다).
-      if (driver && usesRecords && prefix === "") return createSqlRecordStore(driver, APP_BUILD);
+      // 기본 자리는 레코드 테이블.
+      if (driver && prefix === "") return createSqlRecordStore(driver, APP_BUILD);
       return kvRecordStore(
         {
           getItem: (key) => memory.get(key) ?? null,

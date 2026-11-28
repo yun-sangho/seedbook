@@ -40,21 +40,20 @@ describe("createHybridStorage (local mode)", () => {
     currentValue: 1_000,
     note: "",
     color: "#000000",
-    sellCostPercent: 0,
     records: [],
     holdings: [],
     cashItems: [],
     ...extra,
   });
   const envelope = (item: Record<string, unknown>) =>
-    JSON.stringify({ state: { investments: [item] }, version: 6 });
+    JSON.stringify({ state: { investments: [item] }, version: 0 });
 
   it("local 모드에서 자산 store 를 기기 레코드로 저장하고 다시 읽는다", async () => {
     const storage = createHybridStorage("investment-storage");
     await storage.setItem("investment-storage", envelope(account()));
 
     const loaded = JSON.parse((await storage.getItem("investment-storage")) as string);
-    expect(loaded).toEqual({ state: { investments: [account()] }, version: 6 });
+    expect(loaded).toEqual({ state: { investments: [account()] }, version: 0 });
     expect(window.localStorage.getItem("seedbook.records")).toContain(ACCOUNT);
   });
 
@@ -65,15 +64,6 @@ describe("createHybridStorage (local mode)", () => {
 
     const loaded = JSON.parse((await storage.getItem("investment-storage")) as string);
     expect(loaded.state.investments[0].currentValue).toBe(0);
-  });
-
-  it("local 모드에서 옛 envelope 를 처음 읽을 때 레코드로 옮기고 NaN 금액은 0 으로 정리한다", async () => {
-    window.localStorage.setItem("investment-storage", envelope(account({ currentValue: null })));
-    const storage = createHybridStorage("investment-storage");
-
-    const loaded = JSON.parse((await storage.getItem("investment-storage")) as string);
-    expect(loaded.state.investments[0].currentValue).toBe(0);
-    expect(window.localStorage.getItem("seedbook.records")).toContain(ACCOUNT);
   });
 
   it("local 모드에서 removeItem 이 localStorage 에서 key 를 제거한다", () => {

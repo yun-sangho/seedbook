@@ -15,7 +15,6 @@ describe("account preferences (real Postgres)", () => {
       rebalancingCollapsedSections: [],
       accountSortOption: "evalDesc",
       portfolioStockSortOption: "driftDesc",
-      investmentTrendRange: "3months",
       holdingsSortOption: "evalDesc",
     });
   });
@@ -28,7 +27,6 @@ describe("account preferences (real Postgres)", () => {
       rebalancingCollapsedSections: ["filled", "ordered"],
       accountSortOption: "evalAsc",
       portfolioStockSortOption: "nameAsc",
-      investmentTrendRange: "1year" as never,
       holdingsSortOption: "nameAsc",
     });
 
@@ -37,7 +35,6 @@ describe("account preferences (real Postgres)", () => {
       rebalancingCollapsedSections: ["filled", "ordered"],
       accountSortOption: "evalAsc",
       portfolioStockSortOption: "nameAsc",
-      investmentTrendRange: "1year",
       holdingsSortOption: "nameAsc",
     });
   });

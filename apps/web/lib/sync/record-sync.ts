@@ -4,12 +4,9 @@ import { accountFetch, accountStorage } from "@web/lib/account-storage";
 import { onBeforeFlush } from "@web/lib/device-storage";
 import { APP_BUILD } from "@web/lib/native/device-db/app-build";
 import { getStorageMode } from "@web/lib/storage-mode";
-import { clearEntitySyncState } from "./managed-stores";
 import type { DeviceRecordStore } from "./v2/device-record-store";
 import { createSyncEngine, type SyncEngine, type SyncStatus } from "./v2/engine";
-import { adoptV1Outbox } from "./v2/legacy-v1";
-import { createRecordLayer, type RecordLayer, SYNC_STATE_KEY } from "./v2/record-layer";
-import { RECORD_STORE_KEYS } from "./v2/store-records";
+import { createRecordLayer, type RecordLayer } from "./v2/record-layer";
 
 /**
  * 이 앱에서 동기화 v2 (`lib/sync/v2`) 를 쓰는 접점 — 계정 자리의 기기 레코드 저장소, `accountFetch`,
@@ -35,7 +32,6 @@ export function getRecordLayer(): RecordLayer {
       setItem: accountStorage.setItem,
       removeItem: accountStorage.removeItem,
     },
-    legacyEnvelope: (key) => accountStorage.readEnvelope(key),
     isCloud: () => getStorageMode() === "cloud",
   });
   onBeforeFlush(layer.idle);
@@ -62,12 +58,6 @@ export function onSyncStatus(listener: (status: SyncStatus) => void): () => void
   return () => statusListeners.delete(listener);
 }
 
-/** 옛 store envelope 를 모두 레코드로 옮긴다 (처음 한 번). */
-export async function ensureRecordsImported(): Promise<void> {
-  const records = getRecordLayer();
-  for (const key of RECORD_STORE_KEYS) await records.readStore(key);
-}
-
 let initial: Promise<void> | null = null;
 
 /** 첫 화면을 그리기 전에 기다리는 최대 시간 — 넘으면 기기 레코드로 그리고 동기화는 이어서 한다. */
@@ -75,15 +65,10 @@ const INITIAL_SYNC_WAIT_MS = 8_000;
 
 /**
  * cloud 모드에서 store 를 처음 읽기 전에 한 번 동기화한다 (새 기기·오래 쉰 기기도 첫 화면이 서버와
- * 맞는다). v1 에서 처음 넘어온 기기면 v1 이 보내지 못한 변경을 먼저 옮긴다. 오래 걸리면 기다리지 않는다.
+ * 맞는다). 오래 걸리면 기다리지 않는다.
  */
 export function initialCloudSync(): Promise<void> {
   initial ??= (async () => {
-    await ensureRecordsImported();
-    if (accountStorage.getItem(SYNC_STATE_KEY) === null) {
-      await adoptV1Outbox(getRecordLayer(), accountStorage.getItem);
-      clearEntitySyncState();
-    }
     const sync = getSyncEngine().sync();
     await Promise.race([sync, new Promise((resolve) => setTimeout(resolve, INITIAL_SYNC_WAIT_MS))]);
   })().catch((error: unknown) => {

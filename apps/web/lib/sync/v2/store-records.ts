@@ -20,7 +20,7 @@ import { knownFields, type LocalRecord, type RecordMap, recordKey } from "./reco
  *
  * - 계좌 ↔ 포트폴리오 연결의 원본은 `account.portfolioId` 다. 포트폴리오 store 의 `accountIds` 는
  *   compose 때 계좌 레코드에서 만들고, 저장 때 계좌 레코드의 `portfolioId` 패치로 바꾼다.
- * - 정의에 없는 store 필드(계좌 `sellCostPercent`, 포트폴리오 `createdAt`·`updatedAt`)는 레코드에
+ * - 정의에 없는 store 필드(포트폴리오 `createdAt`·`updatedAt`)는 레코드에
  *   함께 두고 동기화하지 않는다.
  * - 목록 순서는 `sortKey` (분수 인덱스). 순서가 맞는 기존 키는 그대로 둔다 (`assignListSortKeys`).
  */
@@ -39,8 +39,6 @@ export function isRecordStoreKey(key: string): key is RecordStoreKey {
 interface StoreShape {
   /** persist state 안의 목록 필드. */
   listField: string;
-  /** store 의 persist `version` — compose 한 envelope 의 version. */
-  version: number;
   /** 이 store 가 저장하는 레코드 타입 (첫 번째가 목록 항목). */
   types: string[];
 }
@@ -48,17 +46,14 @@ interface StoreShape {
 export const STORE_SHAPES: Record<RecordStoreKey, StoreShape> = {
   [INVESTMENT_STORE]: {
     listField: "investments",
-    version: 6,
     types: [account.type, holding.type, cash.type, accountRecord.type],
   },
   [PORTFOLIO_STORE]: {
     listField: "portfolios",
-    version: 3,
     types: [portfolio.type, allocation.type],
   },
   [REBALANCING_STORE]: {
     listField: "sessions",
-    version: 1,
     types: [rebalancing.type, rebalancingTask.type],
   },
 };
@@ -173,7 +168,6 @@ function decomposeInvestments(state: State, current: RecordMap): StorePlan | nul
   const roots = withSortKeys(
     accounts.map((item) => {
       const { portfolioId: _link, ...fields } = knownFields(account.type, item);
-      if (item.sellCostPercent !== undefined) fields.sellCostPercent = item.sellCostPercent;
       return { type: account.type, id: item.id, parentId: null, sortKey: null, fields };
     }),
     current
@@ -338,7 +332,6 @@ function composeInvestments(records: RecordMap): State {
   const history = childrenOf(records, accountRecord.type);
   const investments = byType(records, account.type).map((r) => {
     const item: Item = { id: r.id, ...pickKnown(account.type, r, ["portfolioId"]) };
-    if (r.fields.sellCostPercent !== undefined) item.sellCostPercent = r.fields.sellCostPercent;
     // 최근 날짜부터.
     item.records = (history.get(r.id) ?? [])
       .map((h) => pickKnown(accountRecord.type, h))
@@ -400,7 +393,7 @@ export function composeStore(key: RecordStoreKey, records: RecordMap): State {
 
 /** compose 한 상태를 persist envelope 문자열로. */
 export function composeEnvelope(key: RecordStoreKey, records: RecordMap): string {
-  return JSON.stringify({ state: composeStore(key, records), version: STORE_SHAPES[key].version });
+  return JSON.stringify({ state: composeStore(key, records), version: 0 });
 }
 
 /** persist envelope 문자열의 `state`. 읽을 수 없으면 null. */

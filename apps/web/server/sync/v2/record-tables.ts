@@ -37,6 +37,11 @@ export interface RecordTable {
   legacyInsert: Record<string, unknown>;
   /** 이 레코드를 부모로 갖는 하위 레코드 표 (부모를 지우면 같은 트랜잭션에서 톰스톤). */
   children: RecordTable[];
+  /**
+   * 읽을 컬럼 (이름 → 컬럼). 정의·공통 열만 읽는다 — `select()` 로 스키마의 모든 컬럼을 읽으면
+   * 옛 컬럼을 지우는 배포 동안(마이그레이션이 먼저 돌면) 읽기가 실패한다.
+   */
+  selection: Record<string, PgColumn>;
 }
 
 const LEGACY_INSERT: Record<string, Record<string, unknown>> = {
@@ -64,7 +69,7 @@ function column(table: PgTable, name: string): PgColumn {
 function buildTable(definition: RecordDefinition): RecordTable {
   const table = PG_TABLES.get(definition.table);
   if (!table) throw new Error(`${definition.type}: 서버 테이블 ${definition.table} 이 없다`);
-  return {
+  const rt: Omit<RecordTable, "selection"> = {
     definition,
     table,
     key: column(table, definition.key.kind === "singleton" ? "userId" : "id"),
@@ -84,6 +89,13 @@ function buildTable(definition: RecordDefinition): RecordTable {
     legacyInsert: LEGACY_INSERT[definition.type] ?? {},
     children: [],
   };
+  const common = [rt.key, rt.userId, rt.parent, rt.version, rt.changeSeq, rt.deletedAt]
+    .concat([rt.createdAt, rt.updatedAt, rt.sortKey])
+    .filter((c): c is PgColumn => c !== null);
+  const selection = Object.fromEntries(
+    [...common, ...rt.fields.map((f) => f.column)].map((c) => [c.name, c])
+  );
+  return { ...rt, selection };
 }
 
 export const RECORD_TABLES: ReadonlyMap<string, RecordTable> = (() => {

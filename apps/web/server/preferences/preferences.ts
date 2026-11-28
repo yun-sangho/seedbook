@@ -22,7 +22,6 @@ export async function readAccountPreferences(
       rebalancingCollapsedSections: true,
       accountSortOption: true,
       portfolioStockSortOption: true,
-      investmentTrendRange: true,
       holdingsSortOption: true,
     },
   });
