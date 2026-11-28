@@ -34,6 +34,13 @@ import { ActionButton } from "@mobile/seed-design/ui/action-button";
 import { Callout } from "@mobile/seed-design/ui/callout";
 import { Checkbox } from "@mobile/seed-design/ui/checkbox";
 import { ResultSection } from "@mobile/seed-design/ui/result-section";
+import {
+  SwipeableMenuSheetContent,
+  SwipeableMenuSheetGroup,
+  SwipeableMenuSheetItem,
+  SwipeableMenuSheetRoot,
+  SwipeableMenuSheetTrigger,
+} from "@mobile/seed-design/ui/swipeable-menu-sheet";
 import { TextField, TextFieldInput } from "@mobile/seed-design/ui/text-field";
 import { formatSignedWon, formatWithCommas, parseNumericString } from "@mobile/utils/number-format";
 import { Icon, ResponsivePair } from "@seed-design/react";
@@ -428,28 +435,25 @@ export function TradeEntryForm({
           </div>
         )}
 
+        {/* 끝난 거래·주문을 바꾸는 건 드문 일이라 버튼 하나로 모으고 메뉴 시트에서 고른다.
+            되돌리는 동작은 Critical 톤으로 구분한다 (SEED Menu Sheet). */}
         {viewingDone && (
-          // 끝난 거래를 고치거나 되돌리는 건 드문 일이라 본문에 작게 둔다.
-          <div className="flex items-center justify-center gap-x2">
-            <ActionButton variant="ghost" size="small" onClick={() => setEditingDone(true)}>
-              기록 고치기
-            </ActionButton>
-            <ActionButton variant="ghost" size="small" onClick={unfill}>
-              기록 취소
-            </ActionButton>
-          </div>
+          <ChangeMenu
+            label="기록 바꾸기"
+            editLabel="기록 고치기"
+            onEdit={() => setEditingDone(true)}
+            undoLabel="기록 취소"
+            onUndo={unfill}
+          />
         )}
-
         {confirming && (
-          // 주문을 고치거나 취소하는 건 드문 일이라 본문에 작게 둔다.
-          <div className="flex items-center justify-center gap-x2">
-            <ActionButton variant="ghost" size="small" onClick={startAmend}>
-              주문 고치기
-            </ActionButton>
-            <ActionButton variant="ghost" size="small" onClick={cancelOrder}>
-              {partial ? "남은 주문 취소" : "주문 취소"}
-            </ActionButton>
-          </div>
+          <ChangeMenu
+            label="주문 바꾸기"
+            editLabel="주문 고치기"
+            onEdit={startAmend}
+            undoLabel={partial ? "남은 주문 취소" : "주문 취소"}
+            onUndo={cancelOrder}
+          />
         )}
 
         {/* 단계 화면은 이 단계의 행동(CTA)을 하단 고정 바에 둔다 — SEED: Solid CTA 하나 + Weak 보조. */}
@@ -458,6 +462,37 @@ export function TradeEntryForm({
         {embedded && footerTop && <BottomAction>{footerTop}</BottomAction>}
       </div>
     </>
+  );
+}
+
+/** 드물게 쓰는 "고치기 / 취소" 를 모은 입구 버튼과 SEED Swipeable Menu Sheet. */
+function ChangeMenu({
+  label,
+  editLabel,
+  onEdit,
+  undoLabel,
+  onUndo,
+}: {
+  label: string;
+  editLabel: string;
+  onEdit: () => void;
+  undoLabel: string;
+  onUndo: () => void;
+}) {
+  return (
+    <SwipeableMenuSheetRoot>
+      <SwipeableMenuSheetTrigger asChild>
+        <ActionButton variant="neutralWeak" size="small" className="self-start">
+          {label}
+        </ActionButton>
+      </SwipeableMenuSheetTrigger>
+      <SwipeableMenuSheetContent aria-label={label}>
+        <SwipeableMenuSheetGroup>
+          <SwipeableMenuSheetItem label={editLabel} onClick={onEdit} />
+          <SwipeableMenuSheetItem label={undoLabel} tone="critical" onClick={onUndo} />
+        </SwipeableMenuSheetGroup>
+      </SwipeableMenuSheetContent>
+    </SwipeableMenuSheetRoot>
   );
 }
 
