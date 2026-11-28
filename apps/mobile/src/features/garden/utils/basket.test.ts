@@ -35,12 +35,16 @@ describe("basketCards", () => {
         id: "h1",
         kind: "tree",
         wish: "부모님과 제주 여행",
-        source: "안정형 · 1번째 계절",
+        source: "안정형",
         period: "2026.01.05 ~ 2026.11.28",
         goals: ["1,000만원", "1,100만원", "1,210만원", "1,331만원", "1,465만원"],
         doneOn: null,
       },
     ]);
+  });
+
+  it("names the portfolio only, without counting harvests", () => {
+    expect(basketCards([harvest({ season: 3 })])[0]?.source).toBe("안정형");
   });
 
   it("names a harvest without a wish", () => {

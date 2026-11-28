@@ -2,7 +2,12 @@ import { INITIAL_PLANT_PROGRESS } from "@mobile/features/portfolio/types/constan
 import type { PortfolioPlantView } from "@mobile/features/portfolio/utils/portfolio-plant-view";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { EditPlantGoalSheet, PlantSeasonSheet, PortfolioPlantRow } from "./portfolio-plant-card";
+import {
+  EditPlantGoalSheet,
+  PlantSeasonSheet,
+  PortfolioPlantRow,
+  plantSeasonSheetText,
+} from "./portfolio-plant-card";
 
 function plant(partial: Partial<PortfolioPlantView> = {}): PortfolioPlantView {
   return {
@@ -176,6 +181,20 @@ describe("EditPlantGoalSheet", () => {
       />
     );
     expect(screen.getByText(/시세를 불러오는 중이에요/)).toBeTruthy();
+  });
+});
+
+describe("plantSeasonSheetText", () => {
+  it("plants the first seed", () => {
+    expect(plantSeasonSheetText(undefined)).toEqual({ title: "씨앗 심기" });
+  });
+
+  it("plants again right after a harvest, naming the harvested wish", () => {
+    expect(plantSeasonSheetText("제주 여행")).toEqual({
+      title: "다시 씨앗 심기",
+      description:
+        '"제주 여행" 열매를 바구니에 담았어요. 다음에 키울 식물과 하고 싶은 일을 정해요.',
+    });
   });
 });
 

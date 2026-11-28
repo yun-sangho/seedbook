@@ -9,7 +9,7 @@ export interface BasketCard {
   kind: PlantKind;
   /** 하고 싶은 일 (비어 있었으면 안내 문구). */
   wish: string;
-  /** 어느 포트폴리오의 몇 번째 계절. */
+  /** 어느 포트폴리오의 수확 (몇 번째인지는 세지 않는다). */
   source: string;
   /** 첫 목표를 이룬 날 ~ 수확한 날 (KST). */
   period: string;
@@ -34,7 +34,7 @@ export function basketCards(harvests: readonly HarvestItem[]): BasketCard[] {
         id: h.id,
         kind: h.plantKind,
         wish: h.wish || "하고 싶은 일 없이 수확했어요",
-        source: `${h.sourceName || "이름 없는 포트폴리오"} · ${h.season}번째 계절`,
+        source: h.sourceName || "이름 없는 포트폴리오",
         period: `${kstDay(start)} ~ ${kstDay(h.harvestedAt)}`,
         goals: h.goals.map((g) => numberToKorean(g.amount)),
         doneOn: h.doneAt === null ? null : kstDay(h.doneAt),

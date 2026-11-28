@@ -206,25 +206,28 @@ export function EditPlantGoalSheet({
   );
 }
 
-/** 씨앗 심기 시트의 제목·설명. 방금 수확했으면(`harvestedWish` 가 있으면) 새 계절. */
-export function plantSeasonSheetText(
-  harvestedWish: string | undefined,
-  plant: Pick<PortfolioPlantView, "season">
-): { title: string; description?: string } {
+/**
+ * 씨앗 심기 시트의 제목·설명. 방금 수확했으면(`harvestedWish` 가 있으면) 다시 심기. 화면 문구는 수확
+ * 중심이다 — 계절·회차를 세지 않는다 (`season` 은 데이터에만 있다).
+ */
+export function plantSeasonSheetText(harvestedWish: string | undefined): {
+  title: string;
+  description?: string;
+} {
   if (harvestedWish !== undefined) {
     const basket = harvestedWish
       ? `"${harvestedWish}" 열매를 바구니에 담았어요.`
       : "열매를 바구니에 담았어요.";
     return {
-      title: "새 계절 씨앗 심기",
-      description: `${basket} ${plant.season}번째 계절에 키울 식물과 하고 싶은 일을 정해요.`,
+      title: "다시 씨앗 심기",
+      description: `${basket} 다음에 키울 식물과 하고 싶은 일을 정해요.`,
     };
   }
   return { title: "씨앗 심기" };
 }
 
 /**
- * 씨앗 심기 시트 — 식물 종류, 첫 목표(필수, 하한 `nextGoalError`), 이번 계절 목표를 이루면 하고 싶은
+ * 씨앗 심기 시트 — 식물 종류, 첫 목표(필수, 하한 `nextGoalError`), 목표를 이루면 하고 싶은
  * 일(선택). 목표 없는 씨앗일 때만 연다 (새 포트폴리오, 수확 뒤 새 계절).
  */
 export function PlantSeasonSheet({
@@ -271,7 +274,7 @@ export function PlantSeasonSheet({
       <BottomSheetContent title={title} showHandle>
         <BottomSheetBody>
           <p className="t4-regular text-fg-neutral-subtle pb-x3">
-            {description ?? "이번 계절 목표 다섯 개를 이루면 수확해 바구니에 담아요."}
+            {description ?? "목표 다섯 개를 이루면 열매를 수확해 바구니에 담아요."}
           </p>
           <div className="flex flex-col items-center gap-x3 pb-x4">
             <PlantAvatar stage="sapling" kind={kind} size={72} />

@@ -65,7 +65,7 @@ type Editing =
   | { kind: "settings" }
   | { kind: "drift" }
   | { kind: "plant-goal" }
-  /** 씨앗 심기 (종류·첫 목표·소원). `harvestedWish` 가 있으면 방금 수확한 뒤의 새 계절. */
+  /** 씨앗 심기 (종류·첫 목표·소원). `harvestedWish` 가 있으면 방금 수확한 뒤 다시 심기. */
   | { kind: "plant-season"; harvestedWish?: string }
   | { kind: "add-allocation" }
   | { kind: "import-allocations" }
@@ -480,8 +480,7 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
         key={`plant-season-${editing?.kind === "plant-season"}`}
         {...sheetProps(editing?.kind === "plant-season")}
         {...plantSeasonSheetText(
-          editing?.kind === "plant-season" ? editing.harvestedWish : undefined,
-          plant
+          editing?.kind === "plant-season" ? editing.harvestedWish : undefined
         )}
         initialKind={plant.kind}
         initialWish={portfolio.wish}
