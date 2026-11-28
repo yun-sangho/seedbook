@@ -7,9 +7,13 @@ import {
   privacyAccountOptions,
   privacyDatabaseHooks,
 } from "@web/lib/auth-privacy";
+import { NATIVE_APP_ORIGINS } from "@web/lib/cors";
+import { createKakaoIdTokenVerifier, kakaoIdTokenAudiences } from "@web/lib/kakao-id-token";
+import { nativeAppAuthToken } from "@web/lib/native-auth-token";
 import { deviceCredentialPlugin } from "@web/server/device-credentials/device-credential-plugin";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { bearer } from "better-auth/plugins";
 
 // 개발 환경에선 카카오 앱 설정 없이도 로그인할 수 있도록 이메일/비밀번호
 // 프로바이더를 함께 활성화한다. 프로덕션 빌드(`NODE_ENV !== "development"`)
@@ -47,13 +51,18 @@ export const auth = betterAuth({
     kakao: kakaoProviderOptions({
       clientId: process.env.KAKAO_CLIENT_ID ?? "",
       clientSecret: process.env.KAKAO_CLIENT_SECRET ?? "",
+      // 네이티브 앱의 카카오 SDK 로그인 (ID 토큰). 대상 앱 키가 없으면 모두 거절한다.
+      verifyIdToken: createKakaoIdTokenVerifier({ audiences: kakaoIdTokenAudiences(process.env) }),
     }),
     ...(appleConfig
       ? {
           apple: appleProviderOptions({
             clientId: appleConfig.clientId,
             clientSecret: createAppleClientSecret(appleConfig),
-            appBundleIdentifier: appleConfig.appBundleIdentifier,
+            // 웹(Services ID)과 네이티브 앱(번들 ID)이 받은 id token 을 모두 받는다.
+            audience: [appleConfig.clientId, appleConfig.appBundleIdentifier].filter(
+              (value): value is string => Boolean(value)
+            ),
           }),
         }
       : {}),
@@ -61,8 +70,19 @@ export const auth = betterAuth({
   // 시작할 때 준 `errorCallbackURL` 을 알 수 없는 실패(만료된 state 등)도 better-auth 의 영어 오류
   // 페이지 대신 로그인 화면으로 보낸다. `?error=` 를 로그인 화면이 안내로 바꾼다.
   onAPIError: { errorURL: DEFAULT_RETURN_PATH },
-  // 네이티브 앱 생체 인증 로그인 (`server/device-credentials/`).
-  plugins: [deviceCredentialPlugin({ db })],
-  // Apple 은 콜백을 appleid.apple.com 에서 form_post 로 보낸다.
-  ...(appleConfig ? { trustedOrigins: ["https://appleid.apple.com"] } : {}),
+  plugins: [
+    // 네이티브 앱 생체 인증 로그인 (`server/device-credentials/`).
+    deviceCredentialPlugin({ db }),
+    // 네이티브 앱(앱 번들)은 쿠키 대신 `Authorization: Bearer <세션 토큰>` 으로 보낸다. 세션을 만드는
+    // 응답(로그인·생체 인증 로그인)에 `set-auth-token` 헤더로 토큰을 준다. 브라우저는 지금처럼 쿠키.
+    bearer(),
+    // 그 토큰은 앱 origin 요청의 응답에만 남긴다 — 브라우저 JS 는 세션 토큰을 읽지 못한다. bearer() 다음.
+    nativeAppAuthToken(),
+  ],
+  trustedOrigins: [
+    // 앱 번들의 origin (iOS `capacitor://localhost`, Android `https://localhost`). CORS 는 `proxy.ts`.
+    ...NATIVE_APP_ORIGINS,
+    // Apple 은 콜백을 appleid.apple.com 에서 form_post 로 보낸다.
+    ...(appleConfig ? ["https://appleid.apple.com"] : []),
+  ],
 });

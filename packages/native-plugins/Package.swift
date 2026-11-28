@@ -10,14 +10,19 @@ let package = Package(
         .library(name: "SeedbookNativePlugins", targets: ["SeedbookNativePlugins"])
     ],
     dependencies: [
-        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", from: "8.0.0")
+        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", from: "8.0.0"),
+        // 카카오 로그인 (SeedbookKakaoLoginPlugin)
+        .package(url: "https://github.com/kakao/kakao-ios-sdk", exact: "2.30.0")
     ],
     targets: [
         .target(
             name: "SeedbookNativePlugins",
             dependencies: [
                 .product(name: "Capacitor", package: "capacitor-swift-pm"),
-                .product(name: "Cordova", package: "capacitor-swift-pm")
+                .product(name: "Cordova", package: "capacitor-swift-pm"),
+                .product(name: "KakaoSDKCommon", package: "kakao-ios-sdk"),
+                .product(name: "KakaoSDKAuth", package: "kakao-ios-sdk"),
+                .product(name: "KakaoSDKUser", package: "kakao-ios-sdk")
             ],
             path: "ios/Sources/SeedbookNativePlugins")
     ]

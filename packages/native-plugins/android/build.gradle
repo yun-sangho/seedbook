@@ -26,6 +26,7 @@ android {
 repositories {
     google()
     mavenCentral()
+    maven { url 'https://devrepo.kakao.com/nexus/content/groups/public/' }
 }
 
 dependencies {
@@ -34,4 +35,6 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     // 하단 탭바의 BottomNavigationView
     implementation "com.google.android.material:material:$materialVersion"
+    // 카카오 로그인 (SeedbookKakaoLoginPlugin)
+    implementation "com.kakao.sdk:v2-user:2.26.0"
 }

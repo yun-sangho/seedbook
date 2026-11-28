@@ -34,6 +34,8 @@ services:
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:?BETTER_AUTH_URL must be set in .env.local (e.g. https://seedbook.boogie.ing)}
       KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-}
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      # 네이티브 앱 카카오 SDK 로그인의 ID 토큰 대상(aud) (apps/web/lib/kakao-id-token.ts). 없으면 앱은 웹 OAuth.
+      KAKAO_NATIVE_APP_KEY: ${KAKAO_NATIVE_APP_KEY:-}
       # Sign in with Apple (선택) — 모두 있을 때만 켜진다 (apps/web/lib/apple-auth.ts).
       APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
       APPLE_TEAM_ID: ${APPLE_TEAM_ID:-}

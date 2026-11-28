@@ -10,6 +10,11 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        // 카카오 네이티브 앱 키 — `-PKAKAO_NATIVE_APP_KEY=…` 또는 환경변수. 없으면 카카오 SDK 로그인을 끄고
+        // 웹 OAuth 로 로그인한다 (SeedbookKakaoLoginPlugin). 키 해시는 카카오 개발자 콘솔에 등록한다.
+        def kakaoNativeAppKey = (project.findProperty('KAKAO_NATIVE_APP_KEY') ?: System.getenv('KAKAO_NATIVE_APP_KEY') ?: 'unset').toString().trim()
+        manifestPlaceholders = [kakaoNativeAppKey: kakaoNativeAppKey]
+        resValue "string", "kakao_native_app_key", kakaoNativeAppKey
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61

@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { schema } from "@seedbook/database";
+import { nativeAppAuthToken } from "@web/lib/native-auth-token";
 import { openTestDb } from "@web/test/db/test-db";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { bearer } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { deviceCredentialPlugin } from "./device-credential-plugin";
@@ -23,7 +25,7 @@ const auth = betterAuth({
     },
   }),
   emailAndPassword: { enabled: true },
-  plugins: [deviceCredentialPlugin({ db })],
+  plugins: [deviceCredentialPlugin({ db }), bearer(), nativeAppAuthToken()],
 });
 
 const createdEmails: string[] = [];
@@ -51,13 +53,13 @@ function sessionCookie(response: Response): string {
   return setCookie.split(";")[0] ?? "";
 }
 
-async function post(path: string, init: { body?: unknown; cookie?: string } = {}) {
+async function post(path: string, init: { body?: unknown; cookie?: string; origin?: string } = {}) {
   return auth.handler(
     new Request(`${BASE_URL}/api/auth${path}`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        origin: BASE_URL,
+        origin: init.origin ?? BASE_URL,
         "user-agent": "SeedbookApp/1",
         ...(init.cookie ? { cookie: init.cookie } : {}),
       },
@@ -86,6 +88,55 @@ describe("device credential sign-in (better-auth + real Postgres)", () => {
 
     expect(response.status).toBe(200);
     expect(await sessionUserId(sessionCookie(response))).toBe(userId);
+  });
+
+  it("hands the native app a bearer token for the new session", async () => {
+    const { cookie, userId } = await signUp();
+    const credential = await enroll(cookie);
+
+    const response = await post("/device-credential/sign-in", {
+      body: credential,
+      origin: "capacitor://localhost",
+    });
+
+    const token = response.headers.get("set-auth-token") ?? "";
+    const session = await auth.api.getSession({
+      headers: new Headers({ authorization: `Bearer ${token}` }),
+    });
+    expect(session?.user.id).toBe(userId);
+  });
+
+  it("does not hand the session token to a browser (same-origin) request", async () => {
+    const { cookie } = await signUp();
+    const credential = await enroll(cookie);
+
+    const response = await post("/device-credential/sign-in", { body: credential });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("set-auth-token")).toBeNull();
+  });
+
+  it("enrolls with a bearer session instead of a cookie", async () => {
+    const { cookie } = await signUp();
+    const signIn = await post("/device-credential/sign-in", {
+      body: await enroll(cookie),
+      origin: "https://localhost",
+    });
+    const token = signIn.headers.get("set-auth-token") ?? "";
+
+    const response = await auth.handler(
+      new Request(`${BASE_URL}/api/auth/device-credential/enroll`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: BASE_URL,
+          authorization: `Bearer ${token}`,
+        },
+        body: "{}",
+      })
+    );
+
+    expect(response.status).toBe(200);
   });
 
   it("creates a new session instead of reusing the enrolling one", async () => {

@@ -8,7 +8,10 @@ import { type Database, schema } from "@seedbook/database";
 import { ANONYMOUS_USER_NAME, anonymousEmail } from "@seedbook/domain/anonymous-identity";
 import type { BetterAuthOptions } from "better-auth";
 import { APIError } from "better-auth/api";
+import type { OAuth2Tokens } from "better-auth/oauth2";
+import { kakao } from "better-auth/social-providers";
 import { eq } from "drizzle-orm";
+import { decodeJwt } from "jose";
 
 /**
  * 로그인에서 신상 정보를 저장하지 않게 하는 better-auth 설정 (`packages/database/src/anonymous-identity.ts`).
@@ -33,14 +36,45 @@ export function anonymousUserFields(providerId: string, accountId: string | numb
   };
 }
 
-export function kakaoProviderOptions(credentials: { clientId: string; clientSecret: string }) {
-  return {
-    ...credentials,
+type IdTokenVerifier = (token: string, nonce?: string) => Promise<boolean>;
+
+/**
+ * 카카오 provider 설정.
+ *
+ * - 웹: 리다이렉트 OAuth (동의 항목 없이 회원번호만, `/v2/user/me`).
+ * - 네이티브 앱: 카카오 SDK 가 준 OIDC ID 토큰을 `signIn.social({ idToken })`·`linkSocial({ idToken })`
+ *   로 받는다. better-auth 의 카카오 provider 는 ID 토큰 검증을 내장하지 않아 `verifyIdToken`
+ *   (`lib/kakao-id-token.ts`) 을 준다 — 없으면 ID 토큰 로그인은 거절된다. 검증한 토큰의 `sub` 이
+ *   카카오 회원번호(`/v2/user/me` 의 `id`)와 같아 웹으로 가입한 사람도 같은 계정으로 들어온다.
+ *   앱은 카카오 액세스 토큰을 보내지 않으므로 사용자 정보는 ID 토큰에서 읽는다.
+ */
+export function kakaoProviderOptions(credentials: {
+  clientId: string;
+  clientSecret: string;
+  verifyIdToken?: IdTokenVerifier;
+}) {
+  const { verifyIdToken, ...keys } = credentials;
+  const options = {
+    ...keys,
     // 동의 항목을 하나도 요청하지 않는다 — 카카오 회원번호만 받는다.
     disableDefaultScope: true,
-    scope: [],
+    scope: [] as string[],
     mapProfileToUser: (profile: { id: number | string }) =>
       anonymousUserFields("kakao", profile.id),
+  };
+  const webProvider = kakao(options);
+  return {
+    ...options,
+    ...(verifyIdToken ? { verifyIdToken } : { disableIdTokenSignIn: true }),
+    getUserInfo: async (token: OAuth2Tokens) => {
+      if (token.accessToken || !token.idToken) return webProvider.getUserInfo(token);
+      // ID 토큰 경로: better-auth 가 `verifyIdToken` 으로 서명을 확인한 뒤에만 부른다.
+      // `sub` 은 회원번호 문자열이다. 웹 경로의 `id`(숫자)와 같은 계정 키(`String(id)`)가 되게 숫자로 둔다.
+      const { sub } = decodeJwt(token.idToken);
+      const id = typeof sub === "string" && /^\d+$/.test(sub) ? Number(sub) : Number.NaN;
+      if (!Number.isSafeInteger(id)) return null;
+      return { user: anonymousUserFields("kakao", id), data: { id, kakao_account: {} } };
+    },
   };
 }
 
