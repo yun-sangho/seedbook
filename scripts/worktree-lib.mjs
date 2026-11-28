@@ -1,8 +1,9 @@
 // 워크트리 슬롯의 순수 로직 (scripts/worktree.mjs 가 쓴다). 파일·프로세스·DB 를 건드리지 않아
 // vitest 로 검증한다 (apps/web/test/worktree/worktree-lib.test.ts).
 //
-//   슬롯 0 = 메인 체크아웃: web :4001, DB seedbook / seedbook_test (기존 그대로)
-//   슬롯 N = 링크된 워크트리 (1..9): web :4001+10N (3000번대는 다른 프로젝트(teum)의 슬롯 포트와 겹친다), 같은 dev postgres 안 DB seedbook_sN / seedbook_sN_test
+//   슬롯 0 = 메인 체크아웃: web :4001 (+ API :4002), DB seedbook / seedbook_test (기존 그대로)
+//   슬롯 N = 링크된 워크트리 (1..9): web :4001+10N (+ API :4002+10N) (3000번대는 다른 프로젝트(teum)의 슬롯 포트와 겹친다), 같은 dev postgres 안 DB seedbook_sN / seedbook_sN_test
+//   web 포트는 앱 dev 서버(Vite, apps/mobile) — 브라우저가 여는 곳. API 포트는 Next(apps/web) 로, Vite 가 /api·소개·약관을 넘긴다.
 
 import { sep } from "node:path";
 
@@ -19,9 +20,28 @@ export const DEFAULT_PG_PASSWORD = "seedbook";
 
 const SLOT_DATABASE = /^seedbook_s(\d+)(_test)?$/;
 
-/** @param {number} slot */
+/**
+ * 브라우저가 여는 포트 (앱 dev 서버, Vite). 카카오 Redirect URI·BETTER_AUTH_URL 도 이 포트다.
+ * @param {number} slot
+ */
 export function webPort(slot) {
   return MAIN_WEB_PORT + 10 * slot;
+}
+
+/**
+ * 웹 서버(Next: API·인증·소개·약관) 포트. Vite 가 이 포트로 넘긴다.
+ * @param {number} slot
+ */
+export function apiPort(slot) {
+  return webPort(slot) + 1;
+}
+
+/**
+ * 이 슬롯이 쓰는 포트 (web, API)
+ * @param {number} slot
+ */
+export function slotPorts(slot) {
+  return [webPort(slot), apiPort(slot)];
 }
 
 /** 카카오 콘솔에 Redirect URI 를 등록한 마지막 슬롯 (0..3 = 4001·4011·4021·4031) */
@@ -68,20 +88,20 @@ export function formatSlotFile(slot) {
   const db = slotDatabases(slot);
   return [
     "# scripts/worktree.mjs 가 배정한 워크트리 슬롯 (gitignore). 반납은 `pnpm wt:down`",
-    `# web http://localhost:${webPort(slot)} / DB ${db.dev}, ${db.test}`,
+    `# web http://localhost:${webPort(slot)} (API :${apiPort(slot)}) / DB ${db.dev}, ${db.test}`,
     `SEEDBOOK_SLOT=${slot}`,
     "",
   ].join("\n");
 }
 
 /**
- * 비어 있는 가장 작은 슬롯. 다른 워크트리가 쥔 슬롯과 web 포트가 이미 쓰이는 슬롯은 건너뛴다
+ * 비어 있는 가장 작은 슬롯. 다른 워크트리가 쥔 슬롯과 web·API 포트가 이미 쓰이는 슬롯은 건너뛴다
  * @param {{ used: Set<number>, portFree: (port: number) => boolean }} options
  * @returns {number | null}
  */
 export function pickSlot({ used, portFree }) {
   for (let slot = 1; slot <= MAX_SLOT; slot++) {
-    if (!used.has(slot) && portFree(webPort(slot))) return slot;
+    if (!used.has(slot) && slotPorts(slot).every(portFree)) return slot;
   }
   return null;
 }
@@ -96,7 +116,12 @@ export function pickSlot({ used, portFree }) {
 export function slotEnv(slot, env) {
   const port = webPort(slot);
   /** @type {Record<string, string>} */
-  const wanted = { SEEDBOOK_SLOT: String(slot), PORT: String(port) };
+  // PORT 는 앱 dev 서버(Vite), API_PORT 는 Next 가 듣는다.
+  const wanted = {
+    SEEDBOOK_SLOT: String(slot),
+    PORT: String(port),
+    API_PORT: String(apiPort(slot)),
+  };
   if (slot !== 0) {
     const credentials = { user: env.POSTGRES_USER, password: env.POSTGRES_PASSWORD };
     const db = slotDatabases(slot);

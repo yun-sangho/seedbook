@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 // 워크트리 병렬 개발용 슬롯. 워크트리마다 슬롯 번호 N 하나로 web 포트와 DB 를 나눈다.
-//   슬롯 0 = 메인 체크아웃: web :4001, DB seedbook / seedbook_test (기존 그대로)
-//   슬롯 N = 링크된 워크트리 (1..9): web :4001+10N, 같은 dev postgres 컨테이너 안 DB seedbook_sN / seedbook_sN_test
+//   슬롯 0 = 메인 체크아웃: web :4001 (+ API :4002), DB seedbook / seedbook_test (기존 그대로)
+//   슬롯 N = 링크된 워크트리 (1..9): web :4001+10N (+ API :4002+10N), 같은 dev postgres 컨테이너 안 DB seedbook_sN / seedbook_sN_test
+//   web = 앱 dev 서버 (Vite, apps/mobile), API = Next (apps/web). `pnpm dev` 가 둘을 같이 띄운다.
 // 슬롯은 워크트리 루트의 .worktree-slot (gitignore) 에 `SEEDBOOK_SLOT=N` 으로 둔다. 순수 로직은 worktree-lib.mjs.
 //
 // 사용:
-//   node scripts/worktree.mjs env <web|test-db> '<command>'  # apps/web 의 dev·test:db 가 쓰는 래퍼
+//   node scripts/worktree.mjs env <web|mobile|test-db> '<command>'  # apps/web 의 dev·test:db, apps/mobile 의 dev 가 쓰는 래퍼
 //   pnpm db:seed:reset      슬롯 DB 의 dev 사용자를 시나리오로 되돌린다 (슬롯 0 은 기존처럼 crawler 컨테이너에서)
 //   pnpm wt:info            이 워크트리의 슬롯·URL·DB (없으면 배정)
-//   pnpm wt:stop            이 워크트리 슬롯의 web 포트를 듣는 dev 서버만 끈다 (DB·슬롯은 그대로)
+//   pnpm wt:stop            이 워크트리 슬롯의 web·API 포트를 듣는 dev 서버만 끈다 (DB·슬롯은 그대로)
 //   pnpm wt:down            이 워크트리의 dev 서버를 끄고 슬롯 DB 2개를 지운 뒤 슬롯 반납
 //   pnpm wt:gc [--dry-run]  살아 있는 워크트리가 쥐지 않은 seedbook_s* DB 와, 지워진 워크트리 경로를
 //                           cwd 로 쥔 node 프로세스를 정리 (메인 세션이 hwt rm 뒤 메인 체크아웃에서)
@@ -34,6 +35,7 @@ import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
+  apiPort,
   databaseUrl,
   formatSlotFile,
   hasKakaoRedirect,
@@ -50,6 +52,7 @@ import {
   SLOT_FILE,
   slotDatabases,
   slotEnv,
+  slotPorts,
   stopTargets,
   WATCHDOG_MARKER,
   webPort,
@@ -122,8 +125,9 @@ async function portFree(port) {
 async function freePorts() {
   const free = new Set();
   for (let slot = 1; slot <= MAX_SLOT; slot++) {
-    const port = webPort(slot);
-    if (await portFree(port)) free.add(port);
+    for (const port of slotPorts(slot)) {
+      if (await portFree(port)) free.add(port);
+    }
   }
   return free;
 }
@@ -188,7 +192,9 @@ async function assignSlot() {
   }
   writeFileSync(join(ROOT, SLOT_FILE), formatSlotFile(slot));
   copyLocalEnvFiles(mainCheckout());
-  log(`슬롯 ${slot} 배정: web :${webPort(slot)}, DB ${slotDatabases(slot).dev}`);
+  log(
+    `슬롯 ${slot} 배정: web :${webPort(slot)} (API :${apiPort(slot)}), DB ${slotDatabases(slot).dev}`
+  );
   return slot;
 }
 
@@ -355,7 +361,8 @@ async function prepareSlotDatabase(slot, env) {
 
 // ---- 명령 실행 ----
 
-const KINDS = ["web", "test-db"];
+/** web = Next (API·인증·소개, 슬롯 DB 준비), mobile = 앱 dev 서버 (Vite, 포트만), test-db = DB 통합 테스트 */
+const KINDS = ["web", "mobile", "test-db"];
 
 /**
  * 슬롯 환경변수. 이미 설정된 값은 덮어쓰지 않는다. 슬롯 DB 를 준비할지는 DATABASE_URL 을 슬롯이 정했는지로 정한다
@@ -392,11 +399,12 @@ async function run(kind, command) {
   const { injected, env } = envForSlot(slot);
   if (slot !== 0) {
     const db = slotDatabases(slot);
-    log(
-      kind === "web"
-        ? `slot ${slot}: web :${env.PORT}, DB ${db.dev}`
-        : `slot ${slot}: test DB ${db.test}`
-    );
+    const describeKind = {
+      web: `slot ${slot}: API (Next) :${env.API_PORT}, DB ${db.dev}`,
+      mobile: `slot ${slot}: web (앱, Vite) http://localhost:${env.PORT}`,
+      "test-db": `slot ${slot}: test DB ${db.test}`,
+    };
+    log(describeKind[kind]);
     if (kind === "web" && injected.DATABASE_URL) await prepareSlotDatabase(slot, env);
     if (kind === "test-db") await ensurePostgres();
   }
@@ -463,7 +471,10 @@ async function info() {
   const db = slotDatabases(slot);
   const port = webPort(slot);
   console.log(`slot ${slot}${slot === 0 ? " (메인 체크아웃)" : ""}  ${ROOT}`);
-  console.log(`  web      http://localhost:${port}  (pnpm dev)`);
+  console.log(`  web      http://localhost:${port}  (pnpm dev — 앱 Vite, 여기를 연다)`);
+  console.log(
+    `  API      http://localhost:${apiPort(slot)}  (Next: /api·소개·약관, web 이 넘긴다)`
+  );
   console.log(`  DB       ${db.dev}  @127.0.0.1:5432${slot === 0 ? " (.env.local)" : ""}`);
   console.log(`  test DB  ${db.test}  (pnpm --filter @seedbook/web test:db)`);
   if (slot !== 0) {
@@ -605,20 +616,27 @@ function realpathOr(path) {
   }
 }
 
-/** 이 슬롯의 web 포트를 듣는, cwd 가 이 체크아웃 안인 프로세스만 끈다. 남의 프로세스는 알리고 실패한다 */
+/**
+ * 이 슬롯의 web(Vite)·API(Next) 포트를 듣는, cwd 가 이 체크아웃 안인 프로세스만 끈다. 남의 프로세스는
+ * 알리고 실패한다 (그 포트에서는 아무것도 끄지 않는다)
+ */
 async function stop() {
   const slot = currentSlot();
   if (slot === null) {
     log("배정된 슬롯이 없다. 끌 dev 서버가 없다");
     return;
   }
-  const port = webPort(slot);
+  await stopPort(slot, "web", webPort(slot));
+  await stopPort(slot, "API", apiPort(slot));
+}
+
+async function stopPort(slot, label, port) {
   const pids = listenerPids(port);
   if (pids.length === 0) {
     if (!(await portFree(port))) {
       throw new Error(`포트 ${port} 가 쓰이고 있지만 듣는 프로세스를 볼 수 없어 끄지 않는다`);
     }
-    log(`slot ${slot}: web :${port} 은 이미 꺼져 있다`);
+    log(`slot ${slot}: ${label} :${port} 은 이미 꺼져 있다`);
     return;
   }
   const table = processTable();
@@ -643,10 +661,10 @@ async function stop() {
     table,
     { isOwn }
   ).map(toProc);
-  log(`slot ${slot}: web :${port} 을 끈다:\n${targets.map(describe).join("\n")}`);
+  log(`slot ${slot}: ${label} :${port} 을 끈다:\n${targets.map(describe).join("\n")}`);
   await terminate(targets);
   if (listenerPids(port).length) throw new Error(`포트 ${port} 를 아직 듣는 프로세스가 있다`);
-  log(`web :${port} 을 껐다 (DB·슬롯은 그대로)`);
+  log(`${label} :${port} 을 껐다 (DB·슬롯은 그대로)`);
 }
 
 /** hwt 가 워크트리를 두는 곳 (~/.herdr/worktrees/<repo>) */
@@ -745,7 +763,7 @@ try {
   else if (command === "gc") await gc({ dryRun: rest.includes("--dry-run") });
   else {
     console.error(
-      "usage: worktree.mjs <env <web|test-db> <command> | db-reset | info | stop | down | gc [--dry-run]>"
+      "usage: worktree.mjs <env <web|mobile|test-db> <command> | db-reset | info | stop | down | gc [--dry-run]>"
     );
     process.exit(2);
   }

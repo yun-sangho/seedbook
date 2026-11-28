@@ -2,20 +2,23 @@ import { Fragment } from "react";
 import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import { userAgent } from "next/server";
-import { Divider, HStack, Text } from "@seed-design/react";
-import { LandingCta } from "@web/components/landing-cta";
-import { LandingMobileOnly } from "@web/components/landing-mobile-only";
-import { PlantAvatar } from "@web/features/garden/components/plant-avatar";
+import { PlantAvatar } from "@mobile/features/garden/components/plant-avatar";
 import {
   FERN_STAGE_LABELS,
   PLANT_STAGE_LABELS,
   PLANT_STAGES,
   type PlantStage,
   REBALANCE_BADGE_COLOR,
-} from "@web/features/garden/plant-3d/plant-options";
-import { SEED_PRESET_DISCLAIMER, SEED_PRESETS } from "@web/features/onboarding/types/seed-presets";
+} from "@mobile/features/garden/plant-3d/plant-options";
+import {
+  SEED_PRESET_DISCLAIMER,
+  SEED_PRESETS,
+} from "@mobile/features/onboarding/types/seed-presets";
+import { resolveDeviceKind, VIEW_OVERRIDE_COOKIE } from "@mobile/lib/device";
+import { Divider, HStack, Text } from "@seed-design/react";
+import { LandingCta } from "@web/components/landing-cta";
+import { LandingMobileOnly } from "@web/components/landing-mobile-only";
 import { COMPANY } from "@web/lib/company";
-import { resolveDeviceKind, VIEW_OVERRIDE_COOKIE } from "@web/lib/device";
 import { AppScreen } from "./_components/app-screen";
 import { FooterLink } from "./_components/footer-link";
 import { LandingGarden } from "./_components/landing-garden";

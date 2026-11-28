@@ -105,7 +105,9 @@ for (const size of [192, 512]) {
 // 사이트 헤더 로고: 투명 배경, 그림에 바짝 맞춘 viewBox.
 write(path.join(webDir, "public/logo.svg"), composeSvg(MARK, { scale: 1, viewBox: "18 18 64 64" }));
 // iOS PWA 스플래시: 짧은 변의 48% 상자 (그림은 그 ~2/3).
-const screens = JSON.parse(readFileSync(path.join(webDir, "lib/ios-splash-screens.json"), "utf8"));
+const screens = JSON.parse(
+  readFileSync(path.join(rootDir, "apps/mobile/src/lib/ios-splash-screens.json"), "utf8")
+);
 for (const { width, height, ratio } of screens) {
   const w = width * ratio;
   const h = height * ratio;

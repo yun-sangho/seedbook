@@ -1,6 +1,6 @@
 "use client";
 
-import { type DeviceKind, VIEW_OVERRIDE_COOKIE } from "./device";
+import { type DeviceKind, VIEW_OVERRIDE_COOKIE } from "@mobile/lib/device";
 
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 

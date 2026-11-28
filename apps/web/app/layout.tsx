@@ -2,10 +2,10 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { headers } from "next/headers";
+import { ThemeProvider } from "@mobile/components/theme-provider";
+import { CSP_NONCE_HEADER } from "@mobile/lib/csp";
+import { cn } from "@mobile/lib/utils";
 import { SerwistProvider } from "@serwist/next/react";
-import { ThemeProvider } from "@web/components/theme-provider";
-import { CSP_NONCE_HEADER } from "@web/lib/csp";
-import { cn } from "@web/lib/utils";
 
 const geist = Geist({ subsets: ["latin"] });
 

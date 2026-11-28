@@ -25,3 +25,8 @@
 
 # Docs are not needed at build time
 **/*.md
+
+# 네이티브 앱 프로젝트 — 웹 이미지는 앱 화면(apps/mobile 의 Vite SPA)만 빌드한다
+apps/mobile/android
+apps/mobile/ios
+apps/mobile/www

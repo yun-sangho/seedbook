@@ -41,3 +41,6 @@ yarn-error.log*
 /public/sw.js.map
 /public/swe-worker-*.js
 /public/swe-worker-*.js.map
+
+# 앱 화면 빌드 (apps/mobile/dist) 복사본 — scripts/copy-app.mjs
+/public/_app/

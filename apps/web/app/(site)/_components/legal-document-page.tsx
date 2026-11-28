@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import { LegalDocumentContent } from "@mobile/components/legal-document-content";
+import { documentPage } from "@mobile/lib/legal/catalog";
+import { LEGAL_DOCUMENTS, legalDocumentHref } from "@mobile/lib/legal-documents";
 import { kstDateString } from "@seedbook/domain/kst";
 import type { LegalDocumentId } from "@seedbook/domain/legal";
-import { LegalDocumentContent } from "@web/components/legal-document-content";
-import { documentPage } from "@web/lib/legal/catalog";
-import { LEGAL_DOCUMENTS, legalDocumentHref } from "@web/lib/legal-documents";
 import { getLegalVersions } from "@web/server/legal/legal-versions";
 import { SiteHeader } from "./site-header";
 

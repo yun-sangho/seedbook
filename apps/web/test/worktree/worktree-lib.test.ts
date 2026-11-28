@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  apiPort,
   formatSlotFile,
   hasKakaoRedirect,
   isAgentProcess,
@@ -27,6 +28,13 @@ describe("webPort", () => {
   it("puts slots in the 4000s, 10 ports apart, clear of other projects' 3000s", () => {
     expect(webPort(1)).toBe(4011);
     expect(webPort(9)).toBe(4091);
+  });
+});
+
+describe("apiPort", () => {
+  it("puts the web server (Next, API) right after the app port", () => {
+    expect(apiPort(0)).toBe(4002);
+    expect(apiPort(3)).toBe(4032);
   });
 });
 
@@ -78,6 +86,10 @@ describe("pickSlot", () => {
     expect(pickSlot({ used: new Set([1]), portFree: (port) => port !== 4021 })).toBe(3);
   });
 
+  it("skips slots whose API port is already taken", () => {
+    expect(pickSlot({ used: new Set(), portFree: (port) => port !== 4012 })).toBe(2);
+  });
+
   it("returns null when every slot is used or busy", () => {
     const used = new Set([1, 2, 3, 4, 5, 6, 7, 8]);
     expect(pickSlot({ used, portFree: (port) => port !== 4091 })).toBeNull();
@@ -86,13 +98,14 @@ describe("pickSlot", () => {
 
 describe("slotEnv", () => {
   it("gives slot 0 only the port, leaving the database to .env.local", () => {
-    expect(slotEnv(0, {})).toEqual({ SEEDBOOK_SLOT: "0", PORT: "4001" });
+    expect(slotEnv(0, {})).toEqual({ SEEDBOOK_SLOT: "0", PORT: "4001", API_PORT: "4002" });
   });
 
   it("points a slot at its own databases and auth URL", () => {
     expect(slotEnv(2, {})).toEqual({
       SEEDBOOK_SLOT: "2",
       PORT: "4021",
+      API_PORT: "4022",
       DATABASE_URL: "postgresql://seedbook:seedbook@127.0.0.1:5432/seedbook_s2",
       TEST_DATABASE_URL: "postgresql://seedbook:seedbook@127.0.0.1:5432/seedbook_s2_test",
       BETTER_AUTH_URL: "http://localhost:4021",

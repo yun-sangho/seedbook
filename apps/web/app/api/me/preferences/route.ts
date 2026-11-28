@@ -1,8 +1,8 @@
-import { db } from "@seedbook/database";
 import {
   invalidPreferenceKeys,
   parseAccountPreferences,
-} from "@web/features/settings/utils/account-preferences";
+} from "@mobile/features/settings/utils/account-preferences";
+import { db } from "@seedbook/database";
 import { resolveUserId } from "@web/lib/auth-server";
 import {
   readAccountPreferences,

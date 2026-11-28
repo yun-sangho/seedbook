@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LandingCta } from "./landing-cta";
 
 const mockSignInSocial = vi.fn();
-vi.mock("@web/lib/auth-client", () => ({
+vi.mock("@mobile/lib/auth-client", () => ({
   useSession: () => ({ data: null, isPending: false }),
   authClient: { signIn: { social: (opts: unknown) => mockSignInSocial(opts) } },
 }));

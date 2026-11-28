@@ -1,6 +1,6 @@
-import { gardenLayout } from "@web/features/garden/plant-3d/garden-layout";
-import type { PlantOptions } from "@web/features/garden/plant-3d/plant-options";
-import type { PlantSlot } from "@web/features/garden/plant-3d/plant-renderer";
+import { gardenLayout } from "@mobile/features/garden/plant-3d/garden-layout";
+import type { PlantOptions } from "@mobile/features/garden/plant-3d/plant-options";
+import type { PlantSlot } from "@mobile/features/garden/plant-3d/plant-renderer";
 
 /**
  * 소개 페이지에 띄우는 데모 정원. 정지 이미지(`public/landing/<scene>-{light,dark}.webp`)는 이 장면을

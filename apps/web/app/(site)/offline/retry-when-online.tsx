@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { ActionButton } from "@web/seed-design/ui/action-button";
+import { ActionButton } from "@mobile/seed-design/ui/action-button";
 
 /** 다시 시도 버튼 + 연결이 돌아오면 자동 새로고침. */
 export function RetryWhenOnline() {

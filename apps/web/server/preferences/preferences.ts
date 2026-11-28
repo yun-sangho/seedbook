@@ -1,9 +1,9 @@
-import { type Database, schema } from "@seedbook/database";
 import {
   type AccountPreferences,
   DEFAULT_ACCOUNT_PREFERENCES,
   parseAccountPreferences,
-} from "@web/features/settings/utils/account-preferences";
+} from "@mobile/features/settings/utils/account-preferences";
+import { type Database, schema } from "@seedbook/database";
 
 /**
  * 사용자 화면 설정 (`user_preference`, 사용자당 한 행). 저장소 모드(local/cloud)와 상관없이

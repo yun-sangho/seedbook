@@ -1,10 +1,20 @@
-# @seedbook/mobile — 네이티브 앱 셸 (Capacitor)
+# @seedbook/mobile — 앱 화면 (Vite SPA) + 네이티브 앱 셸 (Capacitor)
 
-iOS·Android 앱은 **운영 서버(`https://seedbook.boogie.ing`)를 WebView 로 띄우는 셸**이다. 화면은
-웹의 모바일 트리(`apps/web/app/m`)를 그대로 쓴다. 웹을 배포하면 앱 화면도 바로 바뀌므로, 스토어
-재심사는 네이티브 쪽(아이콘·권한·플러그인·설정)이 바뀔 때만 필요하다.
+이 패키지에는 두 가지가 있다.
+
+1. **앱 화면** — Vite + React SPA (`src/`, `index.html`, `vite.config.ts`). 옛 Next `/m` 트리를 옮긴 것이다.
+   - 개발: 루트 `pnpm dev` 가 이 Vite dev 서버(슬롯 web 포트)와 Next(apps/web, API 포트)를 함께 띄운다.
+     Vite 가 앱 경로(`/assets/...`)는 SPA 로, 그 밖(`/api`·소개·약관·아이콘)은 Next 로 넘긴다.
+   - 운영 모바일 웹: 웹 이미지가 `vite build` 결과(`dist/`)를 `apps/web/public/_app` 으로 복사해 Next 가
+     앱 경로에 `index.html` 을 준다 (`apps/web/proxy.ts`).
+   - 테스트: `pnpm --filter @seedbook/mobile test`.
+2. **네이티브 셸** — iOS·Android 앱은 아직 **운영 서버(`https://seedbook.boogie.ing`)를 WebView 로 띄운다**
+   (화면은 위 앱 화면을 서버에서 받는다). 앱 번들(`webDir = dist`)로 바꾸는 것은 다음 단계다.
+   웹을 배포하면 앱 화면도 바로 바뀌므로, 스토어 재심사는 네이티브 쪽(아이콘·권한·플러그인·설정)이 바뀔 때만 필요하다.
 
 ```
+src/                         앱 화면 (main.tsx 시작점, app/_stack 화면 스택, features·components·lib)
+index.html · vite.config.ts  앱 HTML(메타·CSP)·dev 서버(프록시)·빌드 설정
 capacitor.config.ts          서버 주소, UA 표시(SeedbookApp), 앱 안에서 열 외부 도메인
 www-src/                     서버에 못 닿을 때 보여줄 로컬 페이지 (error.html)
 scripts/build-www.mjs        www-src → www (서버 주소 치환). `pnpm sync` 가 실행
@@ -14,8 +24,8 @@ ios/  android/               네이티브 프로젝트 (커밋 대상)
 앱 아이콘·스플래시는 웹 아이콘과 같은 원본(`apps/web/brand/mark.svg`)에서 루트 `pnpm brand:icons`
 (`scripts/generate-brand-icons.mjs`)로 만든다. 직접 고치지 말고 원본을 바꾼 뒤 다시 실행한다.
 
-웹과 맞물리는 곳: `apps/web/lib/device.ts` 의 `NATIVE_APP_UA_MARKER` 가 `appendUserAgent` 와 같아야
-한다. 웹은 이 표시로 iPad 앱에도 모바일 UI 를 주고, PWA 설치 안내를 숨긴다.
+앱 화면과 셸이 맞물리는 곳: `src/lib/device.ts` 의 `NATIVE_APP_UA_MARKER` 가 `appendUserAgent` 와 같아야
+한다. 웹 서버는 이 표시로 iPad 앱에도 모바일 UI 를 주고, 앱은 PWA 설치 안내를 숨긴다.
 
 ## 처음 한 번: 개발 도구
 
@@ -38,7 +48,8 @@ pnpm --filter @seedbook/mobile open:ios    # Xcode 로 열어 시뮬레이터/�
 pnpm --filter @seedbook/mobile open:android
 ```
 
-로컬 dev 서버로 띄우기 — 기기에서 본 호스트 주소를 쓴다:
+로컬 dev 서버로 띄우기 — 기기에서 본 호스트 주소를 쓴다 (4001 은 메인 체크아웃의 앱 dev 서버(Vite). 워크트리는
+`pnpm wt:info` 의 web 포트):
 
 ```bash
 CAP_SERVER_URL=http://localhost:4001 pnpm mobile:sync   # iOS 시뮬레이터
@@ -50,9 +61,9 @@ CAP_SERVER_URL=http://<맥 LAN IP>:4001 pnpm mobile:sync # 같은 Wi-Fi 의 실�
 `localhost` 가 아닌 http 주소(`10.0.2.2`, LAN IP)는 보안 컨텍스트가 아니라 `crypto.randomUUID` 가
 없어 계좌 추가 같은 쓰기가 실패한다. Android 는 `adb reverse` 로 localhost 를 쓰는 게 좋다.
 
-Next dev 서버는 localhost 가 아닌 호스트의 개발용 리소스를 막는다. `10.0.2.2` 는
-`next.config.js` 의 `allowedDevOrigins` 에 들어 있고, 실기기는
-`NEXT_DEV_ALLOWED_ORIGINS=<맥 LAN IP> pnpm dev` 로 띄운다.
+앱 dev 서버(Vite)는 모든 네트워크 주소에서 듣는다 (`vite.config.ts` `server.host`). Vite 가 넘기는 Next 페이지
+(소개·약관)의 개발용 리소스는 Next 가 localhost 가 아닌 호스트에서 막는다 — `10.0.2.2` 는
+`next.config.js` 의 `allowedDevOrigins` 에 들어 있고, 실기기는 `NEXT_DEV_ALLOWED_ORIGINS=<맥 LAN IP> pnpm dev` 로 띄운다.
 
 Android 빌드는 **JDK 21** 이 필요하다 (Capacitor 8 / Gradle 8.14 는 JDK 25 에서 돌지 않는다):
 
@@ -70,7 +81,7 @@ Android Studio 에서는 Settings → Build Tools → Gradle → Gradle JDK 를 
 
 앱은 WebView localStorage 를 쓰지 않는다 (OS 가 저장 공간이 부족할 때 지울 수 있다). 모든 기기 데이터는
 **SQLite** (`@capacitor-community/sqlite`, DB 이름 `seedbook`) 에 둔다. 웹 쪽 진입점은
-`apps/web/lib/device-storage.ts`.
+`apps/mobile/src/lib/device-storage.ts`.
 
 - 자산 데이터(local 모드 데이터, cloud 모드 캐시)는 **서버 Postgres 와 같은 테이블·컬럼**
   (`investment_account`, `stock_holding`, `cash_item`, `investment_record`, `portfolio`,
@@ -97,7 +108,7 @@ sqlite3 app.db "select id, accountName, portfolioId from investment_account;"
 앱은 웹 탭바(SEED Bottom Navigation)를 쓴다. 항목·선택·표시는 웹이 정하고 네이티브는 그대로 그린다.
 
 - 플러그인 `SeedbookTabBar`: `packages/native-plugins` (`cap sync` 가 등록한다)
-- 브리지: `apps/web/lib/native/tab-bar.ts` / 화면: `apps/web/components/mobile/app-tab-bar.tsx`
+- 브리지: `apps/mobile/src/lib/native/tab-bar.ts` / 화면: `apps/mobile/src/components/mobile/app-tab-bar.tsx`
 - 네이티브 탭바는 WebView 위에 있어 웹 시트·다이얼로그가 열리면 내린다. SEED 가 아닌 전체 화면
   (앱 잠금)은 `data-covers-tab-bar` 를 단다.
 - 아이콘(`TabIcon`)을 더하면 브리지 타입, 웹 `ICONS`, iOS `symbol`, Android `iconRes` + drawable 을 같이
@@ -115,7 +126,7 @@ sqlite3 app.db "select id, accountName, portfolioId from investment_account;"
 
 ## Android 시스템 뒤로가기
 
-`@capacitor/app` 의 `backButton` 을 웹이 받는다 (`apps/web/lib/native/system-back.ts`): 열린 시트·다이얼로그
+`@capacitor/app` 의 `backButton` 을 웹이 받는다 (`apps/mobile/src/lib/native/system-back.ts`): 열린 시트·다이얼로그
 닫기 → 스택 한 화면 뒤로 → 루트(탭 화면·로그인 화면)에서는 앱 내리기. 앱 잠금 중에는 앱만 내린다.
 약관·카카오 로그인처럼 다른 문서로 넘어가면 WebView 뒤로가기로 동작한다. 플러그인이 없는 구버전 앱에서는
 웹이 아무것도 하지 않는다 (뒤로가기 = 앱 내리기).

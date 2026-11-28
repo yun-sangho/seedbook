@@ -1,4 +1,4 @@
-import { CSP_NONCE_HEADER } from "@web/lib/csp";
+import { CSP_NONCE_HEADER } from "@mobile/lib/csp";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import SiteLayout, { generateViewport } from "./layout";

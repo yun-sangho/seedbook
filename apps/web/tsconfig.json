@@ -8,12 +8,20 @@
     ],
     "paths": {
       "@web/*": ["./*"],
+      "@mobile/*": ["../mobile/src/*"],
       "@seedbook/database": ["../../packages/database/src"],
       "@seedbook/database/*": ["../../packages/database/src/*"],
       "@seedbook/domain": ["../../packages/domain/src"],
       "@seedbook/domain/*": ["../../packages/domain/src/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", "next-env.d.ts", "next.config.js", ".next/types/**/*.ts"],
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "../mobile/src/**/*.d.ts",
+    "next-env.d.ts",
+    "next.config.js",
+    ".next/types/**/*.ts"
+  ],
   "exclude": ["node_modules"]
 }

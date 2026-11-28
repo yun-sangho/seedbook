@@ -1,4 +1,4 @@
-import { cn } from "@web/lib/utils";
+import { cn } from "@mobile/lib/utils";
 
 /** `public/landing/<name>-{light,dark}.webp` 의 원본 크기 (390×780 화면을 2배율로 캡처). */
 const SCREEN_WIDTH = 780;

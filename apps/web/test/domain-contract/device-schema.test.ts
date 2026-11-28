@@ -1,8 +1,9 @@
 // @vitest-environment node
+
+import { migrateDeviceDatabase } from "@mobile/lib/native/device-db/migrations";
+import { readRecords, writeRecords } from "@mobile/lib/native/device-db/record-store";
+import { createNodeSqliteDriver } from "@mobile/lib/native/device-db/testing/node-sqlite-driver";
 import { deriveRecordId, RECORDS, SAMPLE_UUID, sampleRecord } from "@seedbook/domain";
-import { migrateDeviceDatabase } from "@web/lib/native/device-db/migrations";
-import { readRecords, writeRecords } from "@web/lib/native/device-db/record-store";
-import { createNodeSqliteDriver } from "@web/lib/native/device-db/testing/node-sqlite-driver";
 import { describe, expect, it } from "vitest";
 
 /**

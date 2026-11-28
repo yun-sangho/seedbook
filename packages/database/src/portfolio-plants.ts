@@ -6,7 +6,7 @@ import * as schema from "./schema";
  * 포트폴리오 식물을 서버에서 키운다 (cloud 모드). stock-crawler 가 계좌별 하루 평가
  * (`recordAccountSnapshots`) 를 기록한 뒤 부른다 — 앱을 열지 않아도 목표를 달성한 날 자란다.
  *
- * 규칙은 앱 (`apps/web/features/portfolio/utils/portfolio-plant.ts` 의 `growPlant`) 과 같다: 연결 계좌의
+ * 규칙은 앱 (`apps/mobile/src/features/portfolio/utils/portfolio-plant.ts` 의 `growPlant`) 과 같다: 연결 계좌의
  * 그 날 평가 합이 지금 목표 이상이면 한 단계 자라고, 목표는 비우고 이력에 남긴다. 한 번에 한 단계.
  * 꽃·열매(4) 를 넘지 않는다. 가격을 못 찾은 종목은 평가에서 빠지므로 실제보다 덜 자랄 뿐 더 자라지 않는다.
  *

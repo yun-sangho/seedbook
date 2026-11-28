@@ -25,6 +25,14 @@ export const DEPLOY_WORKFLOWS = [
     file: "deploy-web.yml",
     paths: [
       "apps/web/**",
+      // 웹 이미지는 앱 화면(Vite SPA)도 빌드해 같이 서빙한다. 네이티브 프로젝트(android·ios)는 빼고.
+      "apps/mobile/src/**",
+      "apps/mobile/public/**",
+      "apps/mobile/index.html",
+      "apps/mobile/package.json",
+      "apps/mobile/tsconfig.json",
+      "apps/mobile/vite.config.ts",
+      "apps/mobile/postcss.config.js",
       "packages/tailwind-config/**",
       ...SHARED_PATHS,
       ".github/workflows/deploy-web.yml",

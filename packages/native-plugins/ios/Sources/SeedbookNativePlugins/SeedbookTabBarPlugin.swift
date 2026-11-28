@@ -1,7 +1,7 @@
 import Capacitor
 import UIKit
 
-/// 하단 탭바(UITabBar)를 WebView 위에 올린다. 항목·선택·표시는 웹(apps/web/lib/native/tab-bar.ts)이
+/// 하단 탭바(UITabBar)를 WebView 위에 올린다. 항목·선택·표시는 웹(apps/mobile/src/lib/native/tab-bar.ts)이
 /// 정하고, 누른 탭은 tabSelect 로 알린다. 화면 전환은 웹이 한다.
 @objc(SeedbookTabBarPlugin)
 public class SeedbookTabBarPlugin: CAPPlugin, CAPBridgedPlugin, UITabBarDelegate {
