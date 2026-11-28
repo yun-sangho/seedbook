@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { IconChevronDownSmallLine } from "@karrotmarket/react-monochrome-icon";
 import {
   type SortOptionList,
@@ -14,11 +14,7 @@ import { PriceBanner } from "@mobile/components/mobile/price-as-of-banner";
 import { useInvestmentStore } from "@mobile/features/investments/stores/investment-store";
 import { useRebalancingStore } from "@mobile/features/rebalancing/stores/rebalancing-store";
 import type { RebalancingTask } from "@mobile/features/rebalancing/types/types";
-import {
-  type RebalancingTaskSection,
-  toggleCollapsedSection,
-} from "@mobile/features/rebalancing/utils/collapsed-sections";
-import { groupTasksByStep } from "@mobile/features/rebalancing/utils/group-tasks-by-step";
+import type { RebalancingTaskSection } from "@mobile/features/rebalancing/utils/collapsed-sections";
 import { holdingQuantityFor } from "@mobile/features/rebalancing/utils/holding-quantity";
 import { summarizeRebalancingPriceAsOf } from "@mobile/features/rebalancing/utils/rebalancing-price-as-of";
 import {
@@ -29,7 +25,6 @@ import {
   isPartiallyFilled,
   isRebalancingCompleted,
   isRebalancingStopped,
-  type RebalancingTaskGroup,
   rebalancingProgress,
   rebalancingTaskStatus,
   remainingOrderQuantity,
@@ -54,13 +49,9 @@ import { formatSignedWon, formatWithCommas, numberToKorean } from "@mobile/utils
 import { Divider, Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 import { CompleteRebalancingSheet } from "./complete-rebalancing-sheet";
-import { justMovedFrom, takeJustMoved } from "./just-moved-tasks";
 import { RebalancingResultSection } from "./rebalancing-result-section";
 import { RebalancingSteps } from "./rebalancing-steps";
 import { SnapshotPriceBanner } from "./snapshot-price-banner";
-
-/** 체크된 할 일이 남은 목록에 머무는 시간. globals.css 의 task-leave (지연 500 + 300ms) 와 맞춘다. */
-const TASK_LEAVE_MS = 800;
 
 /**
  * 리밸런싱 할 일 체크리스트. 권장 수량은 시작할 때의 가격으로 고정된 스냅샷이라 시세가
@@ -78,19 +69,11 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
   /** 고른 단계. null 이면 추천 단계를 따른다 (기록하면 다시 null 로 — 다음 추천 단계로 넘어간다). */
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const topRef = useRef<HTMLDivElement>(null);
-  const leaving = useLeavingTasks(session?.tasks);
   const [sortOpen, setSortOpen] = useState(false);
   // 정렬은 개인 설정 — 계정에 저장되어 어느 기기에서든 이어진다.
   const sort = usePreferencesStore((s) => s.rebalancingTaskSort);
   const setSort = (next: RebalancingTaskSort) =>
     void savePreferences({ rebalancingTaskSort: next });
-  // 섹션 접힘도 개인 설정 — 정렬처럼 계정에 저장한다.
-  const collapsedSections = usePreferencesStore((s) => s.rebalancingCollapsedSections);
-  const toggleSection = (section: RebalancingTaskSection) => {
-    void savePreferences({
-      rebalancingCollapsedSections: toggleCollapsedSection(collapsedSections, section),
-    });
-  };
   const account = useInvestmentStore((s) =>
     s.investments.find((inv) => inv.id === session?.accountId)
   );
@@ -117,22 +100,17 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
   // 진행 중일 때만 — 완료한 기록은 아래 결과에 반영 전 → 후 예수금이 나온다. 계좌가 지워졌으면 모른다.
   const cash = !completed && account ? rebalancingCashOutlook(account, session) : null;
   const priceAsOf = summarizeRebalancingPriceAsOf(session.tasks);
-  // 방금 거래가 끝난 매매만 접히며 "끝난 거래" 로 옮겨진다 — 주문만 한 매매는 같은 묶음에 남는다.
-  const leavingToDone = new Set(
-    session.tasks.filter((t) => t.done && leaving.has(t.id)).map((t) => t.id)
-  );
-  const steps = groupTasksByStep(session.tasks, leavingToDone);
   // 평가액 = 지금 보유 수량 × 시작 시점 기준 가격 (가격이 고정된 체크리스트라 같은 기준을 쓴다).
   const holdingQuantity = (task: RebalancingTask) =>
     holdingQuantityFor(account?.holdings ?? [], task);
-  const stepTasks = {
-    sell: sortRebalancingTasks(steps.sell, sort, holdingQuantity),
-    buy: sortRebalancingTasks(steps.buy, sort, holdingQuantity),
-    done: sortRebalancingTasks(steps.done, sort, holdingQuantity),
-  };
-  const doneCollapsed = collapsedSections.includes("filled");
-  // 팔 것과 살 것이 다 남았을 때만 순서를 안내한다.
-  const bothSteps = !completed && stepTasks.sell.length > 0 && stepTasks.buy.length > 0;
+  // 목록은 상태로 나누지 않고 정렬 기준대로만 — 팔기·사기·끝남은 배지로 구분한다.
+  const listTasks = sortRebalancingTasks(session.tasks, sort, holdingQuantity, {
+    sellFirst: false,
+  });
+  // 팔 것과 살 것이 다 남았을 때만 판 금액 안내를 보인다.
+  const open = session.tasks.filter((t) => !t.done);
+  const bothSteps =
+    !completed && open.some((t) => t.action === "매도") && open.some((t) => t.action === "매수");
   const { done, total } = rebalancingProgress(session);
   const remaining = total - done;
   const canComplete = canCompleteRebalancing(session);
@@ -224,62 +202,10 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
               </p>
             )}
 
-            {/* 종목마다 팔기·사기 배지로 구분한다. 어느 종목이든 눌러서 기록할 수 있다. */}
-            {stepTasks.sell.length + stepTasks.buy.length > 0 && (
-              <div className="pt-x2">
-                <TaskList
-                  // 목록은 정렬 기준대로만 — 팔기·사기가 섞여 나오고 배지로 구분한다.
-                  tasks={sortRebalancingTasks(
-                    [...steps.sell, ...steps.buy],
-                    sort,
-                    holdingQuantity,
-                    {
-                      sellFirst: false,
-                    }
-                  )}
-                  leaving={leavingToDone}
-                  ended={completed}
-                  showAction
-                  onOpen={openTrade}
-                />
-              </div>
-            )}
-
-            {stepTasks.done.length > 0 && (
-              <div className="pt-x2">
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-x1 px-x4 py-x2 text-left"
-                  aria-expanded={!doneCollapsed}
-                  onClick={() => toggleSection("filled")}
-                >
-                  <h3 className="t4-bold flex-1">
-                    끝난 거래{" "}
-                    <span className="text-fg-neutral-subtle tabular-nums">
-                      {stepTasks.done.length}건
-                    </span>
-                  </h3>
-                  {/* 펼침 ⌄, 접힘 › */}
-                  <span
-                    className={cn(
-                      "text-fg-neutral-subtle flex transition-transform motion-reduce:transition-none",
-                      doneCollapsed && "-rotate-90"
-                    )}
-                  >
-                    <Icon svg={<IconChevronDownSmallLine />} />
-                  </span>
-                </button>
-                {!doneCollapsed && (
-                  <TaskList
-                    tasks={stepTasks.done}
-                    leaving={leavingToDone}
-                    ended={completed}
-                    showAction
-                    onOpen={openTrade}
-                  />
-                )}
-              </div>
-            )}
+            {/* 종목마다 팔기·사기·상태 배지로 구분한다. 어느 종목이든 눌러서 기록할 수 있다. */}
+            <div className="pt-x2">
+              <TaskList tasks={listTasks} ended={completed} onOpen={openTrade} />
+            </div>
           </section>
         </>
       )}
@@ -362,30 +288,17 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
 
 function TaskList({
   tasks,
-  leaving,
   ended,
-  showAction,
   onOpen,
 }: {
   tasks: RebalancingTask[];
-  leaving: ReadonlySet<string>;
   ended: boolean;
-  /** 팔기·사기 배지를 단다. */
-  showAction: boolean;
   onOpen: (taskId: string) => void;
 }) {
   return (
     <List>
       {tasks.map((task) => (
-        <TaskRow
-          key={task.id}
-          task={task}
-          // 방금 거래가 끝났으면 바뀐 모습을 보여준 뒤 접히며 빠지고, "끝난 거래" 로 옮겨진다.
-          leaving={leaving.has(task.id)}
-          ended={ended}
-          showAction={showAction}
-          onOpen={() => onOpen(task.id)}
-        />
+        <TaskRow key={task.id} task={task} ended={ended} onOpen={() => onOpen(task.id)} />
       ))}
     </List>
   );
@@ -397,15 +310,11 @@ function TaskList({
  */
 function TaskRow({
   task,
-  leaving,
   ended,
-  showAction,
   onOpen,
 }: {
   task: RebalancingTask;
-  leaving: boolean;
   ended: boolean;
-  showAction: boolean;
   onOpen: () => void;
 }) {
   const content = {
@@ -417,11 +326,9 @@ function TaskRow({
     suffix: (
       <span className="flex flex-col items-end gap-[2px]">
         <span className="flex items-center gap-x2 max-[359px]:flex-col max-[359px]:items-end max-[359px]:gap-[2px]">
-          {showAction && (
-            <Badge tone={task.action === "매수" ? "positive" : "critical"} variant="outline">
-              {task.action === "매수" ? "사기" : "팔기"}
-            </Badge>
-          )}
+          <Badge tone={task.action === "매수" ? "positive" : "critical"} variant="outline">
+            {task.action === "매수" ? "사기" : "팔기"}
+          </Badge>
           <TaskQuantity task={task} />
         </span>
         <TaskPrice task={task} />
@@ -430,15 +337,7 @@ function TaskRow({
   };
   // 완료된 기록은 계좌에 반영됐을 수 있어 매매를 바꾸지 않는다 — 흐리게 하지 않고 읽기만 한다.
   if (ended) return <ListItem {...content} />;
-  return (
-    <ListButtonItem
-      {...content}
-      rootProps={{
-        className: cn(leaving && "animate-task-leave overflow-hidden motion-reduce:animate-none"),
-      }}
-      onClick={onOpen}
-    />
-  );
+  return <ListButtonItem {...content} onClick={onOpen} />;
 }
 
 /** 쉬운 말 상태. 진행 중에는 아직 손대지 않은 매매에 배지를 달지 않는다. */
@@ -484,59 +383,6 @@ const TASK_SORT_OPTIONS: SortOptionList<RebalancingTaskSort> = [
   { value: "evalDesc", label: "평가액 높은 순" },
   { value: "evalAsc", label: "평가액 낮은 순" },
 ];
-
-/**
- * 방금 주문·체결한 할 일을 `TASK_LEAVE_MS` 동안 "사라지는 중" 으로 원래 그룹과 함께 들고 있는다 —
- * 바뀐 모습으로 원래 그룹에 남아 있다가 접히며 다음 그룹으로 옮겨진다. 기록은 매매 입력 화면에서
- * 하므로, 그 화면이 남긴 신호(`just-moved-tasks`)를 돌아왔을 때 꺼내 시작한다. 꺼내기 전 렌더에서도
- * 바로 옮기지 않도록 아직 꺼내지 않은 신호도 함께 본다.
- */
-function useLeavingTasks(
-  tasks: RebalancingTask[] | undefined
-): ReadonlyMap<string, RebalancingTaskGroup> {
-  const [leaving, setLeaving] = useState<ReadonlyMap<string, RebalancingTaskGroup>>(
-    () => new Map()
-  );
-  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
-
-  useEffect(() => {
-    const pending = timers.current;
-    return () => pending.forEach((timer) => clearTimeout(timer));
-  }, []);
-
-  const remove = (id: string) => {
-    clearTimeout(timers.current.get(id));
-    timers.current.delete(id);
-    setLeaving((prev) => {
-      if (!prev.has(id)) return prev;
-      const next = new Map(prev);
-      next.delete(id);
-      return next;
-    });
-  };
-
-  const markLeaving = (id: string, from: RebalancingTaskGroup) => {
-    clearTimeout(timers.current.get(id));
-    timers.current.set(
-      id,
-      setTimeout(() => remove(id), TASK_LEAVE_MS)
-    );
-    setLeaving((prev) => new Map(prev).set(id, from));
-  };
-
-  // 매매 입력 화면에서 기록하고 돌아오면 (할 일이 바뀌면) 남긴 신호를 꺼내 애니메이션을 시작한다.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: tasks 가 바뀔 때 다시 돈다. markLeaving 은 렌더마다 새로 만들어지지만 상태 setter 와 ref 만 쓴다.
-  useEffect(() => {
-    for (const [id, from] of takeJustMoved()) markLeaving(id, from);
-  }, [tasks]);
-
-  const notYetTaken = (tasks ?? []).flatMap((t) => {
-    const from = justMovedFrom(t.id);
-    return from ? [[t.id, from] as const] : [];
-  });
-  if (notYetTaken.length === 0) return leaving;
-  return new Map([...leaving, ...notYetTaken]);
-}
 
 /**
  * 매매하면서 가장 자주 보는 건 남은 예수금 — 다음 매수를 할 수 있는지가 여기서 갈린다.

@@ -7,11 +7,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* 리밸런싱 할 일: 체크된 모습을 잠깐 보여준 뒤 접히며 사라진다.
-   지연(500ms) + 애니메이션(300ms) 합계는 화면의 TASK_LEAVE_MS 와 맞춘다. */
 @theme {
-  --animate-task-leave: task-leave 300ms ease-in 500ms both;
-
   /* 정원 홈: 식물에 다가간 뒤 바텀시트 위에 뜨는 "자세히 보기" 칩. */
   --animate-garden-chip-in: garden-chip-in 220ms ease-out both;
 
@@ -46,18 +42,6 @@
     100% {
       opacity: 0;
       transform: translateY(-4px) scale(1);
-    }
-  }
-
-  @keyframes task-leave {
-    from {
-      opacity: 1;
-      max-height: 120px;
-    }
-    to {
-      opacity: 0;
-      max-height: 0;
-      padding-block: 0;
     }
   }
 }

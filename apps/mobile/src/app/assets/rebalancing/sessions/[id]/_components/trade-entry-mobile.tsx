@@ -38,7 +38,6 @@ import { TextField, TextFieldInput } from "@mobile/seed-design/ui/text-field";
 import { formatSignedWon, formatWithCommas, parseNumericString } from "@mobile/utils/number-format";
 import { Icon, ResponsivePair } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
-import { markJustMoved } from "./just-moved-tasks";
 import { SnapshotPriceBanner } from "./snapshot-price-banner";
 
 /**
@@ -201,24 +200,18 @@ export function TradeEntryForm({
   const recordFill = () => {
     if (!canSave || tradePrice === null) return;
     if (fillingOrder) {
-      // 부분 체결이면 주문 중에 그대로 남는다.
-      if (!partialFill) markJustMoved(task.id, "ordered");
       fillTaskOrder(session.id, task.id, quantity, tradePrice);
     } else {
-      if (status !== "filled") markJustMoved(task.id, status);
       completeTaskWith(session.id, task.id, quantity, tradePrice);
     }
     done();
   };
   const recordOrder = () => {
     if (!canSave || tradePrice === null) return;
-    markJustMoved(task.id, "pending");
     orderTaskWith(session.id, task.id, quantity, tradePrice);
     done();
   };
   const cancelOrder = () => {
-    // 잔량 취소는 체결된 만큼으로 체결을 마친다.
-    if (partial) markJustMoved(task.id, "ordered");
     cancelTaskOrder(session.id, task.id);
     done();
   };
