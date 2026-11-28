@@ -6,14 +6,12 @@ import { cn } from "@mobile/lib/utils";
 import { GardenCanvas } from "@web/app/(site)/_components/garden-canvas";
 import {
   type GardenEnvironment,
+  LANDING_STILL_SIZE,
   type LandingGardenScene,
   landingGardenSlots,
   shouldLoad3d,
 } from "./landing-garden-scenes";
 
-/** 3D 로 바꾸기 전에 보여 주는 같은 장면의 정지 이미지 (`public/landing/<scene>-{light,dark}.webp`). */
-const STILL_WIDTH = 1000;
-const STILL_HEIGHT = 770;
 /** 브라우저가 3D 를 그릴 수 있고, 사용자가 모션 줄이기·데이터 절약을 켜지 않았는지. */
 function probeEnvironment(): GardenEnvironment {
   const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
@@ -61,6 +59,8 @@ export function LandingGarden({
   const [load3d, setLoad3d] = useState(false);
   const [ready, setReady] = useState(false);
   const [{ slots, width }] = useState(() => landingGardenSlots(scene));
+  // 3D 로 바꾸기 전에 보여 주는 같은 장면의 정지 이미지 크기.
+  const still = LANDING_STILL_SIZE[scene];
 
   // 화면에 들어온 뒤 한가할 때 3D 를 받는다. 화면 밖에서 렌더를 멈추는 것은 장면이 알아서 한다.
   useEffect(() => {
@@ -85,15 +85,15 @@ export function LandingGarden({
     <div
       ref={areaRef}
       className={cn("garden-sky relative overflow-hidden", className)}
-      style={{ aspectRatio: `${STILL_WIDTH} / ${STILL_HEIGHT}` }}
+      style={{ aspectRatio: `${still.width} / ${still.height}` }}
     >
       <picture>
         <source srcSet={`/landing/${scene}-dark.webp`} media="(prefers-color-scheme: dark)" />
         <img
           src={`/landing/${scene}-light.webp`}
           alt={alt}
-          width={STILL_WIDTH}
-          height={STILL_HEIGHT}
+          width={still.width}
+          height={still.height}
           loading={priority ? "eager" : "lazy"}
           fetchPriority={priority ? "high" : "auto"}
           className={cn(
