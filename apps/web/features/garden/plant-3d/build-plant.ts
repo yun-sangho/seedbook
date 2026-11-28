@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { buildFernBody } from "./build-fern";
+import { leafGeometry, veinGeometry } from "./leaf-geometry";
 import { PLANT_STAGES, type PlantOptions, type PlantStage, POT_COLORS } from "./plant-options";
 import { createRebalanceBadge } from "./rebalance-badge";
 
@@ -111,36 +112,6 @@ class MaterialKit {
 /** 둥근 덩어리 (잎 뭉치·열매). */
 function blobGeometry(radius: number): THREE.BufferGeometry {
   return new THREE.SphereGeometry(radius, 20, 14);
-}
-
-/** 씨앗 아바타의 잎 모양(`components/seed-avatar.tsx`)을 길이 1 로 옮겨 오목하게 휜 잎. +Y 로 자란다. */
-function leafGeometry(): THREE.BufferGeometry {
-  const shape = new THREE.Shape();
-  shape.moveTo(0, 0);
-  shape.bezierCurveTo(-0.42, 0.22, -0.42, 0.7, 0, 1);
-  shape.bezierCurveTo(0.42, 0.7, 0.42, 0.22, 0, 0);
-  const geometry = new THREE.ShapeGeometry(shape, 10);
-  const position = geometry.getAttribute("position");
-  for (let i = 0; i < position.count; i++) {
-    const x = position.getX(i);
-    const y = position.getY(i);
-    // 가운데(잎맥)가 접히고 끝이 아래로 휜다 (+Z 가 기울였을 때 아래쪽).
-    position.setZ(i, -Math.abs(x) * 0.35 + y * y * 0.28);
-  }
-  geometry.computeVertexNormals();
-  return geometry;
-}
-
-/** 잎 가운데의 잎맥 (잎과 같이 휜 가는 띠). */
-function veinGeometry(): THREE.BufferGeometry {
-  const geometry = new THREE.PlaneGeometry(0.035, 0.75);
-  geometry.translate(0, 0.42, 0);
-  const position = geometry.getAttribute("position");
-  for (let i = 0; i < position.count; i++) {
-    const y = position.getY(i);
-    position.setZ(i, y * y * 0.28 - 0.012);
-  }
-  return geometry;
 }
 
 // ---------------------------------------------------------------------------

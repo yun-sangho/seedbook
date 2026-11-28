@@ -5,7 +5,6 @@ import { IconChevronDownSmallLine } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
 import { TabToolbar } from "@web/components/mobile/detail-layout";
 import { profitToneClass } from "@web/components/mobile/profit-tone";
-import { InvestmentStackedAreaChart } from "@web/features/investments/components/investment-stacked-area-chart";
 import type { HoldingsSortOption } from "@web/features/investments/types/holdings-sort";
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import { aggregateHoldings } from "@web/features/investments/utils/aggregate-holdings";
@@ -19,15 +18,6 @@ import { prepareMonthlyInvestmentSummary } from "@web/utils/monthly-summary-util
 import { formatReturnRate, numberToKorean } from "@web/utils/number-format";
 import { formatProfitKorean } from "@web/utils/profit-color";
 import { HOLDINGS_SORT_OPTIONS, SortSheet, sortOptionLabel } from "./investment-sheets";
-
-/** 계좌 탭 "투자 추이": 계좌별 누적 평가금액 차트. */
-export function InvestmentTrend({ investments }: { investments: InvestmentItem[] }) {
-  return (
-    <section className="px-x4 py-x4">
-      <InvestmentStackedAreaChart investments={investments} />
-    </section>
-  );
-}
 
 /** 홈 "월별 내역" 탭: 월말 평가금액·수익 (최신순). */
 export function MonthlySummaryList({ investments }: { investments: InvestmentItem[] }) {
