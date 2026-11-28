@@ -32,7 +32,7 @@ Every change is evaluated across these dimensions:
 - No unnecessary re-renders in React components
 - Heavy calculations memoized with `useMemo`
 - No unbounded loops or unconstrained data operations
-- Chart data slicing/projection properly memoized
+- Large array slicing/projection properly memoized
 
 ## Change Sizing
 

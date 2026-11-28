@@ -40,6 +40,39 @@ function syncColumns() {
   };
 }
 
+/**
+ * 동기화 v2 레코드 (`packages/domain` 의 정의) 의 공통 열 중 v2-2 에서 더한 것.
+ *
+ * - `changeSeq`: 사용자별 변경 번호 (`user_sync_state.seq` 로 매긴다, 설계 §4.4). pull 커서다.
+ *   0 은 아직 번호를 받지 않은 행 — v1 쓰기 경로는 이 열을 모르므로 기본값으로 남고,
+ *   `db:backfill:sync-v2` 가 채운다.
+ * - `sortKey`: 목록 순서 (분수 인덱스). null 이면 아직 키가 없는 행 (backfill 이 채움).
+ */
+function changeSeqColumn() {
+  return bigint("changeSeq", { mode: "number" }).notNull().default(0);
+}
+
+function sortKeyColumn() {
+  return text("sortKey");
+}
+
+/**
+ * 하위 레코드 테이블의 공통 열 (설계 §2.2). 루트와 달리 `updatedAt` 은 DB `now()` 로 찍는다.
+ * `userId` 는 v1 쓰기 경로가 채우지 않으므로 nullable 이다 (backfill 이 부모에서 채움).
+ */
+function childSyncColumns() {
+  return {
+    userId: text("userId").references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    ...syncColumns(),
+    changeSeq: changeSeqColumn(),
+    createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => sql`now()`),
+  };
+}
+
 // ─── Stock master ───────────────────────────────────────────────────────────
 
 export const stock = seedbook.table(
@@ -257,6 +290,8 @@ export const investmentAccount = seedbook.table(
       onUpdate: "cascade",
     }),
     ...syncColumns(),
+    changeSeq: changeSeqColumn(),
+    sortKey: sortKeyColumn(),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })
       .notNull()
@@ -266,22 +301,29 @@ export const investmentAccount = seedbook.table(
     index("investment_account_userId_idx").on(t.userId),
     index("investment_account_portfolioId_idx").on(t.portfolioId),
     index("investment_account_userId_updatedAt_idx").on(t.userId, t.updatedAt),
+    index("investment_account_userId_changeSeq_idx").on(t.userId, t.changeSeq),
   ]
 );
 
 export const investmentRecord = seedbook.table(
   "investment_record",
   {
+    // 동기화 v2 레코드 id = uuidv5(accountId, date) (`@seedbook/domain` 의 `deriveRecordId`).
+    // v1 쓰기 경로가 채우지 않아 nullable — backfill 이 채운다. PK (accountId, date) 는 그대로.
+    id: uuid("id"),
     accountId: uuid("accountId")
       .notNull()
       .references(() => investmentAccount.id, { onDelete: "cascade", onUpdate: "cascade" }),
     date: date("date", { mode: "date" }).notNull(),
     initialInvestment: bigint("initialInvestment", { mode: "bigint" }).notNull(),
     currentValue: bigint("currentValue", { mode: "bigint" }).notNull(),
+    ...childSyncColumns(),
   },
   (t) => [
     primaryKey({ columns: [t.accountId, t.date], name: "investment_record_pkey" }),
     index("investment_record_accountId_date_idx").on(t.accountId, t.date),
+    uniqueIndex("investment_record_id_key").on(t.id),
+    index("investment_record_userId_changeSeq_idx").on(t.userId, t.changeSeq),
   ]
 );
 
@@ -298,8 +340,13 @@ export const stockHolding = seedbook.table(
     currency: text("currency").notNull(),
     quantity: doublePrecision("quantity").notNull(),
     memo: text("memo").notNull().default(""),
+    ...childSyncColumns(),
+    sortKey: sortKeyColumn(),
   },
-  (t) => [index("stock_holding_accountId_idx").on(t.accountId)]
+  (t) => [
+    index("stock_holding_accountId_idx").on(t.accountId),
+    index("stock_holding_userId_changeSeq_idx").on(t.userId, t.changeSeq),
+  ]
 );
 
 export const cashItem = seedbook.table(
@@ -311,8 +358,13 @@ export const cashItem = seedbook.table(
       .references(() => investmentAccount.id, { onDelete: "cascade", onUpdate: "cascade" }),
     label: text("label").notNull(),
     amount: bigint("amount", { mode: "bigint" }).notNull(),
+    ...childSyncColumns(),
+    sortKey: sortKeyColumn(),
   },
-  (t) => [index("cash_item_accountId_idx").on(t.accountId)]
+  (t) => [
+    index("cash_item_accountId_idx").on(t.accountId),
+    index("cash_item_userId_changeSeq_idx").on(t.userId, t.changeSeq),
+  ]
 );
 
 /**
@@ -517,6 +569,8 @@ export const portfolio = seedbook.table(
       .notNull()
       .default([]),
     ...syncColumns(),
+    changeSeq: changeSeqColumn(),
+    sortKey: sortKeyColumn(),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })
       .notNull()
@@ -525,6 +579,7 @@ export const portfolio = seedbook.table(
   (t) => [
     index("portfolio_userId_idx").on(t.userId),
     index("portfolio_userId_updatedAt_idx").on(t.userId, t.updatedAt),
+    index("portfolio_userId_changeSeq_idx").on(t.userId, t.changeSeq),
   ]
 );
 
@@ -540,8 +595,13 @@ export const portfolioAllocation = seedbook.table(
     name: text("name").notNull(),
     currency: text("currency").notNull(),
     targetPercent: doublePrecision("targetPercent").notNull(),
+    ...childSyncColumns(),
+    sortKey: sortKeyColumn(),
   },
-  (t) => [index("portfolio_allocation_portfolioId_idx").on(t.portfolioId)]
+  (t) => [
+    index("portfolio_allocation_portfolioId_idx").on(t.portfolioId),
+    index("portfolio_allocation_userId_changeSeq_idx").on(t.userId, t.changeSeq),
+  ]
 );
 
 // ─── Rebalancing ────────────────────────────────────────────────────────────
@@ -570,6 +630,8 @@ export const rebalancing = seedbook.table(
     // 완료하며 계좌에 반영한 뒤의 포트폴리오 구성 스냅샷. 반영하지 않았으면 null.
     result: jsonb("result"),
     ...syncColumns(),
+    changeSeq: changeSeqColumn(),
+    sortKey: sortKeyColumn(),
     createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
     updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })
       .notNull()
@@ -578,8 +640,67 @@ export const rebalancing = seedbook.table(
   (t) => [
     index("rebalancing_userId_idx").on(t.userId),
     index("rebalancing_userId_updatedAt_idx").on(t.userId, t.updatedAt),
+    index("rebalancing_userId_changeSeq_idx").on(t.userId, t.changeSeq),
   ]
 );
+
+/**
+ * 리밸런싱 할 일 (동기화 v2 `rebalancingTask` 레코드). v2-2 에서 `rebalancing.tasks` jsonb 를
+ * `db:backfill:sync-v2` 로 펼쳐 만든다 — v1 엔드포인트는 아직 `tasks` 를 읽고 쓴다 (v2-5 에서 제거).
+ * id = uuidv5(rebalancingId, allocationId). `allocationId` 는 옛 `task.id` (포트폴리오 배분 id).
+ */
+export const rebalancingTask = seedbook.table(
+  "rebalancing_task",
+  {
+    id: uuid("id").primaryKey(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    rebalancingId: uuid("rebalancingId")
+      .notNull()
+      .references(() => rebalancing.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    allocationId: text("allocationId").notNull(),
+    market: text("market").notNull(),
+    ticker: text("ticker").notNull(),
+    name: text("name").notNull(),
+    action: text("action", { enum: ["매수", "매도"] }).notNull(),
+    amount: doublePrecision("amount").notNull(),
+    price: doublePrecision("price"),
+    quantity: doublePrecision("quantity"),
+    priceAsOf: timestamp("priceAsOf", { precision: 3, mode: "date" }),
+    priceKind: text("priceKind", { enum: ["realtime", "close"] }),
+    executedQuantity: doublePrecision("executedQuantity"),
+    executedPrice: doublePrecision("executedPrice"),
+    orderedQuantity: doublePrecision("orderedQuantity"),
+    orderedPrice: doublePrecision("orderedPrice"),
+    filledQuantity: doublePrecision("filledQuantity"),
+    filledAmount: doublePrecision("filledAmount"),
+    done: boolean("done").notNull(),
+    ...syncColumns(),
+    changeSeq: changeSeqColumn(),
+    sortKey: sortKeyColumn(),
+    createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => sql`now()`),
+  },
+  (t) => [
+    index("rebalancing_task_rebalancingId_idx").on(t.rebalancingId),
+    index("rebalancing_task_userId_changeSeq_idx").on(t.userId, t.changeSeq),
+  ]
+);
+
+/**
+ * 사용자별 동기화 변경 번호 (설계 §4.4). 쓰기 트랜잭션이 이 행을 올려(`reserveChangeSeqs`)
+ * 받은 번호를 바꾼 레코드의 `changeSeq` 에 넣는다 — 행 잠금이 사용자별 직렬화를 겸한다.
+ */
+export const userSyncState = seedbook.table("user_sync_state", {
+  userId: text("userId")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
+  seq: bigint("seq", { mode: "number" }).notNull().default(0),
+});
 
 // ─── Progress ───────────────────────────────────────────────────────────────
 
@@ -628,6 +749,14 @@ export const userPreference = seedbook.table("user_preference", {
   storageMode: text("storageMode").notNull().default("local"),
   // 사용자가 저장소 모드를 직접 고른 시각. null 이면 로그인 뒤 저장 방식 선택 화면을 보여 준다.
   storageModeChosenAt: timestamp("storageModeChosenAt", { precision: 3, mode: "date" }),
+  // 동기화 v2 공통 열 (설정은 사용자당 하나라 id 대신 userId 가 키, 목록 순서 없음).
+  ...syncColumns(),
+  changeSeq: changeSeqColumn(),
+  createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => sql`now()`),
 });
 
 export const userListOrder = seedbook.table(

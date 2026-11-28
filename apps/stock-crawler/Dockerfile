@@ -21,6 +21,7 @@ FROM deps AS build
 
 COPY packages/typescript-config/ ./packages/typescript-config/
 COPY packages/database/ ./packages/database/
+# 레코드 정의. database 의 backfill 스크립트(`db:backfill:sync-v2`)가 키(uuidv5·sortKey)를 여기서 만든다.
 COPY packages/domain/ ./packages/domain/
 COPY apps/stock-crawler/ ./apps/stock-crawler/
 

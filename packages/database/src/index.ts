@@ -7,3 +7,5 @@ export * from "./ensure-dev-auth";
 export * from "./portfolio-plants";
 export * from "./schema";
 export * from "./scrub-personal-info";
+export * from "./sync-state";
+export * from "./sync-v2-backfill";

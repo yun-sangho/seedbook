@@ -169,6 +169,13 @@
       "when": 1795824920388,
       "tag": "0023_gorgeous_gamora",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795829079299,
+      "tag": "0024_thankful_serpent_society",
+      "breakpoints": true
     }
   ]
 }
