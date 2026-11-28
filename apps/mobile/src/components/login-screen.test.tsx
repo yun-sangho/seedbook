@@ -100,16 +100,18 @@ describe("LoginScreen", () => {
 
   it("tells the user that nothing from the login provider (name, email, ID) is used", () => {
     openAt("/assets");
-    expect(screen.getByText(/이름·이메일·아이디 등 타 서비스의 정보는/)).toHaveTextContent(
-      "전혀 활용하지 않아요"
-    );
+    expect(
+      screen.getByText("이름·이메일·아이디 등 타 서비스의 정보는 활용하지 않아요.")
+    ).toBeInTheDocument();
   });
 
-  it("links to the privacy policy", () => {
+  it("opens the privacy policy inside the app, without leaving the login screen", async () => {
     openAt("/assets");
-    expect(screen.getByRole("link", { name: "개인정보처리방침" })).toHaveAttribute(
-      "href",
-      "/privacy"
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: "개인정보처리방침" }))
     );
+    expect(screen.getByRole("dialog", { name: "개인정보처리방침" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Seedbook 로그인" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/assets");
   });
 });

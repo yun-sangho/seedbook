@@ -5,6 +5,7 @@ import { AppleSignInActionButton } from "@mobile/components/apple-sign-in-action
 import { BiometricSignInButton } from "@mobile/components/biometric-sign-in-button";
 import { BrandMark } from "@mobile/components/brand-mark";
 import { KakaoSignInButton } from "@mobile/components/kakao-sign-in-button";
+import { LegalDocumentViewer } from "@mobile/components/legal-document-viewer";
 import { useSocialSignIn } from "@mobile/hooks/use-social-sign-in";
 import { apiFetch } from "@mobile/lib/api-client";
 import { getDeviceStorage } from "@mobile/lib/device-storage";
@@ -13,7 +14,7 @@ import {
   readLastLoginMethod,
   type SocialProvider,
 } from "@mobile/lib/last-login-method";
-import { LEGAL_DOCUMENTS } from "@mobile/lib/legal-documents";
+import { LEGAL_DOCUMENTS, type LegalDocumentId } from "@mobile/lib/legal-documents";
 import {
   LOGIN_ERROR_PARAM,
   LOGIN_FAILED_MESSAGE,
@@ -53,6 +54,7 @@ export function LoginScreen() {
   const [lastLoginMethod] = useState(() => readLastLoginMethod(getDeviceStorage()));
   const [devPending, setDevPending] = useState(false);
   const [devFailed, setDevFailed] = useState(false);
+  const [viewing, setViewing] = useState<LegalDocumentId | null>(null);
 
   // 새로고침해도 지난 오류가 다시 나오지 않게 주소에서 지운다. history state 는
   // 그대로 둔다 (`app/_stack/address-bar-history.ts`).
@@ -135,18 +137,23 @@ export function LoginScreen() {
         )}
         {/* 로그인에서 신상 정보를 받지 않는다 (`lib/auth-privacy.ts`). */}
         <p className="t3-regular text-fg-neutral-subtle pt-x3 text-center break-keep">
-          이름·이메일·아이디 등 타 서비스의 정보는
-          <br />
-          전혀 활용하지 않아요.
+          이름·이메일·아이디 등 타 서비스의 정보는 활용하지 않아요.
         </p>
+        {/* 사이트 페이지로 나가지 않고 이 화면 위에 문서를 띄운다 — 닫으면 로그인 화면 그대로. */}
         <div className="t3-regular text-fg-neutral-subtle flex justify-center gap-x4 pt-x1">
-          {LEGAL_DOCUMENTS.map(({ id, title, href }) => (
-            <a key={id} href={href} className="underline underline-offset-4">
+          {LEGAL_DOCUMENTS.map(({ id, title }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setViewing(id)}
+              className="underline underline-offset-4"
+            >
               {title}
-            </a>
+            </button>
           ))}
         </div>
       </div>
+      {viewing && <LegalDocumentViewer document={viewing} onClose={() => setViewing(null)} />}
     </main>
   );
 }
