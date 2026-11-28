@@ -130,6 +130,12 @@ describe("buildPlant", () => {
     }
   });
 
+  it.each(["tree", "fern"] as const)("shows an empty pot without the seed (%s)", (kind) => {
+    const seed = countMeshes(plant({ stage: "seed", kind }).root);
+    const empty = countMeshes(plant({ stage: "seed", kind, empty: true }).root);
+    expect(empty).toBeLessThan(seed);
+  });
+
   it("adds flowers and fruit on top of the tree at the bloom stage", () => {
     expect(countMeshes(plant({ stage: "bloom" }).root)).toBeGreaterThan(
       countMeshes(plant({ stage: "tree" }).root)

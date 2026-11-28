@@ -3,6 +3,7 @@
 import { IconChevronRightSmallLine } from "@karrotmarket/react-monochrome-icon";
 import { PortfolioPlantAvatar } from "@mobile/features/portfolio/components/portfolio-plant-avatar";
 import { usePortfolioStore } from "@mobile/features/portfolio/stores/portfolio-store";
+import { INITIAL_PLANT_PROGRESS } from "@mobile/features/portfolio/types/constants";
 import type { LinkedPortfolioStatus } from "@mobile/features/portfolio/utils/linked-portfolio-status";
 import { useRebalancingStore } from "@mobile/features/rebalancing/stores/rebalancing-store";
 import { findInProgressForAccount } from "@mobile/features/rebalancing/utils/rebalancing-session";
@@ -44,8 +45,8 @@ export function LinkedPortfolioChip({
 }) {
   const { push } = useFlow();
   const inProgress = useRebalancingStore((s) => findInProgressForAccount(s.sessions, accountId));
-  const stage = usePortfolioStore(
-    (s) => s.portfolios.find((p) => p.id === status?.portfolioId)?.growthStage ?? 0
+  const portfolio = usePortfolioStore((s) =>
+    s.portfolios.find((p) => p.id === status?.portfolioId)
   );
 
   if (!status) {
@@ -69,7 +70,10 @@ export function LinkedPortfolioChip({
           CHIP_TONE_CLASS[tone]
         )}
       >
-        <PortfolioPlantAvatar portfolioId={status.portfolioId} stage={stage} size={20} />
+        <PortfolioPlantAvatar
+          portfolio={portfolio ?? { ...INITIAL_PLANT_PROGRESS, id: status.portfolioId }}
+          size={20}
+        />
         <span className="truncate">{status.name}</span>
         {tone === "progress" && <span className="shrink-0">· 리밸런싱 진행 중</span>}
         {tone === "alert" && <span className="shrink-0">· 이격 초과</span>}

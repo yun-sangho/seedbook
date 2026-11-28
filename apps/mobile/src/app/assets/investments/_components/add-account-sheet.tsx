@@ -99,13 +99,7 @@ export function AddAccountSheet({ open, onOpenChange }: AddAccountSheetProps) {
                   {portfolioSources.map(({ portfolio, seeds }) => (
                     <ListButtonItem
                       key={portfolio.id}
-                      prefix={
-                        <PortfolioPlantAvatar
-                          portfolioId={portfolio.id}
-                          stage={portfolio.growthStage}
-                          size={28}
-                        />
-                      }
+                      prefix={<PortfolioPlantAvatar portfolio={portfolio} size={28} />}
                       title={portfolio.name}
                       detail={`${seeds.length}종목 · 이 포트폴리오에 자동 연결`}
                       onClick={() => create(accountType, seeds, portfolio.id)}

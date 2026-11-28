@@ -80,6 +80,8 @@ export interface PlantOptions {
    * 열매가 열린다. 익어 가는 중간 모습은 없다.
    */
   ripe: boolean;
+  /** 빈 화분 — 씨앗을 심지 않았다 (목표 없는 포트폴리오). 씨앗 단계에서 씨앗을 그리지 않는다. */
+  empty?: boolean;
   /** 리밸런싱이 필요하면 몸통이 한쪽으로 기울고 옆에 원형 `!` 배지가 뜬다. */
   needsRebalance: boolean;
   pot: PotColor;

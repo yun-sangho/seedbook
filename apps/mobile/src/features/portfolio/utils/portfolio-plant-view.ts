@@ -1,8 +1,10 @@
+import { plantKindOf } from "@mobile/features/garden/utils/garden-home";
 import type { InvestmentItem } from "@mobile/features/investments/types/types";
 import type { StockPricePoint } from "@mobile/features/investments/utils/use-stock-prices";
-import type { PortfolioItem } from "../types/types";
+import type { PlantKind, PortfolioItem } from "../types/types";
 import { type LinkedPortfolioState, linkedPortfolioStatus } from "./linked-portfolio-status";
-import { computePlantStatus, computePortfolioValuation, type PlantStatus } from "./portfolio-plant";
+import { computePlantStatus, type PlantEvaluation, type PlantStatus } from "./plant-season";
+import { computePortfolioValuation } from "./portfolio-plant";
 
 /**
  * 포트폴리오의 리밸런싱 필요 여부. 리밸런싱 대상은 계좌라 연결 계좌마다 계좌 화면과 같은 판정
@@ -29,6 +31,12 @@ export interface PortfolioPlantView extends PlantStatus {
   portfolioId: string;
   name: string;
   color: string;
+  /** 식물 종류 (고른 종류, 없으면 `kindForPortfolio`). */
+  kind: PlantKind;
+  /** 수확 주기 번호 (1부터, 수확할 때마다 +1). 화면에 보이지 않는 내부 번호. */
+  season: number;
+  /** 목표를 이루면 하고 싶은 일 (비어 있을 수 있다). */
+  wish: string;
   /** 포트폴리오 평가 금액 (원). */
   value: number;
   /** 연결 계좌의 종목 시세가 모두 왔는지. */
@@ -36,19 +44,49 @@ export interface PortfolioPlantView extends PlantStatus {
   rebalancing: LinkedPortfolioState;
 }
 
-export function portfolioPlantView(
+/** 포트폴리오 하나의 평가 — 평가금액·시세가 다 왔는지·비중 이탈 (리밸런싱이 필요한 연결 계좌가 있는지). */
+export function portfolioPlantEvaluation(
   portfolio: PortfolioItem,
   investments: InvestmentItem[],
   prices: Map<string, StockPricePoint>
-): PortfolioPlantView {
+): PlantEvaluation & { rebalancing: LinkedPortfolioState; accountCount: number } {
   const valuation = computePortfolioValuation(portfolio, investments, prices);
+  const rebalancing = portfolioRebalancingState(portfolio, investments, prices);
+  // 연결 계좌가 없거나 목표 비중이 비면 `unknown` — 이탈로 보지 않는다 (금액만으로 자란다).
+  return {
+    value: valuation.value,
+    pricesComplete: valuation.pricesComplete,
+    drifting: rebalancing === "needs-rebalancing",
+    rebalancing,
+    accountCount: valuation.accountCount,
+  };
+}
+
+/** `now` 는 이탈 기간을 재는 시각 (ISO). */
+export function portfolioPlantView(
+  portfolio: PortfolioItem,
+  investments: InvestmentItem[],
+  prices: Map<string, StockPricePoint>,
+  now: string
+): PortfolioPlantView {
+  const { rebalancing, accountCount, ...evaluation } = portfolioPlantEvaluation(
+    portfolio,
+    investments,
+    prices
+  );
+  const status = computePlantStatus(portfolio, evaluation, now);
   return {
     portfolioId: portfolio.id,
     name: portfolio.name,
     color: portfolio.color,
-    value: valuation.value,
-    pricesComplete: valuation.pricesComplete,
-    ...computePlantStatus(portfolio, valuation),
-    rebalancing: portfolioRebalancingState(portfolio, investments, prices),
+    kind: plantKindOf(portfolio),
+    season: portfolio.season,
+    wish: portfolio.wish,
+    value: evaluation.value,
+    pricesComplete: evaluation.pricesComplete,
+    ...status,
+    // 연결 계좌가 없으면 평가금액이 0 일 뿐 시장이 내린 것이 아니다.
+    wind: accountCount > 0 ? status.wind : 0,
+    rebalancing,
   };
 }
