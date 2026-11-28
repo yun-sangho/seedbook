@@ -39,7 +39,7 @@ const prefersReducedMotion = () =>
 
 /**
  * 씨앗 심기 연출: 흙만 있는 정원에 씨앗이 심긴다. 새 포트폴리오는 씨앗(0단계)이라 새싹은 보여 주지
- * 않고, 첫 목표에 닿으면 새싹이 튼다고 안내한다 (사용자 결정 — 홈 정원과 같은 모습).
+ * 않고, 목표에 가까워질수록 자란다고 안내한다 (사용자 결정 — 홈 정원과 같은 모습).
  */
 export function PlantingStep({
   portfolioId,
@@ -68,8 +68,8 @@ export function PlantingStep({
       description={
         planted
           ? goalAmount === null
-            ? "첫 목표 금액을 정하면, 포트폴리오가 그 금액에 닿을 때 새싹이 터요."
-            : `포트폴리오가 첫 목표 ${numberToKorean(goalAmount)}에 닿으면 새싹이 터요.`
+            ? "목표 금액을 정하면, 포트폴리오가 그 금액에 가까워질수록 식물이 자라요."
+            : `포트폴리오가 목표 ${numberToKorean(goalAmount)}에 가까워질수록 식물이 자라요.`
           : undefined
       }
       primary={{ label: "다음", onClick: onNext, disabled: !planted }}

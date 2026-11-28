@@ -35,8 +35,12 @@ export interface PortfolioPlantView extends PlantStatus {
   kind: PlantKind;
   /** 수확 주기 번호 (1부터, 수확할 때마다 +1). 화면에 보이지 않는 내부 번호. */
   season: number;
+  /** 씨앗을 심을 때 정한 식물 이름 (비어 있을 수 있다). */
+  plantName: string;
   /** 목표를 이루면 하고 싶은 일 (비어 있을 수 있다). */
   wish: string;
+  /** 소원 이력 (오래된 순). */
+  wishHistory: PortfolioItem["wishHistory"];
   /** 포트폴리오 평가 금액 (원). */
   value: number;
   /** 연결 계좌의 종목 시세가 모두 왔는지. */
@@ -81,7 +85,9 @@ export function portfolioPlantView(
     color: portfolio.color,
     kind: plantKindOf(portfolio),
     season: portfolio.season,
+    plantName: portfolio.plantName,
     wish: portfolio.wish,
+    wishHistory: portfolio.wishHistory,
     value: evaluation.value,
     pricesComplete: evaluation.pricesComplete,
     ...status,

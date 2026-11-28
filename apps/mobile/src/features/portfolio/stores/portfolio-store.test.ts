@@ -162,14 +162,20 @@ describe("Portfolio Store", () => {
       pricesComplete: true,
     });
 
-    it("sets and clears the goal", () => {
+    it("sets the final goal, heading for the first stage, and clears it", () => {
       const id = usePortfolioStore.getState().addPortfolio();
 
       expect(usePortfolioStore.getState().setPlantGoal(id, 1_000_000, complete(0))).toBe(true);
-      expect(usePortfolioStore.getState().portfolios[0]!.goalAmount).toBe(1_000_000);
+      expect(usePortfolioStore.getState().portfolios[0]).toMatchObject({
+        goalAmount: 100_000,
+        stageGoals: [100_000, 250_000, 450_000, 700_000, 1_000_000],
+      });
 
       usePortfolioStore.getState().setPlantGoal(id, null, complete(0));
-      expect(usePortfolioStore.getState().portfolios[0]!.goalAmount).toBeNull();
+      expect(usePortfolioStore.getState().portfolios[0]).toMatchObject({
+        goalAmount: null,
+        stageGoals: [],
+      });
     });
 
     it("refuses a goal that breaks the goal rules", () => {
@@ -203,25 +209,25 @@ describe("Portfolio Store", () => {
       const shortId = usePortfolioStore.getState().addPortfolio("short");
       const driftingId = usePortfolioStore.getState().addPortfolio("drifting");
       for (const id of [reachedId, shortId, driftingId]) {
-        usePortfolioStore.getState().setPlantGoal(id, 1000, complete(0));
+        usePortfolioStore.getState().setPlantGoal(id, 1_000_000, complete(0));
       }
 
       usePortfolioStore.getState().evaluatePlants(
         new Map([
-          [reachedId, evaluation(1500)],
-          [shortId, evaluation(500)],
-          [driftingId, evaluation(1500, true)],
+          [reachedId, evaluation(150_000)],
+          [shortId, evaluation(50_000)],
+          [driftingId, evaluation(150_000, true)],
         ]),
         NOW
       );
 
       const byId = new Map(usePortfolioStore.getState().portfolios.map((p) => [p.id, p]));
-      expect(byId.get(reachedId)).toMatchObject({ growthStage: 1, goalAmount: null });
-      expect(byId.get(reachedId)!.goalHistory.map((g) => g.amount)).toEqual([1000]);
-      expect(byId.get(shortId)).toMatchObject({ growthStage: 0, goalAmount: 1000 });
+      expect(byId.get(reachedId)).toMatchObject({ growthStage: 1, goalAmount: 250_000 });
+      expect(byId.get(reachedId)!.goalHistory.map((g) => g.amount)).toEqual([100_000]);
+      expect(byId.get(shortId)).toMatchObject({ growthStage: 0, goalAmount: 100_000 });
       expect(byId.get(driftingId)).toMatchObject({
         growthStage: 0,
-        goalAmount: 1000,
+        goalAmount: 100_000,
         driftSince: "2026-11-26T15:00:00.000Z",
       });
     });
@@ -267,18 +273,31 @@ describe("Portfolio Store", () => {
       });
     });
 
-    it("plants a seed with a kind and a wish", () => {
+    it("plants a seed with a kind, a name and a wish", () => {
       const id = usePortfolioStore.getState().addPortfolio();
 
       const ok = usePortfolioStore
         .getState()
-        .startPlantSeason(id, { plantKind: "fern", wish: "제주 여행" });
+        .startPlantSeason(id, { plantKind: "fern", plantName: "몽글이", wish: "제주 여행" });
 
       expect(ok).toBe(true);
       expect(usePortfolioStore.getState().portfolios[0]).toMatchObject({
         plantKind: "fern",
+        plantName: "몽글이",
         wish: "제주 여행",
+        wishHistory: [{ wish: "제주 여행", at: expect.any(String) }],
       });
+    });
+
+    it("refuses a plant name over the limit", () => {
+      const id = usePortfolioStore.getState().addPortfolio();
+
+      const ok = usePortfolioStore
+        .getState()
+        .startPlantSeason(id, { plantKind: "fern", plantName: "가".repeat(21), wish: "" });
+
+      expect(ok).toBe(false);
+      expect(usePortfolioStore.getState().portfolios[0]!.plantKind).toBeNull();
     });
 
     it("refuses a wish over 100 characters", () => {
@@ -287,6 +306,19 @@ describe("Portfolio Store", () => {
       expect(usePortfolioStore.getState().setPlantWish(id, "가".repeat(101))).toBe(false);
       expect(usePortfolioStore.getState().setPlantWish(id, "  여행  ")).toBe(true);
       expect(usePortfolioStore.getState().portfolios[0]!.wish).toBe("여행");
+    });
+
+    it("keeps each changed wish in the history", () => {
+      const id = usePortfolioStore.getState().addPortfolio();
+      usePortfolioStore
+        .getState()
+        .startPlantSeason(id, { plantKind: "tree", plantName: "", wish: "제주 여행" });
+
+      usePortfolioStore.getState().setPlantWish(id, "가족 여행");
+
+      expect(
+        usePortfolioStore.getState().portfolios[0]!.wishHistory.map((entry) => entry.wish)
+      ).toEqual(["제주 여행", "가족 여행"]);
     });
 
     it("harvests a ripe plant into the basket and starts the next season", () => {

@@ -17,10 +17,13 @@ import {
 } from "../types/constants";
 import type { DriftMode, PlantKind, PortfolioAllocation, PortfolioItem } from "../types/types";
 import {
+  changePlantWish,
   evaluatePlant,
   harvestPlant,
   nextGoalError,
   type PlantEvaluation,
+  plantNameError,
+  setSeasonGoal,
   startPlantSeason,
   wishError,
 } from "../utils/plant-season";
@@ -80,9 +83,12 @@ interface PortfolioState {
    * 이탈 시작일을 기록·해제한다). 바뀐 것이 없으면 상태를 바꾸지 않는다 (동기화 대기열에도 남지 않는다).
    */
   evaluatePlants: (evaluations: ReadonlyMap<string, PlantEvaluation>, now?: string) => void;
-  /** 씨앗 심기 — 식물 종류와 소원. 소원이 규칙(`wishError`)에 어긋나면 false. */
-  startPlantSeason: (portfolioId: string, input: { plantKind: PlantKind; wish: string }) => boolean;
-  /** 소원을 고친다 (언제든). 규칙에 어긋나면 false. */
+  /** 씨앗 심기 — 식물 종류·이름·소원. 이름·소원이 규칙(`plantNameError`·`wishError`)에 어긋나면 false. */
+  startPlantSeason: (
+    portfolioId: string,
+    input: { plantKind: PlantKind; plantName: string; wish: string }
+  ) => boolean;
+  /** 소원을 고친다 (언제든, 소원 이력에 남는다). 규칙에 어긋나면 false. */
   setPlantWish: (portfolioId: string, wish: string) => boolean;
   /**
    * 열매가 열린 식물을 수확한다 — 수확 기록을 바구니(`useHarvestStore`)에 남기고 빈 화분으로
@@ -243,7 +249,7 @@ export const usePortfolioStore = create<PortfolioState>()(
         if (amount !== null && nextGoalError(portfolio, amount, valuation)) return false;
         set((state) => ({
           portfolios: state.portfolios.map((p) =>
-            p.id === portfolioId ? touch({ ...p, goalAmount: amount }) : p
+            p.id === portfolioId ? touch(setSeasonGoal(p, amount, valuation.value)) : p
           ),
         }));
         return true;
@@ -261,10 +267,11 @@ export const usePortfolioStore = create<PortfolioState>()(
       },
 
       startPlantSeason: (portfolioId, input) => {
-        if (wishError(input.wish)) return false;
+        if (wishError(input.wish) || plantNameError(input.plantName)) return false;
+        const now = nowIso();
         set((state) => ({
           portfolios: state.portfolios.map((p) =>
-            p.id === portfolioId ? touch(startPlantSeason(p, input)) : p
+            p.id === portfolioId ? touch(startPlantSeason(p, input, now)) : p
           ),
         }));
         return true;
@@ -272,10 +279,13 @@ export const usePortfolioStore = create<PortfolioState>()(
 
       setPlantWish: (portfolioId, wish) => {
         if (wishError(wish)) return false;
+        const now = nowIso();
         set((state) => ({
-          portfolios: state.portfolios.map((p) =>
-            p.id === portfolioId ? touch({ ...p, wish: wish.trim() }) : p
-          ),
+          portfolios: state.portfolios.map((p) => {
+            if (p.id !== portfolioId) return p;
+            const next = changePlantWish(p, wish, now);
+            return next === p ? p : touch(next);
+          }),
         }));
         return true;
       },

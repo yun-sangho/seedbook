@@ -4,7 +4,7 @@ import type { SeasonGoalState } from "@mobile/features/portfolio/utils/plant-sea
 interface GoalBarInput {
   stage: PlantStage;
   goalState: SeasonGoalState;
-  /** 목표 대비 % (목표가 없으면 null). */
+  /** 최종 목표 대비 % (목표가 없으면 null). */
   goalPercent: number | null;
   /** 시듦 (비중 이탈 기간). 있으면 경고색. */
   wilt: number;
@@ -20,12 +20,6 @@ const TONE_CLASS: Record<GoalBarTone, string> = {
   neutral: "bg-bg-neutral-solid-muted",
   warning: "bg-bg-warning-solid",
 };
-
-/** 목표 대비 % (0~100, 소수 버림). 목표가 없으면 null. 정원 목록 행과 같은 계산. */
-export function goalPercentOf(value: number, goalAmount: number | null): number | null {
-  if (goalAmount === null || goalAmount <= 0) return null;
-  return Math.min(100, Math.floor((Math.max(0, value) / goalAmount) * 100));
-}
 
 /**
  * 목표 도달 막대: 채울 비율(%, 막대 없으면 null), 옆 문구, 색. 목표를 향해 자라는 중이면 막대만(바람이면
@@ -48,7 +42,7 @@ export function goalBarState({ stage, goalState, goalPercent, wilt, wind }: Goal
         ? { percent: null, label: "목표를 더하면 씨앗을 심어요", tone }
         : { percent: 100, label: "목표 달성!", tone };
     case "blocked-by-drift":
-      return { percent: 100, label: "비중을 맞추면 자라요", tone };
+      return { percent: goalPercent ?? 100, label: "비중을 맞추면 자라요", tone };
     case "set":
       return { percent: goalPercent ?? 0, label: wind > 0 ? "바람이 불어요" : null, tone };
   }

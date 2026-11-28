@@ -1,22 +1,29 @@
-import { harvestId } from "@seedbook/domain";
+import { harvestId, PLANT_WISH_HISTORY_MAX } from "@seedbook/domain";
 import { describe, expect, it } from "vitest";
 import { INITIAL_PLANT_PROGRESS } from "../types/constants";
 import type { PlantProgress } from "../types/types";
 import {
   advancePlant,
+  changePlantWish,
   driftDays,
   harvestPlant,
   NEXT_GOAL_ERROR_MESSAGES,
   nextGoalError,
   nextGoalFloor,
+  PLANT_NAME_MAX_LENGTH,
+  planStageGoals,
+  plantNameError,
   plantWilt,
   plantWind,
+  seasonGoalPercent,
   seasonGoalState,
+  setSeasonGoal,
   startPlantSeason,
   trackDriftSince,
   WIND_MAX,
   WISH_MAX_LENGTH,
   wishError,
+  wishHistoryNewestFirst,
 } from "./plant-season";
 
 const PORTFOLIO_ID = "6a1f8c2e-3b4d-4e5f-8a9b-0c1d2e3f4a5b";
@@ -158,6 +165,130 @@ describe("advancePlant", () => {
 
     expect(advancePlant(p, evaluation(9_000_000), NOW)).toBe(p);
   });
+
+  describe("with the season's stage goals", () => {
+    const STAGE_GOALS = [110_000, 125_000, 145_000, 170_000, 200_000];
+    const planted = progress({ goalAmount: 110_000, stageGoals: STAGE_GOALS });
+
+    it("heads for the next stage goal after growing", () => {
+      const grown = advancePlant(planted, evaluation(115_000), NOW);
+
+      expect(grown).toMatchObject({ growthStage: 1, goalAmount: 125_000 });
+    });
+
+    it("grows several stages at once when the amount passed them", () => {
+      const grown = advancePlant(planted, evaluation(150_000), NOW);
+
+      expect(grown).toMatchObject({
+        growthStage: 3,
+        goalAmount: 170_000,
+        goalHistory: [
+          { amount: 110_000, reachedAt: NOW },
+          { amount: 125_000, reachedAt: NOW },
+          { amount: 145_000, reachedAt: NOW },
+        ],
+      });
+    });
+
+    it("bears fruit when the final goal is reached", () => {
+      const grown = advancePlant(planted, evaluation(200_000), NOW);
+
+      expect(grown).toMatchObject({
+        growthStage: 4,
+        goalAmount: null,
+        fruitGoal: { amount: 200_000, reachedAt: NOW },
+      });
+    });
+
+    it("picks up the next stage goal an older app cleared after growing", () => {
+      const cleared = progress({
+        growthStage: 1,
+        goalHistory: [reached(110_000)],
+        goalAmount: null,
+        stageGoals: STAGE_GOALS,
+      });
+
+      expect(advancePlant(cleared, evaluation(100_000), NOW).goalAmount).toBe(125_000);
+    });
+  });
+});
+
+describe("planStageGoals", () => {
+  it("spreads the steps from today's amount to the goal, small first and larger later", () => {
+    expect(planStageGoals(progress(), 2_000_000, 1_000_000)).toEqual([
+      1_100_000, 1_250_000, 1_450_000, 1_700_000, 2_000_000,
+    ]);
+  });
+
+  it("keeps the goals already reached and spreads only the rest", () => {
+    const grown = progress({
+      growthStage: 2,
+      goalHistory: [reached(1_100_000), reached(1_250_000)],
+    });
+
+    const goals = planStageGoals(grown, 2_000_000, 1_300_000);
+
+    expect(goals.slice(0, 2)).toEqual([1_100_000, 1_250_000]);
+    expect(goals.at(-1)).toBe(2_000_000);
+    expect(goals).toHaveLength(5);
+    const steps = goals.slice(2).map((g, i, all) => g - (all[i - 1] ?? 1_300_000));
+    expect(steps).toEqual([...steps].sort((a, b) => a - b));
+  });
+
+  it("rounds the steps up to 10,000 won", () => {
+    const goals = planStageGoals(progress(), 1_234_567, 1_000_000);
+
+    expect(goals.slice(0, 4).every((g) => g % 10_000 === 0)).toBe(true);
+    expect(goals.at(-1)).toBe(1_234_567);
+  });
+
+  it("never lets a step pass the final goal", () => {
+    const goals = planStageGoals(progress(), 15_000, 10_000);
+
+    expect(goals.every((g, i) => g <= 15_000 && g >= (goals[i - 1] ?? 0))).toBe(true);
+  });
+});
+
+describe("setSeasonGoal", () => {
+  it("sets the final goal and heads for the first stage", () => {
+    const next = setSeasonGoal(progress(), 2_000_000, 1_000_000);
+
+    expect(next.stageGoals).toEqual([1_100_000, 1_250_000, 1_450_000, 1_700_000, 2_000_000]);
+    expect(next.goalAmount).toBe(1_100_000);
+  });
+
+  it("remembers the amount the stages start from", () => {
+    expect(setSeasonGoal(progress(), 2_000_000, 1_000_000).stageBase).toBe(1_000_000);
+  });
+
+  it("clears the goals", () => {
+    const next = setSeasonGoal(
+      progress({ goalAmount: 5, stageGoals: [1, 2, 3, 4, 5], stageBase: 0 }),
+      null,
+      0
+    );
+
+    expect(next).toMatchObject({ goalAmount: null, stageGoals: [], stageBase: null });
+  });
+});
+
+describe("seasonGoalPercent", () => {
+  it("counts the growth since planting toward the final goal", () => {
+    const planted = progress({ stageBase: 1_000_000, stageGoals: [1, 2, 3, 4, 2_000_000] });
+
+    expect(seasonGoalPercent(planted, 1_000_000)).toBe(0);
+    expect(seasonGoalPercent(planted, 1_250_000)).toBe(25);
+    expect(seasonGoalPercent(planted, 2_500_000)).toBe(100);
+    expect(seasonGoalPercent(planted, 900_000)).toBe(0);
+  });
+
+  it("measures from zero for a plant set before stages existed", () => {
+    expect(seasonGoalPercent(progress({ goalAmount: 1_000_000 }), 750_000)).toBe(75);
+  });
+
+  it("is null without a goal", () => {
+    expect(seasonGoalPercent(progress(), 750_000)).toBeNull();
+  });
 });
 
 describe("seasonGoalState", () => {
@@ -274,6 +405,11 @@ describe("harvestPlant", () => {
       goalHistory: FOUR_GOALS,
       fruitGoal: { amount: 500_000, reachedAt: "2026-11-20T00:00:00.000Z" },
       wish: "부모님과 제주 여행",
+      plantName: "몽글이",
+      wishHistory: [
+        { wish: "제주 여행", at: "2026-03-02T00:00:00.000Z" },
+        { wish: "부모님과 제주 여행", at: "2026-06-01T00:00:00.000Z" },
+      ],
       plantKind: "fern",
       driftSince: KST_TODAY,
     }),
@@ -281,7 +417,7 @@ describe("harvestPlant", () => {
     name: "안정형",
   };
 
-  it("records the season with its five goals and the wish", () => {
+  it("records the season with its five goals, the wish, the plant name and the wish history", () => {
     const result = harvestPlant(ripe, "tree", NOW);
 
     expect(result?.harvest).toEqual({
@@ -292,6 +428,11 @@ describe("harvestPlant", () => {
       season: 2,
       plantKind: "fern",
       wish: "부모님과 제주 여행",
+      plantName: "몽글이",
+      wishHistory: [
+        { wish: "제주 여행", at: "2026-03-02T00:00:00.000Z" },
+        { wish: "부모님과 제주 여행", at: "2026-06-01T00:00:00.000Z" },
+      ],
       goals: [...FOUR_GOALS, { amount: 500_000, reachedAt: "2026-11-20T00:00:00.000Z" }],
       harvestedAt: NOW,
       doneAt: null,
@@ -314,6 +455,10 @@ describe("harvestPlant", () => {
       goalHistory: [],
       fruitGoal: null,
       wish: "",
+      plantName: "",
+      wishHistory: [],
+      stageGoals: [],
+      stageBase: null,
       plantKind: "fern",
       driftSince: KST_TODAY,
       id: PORTFOLIO_ID,
@@ -348,10 +493,126 @@ describe("harvestPlant", () => {
 });
 
 describe("startPlantSeason", () => {
-  it("sets the plant kind and the wish", () => {
-    const next = startPlantSeason(progress(), { plantKind: "fern", wish: "  여행  " });
+  it("sets the plant kind, the plant name and the wish", () => {
+    const next = startPlantSeason(
+      progress(),
+      { plantKind: "fern", plantName: "  몽글이 ", wish: "  여행  " },
+      NOW
+    );
 
-    expect(next).toMatchObject({ plantKind: "fern", wish: "여행" });
+    expect(next).toMatchObject({ plantKind: "fern", plantName: "몽글이", wish: "여행" });
+  });
+
+  it("starts the wish history with the first wish", () => {
+    const next = startPlantSeason(
+      progress({ wishHistory: [{ wish: "지난 소원", at: "2026-01-01T00:00:00.000Z" }] }),
+      { plantKind: "tree", plantName: "", wish: "여행" },
+      NOW
+    );
+
+    expect(next.wishHistory).toEqual([{ wish: "여행", at: NOW }]);
+  });
+
+  it("starts an empty wish history when no wish was written", () => {
+    const next = startPlantSeason(
+      progress(),
+      { plantKind: "tree", plantName: "", wish: "  " },
+      NOW
+    );
+
+    expect(next.wishHistory).toEqual([]);
+  });
+});
+
+describe("changePlantWish", () => {
+  const planted = progress({
+    wish: "여행",
+    wishHistory: [{ wish: "여행", at: "2026-11-01T00:00:00.000Z" }],
+  });
+
+  it("changes the wish and adds it to the history", () => {
+    const next = changePlantWish(planted, "  가족 여행 ", NOW);
+
+    expect(next.wish).toBe("가족 여행");
+    expect(next.wishHistory).toEqual([
+      { wish: "여행", at: "2026-11-01T00:00:00.000Z" },
+      { wish: "가족 여행", at: NOW },
+    ]);
+  });
+
+  it("records clearing the wish", () => {
+    const next = changePlantWish(planted, "", NOW);
+
+    expect(next.wish).toBe("");
+    expect(next.wishHistory.at(-1)).toEqual({ wish: "", at: NOW });
+  });
+
+  it("leaves the plant as it is when the wish did not change", () => {
+    expect(changePlantWish(planted, " 여행 ", NOW)).toBe(planted);
+  });
+
+  it("keeps only the most recent wishes", () => {
+    const full = progress({
+      wish: "소원 19",
+      wishHistory: Array.from({ length: PLANT_WISH_HISTORY_MAX }, (_, i) => ({
+        wish: `소원 ${i}`,
+        at: "2026-11-01T00:00:00.000Z",
+      })),
+    });
+
+    const next = changePlantWish(full, "새 소원", NOW);
+
+    expect(next.wishHistory).toHaveLength(PLANT_WISH_HISTORY_MAX);
+    expect(next.wishHistory[0]?.wish).toBe("소원 1");
+    expect(next.wishHistory.at(-1)).toEqual({ wish: "새 소원", at: NOW });
+  });
+
+  it("keeps the wish written before the history existed", () => {
+    const legacy = progress({ wish: "여행" });
+
+    const next = changePlantWish(legacy, "가족 여행", NOW);
+
+    expect(next.wishHistory).toEqual([
+      { wish: "여행", at: null },
+      { wish: "가족 여행", at: NOW },
+    ]);
+  });
+});
+
+describe("wishHistoryNewestFirst", () => {
+  it("lists the wishes newest first", () => {
+    const entries = wishHistoryNewestFirst(
+      progress({
+        wish: "가족 여행",
+        wishHistory: [
+          { wish: "여행", at: "2026-11-01T00:00:00.000Z" },
+          { wish: "가족 여행", at: NOW },
+        ],
+      })
+    );
+
+    expect(entries.map((e) => e.wish)).toEqual(["가족 여행", "여행"]);
+  });
+
+  it("shows a wish written before the history existed without a date", () => {
+    expect(wishHistoryNewestFirst(progress({ wish: "여행" }))).toEqual([
+      { wish: "여행", at: null },
+    ]);
+  });
+
+  it("is empty for a plant without a wish", () => {
+    expect(wishHistoryNewestFirst(progress())).toEqual([]);
+  });
+});
+
+describe("plantNameError", () => {
+  it("accepts an empty name", () => {
+    expect(plantNameError("")).toBeNull();
+  });
+
+  it("rejects a name longer than the limit", () => {
+    expect(plantNameError("가".repeat(PLANT_NAME_MAX_LENGTH))).toBeNull();
+    expect(plantNameError("가".repeat(PLANT_NAME_MAX_LENGTH + 1))).toBe("too-long");
   });
 });
 

@@ -16,6 +16,8 @@ const HARVEST = {
   season: 1,
   plantKind: "tree" as const,
   wish: "제주 여행",
+  plantName: "",
+  wishHistory: [],
   goals: [{ amount: 1_000_000, reachedAt: "2026-11-01T00:00:00.000Z" }],
   harvestedAt: "2026-11-28T06:30:00.000Z",
   doneAt: null,

@@ -12,6 +12,9 @@ type PortfolioValues = RecordValues<typeof portfolio>;
 /** 달성한 목표 하나. `amount` 는 원, `reachedAt` 은 달성을 기록한 ISO 시각. */
 export type PlantGoal = NonNullable<PortfolioValues["fruitGoal"]>;
 
+/** 정한 소원 하나. `at` 이 null 이면 이력이 생기기 전에 정한 소원. */
+export type PlantWish = PortfolioValues["wishHistory"][number];
+
 /**
  * 포트폴리오 식물의 진행 (`portfolio` 레코드의 식물 필드). 한 수확 주기는 목표 다섯 개다 — 단계 목표
  * (`goalAmount`) 를 이룰 때마다 한 단계 자라 `goalHistory` 에 남고, 4단계에서 이룬 다섯 번째(열매)
@@ -21,7 +24,17 @@ export type PlantGoal = NonNullable<PortfolioValues["fruitGoal"]>;
 export interface PlantProgress
   extends Pick<
     PortfolioValues,
-    "goalAmount" | "goalHistory" | "season" | "plantKind" | "wish" | "fruitGoal" | "driftSince"
+    | "goalAmount"
+    | "goalHistory"
+    | "season"
+    | "plantKind"
+    | "plantName"
+    | "wish"
+    | "wishHistory"
+    | "fruitGoal"
+    | "stageGoals"
+    | "stageBase"
+    | "driftSince"
   > {
   growthStage: PlantStage;
 }

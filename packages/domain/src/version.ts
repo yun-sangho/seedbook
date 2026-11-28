@@ -7,5 +7,5 @@
  * 첫 스냅샷 `v1` 은 동기화 v2-5 (v2 클라이언트가 모바일 웹으로 배포된 뒤) 에 커밋했다. 출시할 때마다
  * `pnpm --filter @seedbook/domain schema:snapshot` 으로 새 스냅샷을 남긴다.
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 export const MIN_SCHEMA = 1;
