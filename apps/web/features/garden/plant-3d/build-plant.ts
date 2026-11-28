@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { buildFernBody } from "./build-fern";
 import { leafGeometry, veinGeometry } from "./leaf-geometry";
 import { PLANT_STAGES, type PlantOptions, type PlantStage, POT_COLORS } from "./plant-options";
@@ -176,7 +177,14 @@ function stemTube(ctx: BuildContext, height: number, radius: number, lean: numbe
     new THREE.Vector3(lean + droopBend * 0.6, height * 0.85, 0),
     new THREE.Vector3(lean + droopBend, height - droopBend * 0.5, 0),
   ]);
-  const geometry = track(ctx, new THREE.TubeGeometry(curve, 12, radius, 8, false));
+  // 관 끝이 뚫려 보이지 않게 끝을 둥글게 막는다 (같은 mesh 라 draw call 은 그대로).
+  const tube = new THREE.TubeGeometry(curve, 12, radius, 8, false);
+  const cap = new THREE.SphereGeometry(radius, 8, 6);
+  const tip = curve.getPoint(1);
+  cap.translate(tip.x, tip.y, tip.z);
+  const geometry = track(ctx, mergeGeometries([tube, cap]));
+  tube.dispose();
+  cap.dispose();
   return { mesh: new THREE.Mesh(geometry, ctx.kit.get(COLORS.stem)), curve };
 }
 
@@ -220,7 +228,8 @@ function buildSapling(ctx: BuildContext, body: THREE.Group) {
 }
 
 /** 꽃·열매를 붙일 잎 뭉치 자리 (중심, 반지름). */
-type CanopySpot = { center: THREE.Vector3; radius: number };
+/** `branch`: 가지 끝 뭉치 (열매가 매달리는 곳). */
+type CanopySpot = { center: THREE.Vector3; radius: number; branch: boolean };
 
 function buildTree(ctx: BuildContext, body: THREE.Group): CanopySpot[] {
   const { droop } = ctx.options;
@@ -233,8 +242,8 @@ function buildTree(ctx: BuildContext, body: THREE.Group): CanopySpot[] {
   body.add(trunk);
 
   const canopyCenter = new THREE.Vector3(0, trunkHeight + 0.28, 0);
-  const blobSpecs: { center: THREE.Vector3; radius: number; color: string }[] = [
-    { center: canopyCenter, radius: 0.55, color: COLORS.leaf },
+  const blobSpecs: { center: THREE.Vector3; radius: number; color: string; branch: boolean }[] = [
+    { center: canopyCenter, radius: 0.55, color: COLORS.leaf, branch: false },
   ];
   const branchSpecs = [
     { y: 0.62, azimuth: 0.3, length: 0.5 },
@@ -260,6 +269,7 @@ function buildTree(ctx: BuildContext, body: THREE.Group): CanopySpot[] {
       center: end.add(new THREE.Vector3(0, 0.12, 0)),
       radius: 0.32 + ctx.rand() * 0.08,
       color: i % 2 === 0 ? COLORS.leafLight : COLORS.leafDark,
+      branch: true,
     });
   });
   // 꼭대기 작은 뭉치
@@ -267,6 +277,7 @@ function buildTree(ctx: BuildContext, body: THREE.Group): CanopySpot[] {
     center: canopyCenter.clone().add(new THREE.Vector3(0.08, 0.42, -0.05)),
     radius: 0.3,
     color: COLORS.leafLight,
+    branch: false,
   });
 
   const spots: CanopySpot[] = [];
@@ -281,7 +292,7 @@ function buildTree(ctx: BuildContext, body: THREE.Group): CanopySpot[] {
     blob.scale.set(1 + droop * 0.06, 1 - droop * 0.2, 1 + droop * 0.06);
     blob.rotation.set(ctx.rand() * 3, ctx.rand() * 3, ctx.rand() * 3);
     body.add(blob);
-    spots.push({ center: blob.position.clone(), radius: spec.radius });
+    spots.push({ center: blob.position.clone(), radius: spec.radius, branch: spec.branch });
   }
   // 많이 처지면 아래로 늘어진 잎 몇 장
   if (droop > 0.25) {
@@ -293,16 +304,42 @@ function buildTree(ctx: BuildContext, body: THREE.Group): CanopySpot[] {
   return spots;
 }
 
+/** 열매 크기·뭉치 하나에 다는 최대 개수·매달리는 각도(수평에서 아래로, 라디안). */
+const FRUIT_RADIUS = 0.085;
+const MAX_FRUITS_PER_CLUMP = 2;
+/** 나무 한 그루의 열매 수 범위 — 가지 끝 뭉치에 무작위로 나눠 단다. */
+const FRUIT_TOTAL_MIN = 2;
+const FRUIT_TOTAL_MAX = 3;
+const FRUIT_HANG = 0.6;
+/** 줄기 반대쪽에서 시작해 좌우로 넓혀 가며, 다른 뭉치에 묻히지 않는 자리를 고른다. */
+const FRUIT_AZIMUTH_OFFSETS = [0.45, -0.45, 1.2, -1.2, 1.9, -1.9, 2.6, -2.6];
+
+/** 뭉치마다 달 열매 수 (가지 끝 뭉치에만 무작위로 나눈다). 합은 FRUIT_TOTAL_MIN~MAX. */
+function fruitsPerSpot(ctx: BuildContext, spots: CanopySpot[]): number[] {
+  const counts = spots.map(() => 0);
+  const total = FRUIT_TOTAL_MIN + Math.floor(ctx.rand() * (FRUIT_TOTAL_MAX - FRUIT_TOTAL_MIN + 1));
+  for (let n = 0; n < total; n++) {
+    const open = counts
+      .map((count, i) => ({ count, i }))
+      .filter(({ count, i }) => spots[i]?.branch && count < MAX_FRUITS_PER_CLUMP);
+    const pick = open[Math.floor(ctx.rand() * open.length)];
+    if (!pick) break;
+    counts[pick.i] = pick.count + 1;
+  }
+  return counts;
+}
+
 function buildBloom(ctx: BuildContext, body: THREE.Group) {
   const spots = buildTree(ctx, body);
   const { droop } = ctx.options;
   const petalGeo = track(ctx, blobGeometry(0.075));
   const centerGeo = track(ctx, blobGeometry(0.05));
-  const fruitGeo = track(ctx, blobGeometry(0.075));
+  const fruitGeo = track(ctx, blobGeometry(FRUIT_RADIUS));
   const petalMat = ctx.kit.get(mixColor(COLORS.petal, "#C9B6A6", droop * 0.6));
   const centerMat = ctx.kit.get(COLORS.petalCenter);
   const fruitMat = ctx.kit.get(mixColor(COLORS.fruit, "#B07A5E", droop * 0.5));
 
+  const fruitCounts = fruitsPerSpot(ctx, spots);
   const up = new THREE.Vector3(0, 1, 0);
   spots.forEach((spot, i) => {
     const flowers = i === 0 ? 3 : 2;
@@ -331,15 +368,35 @@ function buildBloom(ctx: BuildContext, body: THREE.Group) {
       flower.scale.setScalar(1 - droop * 0.25);
       body.add(flower);
     }
-    if (i > 0) {
-      // 열매는 가지 끝 뭉치 아래쪽에 매달린다.
-      const fruit = new THREE.Mesh(fruitGeo, fruitMat);
-      const side = new THREE.Vector3(ctx.rand() - 0.5, 0, ctx.rand() - 0.5).normalize();
-      fruit.position
-        .copy(spot.center)
-        .addScaledVector(side, spot.radius * 0.6)
-        .add(new THREE.Vector3(0, -spot.radius * 0.75 - droop * 0.05, 0));
-      body.add(fruit);
+    const fruitCount = fruitCounts[i] ?? 0;
+    if (fruitCount > 0) {
+      // 열매는 가지 끝 뭉치의 바깥 아래쪽 표면에 매달린다 (뭉치 안에 묻히지 않게, 줄기 반대쪽).
+      const outward = Math.atan2(spot.center.z, spot.center.x);
+      const placed: THREE.Vector3[] = [];
+      for (const offset of FRUIT_AZIMUTH_OFFSETS) {
+        if (placed.length === fruitCount) break;
+        const azimuth = outward + offset;
+        const at = spot.center
+          .clone()
+          .addScaledVector(
+            new THREE.Vector3(
+              Math.cos(azimuth) * Math.cos(FRUIT_HANG),
+              -Math.sin(FRUIT_HANG),
+              Math.sin(azimuth) * Math.cos(FRUIT_HANG)
+            ),
+            spot.radius + FRUIT_RADIUS * 0.35
+          );
+        const buried = spots.some(
+          (other) =>
+            other !== spot && at.distanceTo(other.center) < other.radius + FRUIT_RADIUS * 0.35
+        );
+        const crowded = placed.some((p) => p.distanceTo(at) < FRUIT_RADIUS * 2.2);
+        if (buried || crowded) continue;
+        placed.push(at);
+        const fruit = new THREE.Mesh(fruitGeo, fruitMat);
+        fruit.position.copy(at).add(new THREE.Vector3(0, -droop * 0.05, 0));
+        body.add(fruit);
+      }
     }
   });
 }
