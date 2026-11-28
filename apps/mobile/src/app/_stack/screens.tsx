@@ -22,9 +22,9 @@ import { TAB_KEYS, type TabKey } from "./tabs";
 
 const TABS: (TabBarItem & { key: TabKey })[] = [
   { key: "home", label: "홈", icon: "house" },
-  { key: "investments", label: "계좌", icon: "linechart" },
+  { key: "accounts", label: "계좌", icon: "linechart" },
   { key: "rebalancing", label: "리밸런싱", icon: "arrows" },
-  { key: "portfolio", label: "포트폴리오", icon: "barchart" },
+  { key: "portfolios", label: "포트폴리오", icon: "barchart" },
 ];
 
 function tabLabel(key: TabKey): string {

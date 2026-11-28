@@ -16,26 +16,26 @@ function FakeTab({ name }: { name: string }) {
   }, [name]);
   return <input aria-label={name} />;
 }
-vi.mock("../assets/_components/home-mobile", () => ({ HomeMobile: () => <FakeTab name="home" /> }));
-vi.mock("../assets/investments/_components/investment-mobile", () => ({
-  InvestmentMobile: () => <FakeTab name="investments" />,
+vi.mock("../home/_components/home-mobile", () => ({ HomeMobile: () => <FakeTab name="home" /> }));
+vi.mock("../accounts/_components/investment-mobile", () => ({
+  InvestmentMobile: () => <FakeTab name="accounts" />,
 }));
-vi.mock("../assets/rebalancing/_components/rebalancing-home-mobile", () => ({
+vi.mock("../rebalancing/_components/rebalancing-home-mobile", () => ({
   RebalancingHomeMobile: () => <FakeTab name="rebalancing" />,
 }));
-vi.mock("../assets/portfolio/_components/portfolio-list-mobile", () => ({
-  PortfolioListMobile: () => <FakeTab name="portfolio" />,
+vi.mock("../portfolios/_components/portfolio-list-mobile", () => ({
+  PortfolioListMobile: () => <FakeTab name="portfolios" />,
 }));
-vi.mock("../assets/settings/_components/settings-menu-mobile", () => ({
+vi.mock("../settings/_components/settings-menu-mobile", () => ({
   SettingsMenuMobile: () => <p>설정 화면</p>,
 }));
-vi.mock("../assets/settings/_components/storage-mode-mobile", () => ({
+vi.mock("../settings/_components/storage-mode-mobile", () => ({
   StorageModeMobile: () => <p>저장 위치 화면</p>,
 }));
-vi.mock("../assets/settings/_components/data-backup-mobile", () => ({
+vi.mock("../settings/_components/data-backup-mobile", () => ({
   DataBackupMobile: () => <p>백업 화면</p>,
 }));
-vi.mock("../assets/settings/_components/delete-account-mobile", () => ({
+vi.mock("../settings/_components/delete-account-mobile", () => ({
   DeleteAccountMobile: () => <p>탈퇴 화면</p>,
 }));
 vi.mock("@mobile/components/legal-document-view", () => ({
@@ -45,7 +45,7 @@ vi.mock("@mobile/components/legal-document-view", () => ({
     </p>
   ),
 }));
-vi.mock("../assets/investments/[id]/_components/account-detail-mobile", () => ({
+vi.mock("../accounts/[id]/_components/account-detail-mobile", () => ({
   AccountDetailMobile: ({ id }: { id: string }) => <p>계좌 {id}</p>,
 }));
 vi.mock("@mobile/components/mobile/profile-menu", () => ({
@@ -100,25 +100,25 @@ afterEach(() => live.clear());
 
 describe("switching tabs", () => {
   it("keeps what was typed on a tab while another tab is shown", async () => {
-    await open("/assets/investments");
-    fireEvent.change(screen.getByLabelText("investments"), { target: { value: "메모" } });
-    const before = screen.getByLabelText("investments");
+    await open("/accounts");
+    fireEvent.change(screen.getByLabelText("accounts"), { target: { value: "메모" } });
+    const before = screen.getByLabelText("accounts");
 
     fireEvent.click(tabButton("리밸런싱"));
     await tick();
-    expect(visibleInput("investments")).toBeNull();
+    expect(visibleInput("accounts")).toBeNull();
     fireEvent.click(tabButton("계좌"));
     await tick();
 
-    expect(screen.getByLabelText("investments")).toBe(before);
-    expect((visibleInput("investments") as HTMLInputElement).value).toBe("메모");
+    expect(screen.getByLabelText("accounts")).toBe(before);
+    expect((visibleInput("accounts") as HTMLInputElement).value).toBe("메모");
   });
 
   it("stops the effects of hidden tabs and starts them again when shown", async () => {
-    await open("/assets");
+    await open("/home");
     fireEvent.click(tabButton("포트폴리오"));
     await tick();
-    expect([...live]).toEqual(["portfolio"]);
+    expect([...live]).toEqual(["portfolios"]);
 
     fireEvent.click(tabButton("홈"));
     await tick();
@@ -126,27 +126,27 @@ describe("switching tabs", () => {
   });
 
   it("does not build a tab until it is opened", async () => {
-    await open("/assets");
+    await open("/home");
 
-    expect(screen.queryByLabelText("portfolio")).toBeNull();
+    expect(screen.queryByLabelText("portfolios")).toBeNull();
   });
 
   it("marks the tab, title and address of the shown tab without adding browser history", async () => {
-    await open("/assets");
+    await open("/home");
     const length = window.history.length;
 
     fireEvent.click(tabButton("포트폴리오"));
     await tick();
 
     expect(screen.getByRole("button", { current: "page" }).textContent).toBe("포트폴리오");
-    expect(window.location.pathname).toBe("/assets/portfolio/");
+    expect(window.location.pathname).toBe("/portfolios/");
     expect(window.history.length).toBe(length);
   });
 });
 
 describe("tab bar", () => {
   it("lists the four tabs without a 더보기 item", async () => {
-    await open("/assets");
+    await open("/home");
 
     const nav = screen.getByRole("navigation", { name: "주 메뉴" });
     const labels = [...nav.querySelectorAll("button")].map((button) => button.textContent);
@@ -156,28 +156,28 @@ describe("tab bar", () => {
 
 describe("settings entry points", () => {
   it("opens the settings menu from the app bar profile button and goes back to the tab", async () => {
-    const { actions } = await open("/assets/portfolio");
+    const { actions } = await open("/portfolios");
 
     fireEvent.click(screen.getByRole("button", { name: "내 프로필" }));
     await settle();
     expect(screen.queryByText("설정 화면")).not.toBeNull();
     expect(screen.queryByText("프로필 편집")).toBeNull();
-    expect(window.location.pathname).toBe("/assets/settings/");
+    expect(window.location.pathname).toBe("/settings/");
 
     act(() => actions.pop());
     await settle();
     expect(screen.queryByText("설정 화면")).toBeNull();
-    expect(window.location.pathname).toBe("/assets/portfolio/");
+    expect(window.location.pathname).toBe("/portfolios/");
   });
 
   it.each([
-    ["/assets/settings/profile", "프로필 편집"],
-    ["/assets/settings/storage", "저장 위치 화면"],
-    ["/assets/settings/data", "백업 화면"],
-    ["/assets/settings/delete-account", "탈퇴 화면"],
-    ["/assets/settings/terms", "terms 문서 현재"],
-    ["/assets/settings/privacy", "privacy 문서 현재"],
-    ["/assets/settings/terms/2026-11-25", "terms 문서 2026-11-25"],
+    ["/settings/profile", "프로필 편집"],
+    ["/settings/storage", "저장 위치 화면"],
+    ["/settings/data", "백업 화면"],
+    ["/settings/delete-account", "탈퇴 화면"],
+    ["/settings/terms", "terms 문서 현재"],
+    ["/settings/privacy", "privacy 문서 현재"],
+    ["/settings/terms/2026-11-25", "terms 문서 2026-11-25"],
   ])("puts the settings menu under %s", async (path, text) => {
     const { actions } = await open(path);
     expect(screen.queryByText(text)).not.toBeNull();
@@ -185,18 +185,18 @@ describe("settings entry points", () => {
     act(() => actions.pop());
     await settle();
 
-    expect(window.location.pathname).toBe("/assets/settings/");
+    expect(window.location.pathname).toBe("/settings/");
   });
 });
 
 describe("opening an address", () => {
   it.each([
-    ["/assets", "home"],
-    ["/assets/", "home"],
-    ["/assets/investments", "investments"],
-    ["/assets/rebalancing", "rebalancing"],
-    ["/assets/portfolio/", "portfolio"],
-    ["/assets/unknown", "home"],
+    ["/home", "home"],
+    ["/home/", "home"],
+    ["/accounts", "accounts"],
+    ["/rebalancing", "rebalancing"],
+    ["/portfolios/", "portfolios"],
+    ["/home/unknown", "home"],
     ["/somewhere/else", "home"],
   ])("%s shows the %s tab", async (path, tab) => {
     await open(path);
@@ -205,42 +205,42 @@ describe("opening an address", () => {
     expect(live.size).toBe(1);
   });
 
-  it("opens settings, not a tab, on /assets/settings", async () => {
-    await open("/assets/settings");
+  it("opens settings, not a tab, on /settings", async () => {
+    await open("/settings");
 
     expect(screen.queryByText("설정 화면")).not.toBeNull();
-    expect(window.location.pathname).toBe("/assets/settings/");
+    expect(window.location.pathname).toBe("/settings/");
   });
 
   it("puts the matching tab under a detail", async () => {
-    const { actions } = await open("/assets/investments/a1");
+    const { actions } = await open("/accounts/a1");
     expect(screen.queryByText("계좌 a1")).not.toBeNull();
 
     act(() => actions.pop());
     await settle();
 
-    expect(visibleInput("investments")).not.toBeNull();
-    expect(window.location.pathname).toBe("/assets/investments/");
+    expect(visibleInput("accounts")).not.toBeNull();
+    expect(window.location.pathname).toBe("/accounts/");
   });
 });
 
 describe("stack control", () => {
   it("switches the root tab from a pushed screen by going back to the root", async () => {
-    const { actions, control } = await open("/assets");
+    const { actions, control } = await open("/home");
     act(() => actions.push("AccountDetail", { id: "a1" }));
     await settle();
 
-    act(() => control.switchTab("portfolio"));
+    act(() => control.switchTab("portfolios"));
     await settle();
 
     expect(screen.queryByText("계좌 a1")).toBeNull();
-    expect(visibleInput("portfolio")).not.toBeNull();
+    expect(visibleInput("portfolios")).not.toBeNull();
     expect(screen.getByRole("button", { current: "page" }).textContent).toBe("포트폴리오");
-    expect(window.location.pathname).toBe("/assets/portfolio/");
+    expect(window.location.pathname).toBe("/portfolios/");
   });
 
   it("goes back one screen, and reports when already at the root", async () => {
-    const { actions, control } = await open("/assets");
+    const { actions, control } = await open("/home");
     act(() => actions.push("AccountDetail", { id: "a1" }));
     await settle();
 
@@ -256,7 +256,7 @@ describe("stack control", () => {
   });
 
   it("lets the root screen undo its own state on back before reporting the root", async () => {
-    const { control } = await open("/assets");
+    const { control } = await open("/home");
     let focused = true;
     const release = control.setRootBack(() => {
       if (!focused) return false;
@@ -271,7 +271,7 @@ describe("stack control", () => {
   });
 
   it("pops a pushed screen before asking the root screen", async () => {
-    const { actions, control } = await open("/assets");
+    const { actions, control } = await open("/home");
     const rootBack = vi.fn(() => true);
     const release = control.setRootBack(rootBack);
     act(() => actions.push("AccountDetail", { id: "a1" }));
@@ -289,7 +289,7 @@ describe("stack control", () => {
   });
 
   it("returns to the home tab when another account signs in", async () => {
-    const { actions, control } = await open("/assets/investments");
+    const { actions, control } = await open("/accounts");
     control.bindStackToAccount("user-a");
     act(() => actions.push("AccountDetail", { id: "a1" }));
     await settle();
@@ -300,11 +300,11 @@ describe("stack control", () => {
 
     expect(screen.queryByText("계좌 a1")).toBeNull();
     expect(visibleInput("home")).not.toBeNull();
-    expect(window.location.pathname).toBe("/assets/");
+    expect(window.location.pathname).toBe("/home/");
   });
 
   it("keeps the screen when the same account comes back", async () => {
-    const { actions, control } = await open("/assets/investments");
+    const { actions, control } = await open("/accounts");
     control.bindStackToAccount("user-a");
     act(() => actions.push("AccountDetail", { id: "a1" }));
     await settle();

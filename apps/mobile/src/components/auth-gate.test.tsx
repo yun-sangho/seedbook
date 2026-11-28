@@ -40,7 +40,7 @@ describe("AuthGate", () => {
     );
     mockSignInSocial.mockResolvedValue({ data: {}, error: null });
     window.localStorage.clear();
-    window.history.replaceState(null, "", "/assets");
+    window.history.replaceState(null, "", "/home");
   });
 
   afterEach(() => {
@@ -228,13 +228,13 @@ describe("AuthGate", () => {
     expect(mockSignInSocial).toHaveBeenCalledTimes(1);
     expect(mockSignInSocial).toHaveBeenCalledWith({
       provider: "kakao",
-      callbackURL: "/assets?signedInWith=kakao",
-      errorCallbackURL: "/assets",
+      callbackURL: "/home?signedInWith=kakao",
+      errorCallbackURL: "/home",
     });
   });
 
   it("keeps the login screen and its error while the session is checked again", () => {
-    window.history.replaceState(null, "", "/assets?error=access_denied");
+    window.history.replaceState(null, "", "/home?error=access_denied");
     mockUseSession.mockReturnValue({ data: null, isPending: false });
     const { rerender } = render(<AuthGate>앱 콘텐츠</AuthGate>);
 
@@ -258,7 +258,7 @@ describe("AuthGate", () => {
     expect(screen.queryByRole("button", { name: /개발용 빠른 로그인/ })).not.toBeInTheDocument();
   });
   it("remembers on this device the provider a successful login came back with", async () => {
-    window.history.replaceState(null, "", "/assets/portfolio?signedInWith=apple");
+    window.history.replaceState(null, "", "/portfolios?signedInWith=apple");
     mockUseSession.mockReturnValue({ data: { user: SET_UP_USER }, isPending: false });
 
     render(
@@ -269,11 +269,11 @@ describe("AuthGate", () => {
 
     expect(await screen.findByText("앱 콘텐츠")).toBeInTheDocument();
     expect(window.localStorage.getItem(LAST_LOGIN_METHOD_KEY)).toBe("apple");
-    expect(window.location.pathname + window.location.search).toBe("/assets/portfolio");
+    expect(window.location.pathname + window.location.search).toBe("/portfolios");
   });
 
   it("does not record a provider while signed out (a failed or cancelled login)", () => {
-    window.history.replaceState(null, "", "/assets?signedInWith=kakao");
+    window.history.replaceState(null, "", "/home?signedInWith=kakao");
     mockUseSession.mockReturnValue({ data: null, isPending: false });
 
     render(

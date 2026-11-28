@@ -30,10 +30,10 @@ describe("web app manifest", () => {
   it("starts the installed app on the mobile home", () => {
     const startUrl = manifest().start_url ?? "";
 
-    expect(startUrl).toBe("/assets");
+    expect(startUrl).toBe("/home");
     expect(decideMobileRoute(startUrl, "mobile")).toEqual({
       type: "rewrite",
-      pathname: "/m/assets",
+      pathname: "/m/home",
     });
   });
 

@@ -45,7 +45,7 @@ export function RebalancingDetailMobile({
           description="포트폴리오의 적용 계좌에 이 계좌를 추가하면 목표 비중대로 리밸런싱할 수 있어요."
           primaryActionProps={{
             children: "포트폴리오로 이동",
-            onClick: () => push("Tabs", tabParams("portfolio")),
+            onClick: () => push("Tabs", tabParams("portfolios")),
           }}
         />
       </div>

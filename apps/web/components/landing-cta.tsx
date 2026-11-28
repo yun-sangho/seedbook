@@ -16,7 +16,7 @@ const PLACEMENT_PROPS = {
 
 /**
  * 헤더는 좁아서 카카오만, 본문(`hero`)에는 Apple 로그인 버튼을 함께 둔다. 취소·실패하면 앱의 로그인
- * 화면(`/assets`)이 안내한다. 시작하지 못했을 때의 안내는 본문에만 두고 헤더는 버튼 이름으로 알린다.
+ * 화면(`/home`)이 안내한다. 시작하지 못했을 때의 안내는 본문에만 두고 헤더는 버튼 이름으로 알린다.
  */
 export function LandingCta({ placement }: { placement: keyof typeof PLACEMENT_PROPS }) {
   const { data: session, isPending } = useSession();

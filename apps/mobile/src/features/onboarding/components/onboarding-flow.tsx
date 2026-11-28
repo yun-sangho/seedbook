@@ -6,6 +6,7 @@ import { plantKindOf } from "@mobile/features/garden/utils/garden-home";
 import { usePortfolioStore } from "@mobile/features/portfolio/stores/portfolio-store";
 import type { PortfolioItem } from "@mobile/features/portfolio/types/types";
 import { accountStorage } from "@mobile/lib/account-storage";
+import { APP_HOME } from "@mobile/lib/device";
 import { useHideSplash } from "@mobile/lib/native/splash";
 import {
   CUSTOM_SEED_NAME,
@@ -26,8 +27,8 @@ import { type PotChoice, PotStep } from "./pot-step";
 import { SeedStep } from "./seed-step";
 import { StocksStep } from "./stocks-step";
 
-/** 흐름이 끝나면 여는 홈 (`/assets`, 하단 탭 홈). */
-export const ONBOARDING_HOME_PATH = "/assets";
+/** 흐름이 끝나면 여는 홈 (하단 탭 홈). */
+export const ONBOARDING_HOME_PATH = APP_HOME;
 
 function readProgress(): OnboardingProgress | null {
   return parseOnboardingProgress(accountStorage.getItem(ONBOARDING_PROGRESS_KEY));

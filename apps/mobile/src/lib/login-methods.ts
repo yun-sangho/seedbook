@@ -13,7 +13,7 @@ import {
  * better-auth 가 `error=<코드>` 를 붙여 돌려보낸다. 어떤 수단이었는지는 두 주소에 붙여 둔다.
  */
 
-export const LOGIN_METHODS_PATH = "/assets/settings/login-methods";
+export const LOGIN_METHODS_PATH = "/settings/login-methods";
 
 const LINKED_PARAM = "linked";
 const LINKING_PARAM = "linking";

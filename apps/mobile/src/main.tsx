@@ -19,7 +19,7 @@ import { createRoot } from "react-dom/client";
 
 /**
  * 앱 화면의 시작점 (옛 Next `app/layout.tsx` + `app/m/layout.tsx`). 화면은 Stackflow 스택이
- * URL 을 보고 그린다 (`app/_stack`). 웹 서버는 앱 경로(`/assets/...`)에 이 index.html 을 주고, 번들 앱은
+ * URL 을 보고 그린다 (`app/_stack`). 웹 서버는 앱 경로(`/home`·`/accounts/...` 등, `lib/device.ts`)에 이 index.html 을 주고, 번들 앱은
  * 앱 셸이 이 파일을 연다 (`lib/native/bundled-app.ts`).
  */
 function App() {

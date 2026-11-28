@@ -37,22 +37,32 @@ describe("isBundledApp", () => {
 
 describe("bundledAppPath", () => {
   it("opens home when the app shell starts at /", () => {
-    expect(bundledAppPath("/")).toBe("/assets");
+    expect(bundledAppPath("/")).toBe("/home");
   });
 
   it("keeps a supported app path", () => {
-    expect(bundledAppPath("/assets/investments/abc")).toBe("/assets/investments/abc");
+    expect(bundledAppPath("/accounts/abc")).toBe("/accounts/abc");
   });
 
   it("drops a trailing slash", () => {
-    expect(bundledAppPath("/assets/portfolio/")).toBe("/assets/portfolio");
+    expect(bundledAppPath("/portfolios/")).toBe("/portfolios");
   });
 
   it("sends paths outside the app (the intro site and its terms) home — they are not in the bundle", () => {
-    expect(bundledAppPath("/terms")).toBe("/assets");
+    expect(bundledAppPath("/terms")).toBe("/home");
+  });
+
+  it.each([
+    ["/assets", "/home"],
+    ["/assets/investments/abc", "/accounts/abc"],
+    ["/assets/portfolio/", "/portfolios"],
+    ["/assets/rebalancing/acc-1/plan", "/rebalancing/acc-1/plan"],
+    ["/assets/settings/notifications", "/settings/notifications"],
+  ])("moves an old app path (an older bundle or link) %s to %s", (legacy, current) => {
+    expect(bundledAppPath(legacy)).toBe(current);
   });
 
   it("follows the old /m tree prefix to its public path", () => {
-    expect(bundledAppPath("/m/assets/settings")).toBe("/assets/settings");
+    expect(bundledAppPath("/m/assets/settings")).toBe("/settings");
   });
 });

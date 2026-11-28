@@ -21,9 +21,7 @@ function memoryStorage(initial: Record<string, string> = {}) {
 
 describe("signInCallbackURL", () => {
   it("marks the return path with the provider so only a successful login lands there", () => {
-    expect(signInCallbackURL("/assets/rebalancing", "kakao")).toBe(
-      "/assets/rebalancing?signedInWith=kakao"
-    );
+    expect(signInCallbackURL("/rebalancing", "kakao")).toBe("/rebalancing?signedInWith=kakao");
   });
 });
 
@@ -45,17 +43,17 @@ describe("addressWithoutSignedInWith", () => {
   it("removes only the marker and keeps the path, other params and hash", () => {
     expect(
       addressWithoutSignedInWith({
-        pathname: "/assets/portfolio",
+        pathname: "/portfolios",
         search: "?signedInWith=kakao&a=1",
         hash: "#top",
       })
-    ).toBe("/assets/portfolio?a=1#top");
+    ).toBe("/portfolios?a=1#top");
   });
 
   it("drops the question mark when nothing else is left", () => {
     expect(
-      addressWithoutSignedInWith({ pathname: "/assets", search: "?signedInWith=kakao", hash: "" })
-    ).toBe("/assets");
+      addressWithoutSignedInWith({ pathname: "/home", search: "?signedInWith=kakao", hash: "" })
+    ).toBe("/home");
   });
 });
 

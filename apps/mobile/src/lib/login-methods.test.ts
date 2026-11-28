@@ -66,9 +66,9 @@ describe("loginMethodRows", () => {
 
 describe("linkCallbackURLs", () => {
   it("returns to the same screen, marking success and failure apart", () => {
-    expect(linkCallbackURLs("/assets/settings/login-methods", "apple")).toEqual({
-      callbackURL: "/assets/settings/login-methods?linked=apple",
-      errorCallbackURL: "/assets/settings/login-methods?linking=apple",
+    expect(linkCallbackURLs("/settings/login-methods", "apple")).toEqual({
+      callbackURL: "/settings/login-methods?linked=apple",
+      errorCallbackURL: "/settings/login-methods?linking=apple",
     });
   });
 });

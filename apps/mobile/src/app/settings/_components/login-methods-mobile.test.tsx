@@ -77,8 +77,8 @@ describe("LoginMethodsMobile", () => {
 
     expect(mockLinkSocial).toHaveBeenCalledWith({
       provider: "apple",
-      callbackURL: "/assets/settings/login-methods?linked=apple",
-      errorCallbackURL: "/assets/settings/login-methods?linking=apple",
+      callbackURL: "/settings/login-methods?linked=apple",
+      errorCallbackURL: "/settings/login-methods?linking=apple",
     });
   });
 

@@ -9,22 +9,22 @@ import { usePortfolioStore } from "@mobile/features/portfolio/stores/portfolio-s
 import { useRebalancingStore } from "@mobile/features/rebalancing/stores/rebalancing-store";
 import { LEGAL_DOCUMENTS, type LegalDocumentId } from "@mobile/lib/legal-documents";
 import { type StaticActivityComponentType, useFlow, useStepFlow } from "@stackflow/react";
-import { HomeMobile } from "../assets/_components/home-mobile";
-import { InvestmentMobile } from "../assets/investments/_components/investment-mobile";
-import { AccountDetailMobile } from "../assets/investments/[id]/_components/account-detail-mobile";
-import { PortfolioListMobile } from "../assets/portfolio/_components/portfolio-list-mobile";
-import { PortfolioDetailMobile } from "../assets/portfolio/[id]/_components/portfolio-detail-mobile";
-import { RebalancingHomeMobile } from "../assets/rebalancing/_components/rebalancing-home-mobile";
-import { RebalancingListMobile } from "../assets/rebalancing/_components/rebalancing-list-mobile";
-import { RebalancingDetailMobile } from "../assets/rebalancing/[id]/_components/rebalancing-detail-mobile";
-import { RebalancingSessionMobile } from "../assets/rebalancing/sessions/[id]/_components/rebalancing-session-mobile";
-import { TradeEntryMobile } from "../assets/rebalancing/sessions/[id]/_components/trade-entry-mobile";
-import { DataBackupMobile } from "../assets/settings/_components/data-backup-mobile";
-import { DeleteAccountMobile } from "../assets/settings/_components/delete-account-mobile";
-import { LoginMethodsMobile } from "../assets/settings/_components/login-methods-mobile";
-import { NotificationSettingsMobile } from "../assets/settings/_components/notification-settings-mobile";
-import { SettingsMenuMobile } from "../assets/settings/_components/settings-menu-mobile";
-import { StorageModeMobile } from "../assets/settings/_components/storage-mode-mobile";
+import { InvestmentMobile } from "../accounts/_components/investment-mobile";
+import { AccountDetailMobile } from "../accounts/[id]/_components/account-detail-mobile";
+import { HomeMobile } from "../home/_components/home-mobile";
+import { PortfolioListMobile } from "../portfolios/_components/portfolio-list-mobile";
+import { PortfolioDetailMobile } from "../portfolios/[id]/_components/portfolio-detail-mobile";
+import { RebalancingHomeMobile } from "../rebalancing/_components/rebalancing-home-mobile";
+import { RebalancingListMobile } from "../rebalancing/_components/rebalancing-list-mobile";
+import { RebalancingDetailMobile } from "../rebalancing/[id]/_components/rebalancing-detail-mobile";
+import { RebalancingSessionMobile } from "../rebalancing/sessions/[id]/_components/rebalancing-session-mobile";
+import { TradeEntryMobile } from "../rebalancing/sessions/[id]/_components/trade-entry-mobile";
+import { DataBackupMobile } from "../settings/_components/data-backup-mobile";
+import { DeleteAccountMobile } from "../settings/_components/delete-account-mobile";
+import { LoginMethodsMobile } from "../settings/_components/login-methods-mobile";
+import { NotificationSettingsMobile } from "../settings/_components/notification-settings-mobile";
+import { SettingsMenuMobile } from "../settings/_components/settings-menu-mobile";
+import { StorageModeMobile } from "../settings/_components/storage-mode-mobile";
 import { legalActivityOf } from "./legal-activity";
 import { DetailScreen, TabsScreen } from "./screens";
 import { type TabKey, type TabsParams, tabOf } from "./tabs";
@@ -37,9 +37,9 @@ const TAB_SCREENS: Record<TabKey, ReactNode> = {
       <HomeMobile />
     </>
   ),
-  investments: <InvestmentMobile />,
+  accounts: <InvestmentMobile />,
   rebalancing: <RebalancingHomeMobile />,
-  portfolio: <PortfolioListMobile />,
+  portfolios: <PortfolioListMobile />,
 };
 
 /** 정원 홈은 위쪽 정원 창을 고정하고 아래 목록만 스크롤한다. */

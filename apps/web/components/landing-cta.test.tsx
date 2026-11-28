@@ -20,8 +20,8 @@ describe("LandingCta", () => {
     await act(async () => fireEvent.click(screen.getByRole("button", { name: /카카오로 시작/ })));
     expect(mockSignInSocial).toHaveBeenCalledWith({
       provider: "kakao",
-      callbackURL: "/assets?signedInWith=kakao",
-      errorCallbackURL: "/assets",
+      callbackURL: "/home?signedInWith=kakao",
+      errorCallbackURL: "/home",
     });
   });
 

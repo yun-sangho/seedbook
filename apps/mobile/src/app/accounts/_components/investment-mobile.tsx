@@ -30,7 +30,7 @@ type Tab = "accounts" | "holdings" | "monthly";
 
 /**
  * 모바일 "계좌" 탭: 계좌 목록과 통계(종목 / 월별 내역)를 칩 탭으로 나눠 보여준다 (기본은
- * 계좌). 계좌를 탭하면 계좌 상세(`/assets/investments/[id]`)로 이동한다. 총 평가금액은 홈(정원)에 있다.
+ * 계좌). 계좌를 탭하면 계좌 상세(`/accounts/[id]`)로 이동한다. 총 평가금액은 홈(정원)에 있다.
  * 계좌 순서 변경(drag)과 여러 사용자 합산(aggregate) 보기는 데스크탑에서만 지원한다.
  */
 export function InvestmentMobile() {

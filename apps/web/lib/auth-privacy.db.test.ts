@@ -406,7 +406,7 @@ describe("profile update keeps only a nickname and a seed avatar", () => {
 });
 
 describe("linking another login method (better-auth + real Postgres)", () => {
-  const LINK_RETURN = "/assets/settings/login-methods";
+  const LINK_RETURN = "/settings/login-methods";
 
   function appleSub() {
     return `001234.${randomUUID().replaceAll("-", "")}.0123`;

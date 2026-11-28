@@ -4,7 +4,7 @@
 
 1. **앱 화면** — Vite + React SPA (`src/`, `index.html`, `vite.config.ts`). 옛 Next `/m` 트리를 옮긴 것이다.
    - 개발: 루트 `pnpm dev` 가 이 Vite dev 서버(슬롯 web 포트)와 Next(apps/web, API 포트)를 함께 띄운다.
-     Vite 가 앱 경로(`/assets/...`)는 SPA 로, 그 밖(`/api`·소개·약관·아이콘)은 Next 로 넘긴다.
+     Vite 가 앱 경로(`/home`·`/accounts/...` 등)는 SPA 로, 그 밖(`/api`·소개·약관·아이콘)은 Next 로 넘긴다.
    - 운영 모바일 웹: 웹 이미지가 `vite build` 결과(`dist/`)를 `apps/web/public/_app` 으로 복사해 Next 가
      앱 경로에 `index.html` 을 준다 (`apps/web/proxy.ts`).
    - 테스트: `pnpm --filter @seedbook/mobile test`.
