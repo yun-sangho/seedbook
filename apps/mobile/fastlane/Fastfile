@@ -18,6 +18,8 @@ require "json"
 default_platform(:ios)
 
 APP_ID = "ing.boogie.seedbook"
+# 개발용 앱 Seedbook Dev (iOS Dev 빌드 구성 / Android dev 빌드 타입). 출시 앱과 나란히 설치된다.
+DEV_APP_ID = "ing.boogie.seedbook.dev"
 MOBILE_ROOT = File.expand_path("..", __dir__)
 OUTPUT_DIR = File.join(MOBILE_ROOT, "build")
 IOS_PROJECT = File.join(MOBILE_ROOT, "ios/App/App.xcodeproj")
@@ -67,6 +69,50 @@ platform :ios do
       skip_package_ipa: true,
       xcargs: (ios_build_settings + ["CODE_SIGNING_ALLOWED=NO"]).join(" "),
     )
+  end
+
+  # 번들(dev 서버 주소)·cap sync·기기·팀 ID 는 scripts/dev-app.mjs 가 준비해 넘긴다
+  # (`pnpm --filter @seedbook/mobile dev:ios-device`). 시뮬레이터는 쓰지 않는다.
+  desc "Seedbook Dev 를 연결된 아이폰에 개발 서명으로 빌드·설치·실행 (SEEDBOOK_IOS_DEVICE, APPLE_TEAM_ID)"
+  lane :dev do
+    device = required_env("SEEDBOOK_IOS_DEVICE")
+    derived_data = File.join(OUTPUT_DIR, "dev-derived-data")
+    # 자동 서명: 처음이면 Xcode 가 App ID(ing.boogie.seedbook.dev)·개발 프로필을 만든다 (Xcode 에 Apple 계정 로그인 필요).
+    sh(
+      "xcodebuild", "build",
+      "-project", IOS_PROJECT,
+      "-scheme", "App",
+      "-configuration", "Dev",
+      "-destination", "id=#{device}",
+      "-derivedDataPath", derived_data,
+      "-allowProvisioningUpdates",
+      "DEVELOPMENT_TEAM=#{required_env("APPLE_TEAM_ID")}",
+      *ios_build_settings,
+    )
+    app = File.join(derived_data, "Build/Products/Dev-iphoneos/App.app")
+    sh("xcrun", "devicectl", "device", "install", "app", "--device", device, app)
+    sh("xcrun", "devicectl", "device", "process", "launch", "--terminate-existing", "--device", device, DEV_APP_ID)
+  end
+
+  # scripts/dev-app.mjs 가 이 세션 전용 시뮬레이터(seedbook-<워크트리>)를 켜 두고 부른다
+  # (`pnpm --filter @seedbook/mobile dev:ios-sim`). 앱 QA 는 이것으로 한다.
+  desc "Seedbook Dev 를 켜 둔 시뮬레이터에 빌드·설치·실행 (SEEDBOOK_IOS_SIMULATOR)"
+  lane :dev_sim do
+    simulator = required_env("SEEDBOOK_IOS_SIMULATOR")
+    derived_data = File.join(OUTPUT_DIR, "dev-sim-derived-data")
+    # 시뮬레이터는 로컬 서명이라 Apple 계정이 필요 없다.
+    sh(
+      "xcodebuild", "build",
+      "-project", IOS_PROJECT,
+      "-scheme", "App",
+      "-configuration", "Dev",
+      "-destination", "id=#{simulator}",
+      "-derivedDataPath", derived_data,
+      *ios_build_settings,
+    )
+    app = File.join(derived_data, "Build/Products/Dev-iphonesimulator/App.app")
+    sh("xcrun", "simctl", "install", simulator, app)
+    sh("xcrun", "simctl", "launch", "--terminate-running-process", simulator, DEV_APP_ID)
   end
 
   desc "App Store 서명 .ipa 를 만들어 TestFlight 에 올린다 (내부 테스트)"
@@ -162,6 +208,16 @@ platform :android do
     target = File.join(OUTPUT_DIR, "Seedbook-#{app_version}-#{build_number}.aab")
     FileUtils.cp(aab, target)
     UI.success("AAB: #{target}")
+  end
+
+  # scripts/dev-app.mjs 가 번들·cap sync 를 준비해 부른다 (`pnpm --filter @seedbook/mobile dev:android-device`).
+  # 디버그 키로 서명한다. 에뮬레이터는 띄우지 않는다 — adb 로 연결된 기기(ANDROID_SERIAL 로 고른다)에 설치한다.
+  desc "Seedbook Dev (dev 빌드 타입) 를 빌드해 연결된 Android 기기에 설치·실행"
+  lane :dev do
+    gradle(project_dir: ANDROID_DIR, task: "assemble", build_type: "Dev", properties: gradle_properties, print_command: false)
+    apk = lane_context[SharedValues::GRADLE_APK_OUTPUT_PATH]
+    sh("adb", "install", "-r", apk)
+    sh("adb", "shell", "monkey", "-p", DEV_APP_ID, "-c", "android.intent.category.LAUNCHER", "1")
   end
 
   # Google Play 계정이 생기면 쓴다 — 워크플로는 Variable ANDROID_PLAY_UPLOAD=true 일 때만 부른다.

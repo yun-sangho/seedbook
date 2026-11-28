@@ -35,6 +35,25 @@ export function composeSvg(source, { scale, background, radius = 0, viewBox = "0
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}"><title>Seedbook</title>${rect}<g transform="translate(50 50) scale(${scale}) translate(-50 -50)">${markInner(source)}</g></svg>\n`;
 }
 
+/** 개발용 앱(Seedbook Dev) 아이콘 표시의 색. 출시 앱과 나란히 있어도 한눈에 가른다. */
+export const DEV_BADGE_FILL = "#1F2328";
+
+/**
+ * 100×100 아이콘 SVG 위에 "DEV" 알약 표시를 얹는다 (개발용 앱 아이콘). 표시는 46×18 (100 기준) 을
+ * scale 배로, 가운데 (50, centerY) 에 그린다 — 런처가 자르는 영역(Android 적응형의 원 등)에 맞춰 고른다.
+ *
+ * @param {string} svg composeSvg 결과
+ * @param {{ centerY: number, scale: number }} options
+ */
+export function withDevBadge(svg, { centerY, scale }) {
+  const badge =
+    `<g transform="translate(50 ${centerY}) scale(${scale})">` +
+    `<rect x="-23" y="-9" width="46" height="18" rx="9" fill="${DEV_BADGE_FILL}"/>` +
+    `<text x="0" y="4.6" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="1" fill="#FFFFFF">DEV</text>` +
+    "</g>";
+  return svg.replace(/<\/svg>\n?$/, `${badge}</svg>\n`);
+}
+
 /** PNG 들을 그대로 담은 ICO (Vista 이후 PNG 항목 지원). images: [{ size, png }] */
 export function encodeIco(images) {
   const header = Buffer.alloc(6);

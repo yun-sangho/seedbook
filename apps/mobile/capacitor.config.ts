@@ -10,10 +10,14 @@ import type { CapacitorConfig } from "@capacitor/cli";
  * - dev live-reload: `CAP_SERVER_URL=http://localhost:4001 pnpm --filter @seedbook/mobile sync` 이면 앱이
  *   로컬 앱 dev 서버(Vite, 슬롯 web 포트)를 띄운다 — 다시 빌드하지 않고 화면을 고친다. 개발에서만 쓴다
  *   (`server.url` 은 운영용이 아니다, https://capacitorjs.com/docs/config).
+ * - 개발용 앱 Seedbook Dev (`SEEDBOOK_DEV_APP=1`, 루트 `scripts/dev-app.mjs` 가 준다): 번들이 맥의 dev 서버를
+ *   http 로 부르므로 Android 앱 origin(`https://localhost`)에서 http 요청(mixed content)을 허용한다. 번들 ID·이름·
+ *   ATS/cleartext 예외는 네이티브 Dev 구성(iOS `Dev` 빌드 구성, Android `dev` 빌드 타입)에 있다.
  * - `appendUserAgent` 는 웹의 `NATIVE_APP_UA_MARKER` (src/lib/device.ts) 와 같아야 한다. 앱 화면은 이
  *   표시로 기기 저장소(SQLite)를 고르고 iPad 에서도 모바일 UI·PWA 설치 안내 숨김을 정한다.
  */
 const liveReloadUrl = process.env.CAP_SERVER_URL;
+const devApp = process.env.SEEDBOOK_DEV_APP === "1";
 
 /**
  * OTA 번들 업데이트 (`@capawesome/capacitor-live-update`, `src/lib/native/live-update.ts`). 번들 서명을
@@ -45,6 +49,7 @@ const config: CapacitorConfig = {
         },
       }
     : {}),
+  ...(devApp ? { android: { allowMixedContent: true } } : {}),
   plugins: {
     // Android 뒤로가기는 웹이 리스너를 건 뒤에 켠다 (src/lib/native/system-back.ts).
     App: { disableBackButtonHandler: true },
