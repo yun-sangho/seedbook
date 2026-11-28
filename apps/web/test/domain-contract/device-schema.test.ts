@@ -1,94 +1,65 @@
 // @vitest-environment node
-import { type FieldSpec, fieldSpecs, type JsonValue, RECORDS } from "@seedbook/domain";
+import { deriveRecordId, RECORDS, SAMPLE_UUID, sampleRecord } from "@seedbook/domain";
 import { migrateDeviceDatabase } from "@web/lib/native/device-db/migrations";
+import { readRecords, writeRecords } from "@web/lib/native/device-db/record-store";
 import { createNodeSqliteDriver } from "@web/lib/native/device-db/testing/node-sqlite-driver";
-import { beforeAll, describe, expect, it } from "vitest";
-import { DEVICE_COMMON_COLUMNS, LEGACY_DEVICE_COLUMNS, PLANNED_DEVICE_TABLES } from "./exceptions";
+import { describe, expect, it } from "vitest";
 
 /**
- * 레코드 정의 ↔ 기기 SQLite (`lib/native/device-db/migrations.ts`). v2-4a 에서 기기가 레코드 JSON
- * 테이블 하나로 바뀌기 전까지 지금 표의 컬럼·타입·NOT NULL·기본값을 대조한다.
+ * 레코드 정의 ↔ 기기 SQLite. 기기는 레코드 JSON 테이블 하나(`records`, 설계 §2.5)라 필드마다
+ * 컬럼이 없다 — 정의의 모든 레코드가 그대로 저장되고 읽히는지, 정의에 없는 필드(새 앱의 필드)가
+ * 남는지 본다.
  */
 
-interface DeviceColumn {
-  name: string;
-  type: string;
-  notnull: number;
-  dflt_value: string | null;
+const writtenBy = "contract@1";
+
+function recordId(definition: (typeof RECORDS)[number], fields: Record<string, unknown>) {
+  if (definition.key.kind === "uuid") return SAMPLE_UUID;
+  return deriveRecordId(definition, { parentId: SAMPLE_UUID, userId: "user-1", fields });
 }
 
-/** 필드 종류 → SQLite 컬럼 타입 (`migrations.ts` 의 타입 대응). */
-const SQLITE_TYPES: Record<FieldSpec["kind"], string> = {
-  text: "TEXT",
-  enum: "TEXT",
-  int: "INTEGER",
-  decimal: "REAL",
-  money: "INTEGER",
-  date: "TEXT",
-  timestamp: "TEXT",
-  uuidRef: "TEXT",
-  bool: "INTEGER",
-  json: "TEXT",
-};
-
-/** 목록·json 은 JSON 문자열로 저장한다. */
-const storedAsJson = (spec: FieldSpec) => spec.kind === "json" || spec.list === true;
-
-function deviceDefault(column: DeviceColumn, spec: FieldSpec): JsonValue | undefined {
-  if (column.dflt_value === null) return undefined;
-  const raw = column.dflt_value.replace(/^'(.*)'$/, "$1");
-  if (storedAsJson(spec)) return JSON.parse(raw);
-  return SQLITE_TYPES[spec.kind] === "TEXT" ? raw : Number(raw);
-}
-
-const tables = new Map<string, DeviceColumn[]>();
-
-beforeAll(async () => {
+async function openDevice() {
   const driver = createNodeSqliteDriver();
   await migrateDeviceDatabase(driver);
-  const names = await driver.query<{ name: string }>(
-    "SELECT name FROM sqlite_master WHERE type = 'table'"
-  );
-  for (const { name } of names) {
-    tables.set(name, await driver.query<DeviceColumn>(`PRAGMA table_info("${name}")`));
-  }
-});
+  return driver;
+}
 
-const builtRecords = RECORDS.filter((r) => !PLANNED_DEVICE_TABLES[r.type]);
+describe("record definitions ↔ device records", () => {
+  it.each(RECORDS.map((r) => [r.type, r] as const))(
+    "%s is stored and read back as it was written",
+    async (type, definition) => {
+      const driver = await openDevice();
+      const fields = sampleRecord(definition) as Record<string, unknown>;
+      const id = recordId(definition, fields);
 
-describe("record definitions ↔ device SQLite", () => {
-  it.each(RECORDS.map((r) => [r.type, r] as const))("%s has a device table", (type, definition) => {
-    expect(tables.has(definition.table)).toBe(!PLANNED_DEVICE_TABLES[type]);
-  });
+      const outcome = await writeRecords(
+        driver,
+        [{ op: "put", type, id, parentId: definition.parent ? SAMPLE_UUID : null, fields }],
+        { writtenBy }
+      );
 
-  it.each(builtRecords.map((r) => [r.type, r] as const))(
-    "%s has a column for every field and nothing unexplained",
-    (type, definition) => {
-      const actual = (tables.get(definition.table) ?? []).map((c) => c.name);
-      const fields = Object.keys(definition.fields);
-      const legacy = Object.keys(LEGACY_DEVICE_COLUMNS[type] ?? {});
-      const allowed = [
-        ...DEVICE_COMMON_COLUMNS,
-        ...(definition.parent ? [definition.parent.column] : []),
-        ...fields,
-        ...legacy,
-      ];
-
-      expect({
-        missing: fields.filter((c) => !actual.includes(c)),
-        unexpected: actual.filter((c) => !allowed.includes(c)),
-        staleLegacy: legacy.filter((c) => !actual.includes(c)),
-      }).toEqual({ missing: [], unexpected: [], staleLegacy: [] });
+      expect(outcome.quarantined).toEqual([]);
+      const { records } = await readRecords(driver, { types: [type] });
+      expect(records.map((r) => r.data)).toEqual([fields]);
     }
   );
 
-  describe.each(builtRecords.map((r) => [r.type, r] as const))("%s fields", (_, definition) => {
-    it.each(Object.entries(fieldSpecs(definition)))("%s matches its column", (name, spec) => {
-      const column = tables.get(definition.table)?.find((c) => c.name === name) as DeviceColumn;
-      expect(column.type).toBe(SQLITE_TYPES[spec.kind]);
-      expect(column.notnull === 1).toBe(!spec.nullable);
-      const dbDefault = deviceDefault(column, spec);
-      if (dbDefault !== undefined) expect(spec.default?.value).toEqual(dbDefault);
-    });
-  });
+  it.each(RECORDS.map((r) => [r.type, r] as const))(
+    "%s keeps a field the definition does not know",
+    async (type, definition) => {
+      const driver = await openDevice();
+      const fields = sampleRecord(definition) as Record<string, unknown>;
+      const id = recordId(definition, fields);
+      await writeRecords(
+        driver,
+        [{ op: "put", type, id, fields, extra: { addedLater: { kept: true } } }],
+        { writtenBy: "newer@2" }
+      );
+
+      await writeRecords(driver, [{ op: "put", type, id, fields }], { writtenBy });
+
+      const { records } = await readRecords(driver, { types: [type] });
+      expect(records[0]?.data.addedLater).toEqual({ kept: true });
+    }
+  );
 });

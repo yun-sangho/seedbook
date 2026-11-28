@@ -26,6 +26,10 @@ COPY packages/database/ ./packages/database/
 COPY packages/domain/ ./packages/domain/
 COPY apps/web/ ./apps/web/
 
+# 기기 레코드의 writtenBy (`lib/native/device-db/app-build.ts`). 배포 워크플로가 커밋 sha 를 넘긴다.
+ARG APP_BUILD=unknown
+ENV NEXT_PUBLIC_APP_BUILD=$APP_BUILD
+
 # @seedbook/database 의 dist/ 는 Drizzle 만 export 하므로 Prisma generate 가
 # 더 이상 필요 없다. tsc 컴파일 한 번이면 web 이 import 할 수 있다.
 RUN pnpm --filter @seedbook/database build
