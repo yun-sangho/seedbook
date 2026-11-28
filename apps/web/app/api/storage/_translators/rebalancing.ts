@@ -4,6 +4,7 @@ import {
   rebalancingPayloadToColumns,
   rebalancingRowToPayload,
 } from "@seedbook/domain/v1/rebalancing-record";
+import { numberV1Writes } from "@web/server/sync/v1-changeseq";
 import { and, eq, isNull, notInArray, sql } from "drizzle-orm";
 import { assertNoForeignRows } from "./ownership";
 import type { DomainTranslator, Envelope } from "./types";
@@ -75,7 +76,12 @@ export const rebalancingTranslator: DomainTranslator = {
 
       await tx
         .update(schema.rebalancing)
-        .set({ deletedAt: now, updatedAt: now, version: sql`${schema.rebalancing.version} + 1` })
+        .set({
+          deletedAt: now,
+          updatedAt: now,
+          version: sql`${schema.rebalancing.version} + 1`,
+          changeSeq: 0,
+        })
         .where(
           and(
             eq(schema.rebalancing.userId, userId),
@@ -98,9 +104,12 @@ export const rebalancingTranslator: DomainTranslator = {
               deletedAt: null,
               updatedAt: now,
               version: sql`${schema.rebalancing.version} + 1`,
+              changeSeq: 0,
             },
           });
       }
+      // 동기화 v2 가 보게 번호를 매긴다 (할 일 jsonb → `rebalancing_task` 포함).
+      await numberV1Writes(tx, userId);
     });
   },
 };

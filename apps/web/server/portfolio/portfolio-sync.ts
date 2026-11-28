@@ -1,4 +1,4 @@
-import { type Database, schema, syncAccountPortfolioLinks } from "@seedbook/database";
+import { type Database, schema } from "@seedbook/database";
 import {
   type PortfolioData,
   type PortfolioFields,
@@ -10,7 +10,8 @@ import {
 import { createEntityRepo, selectRowsByIds } from "@web/server/sync/entity-repo";
 import type { SyncEntity } from "@web/server/sync/registry";
 import type { MutationResult } from "@web/server/sync/types";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { linkPortfolioAccounts, replaceChildren } from "@web/server/sync/v1-changeseq";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 type PortfolioRow = typeof schema.portfolio.$inferSelect;
 
@@ -36,18 +37,20 @@ export const portfolioRepo = createEntityRepo<PortfolioFields, PortfolioData>({
   table: schema.portfolio,
   toColumns: portfolioFieldsToColumns,
   conflictSet: keepFurtherPlant,
-  // 목표 비중은 포트폴리오의 일부 — 저장할 때마다 통째로 바꾼다. 남의 배분 id 와 겹치면 건너뛴다.
-  writeChildren: async (tx, id, fields) => {
-    await tx
-      .delete(schema.portfolioAllocation)
-      .where(eq(schema.portfolioAllocation.portfolioId, id));
-    const rows = portfolioAllocationRows(id, fields);
-    if (rows.length > 0) {
-      await tx.insert(schema.portfolioAllocation).values(rows).onConflictDoNothing();
-    }
-  },
-  // 연결 계좌가 바뀌었거나 포트폴리오가 지워졌다 — 계좌 쪽 연결(portfolioId)을 맞춘다.
-  afterChange: (tx, userId) => syncAccountPortfolioLinks(tx, userId),
+  // 목표 비중은 포트폴리오의 일부 — 저장한 목록으로 바꾼다 (빠진 것은 톰스톤). 남의 배분 id 와
+  // 겹치면 건너뛴다.
+  writeChildren: (tx, id, fields) =>
+    replaceChildren(
+      tx,
+      schema.portfolioAllocation,
+      { column: "portfolioId", id },
+      "id",
+      portfolioAllocationRows(id, fields)
+    ),
+  // 이 포트폴리오의 연결 계좌만 맞춘다 (다른 포트폴리오의 연결은 v2 기기가 바꿨을 수 있다). 지우면
+  // 이 포트폴리오를 가리키던 계좌의 연결을 끊는다.
+  afterChange: (tx, userId, id, fields) =>
+    linkPortfolioAccounts(tx, userId, id, fields?.accountIds ?? []),
   toData: async (db, rows) => {
     const ids = rows.map((r) => r.id);
     const [portfolios, allocations] = await Promise.all([
@@ -55,7 +58,12 @@ export const portfolioRepo = createEntityRepo<PortfolioFields, PortfolioData>({
       db
         .select()
         .from(schema.portfolioAllocation)
-        .where(inArray(schema.portfolioAllocation.portfolioId, ids)),
+        .where(
+          and(
+            inArray(schema.portfolioAllocation.portfolioId, ids),
+            isNull(schema.portfolioAllocation.deletedAt)
+          )
+        ),
     ]);
     return new Map(
       portfolios.map((p) => [

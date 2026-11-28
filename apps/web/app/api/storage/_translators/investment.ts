@@ -4,6 +4,7 @@ import {
   parseInvestmentFields,
 } from "@seedbook/domain/v1/investment-record";
 import { investmentRepo } from "@web/server/investments/investment-sync";
+import { numberV1Writes } from "@web/server/sync/v1-changeseq";
 import { and, eq, isNull, notInArray, sql } from "drizzle-orm";
 import { assertNoForeignRows } from "./ownership";
 import type { DomainTranslator, Envelope } from "./types";
@@ -90,6 +91,7 @@ export const investmentTranslator: DomainTranslator = {
           deletedAt: now,
           updatedAt: now,
           version: sql`${schema.investmentAccount.version} + 1`,
+          changeSeq: 0,
         })
         .where(
           and(
@@ -104,6 +106,8 @@ export const investmentTranslator: DomainTranslator = {
         if (!fields) continue; // 깨진 항목은 건너뛴다 (톰스톤으로 만들지도 않는다).
         await investmentRepo.upsert(tx as unknown as Database, userId, inv.id, fields);
       }
+      // 동기화 v2 가 보게 번호를 매긴다 (목록에서 빠져 톰스톤이 된 행 포함).
+      await numberV1Writes(tx, userId);
     });
   },
 };

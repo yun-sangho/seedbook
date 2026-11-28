@@ -1,6 +1,7 @@
 import type { Database, schema } from "@seedbook/database";
 import { and, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import type { MutationResult, SyncedEntity } from "./types";
+import { numberV1Writes } from "./v1-changeseq";
 
 export type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
@@ -30,8 +31,11 @@ export type EntityRepoOptions<Fields, Data> = {
   conflictSet?: (columns: Record<string, unknown>) => Record<string, unknown>;
   /** 최상위 행을 쓴 뒤 하위 테이블(기록·보유종목 등)을 같은 트랜잭션에서 다시 쓴다. */
   writeChildren?: (tx: Tx, id: string, fields: Fields) => Promise<void>;
-  /** 저장·삭제 뒤 같은 트랜잭션에서 맞출 파생 데이터 (예: 계좌 ↔ 포트폴리오 연결). */
-  afterChange?: (tx: Tx, userId: string) => Promise<void>;
+  /**
+   * 저장·삭제 뒤 같은 트랜잭션에서 맞출 파생 데이터 (예: 계좌 ↔ 포트폴리오 연결). 저장이면 `fields`,
+   * 삭제면 null. 바꾼 행은 `changeSeq` 를 0 으로 둔다 (`v1-changeseq.ts`).
+   */
+  afterChange?: (tx: Tx, userId: string, id: string, fields: Fields | null) => Promise<void>;
   /** 살아 있는 행들 → 클라이언트에 줄 데이터 (하위 테이블 포함). */
   toData: (db: Database, rows: RootRow[]) => Promise<Map<string, Data>>;
 };
@@ -47,11 +51,13 @@ export type EntityRepo<Fields, Data> = {
 };
 
 /**
- * 엔티티 하나의 저장 / 삭제 / 변경 조회. 규칙은 모든 도메인이 같다:
+ * 엔티티 하나의 저장 / 삭제 / 변경 조회 (v1). 규칙은 모든 도메인이 같다:
  *   - 저장: 마지막 저장이 이긴다. 본인 행이면 version 과 상관없이 덮어쓰고 톰스톤이면
  *     되살린다. 다른 사용자 소유의 id 면 거부 (하위 테이블도 건드리지 않는다).
  *   - 삭제: 톰스톤 (`deletedAt`). 이미 지워졌거나 없는 행은 성공 (재전송에 안전).
  *   - 변경 조회: `since` 이후 바뀐 행 (톰스톤 포함). `since` 가 없으면 살아 있는 행만.
+ *   - 바꾼 행은 같은 트랜잭션에서 동기화 v2 변경 번호를 새로 받는다 (`numberV1Writes`) — 옛 JS 가
+ *     v1 로 쓴 변경도 v2 기기가 받는다.
  */
 export function createEntityRepo<Fields, Data>(
   options: EntityRepoOptions<Fields, Data>
@@ -74,12 +80,14 @@ export function createEntityRepo<Fields, Data>(
             deletedAt: null,
             updatedAt: now,
             version: sql`${t.version} + 1`,
-          },
+            changeSeq: 0,
+          } as Record<string, unknown>,
         })
         .returning({ version: t.version });
       if (!row) return { status: "rejected", reason: "forbidden" };
       if (options.writeChildren) await options.writeChildren(tx, id, fields);
-      if (options.afterChange) await options.afterChange(tx, userId);
+      if (options.afterChange) await options.afterChange(tx, userId, id, fields);
+      await numberV1Writes(tx, userId);
       return { status: "ok", version: row.version };
     });
   }
@@ -89,10 +97,19 @@ export function createEntityRepo<Fields, Data>(
     const [row] = await db.transaction(async (tx) => {
       const deleted = await tx
         .update(t)
-        .set({ deletedAt: now, updatedAt: now, version: sql`${t.version} + 1` })
+        .set({
+          deletedAt: now,
+          updatedAt: now,
+          version: sql`${t.version} + 1`,
+          changeSeq: 0,
+        } as Record<string, unknown>)
         .where(and(eq(t.id, id), eq(t.userId, userId), isNull(t.deletedAt)))
         .returning({ version: t.version });
-      if (deleted.length > 0 && options.afterChange) await options.afterChange(tx, userId);
+      if (deleted.length > 0) {
+        if (options.afterChange) await options.afterChange(tx, userId, id, null);
+        // 하위 레코드 톰스톤도 backfill 이 찍는다 (부모가 톰스톤인 하위).
+        await numberV1Writes(tx, userId);
+      }
       return deleted;
     });
     if (row) return { status: "ok", version: row.version };
