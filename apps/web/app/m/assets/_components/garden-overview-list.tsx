@@ -10,8 +10,10 @@ import { Divider, Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 import { switchTab } from "@web/app/m/_stack/stack-control";
 import { profitToneClass } from "@web/components/mobile/profit-tone";
+import { GoalBar } from "@web/features/garden/components/goal-bar";
 import { PlantAvatar } from "@web/features/garden/components/plant-avatar";
-import { PLANT_STAGES, REBALANCE_BADGE_COLOR } from "@web/features/garden/plant-3d/plant-options";
+import { RebalanceMark } from "@web/features/garden/components/rebalance-mark";
+import { PLANT_STAGES } from "@web/features/garden/plant-3d/plant-options";
 import { type GardenRow, gardenRows } from "@web/features/garden/utils/garden-home";
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import { summarizeAccounts } from "@web/features/investments/utils/summarize-accounts";
@@ -27,67 +29,6 @@ import { ActionableCallout } from "@web/seed-design/ui/callout";
 import { ResultSection } from "@web/seed-design/ui/result-section";
 import { formatReturnRate, numberToKorean } from "@web/utils/number-format";
 import { formatProfitKorean } from "@web/utils/profit-color";
-
-/** 리밸런싱이 필요한 식물 표시 — 정원의 `!` 배지와 같은 모양 (작은 원형 !). */
-export function RebalanceMark({ size = 18 }: { size?: number }) {
-  return (
-    <span
-      role="img"
-      aria-label="리밸런싱 필요"
-      className="inline-flex shrink-0 items-center justify-center rounded-full border-[1.5px] border-white font-bold leading-none text-white"
-      style={{
-        width: size,
-        height: size,
-        fontSize: Math.round(size * 0.62),
-        backgroundColor: REBALANCE_BADGE_COLOR,
-      }}
-    >
-      !
-    </span>
-  );
-}
-
-function GoalBar({ row }: { row: GardenRow }) {
-  const { percent, label } = goalBar(row);
-  // 목표가 없는 씨앗은 빈 막대 대신 안내 문구만.
-  if (percent === null) {
-    return <span className="t2-medium text-fg-neutral-subtle mt-x1 block">{label}</span>;
-  }
-  return (
-    <span className="mt-x1_5 flex items-center gap-x2">
-      <span
-        role="progressbar"
-        aria-label={`${row.name} 목표 도달`}
-        aria-valuenow={percent}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        className="bg-bg-neutral-weak block h-[6px] min-w-0 flex-1 overflow-hidden rounded-full"
-      >
-        <span
-          className={`block h-full rounded-full ${row.drooping ? "bg-bg-warning-solid" : "bg-bg-brand-solid"}`}
-          style={{ width: `${percent}%` }}
-        />
-      </span>
-      {label && (
-        <span className="t2-medium text-fg-neutral-subtle shrink-0 tabular-nums">{label}</span>
-      )}
-    </span>
-  );
-}
-
-/**
- * 목표 도달 막대: 채울 비율(%, 막대 없으면 null)과 옆 문구. 목표를 향해 자라는 중이면 막대만, 목표가
- * 없는 씨앗은 막대 없이 문구만, 방금 달성했거나 다 자랐으면 꽉 찬 막대 + 문구.
- */
-function goalBar(row: GardenRow): { percent: number | null; label: string | null } {
-  if (row.goalState === "complete") return { percent: 100, label: "다 자랐어요" };
-  if (row.goalState === "needs-goal") {
-    return row.stage === 0
-      ? { percent: null, label: "목표를 정하면 자라요" }
-      : { percent: 100, label: "목표 달성!" };
-  }
-  return { percent: row.goalPercent ?? 0, label: null };
-}
 
 /** 이름 옆 단계 + 시듦. */
 function stageLabel(row: GardenRow): string {
@@ -221,7 +162,14 @@ export function GardenOverviewList({
                       {stageLabel(row)}
                     </span>
                   </span>
-                  <GoalBar row={row} />
+                  <GoalBar
+                    className="mt-x1_5"
+                    stage={row.stage}
+                    goalState={row.goalState}
+                    goalPercent={row.goalPercent}
+                    drooping={row.drooping}
+                    ariaLabel={`${row.name} 목표 도달`}
+                  />
                 </span>
                 <span className="shrink-0 pl-x2 text-right">
                   {row.value === null ? (
