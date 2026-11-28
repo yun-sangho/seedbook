@@ -1,7 +1,6 @@
 import { SeedAvatar } from "@mobile/components/seed-avatar";
 import { PlantAvatar } from "@mobile/features/garden/components/plant-avatar";
 import { PLANT_STAGES } from "@mobile/features/garden/plant-3d/plant-options";
-import { kindForPortfolio } from "@mobile/features/garden/utils/garden-home";
 import type { ProfileAvatar } from "@mobile/features/portfolio/utils/plant-avatar";
 import { UserRound } from "lucide-react";
 
@@ -15,7 +14,8 @@ export function ProfileAvatarImage({ avatar, size }: { avatar: ProfileAvatar; si
       <span className="inline-flex shrink-0">
         <PlantAvatar
           stage={PLANT_STAGES[avatar.stage]}
-          kind={kindForPortfolio(avatar.portfolioId)}
+          kind={avatar.plantKind}
+          ripe={avatar.ripe}
           size={size}
         />
       </span>

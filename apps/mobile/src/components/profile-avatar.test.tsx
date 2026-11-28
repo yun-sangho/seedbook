@@ -17,7 +17,8 @@ function portfolioIdOf(kind: "tree" | "fern"): string {
 
 describe("ProfileAvatarImage", () => {
   it.each(["tree", "fern"] as const)("draws the %s that the portfolio grows", (kind) => {
-    const portfolioId = portfolioIdOf(kind);
+    // 해시 종류와 다른 포트폴리오여도 고른 종류를 그린다.
+    const portfolioId = portfolioIdOf(kind === "tree" ? "fern" : "tree");
     const avatar = render(
       <ProfileAvatarImage
         avatar={{
@@ -25,7 +26,8 @@ describe("ProfileAvatarImage", () => {
           portfolioId,
           color: "#000000",
           stage: 3,
-          drooping: false,
+          plantKind: kind,
+          ripe: false,
           chosen: true,
         }}
         size={48}

@@ -6,14 +6,15 @@ import {
   advancePlant,
   driftDays,
   harvestPlant,
-  isPlantDrifting,
   NEXT_GOAL_ERROR_MESSAGES,
   nextGoalError,
   nextGoalFloor,
   plantWilt,
+  plantWind,
   seasonGoalState,
   startPlantSeason,
   trackDriftSince,
+  WIND_MAX,
   WISH_MAX_LENGTH,
   wishError,
 } from "./plant-season";
@@ -199,28 +200,6 @@ describe("seasonGoalState", () => {
   });
 });
 
-describe("isPlantDrifting", () => {
-  it("is drifting when a linked portfolio with target weights breaches the threshold", () => {
-    expect(isPlantDrifting({ accountCount: 1, hasAllocations: true, hasBreach: true })).toBe(true);
-  });
-
-  it("is within target when nothing breaches", () => {
-    expect(isPlantDrifting({ accountCount: 1, hasAllocations: true, hasBreach: false })).toBe(
-      false
-    );
-  });
-
-  it("cannot drift without linked accounts", () => {
-    expect(isPlantDrifting({ accountCount: 0, hasAllocations: true, hasBreach: true })).toBe(false);
-  });
-
-  it("cannot drift without target weights", () => {
-    expect(isPlantDrifting({ accountCount: 1, hasAllocations: false, hasBreach: true })).toBe(
-      false
-    );
-  });
-});
-
 describe("trackDriftSince", () => {
   it("starts counting at the start of today (KST) when drift is first seen", () => {
     const next = trackDriftSince(progress(), true, NOW);
@@ -384,5 +363,32 @@ describe("wishError", () => {
   it("rejects a wish longer than the limit", () => {
     expect(wishError("가".repeat(WISH_MAX_LENGTH))).toBeNull();
     expect(wishError("가".repeat(WISH_MAX_LENGTH + 1))).toBe("too-long");
+  });
+});
+
+describe("plantWind", () => {
+  it("is 0 without a reached goal", () => {
+    expect(plantWind(10, null, true)).toBe(0);
+  });
+
+  it("is 0 when the value is at or above the last reached goal", () => {
+    expect(plantWind(1000, 1000, true)).toBe(0);
+    expect(plantWind(1200, 1000, true)).toBe(0);
+  });
+
+  it("ignores a drop of 5% or less", () => {
+    expect(plantWind(960, 1000, true)).toBe(0);
+    expect(plantWind(950, 1000, true)).toBe(0);
+  });
+
+  it("grows from 5% to 20% below the last goal, up to half of the old full droop", () => {
+    expect(plantWind(875, 1000, true)).toBeCloseTo(0.25);
+    expect(plantWind(800, 1000, true)).toBe(WIND_MAX);
+    expect(plantWind(100, 1000, true)).toBe(WIND_MAX);
+    expect(WIND_MAX).toBe(0.5);
+  });
+
+  it("is 0 before every price has arrived", () => {
+    expect(plantWind(500, 1000, false)).toBe(0);
   });
 });

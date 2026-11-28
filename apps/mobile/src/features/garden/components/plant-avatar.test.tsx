@@ -20,6 +20,14 @@ describe("PlantAvatar", () => {
     expect(shapes("tree")).toBeGreaterThan(shapes("seed"));
   });
 
+  it.each(["tree", "fern"] as const)("bears fruit at flowers only when ripe (%s)", (kind) => {
+    const shapes = (ripe: boolean) =>
+      render(
+        <PlantAvatar stage="bloom" size={48} kind={kind} ripe={ripe} />
+      ).container.querySelectorAll("path, circle, ellipse, line").length;
+    expect(shapes(true)).toBeGreaterThan(shapes(false));
+  });
+
   it("paints the pot in the portfolio's color", () => {
     const { container } = render(<PlantAvatar stage="seed" pot="sky" size={48} />);
     expect(container.innerHTML).toContain("#86B4E3");

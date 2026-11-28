@@ -17,7 +17,7 @@ import {
   type PotColor,
 } from "@mobile/features/garden/plant-3d/plant-options";
 import type { PlantSceneMetrics, PlantSlot } from "@mobile/features/garden/plant-3d/plant-renderer";
-import { plantWilt, plantWind } from "@mobile/features/garden/utils/garden-home";
+import { plantWilt, plantWind } from "@mobile/features/portfolio/utils/plant-season";
 import { GardenCanvas } from "@web/app/(site)/_components/garden-canvas";
 import { FernCompare } from "./fern-compare";
 
@@ -117,7 +117,7 @@ export function conditionOptions(
 ): Pick<PlantOptions, "wind" | "wilt" | "ripe"> {
   return {
     wind: plantWind(1 - condition.dropPercent / 100, 1, true),
-    wilt: plantWilt(condition.driftDays > 0 ? condition.driftDays : null),
+    wilt: plantWilt(condition.driftDays),
     ripe: condition.ripe,
   };
 }

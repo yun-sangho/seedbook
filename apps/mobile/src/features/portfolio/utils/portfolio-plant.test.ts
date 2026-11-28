@@ -6,12 +6,10 @@ import {
 import { describe, expect, it } from "vitest";
 import { INITIAL_PLANT_PROGRESS } from "../types/constants";
 import type { PlantProgress } from "../types/types";
+import { computePlantStatus, evaluatePlant } from "./plant-season";
 import {
-  computePlantStatus,
   computePortfolioValuation,
   furtherPlantProgress,
-  growPlant,
-  plantGoalError,
   readPlantProgress,
 } from "./portfolio-plant";
 
@@ -102,42 +100,6 @@ describe("computePortfolioValuation", () => {
   });
 });
 
-describe("growPlant", () => {
-  it("grows one stage, clears the goal and records it when the value reaches the goal", () => {
-    const grown = growPlant(progress({ goalAmount: 10000 }), 10000, NOW);
-
-    expect(grown).toEqual(
-      progress({
-        goalAmount: null,
-        growthStage: 1,
-        goalHistory: [{ amount: 10000, reachedAt: NOW }],
-      })
-    );
-  });
-
-  it("returns the same progress when the value is below the goal", () => {
-    const p = progress({ goalAmount: 10000 });
-
-    expect(growPlant(p, 9999, NOW)).toBe(p);
-  });
-
-  it("stays a seed without a goal", () => {
-    const p = progress();
-
-    expect(growPlant(p, 1_000_000_000, NOW)).toBe(p);
-  });
-
-  it("grows only one stage even when the value is far above the goal", () => {
-    expect(growPlant(progress({ goalAmount: 100 }), 1_000_000, NOW).growthStage).toBe(1);
-  });
-
-  it("does not grow past flowers and fruit", () => {
-    const p = progress({ goalAmount: 100, growthStage: 4 });
-
-    expect(growPlant(p, 1000, NOW)).toBe(p);
-  });
-});
-
 describe("furtherPlantProgress", () => {
   it("keeps the further-grown progress", () => {
     const local = progress({ goalAmount: 5000, growthStage: 1, goalHistory: [reached(1000)] });
@@ -175,88 +137,199 @@ describe("furtherPlantProgress", () => {
   });
 });
 
-describe("plantGoalError", () => {
-  it("accepts a positive whole amount for a seed", () => {
-    expect(plantGoalError(progress(), 1_000_000)).toBeNull();
+const KST_TODAY = "2026-11-26T15:00:00.000Z"; // 2026-11-27 00:00 KST (NOW 의 KST 날짜)
+
+const evaluation = (value: number, drifting = false, pricesComplete = true) => ({
+  value,
+  drifting,
+  pricesComplete,
+});
+
+describe("evaluatePlant", () => {
+  it("grows one stage when the goal is reached with the weights on target", () => {
+    const evaluated = evaluatePlant(progress({ goalAmount: 10000 }), evaluation(10000), NOW);
+
+    expect(evaluated).toEqual(
+      progress({ growthStage: 1, goalHistory: [{ amount: 10000, reachedAt: NOW }] })
+    );
   });
 
-  it.each([0, -1, 1.5, Number.NaN])("rejects %s", (amount) => {
-    expect(plantGoalError(progress(), amount)).toBe("invalid");
+  it("does not grow while the weights drift, and starts counting the drift today", () => {
+    const evaluated = evaluatePlant(progress({ goalAmount: 10000 }), evaluation(12000, true), NOW);
+
+    expect(evaluated).toEqual(progress({ goalAmount: 10000, driftSince: KST_TODAY }));
   });
 
-  it("requires the next goal to be above the last reached goal", () => {
-    const p = progress({ growthStage: 1, goalHistory: [reached(1000)] });
+  it("forgets the drift once the weights are back on target", () => {
+    const p = progress({ goalAmount: 50000, driftSince: "2026-11-01T15:00:00.000Z" });
 
-    expect(plantGoalError(p, 1000)).toBe("not-above-last-goal");
-    expect(plantGoalError(p, 1001)).toBeNull();
+    expect(evaluatePlant(p, evaluation(1000), NOW).driftSince).toBeNull();
   });
 
-  it("rejects a goal once the plant is fully grown", () => {
-    expect(plantGoalError(progress({ growthStage: 4 }), 1000)).toBe("fully-grown");
+  it("neither grows nor tracks drift before every price has arrived", () => {
+    const p = progress({ goalAmount: 100 });
+
+    expect(evaluatePlant(p, evaluation(1000, true, false), NOW)).toBe(p);
+  });
+
+  it("returns the same progress when nothing changes", () => {
+    const p = progress({ goalAmount: 10000 });
+
+    expect(evaluatePlant(p, evaluation(9999), NOW)).toBe(p);
+  });
+
+  it("bears fruit when the fruit goal is reached at flowers", () => {
+    const p = progress({ growthStage: 4, goalHistory: [1, 2, 3, 4].map(reached), goalAmount: 500 });
+
+    const evaluated = evaluatePlant(p, evaluation(600), NOW);
+
+    expect(evaluated).toMatchObject({
+      growthStage: 4,
+      goalAmount: null,
+      fruitGoal: { amount: 500, reachedAt: NOW },
+    });
   });
 });
 
 describe("computePlantStatus", () => {
-  const complete = (value: number) => ({ value, pricesComplete: true });
-
   it("is a seed that needs a goal when no goal is set", () => {
-    expect(computePlantStatus(progress(), complete(50000))).toEqual({
+    expect(computePlantStatus(progress(), evaluation(50000), NOW)).toEqual({
       stage: 0,
-      drooping: false,
       goalState: "needs-goal",
       goalAmount: null,
       remainingToNextStage: null,
-      grew: false,
+      drifting: false,
+      driftDays: 0,
+      wilt: 0,
+      wind: 0,
+      ripe: false,
+      changed: false,
     });
   });
 
   it("reports the amount left to the next stage", () => {
-    const status = computePlantStatus(progress({ goalAmount: 10000 }), complete(4000));
+    const status = computePlantStatus(progress({ goalAmount: 10000 }), evaluation(4000), NOW);
 
     expect(status).toMatchObject({ stage: 0, goalState: "set", remainingToNextStage: 6000 });
   });
 
   it("grows when the goal is reached and asks for the next goal", () => {
-    const status = computePlantStatus(progress({ goalAmount: 10000 }), complete(12000));
+    const status = computePlantStatus(progress({ goalAmount: 10000 }), evaluation(12000), NOW);
+
+    expect(status).toMatchObject({ stage: 1, goalState: "needs-goal", changed: true });
+  });
+
+  it("waits for the weights when the goal is reached while drifting", () => {
+    const status = computePlantStatus(
+      progress({ goalAmount: 10000 }),
+      evaluation(12000, true),
+      NOW
+    );
 
     expect(status).toMatchObject({
-      stage: 1,
-      goalState: "needs-goal",
-      grew: true,
-      drooping: false,
+      stage: 0,
+      goalState: "blocked-by-drift",
+      goalAmount: 10000,
+      remainingToNextStage: 0,
+      drifting: true,
+      changed: true,
     });
   });
 
-  it("keeps the stage and droops after the value falls below the last reached goal", () => {
-    const p = progress({ goalAmount: 20000, growthStage: 1, goalHistory: [reached(10000)] });
+  it("wilts by how long the weights have drifted", () => {
+    const p = progress({ driftSince: "2026-11-12T15:00:00.000Z" }); // 11-13 KST → 14일
 
-    const status = computePlantStatus(p, complete(8000));
-
-    expect(status).toMatchObject({ stage: 1, drooping: true, remainingToNextStage: 12000 });
+    expect(computePlantStatus(p, evaluation(1000, true), NOW)).toMatchObject({
+      driftDays: 14,
+      wilt: 0.7,
+      changed: false,
+    });
   });
 
-  it("does not droop at or above the last reached goal", () => {
+  it("does not wilt on the first day a drift is seen", () => {
+    const status = computePlantStatus(progress(), evaluation(1000, true), NOW);
+
+    expect(status).toMatchObject({ drifting: true, driftDays: 0, wilt: 0 });
+  });
+
+  it("recovers at once when the weights are back on target", () => {
+    const p = progress({ driftSince: "2026-10-01T15:00:00.000Z" });
+
+    expect(computePlantStatus(p, evaluation(1000), NOW)).toMatchObject({ wilt: 0, changed: true });
+  });
+
+  it("shows a market drop as wind, never as wilting", () => {
     const p = progress({ growthStage: 1, goalHistory: [reached(10000)] });
 
-    expect(computePlantStatus(p, complete(10000)).drooping).toBe(false);
+    const status = computePlantStatus(p, evaluation(8000), NOW);
+
+    expect(status.wind).toBeGreaterThan(0);
+    expect(status.wilt).toBe(0);
   });
 
-  it("does not judge drooping before every price has arrived", () => {
-    const p = progress({ growthStage: 1, goalHistory: [reached(10000)] });
-
-    const status = computePlantStatus(p, { value: 0, pricesComplete: false });
-
-    expect(status.drooping).toBe(false);
-  });
-
-  it("is complete at flowers and fruit", () => {
+  it("asks for the fruit goal at flowers", () => {
     const p = progress({ growthStage: 4, goalHistory: [1, 2, 3, 4].map(reached) });
 
-    expect(computePlantStatus(p, complete(100))).toMatchObject({
+    expect(computePlantStatus(p, evaluation(100), NOW)).toMatchObject({
       stage: 4,
-      goalState: "complete",
+      goalState: "needs-fruit-goal",
+      ripe: false,
+    });
+  });
+
+  it("is ripe once the fruit goal is reached, whatever the weather", () => {
+    const p = progress({
+      growthStage: 4,
+      goalHistory: [1, 2, 3, 4].map(reached),
+      fruitGoal: reached(50000),
+      driftSince: "2026-10-01T15:00:00.000Z",
+    });
+
+    expect(computePlantStatus(p, evaluation(100, true), NOW)).toMatchObject({
+      goalState: "ripe",
+      ripe: true,
       remainingToNextStage: null,
     });
+  });
+});
+
+/**
+ * 계절 규칙 전환 (#118 → 화면 연결): 배포 전에 저장된 식물은 그대로 읽히고, 새 규칙은 다음 평가부터 적용된다.
+ */
+describe("plants saved under the old rules", () => {
+  it("keeps a fully grown plant at flowers and lets it set a fruit goal", () => {
+    const old = readPlantProgress({
+      goalAmount: null,
+      growthStage: 4,
+      goalHistory: [1, 2, 3, 4].map(reached),
+    });
+
+    expect(computePlantStatus(old, evaluation(100), NOW)).toMatchObject({
+      stage: 4,
+      goalState: "needs-fruit-goal",
+    });
+  });
+
+  it("keeps a goal set before the 10% floor and grows on it", () => {
+    const old = readPlantProgress({
+      goalAmount: 10001,
+      growthStage: 1,
+      goalHistory: [reached(10000)],
+    });
+
+    expect(evaluatePlant(old, evaluation(10001), NOW).growthStage).toBe(2);
+  });
+
+  it("starts wilting only from the first drift seen after the update", () => {
+    const old = readPlantProgress({ goalAmount: 10000, growthStage: 0, goalHistory: [] });
+
+    expect(computePlantStatus(old, evaluation(100, true), NOW).wilt).toBe(0);
+  });
+
+  it("no longer marks a small drop below the last goal", () => {
+    const old = readPlantProgress({ growthStage: 1, goalHistory: [reached(10000)] });
+
+    expect(computePlantStatus(old, evaluation(9600), NOW)).toMatchObject({ wind: 0, wilt: 0 });
   });
 });
 

@@ -92,7 +92,7 @@ function Pot({ pot }: { pot: PotColor }) {
   );
 }
 
-function StageArt({ stage }: { stage: PlantStage }) {
+function StageArt({ stage, ripe }: { stage: PlantStage; ripe: boolean }) {
   switch (stage) {
     case "seed":
       return (
@@ -151,8 +151,12 @@ function StageArt({ stage }: { stage: PlantStage }) {
               <Flower x={37} y={15} />
               <Flower x={20} y={26} />
               <Flower x={43} y={23} />
-              <Fruit x={25} y={33.5} />
-              <Fruit x={40} y={31.5} />
+              {ripe && (
+                <>
+                  <Fruit x={25} y={33.5} />
+                  <Fruit x={40} y={31.5} />
+                </>
+              )}
             </>
           )}
         </>
@@ -165,12 +169,15 @@ export function PlantAvatar({
   pot = "terracotta",
   size,
   kind = "tree",
+  ripe = false,
 }: {
   stage: PlantStage;
   pot?: PotColor;
   size: number;
-  /** 식물 종류 (`kindForPortfolio`). 없으면 나무. */
+  /** 식물 종류 (`plantKindOf`). 없으면 나무. */
   kind?: PlantKind;
+  /** 열매가 열림 — 꽃·열매 단계에서 열매를 단다 (없으면 꽃만). */
+  ripe?: boolean;
 }) {
   const fern = kind === "fern";
   const clipId = useId();
@@ -183,9 +190,9 @@ export function PlantAvatar({
       </defs>
       <g clipPath={`url(#${clipId})`}>
         <rect width="64" height="64" fill={BG} />
-        {fern ? <FernArt stage={stage} layer="back" /> : <StageArt stage={stage} />}
+        {fern ? <FernArt stage={stage} layer="back" /> : <StageArt stage={stage} ripe={ripe} />}
         <Pot pot={pot} />
-        {fern && <FernArt stage={stage} layer="front" />}
+        {fern && <FernArt stage={stage} layer="front" ripe={ripe} />}
       </g>
     </svg>
   );

@@ -1,11 +1,11 @@
 import { type ProfileImage, parseProfileImage } from "@mobile/lib/seed-identity/profile-image";
 import type { SeedAvatarVariant } from "@mobile/lib/seed-identity/seed-avatar";
-import type { PlantStage } from "../types/types";
+import type { PlantKind, PlantStage } from "../types/types";
 import type { PortfolioPlantView } from "./portfolio-plant-view";
 
 type AvatarPlant = Pick<
   PortfolioPlantView,
-  "portfolioId" | "color" | "stage" | "drooping" | "value"
+  "portfolioId" | "color" | "stage" | "season" | "kind" | "ripe" | "value"
 >;
 
 /** 프로필 아바타로 그릴 것. */
@@ -15,7 +15,9 @@ export type ProfileAvatar =
       portfolioId: string;
       color: string;
       stage: PlantStage;
-      drooping: boolean;
+      plantKind: PlantKind;
+      /** 열매가 열렸다. */
+      ripe: boolean;
       /** 사용자가 고른 식물인지 (false 면 기본값 — 가장 크게 자란 식물). */
       chosen: boolean;
     }
@@ -25,17 +27,19 @@ export type ProfileAvatar =
       variant: SeedAvatarVariant | null;
     };
 
-/** 기본 아바타 식물: 가장 크게 자란 식물, 단계가 같으면 금액이 큰 포트폴리오. 없으면 null. */
+/** 더 자란 정도 — (계절, 단계, 금액) 사전순. 양수면 `a` 가 앞선다. */
+function compareAvatarPlants(a: AvatarPlant, b: AvatarPlant): number {
+  return a.season - b.season || a.stage - b.stage || a.value - b.value;
+}
+
+/**
+ * 기본 아바타 식물: 가장 크게 자란 식물 (뒤 계절이 앞, 같은 계절이면 단계), 같으면 금액이 큰
+ * 포트폴리오. 없으면 null.
+ */
 export function defaultAvatarPlant<T extends AvatarPlant>(plants: readonly T[]): T | null {
   let best: T | null = null;
   for (const plant of plants) {
-    if (
-      best === null ||
-      plant.stage > best.stage ||
-      (plant.stage === best.stage && plant.value > best.value)
-    ) {
-      best = plant;
-    }
+    if (best === null || compareAvatarPlants(plant, best) > 0) best = plant;
   }
   return best;
 }
@@ -64,7 +68,8 @@ export function resolveAvatar(
     portfolioId: plant.portfolioId,
     color: plant.color,
     stage: plant.stage,
-    drooping: plant.drooping,
+    plantKind: plant.kind,
+    ripe: plant.ripe,
     chosen: chosen !== null,
   };
 }

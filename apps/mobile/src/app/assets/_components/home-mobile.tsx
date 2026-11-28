@@ -15,11 +15,11 @@ import {
   gardenHandlesBack,
   gardenPlantOptions,
   grownSince,
+  plantStageLabel,
 } from "@mobile/features/garden/utils/garden-home";
 import { useInvestmentStore } from "@mobile/features/investments/stores/investment-store";
 import { useStockPrices } from "@mobile/features/investments/utils/use-stock-prices";
 import { usePortfolioStore } from "@mobile/features/portfolio/stores/portfolio-store";
-import { PLANT_STAGE_LABELS } from "@mobile/features/portfolio/types/constants";
 import { usePortfolioPlants } from "@mobile/features/portfolio/utils/use-portfolio-plants";
 import { Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
@@ -94,12 +94,11 @@ export function HomeMobile() {
     // 키 큰 식물을 뒷줄에 둬 앞줄 나무가 뒷줄을 가리지 않게 한다 (slots 순서는 plants 순서 그대로).
     const spotOf = spotsTallestToBack(plants.map((plant) => plant.stage));
     return plants.flatMap((plant, i) => {
-      const portfolio = portfolios.find((p) => p.id === plant.portfolioId);
       const spot = spots[spotOf[i] ?? i];
-      if (!portfolio || !spot) return [];
-      return [{ id: plant.portfolioId, options: gardenPlantOptions(plant, portfolio), ...spot }];
+      if (!spot) return [];
+      return [{ id: plant.portfolioId, options: gardenPlantOptions(plant), ...spot }];
     });
-  }, [plants, portfolios]);
+  }, [plants]);
   const layoutWidth = useMemo(() => gardenLayout(plants.length).width, [plants.length]);
 
   // 화면을 연 동안 자란 식물을 축하한다 (처음 볼 때는 축하하지 않는다).
@@ -190,8 +189,8 @@ export function HomeMobile() {
             className="animate-garden-celebrate bg-bg-layer-floating t4-bold pointer-events-none absolute inset-x-[var(--seed-dimension-x4)] top-[var(--seed-dimension-x4)] z-10 rounded-full px-x4 py-x2 text-center shadow-md"
           >
             🎉 {celebration.name ? `${celebration.name} 식물이` : "식물이"}{" "}
-            {PLANT_STAGE_LABELS[celebration.stage]}
-            {toParticle(PLANT_STAGE_LABELS[celebration.stage])} 자랐어요
+            {plantStageLabel(celebration.kind, celebration.stage)}
+            {toParticle(plantStageLabel(celebration.kind, celebration.stage))} 자랐어요
           </div>
         )}
         <GardenSheet

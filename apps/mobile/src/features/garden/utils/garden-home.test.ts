@@ -17,10 +17,9 @@ import {
   gardenRows,
   grownSince,
   kindForPortfolio,
-  plantWilt,
-  plantWind,
+  plantConditionLabel,
+  plantStageLabel,
   potForPortfolio,
-  WIND_MAX,
 } from "./garden-home";
 
 function holding(ticker: string, quantity: number): StockHolding {
@@ -120,60 +119,10 @@ describe("kindForPortfolio", () => {
   });
 });
 
-describe("plantWind", () => {
-  it("is 0 without a reached goal", () => {
-    expect(plantWind(10, null, true)).toBe(0);
-  });
-
-  it("is 0 when the value is at or above the last reached goal", () => {
-    expect(plantWind(1000, 1000, true)).toBe(0);
-    expect(plantWind(1200, 1000, true)).toBe(0);
-  });
-
-  it("ignores a drop of 5% or less", () => {
-    expect(plantWind(960, 1000, true)).toBe(0);
-    expect(plantWind(950, 1000, true)).toBe(0);
-  });
-
-  it("grows from 5% to 20% below the last goal, up to half of the old full droop", () => {
-    expect(plantWind(875, 1000, true)).toBeCloseTo(0.25);
-    expect(plantWind(800, 1000, true)).toBe(WIND_MAX);
-    expect(plantWind(100, 1000, true)).toBe(WIND_MAX);
-    expect(WIND_MAX).toBe(0.5);
-  });
-
-  it("is 0 before every price has arrived", () => {
-    expect(plantWind(500, 1000, false)).toBe(0);
-  });
-});
-
-describe("plantWilt", () => {
-  it("is 0 when the weights are on target", () => {
-    expect(plantWilt(null)).toBe(0);
-  });
-
-  it("does not wilt in the first week of drift (the plant only tilts)", () => {
-    expect(plantWilt(0)).toBe(0);
-    expect(plantWilt(6)).toBe(0);
-  });
-
-  it("wilts in steps at 7, 14 and 28 days of drift", () => {
-    expect(plantWilt(7)).toBe(0.35);
-    expect(plantWilt(13)).toBe(0.35);
-    expect(plantWilt(14)).toBe(0.7);
-    expect(plantWilt(27)).toBe(0.7);
-    expect(plantWilt(28)).toBe(1);
-    expect(plantWilt(400)).toBe(1);
-  });
-
-  it("treats a part day as the day it is in", () => {
-    expect(plantWilt(6.9)).toBe(0);
-    expect(plantWilt(13.5)).toBe(0.35);
-  });
-});
+const NOW = "2026-11-27T06:30:00.000Z";
 
 describe("gardenPlantOptions", () => {
-  it("maps stage, wind, rebalancing and a stable pot", () => {
+  it("maps stage, wind, wilt, rebalancing and a stable pot", () => {
     const p = portfolio({
       accountIds: ["skewed"],
       growthStage: 2,
@@ -182,21 +131,84 @@ describe("gardenPlantOptions", () => {
         { amount: 50_000, reachedAt: "x" },
         { amount: 110_000, reachedAt: "y" },
       ],
+      driftSince: "2026-11-12T15:00:00.000Z", // 14일째
     });
-    const plant = portfolioPlantView(p, [skewed], prices);
+    const plant = portfolioPlantView(p, [skewed], prices, NOW);
 
-    expect(gardenPlantOptions(plant, p)).toEqual({
+    expect(gardenPlantOptions(plant)).toEqual({
       stage: "sapling",
       // 마지막 목표보다 9.1% 아래 → (0.091 − 0.05) / 0.15 × 0.5
       wind: expect.closeTo((10_000 / 110_000 - 0.05) / 0.15 / 2, 6),
-      // 이탈 기간·열매 목표는 아직 데이터가 없다 (규칙·레코드 태스크가 넣는다).
-      wilt: 0,
+      wilt: 0.7,
       ripe: false,
       needsRebalance: true,
       pot: potForPortfolio("p"),
       seed: expect.any(Number),
       kind: kindForPortfolio("p"),
     });
+  });
+
+  it("bears fruit when the fruit goal is reached", () => {
+    const p = portfolio({
+      growthStage: 4,
+      goalHistory: [1, 2, 3, 4].map((amount) => ({ amount, reachedAt: "x" })),
+      fruitGoal: { amount: 5, reachedAt: "y" },
+      plantKind: "fern",
+    });
+
+    expect(gardenPlantOptions(portfolioPlantView(p, [], prices, NOW))).toMatchObject({
+      stage: "bloom",
+      ripe: true,
+      kind: "fern",
+    });
+  });
+});
+
+describe("plantStageLabel", () => {
+  it("names the stages of a tree", () => {
+    expect([0, 1, 2, 3, 4].map((s) => plantStageLabel("tree", s as 0))).toEqual([
+      "씨앗",
+      "새싹",
+      "묘목",
+      "나무",
+      "꽃·열매",
+    ]);
+  });
+
+  it("names the stages of a fern, with flowers and fruit at the top", () => {
+    expect([0, 1, 2, 3, 4].map((s) => plantStageLabel("fern", s as 0))).toEqual([
+      "씨앗",
+      "새순",
+      "어린 잎",
+      "고사리",
+      "꽃·열매",
+    ]);
+  });
+});
+
+describe("plantConditionLabel", () => {
+  it("is empty for a calm plant", () => {
+    expect(plantConditionLabel({ wilt: 0, wind: 0, ripe: false })).toBeNull();
+  });
+
+  it("names wilting by how long the weights have drifted", () => {
+    expect(plantConditionLabel({ wilt: 0.35, wind: 0, ripe: false })).toBe("시들기 시작했어요");
+    expect(plantConditionLabel({ wilt: 0.7, wind: 0, ripe: false })).toBe("시들해요");
+    expect(plantConditionLabel({ wilt: 1, wind: 0, ripe: false })).toBe("많이 시들었어요");
+  });
+
+  it("calls a market drop wind", () => {
+    expect(plantConditionLabel({ wilt: 0, wind: 0.2, ripe: false })).toBe("바람이 불어요");
+  });
+
+  it("names wilting before wind when both happen", () => {
+    expect(plantConditionLabel({ wilt: 0.7, wind: 0.2, ripe: false })).toBe(
+      "시들해요 · 바람이 불어요"
+    );
+  });
+
+  it("leaves a ripe fruit to the goal bar, whatever the weather", () => {
+    expect(plantConditionLabel({ wilt: 1, wind: 0.5, ripe: true })).toBeNull();
   });
 });
 
@@ -207,7 +219,7 @@ describe("gardenRows", () => {
 
   it("maps each plant to a list row", () => {
     const p = portfolio({ accountIds: ["skewed"], goalAmount: 500_000 });
-    const plant = portfolioPlantView(p, [skewed], prices);
+    const plant = portfolioPlantView(p, [skewed], prices, NOW);
 
     expect(gardenRows([plant], [p], [skewed])).toEqual([
       {
@@ -218,7 +230,9 @@ describe("gardenRows", () => {
         kind: kindForPortfolio("p"),
         value: 100_000,
         needsRebalance: true,
-        drooping: false,
+        wilt: 0,
+        wind: 0,
+        ripe: false,
         goalState: "set",
         goalAmount: 500_000,
         goalPercent: 20,
@@ -229,7 +243,7 @@ describe("gardenRows", () => {
 
   it("has no goal progress while the plant waits for a goal", () => {
     const p = portfolio({ accountIds: ["balanced"] });
-    const plant = portfolioPlantView(p, [balanced], prices);
+    const plant = portfolioPlantView(p, [balanced], prices, NOW);
 
     const [row] = gardenRows([plant], [p], [balanced]);
 
@@ -239,7 +253,7 @@ describe("gardenRows", () => {
 
   it("floors the goal progress", () => {
     const p = portfolio({ accountIds: ["balanced"], goalAmount: 300_000 });
-    const plant = portfolioPlantView(p, [balanced], prices);
+    const plant = portfolioPlantView(p, [balanced], prices, NOW);
 
     expect(gardenRows([plant], [p], [balanced])[0]?.goalPercent).toBe(33);
   });
@@ -249,21 +263,21 @@ describe("gardenRows", () => {
     const b = { ...account("b", []), initialInvestment: 1_000_000, currentValue: 1_000_000 };
     const other = { ...account("other", []), initialInvestment: 1_000_000, currentValue: 0 };
     const p = portfolio({ accountIds: ["a", "b"] });
-    const plant = portfolioPlantView(p, [a, b, other], prices);
+    const plant = portfolioPlantView(p, [a, b, other], prices, NOW);
 
     expect(gardenRows([plant], [p], [a, b, other])[0]?.returnRate).toBeCloseTo(5);
   });
 
   it("has no return rate when the linked accounts have no principal", () => {
     const p = portfolio({ accountIds: ["balanced"] });
-    const plant = portfolioPlantView(p, [balanced], prices);
+    const plant = portfolioPlantView(p, [balanced], prices, NOW);
 
     expect(gardenRows([plant], [p], [balanced])[0]?.returnRate).toBeNull();
   });
 
   it("has no value for a portfolio without linked accounts", () => {
     const p = portfolio({ accountIds: ["gone"] });
-    const plant = portfolioPlantView(p, [balanced], prices);
+    const plant = portfolioPlantView(p, [balanced], prices, NOW);
 
     const [row] = gardenRows([plant], [p], [balanced]);
 
@@ -274,7 +288,7 @@ describe("gardenRows", () => {
 
   it("names a portfolio without a name", () => {
     const p = portfolio({ name: "" });
-    const plant = portfolioPlantView(p, [], prices);
+    const plant = portfolioPlantView(p, [], prices, NOW);
 
     expect(gardenRows([plant], [p], [])[0]?.name).toBe("이름 없는 포트폴리오");
   });
@@ -340,6 +354,7 @@ describe("grownSince", () => {
   const plant = (portfolioId: string, stage: 0 | 1 | 2 | 3 | 4) => ({
     portfolioId,
     name: portfolioId,
+    kind: "tree" as const,
     stage,
   });
 

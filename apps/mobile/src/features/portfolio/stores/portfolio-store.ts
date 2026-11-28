@@ -16,8 +16,15 @@ import {
   LEGACY_DRIFT_MODE,
 } from "../types/constants";
 import type { DriftMode, PlantKind, PortfolioAllocation, PortfolioItem } from "../types/types";
-import { harvestPlant, startPlantSeason, wishError } from "../utils/plant-season";
-import { growPlant, plantGoalError, readPlantProgress } from "../utils/portfolio-plant";
+import {
+  evaluatePlant,
+  harvestPlant,
+  nextGoalError,
+  type PlantEvaluation,
+  startPlantSeason,
+  wishError,
+} from "../utils/plant-season";
+import { type PortfolioValuation, readPlantProgress } from "../utils/portfolio-plant";
 
 const nowIso = () => new Date().toISOString();
 
@@ -60,15 +67,19 @@ interface PortfolioState {
   setDriftThreshold: (portfolioId: string, value: number) => void;
   setDriftMode: (portfolioId: string, mode: DriftMode) => void;
   /**
-   * 식물의 지금 목표 금액 (원) 을 정한다. `null` 이면 목표를 지운다. 규칙(`plantGoalError`)에
-   * 어긋나면 바꾸지 않고 false.
+   * 식물의 지금 목표 금액 (원, 4단계면 열매 목표) 을 정한다. `null` 이면 목표를 지운다. 지금 평가
+   * (`valuation`) 로 본 규칙(`nextGoalError`: 하한 +10%, 시세 다 옴, 열매 전)에 어긋나면 바꾸지 않고 false.
    */
-  setPlantGoal: (portfolioId: string, amount: number | null) => boolean;
+  setPlantGoal: (
+    portfolioId: string,
+    amount: number | null,
+    valuation: Pick<PortfolioValuation, "value" | "pricesComplete">
+  ) => boolean;
   /**
-   * 포트폴리오 평가 금액 (id → 원) 으로 목표를 달성한 식물을 한 단계 키운다. 자란 것이 없으면
-   * 상태를 바꾸지 않는다 (동기화 대기열에도 남지 않는다).
+   * 포트폴리오 평가 (id → 평가) 로 식물을 평가한다 (`evaluatePlant`: 목표를 이룬 식물은 한 단계 자라고,
+   * 이탈 시작일을 기록·해제한다). 바뀐 것이 없으면 상태를 바꾸지 않는다 (동기화 대기열에도 남지 않는다).
    */
-  growPlants: (values: ReadonlyMap<string, number>) => void;
+  evaluatePlants: (evaluations: ReadonlyMap<string, PlantEvaluation>, now?: string) => void;
   /** 씨앗 심기 — 이번 계절의 식물 종류와 소원. 소원이 규칙(`wishError`)에 어긋나면 false. */
   startPlantSeason: (portfolioId: string, input: { plantKind: PlantKind; wish: string }) => boolean;
   /** 이번 계절의 소원을 고친다. 규칙에 어긋나면 false. */
@@ -226,10 +237,10 @@ export const usePortfolioStore = create<PortfolioState>()(
         }));
       },
 
-      setPlantGoal: (portfolioId, amount) => {
+      setPlantGoal: (portfolioId, amount, valuation) => {
         const portfolio = get().portfolios.find((p) => p.id === portfolioId);
         if (!portfolio) return false;
-        if (amount !== null && plantGoalError(portfolio, amount)) return false;
+        if (amount !== null && nextGoalError(portfolio, amount, valuation)) return false;
         set((state) => ({
           portfolios: state.portfolios.map((p) =>
             p.id === portfolioId ? touch({ ...p, goalAmount: amount }) : p
@@ -238,14 +249,13 @@ export const usePortfolioStore = create<PortfolioState>()(
         return true;
       },
 
-      growPlants: (values) => {
-        const now = nowIso();
+      evaluatePlants: (evaluations, now = nowIso()) => {
         const { portfolios } = get();
         const next = portfolios.map((p) => {
-          const value = values.get(p.id);
-          if (value === undefined) return p;
-          const grown = growPlant(p, value, now);
-          return grown === p ? p : touch(grown);
+          const evaluation = evaluations.get(p.id);
+          if (evaluation === undefined) return p;
+          const evaluated = evaluatePlant(p, evaluation, now);
+          return evaluated === p ? p : touch(evaluated);
         });
         if (next.some((p, i) => p !== portfolios[i])) set({ portfolios: next });
       },

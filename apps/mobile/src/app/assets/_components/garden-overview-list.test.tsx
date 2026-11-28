@@ -1,3 +1,5 @@
+import { useHarvestStore } from "@mobile/features/garden/stores/harvest-store";
+import type { HarvestItem } from "@mobile/features/portfolio/utils/plant-season";
 import type { PortfolioPlantView } from "@mobile/features/portfolio/utils/portfolio-plant-view";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -12,20 +14,40 @@ function plant(partial: Partial<PortfolioPlantView>): PortfolioPlantView {
     portfolioId: "p1",
     name: "안정형",
     color: "#111",
+    kind: "tree",
+    season: 1,
+    wish: "",
     value: 0,
     pricesComplete: true,
     rebalancing: "unknown",
     stage: 1,
-    drooping: false,
     goalState: "set",
     goalAmount: 1_000_000,
     remainingToNextStage: 1_000_000,
-    grew: false,
+    drifting: false,
+    driftDays: 0,
+    wilt: 0,
+    wind: 0,
+    ripe: false,
+    changed: false,
     ...partial,
   };
 }
 
 const noop = () => {};
+
+const harvest: HarvestItem = {
+  id: "h1",
+  sourceType: "portfolio",
+  sourceId: "p1",
+  sourceName: "안정형",
+  season: 1,
+  plantKind: "tree",
+  wish: "부모님과 제주 여행",
+  goals: [{ amount: 1_000_000, reachedAt: "2026-11-01T00:00:00.000Z" }],
+  harvestedAt: "2026-11-27T00:00:00.000Z",
+  doneAt: null,
+};
 
 describe("GardenOverviewList", () => {
   it("offers to plant the first seed when there are no portfolios", () => {
@@ -105,6 +127,39 @@ describe("GardenOverviewList", () => {
       screen.getByRole("progressbar", { name: "안정형 목표 도달" }).getAttribute("aria-valuenow")
     ).toBe("100");
     expect(screen.getByText("목표 달성!")).toBeTruthy();
+  });
+
+  it("names a wilting plant and the wind next to the stage", () => {
+    renderRow({ wilt: 0.7, wind: 0.2 });
+
+    const row = screen.getByRole("button", { name: "안정형 포트폴리오 보기" });
+    expect(row.textContent).toContain("새싹 · 시들해요 · 바람이 불어요");
+  });
+
+  it("names a ferns' stages", () => {
+    renderRow({ kind: "fern", stage: 3 });
+
+    expect(screen.getByRole("button", { name: "안정형 포트폴리오 보기" }).textContent).toContain(
+      "고사리"
+    );
+  });
+
+  it("hides the basket until something is harvested", () => {
+    useHarvestStore.setState({ harvests: [] });
+    renderRow({});
+
+    expect(screen.queryByRole("button", { name: /바구니/ })).toBeNull();
+  });
+
+  it("opens the basket and marks a wish as done", () => {
+    useHarvestStore.setState({ harvests: [harvest] });
+    renderRow({});
+
+    fireEvent.click(screen.getByRole("button", { name: /바구니 1/ }));
+    expect(screen.getByText("부모님과 제주 여행")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "부모님과 제주 여행 했어요" }));
+
+    expect(useHarvestStore.getState().harvests[0]?.doneAt).not.toBeNull();
   });
 
   it("shows the value and return rate of a linked portfolio", () => {

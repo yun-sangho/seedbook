@@ -11,13 +11,17 @@ const A = "11111111-1111-4111-8111-111111111111";
 const B = "22222222-2222-4222-8222-222222222222";
 const GONE = "33333333-3333-4333-8333-333333333333";
 
-function plant(portfolioId: string, stage: PlantStage, value: number, drooping = false) {
-  return { portfolioId, color: "#111", stage, value, drooping };
+function plant(portfolioId: string, stage: PlantStage, value: number, season = 1) {
+  return { portfolioId, color: "#111", stage, value, season, kind: "tree" as const, ripe: false };
 }
 
 describe("defaultAvatarPlant", () => {
   it("picks the most grown plant", () => {
     expect(defaultAvatarPlant([plant(A, 1, 900), plant(B, 2, 100)])?.portfolioId).toBe(B);
+  });
+
+  it("picks a later season over a higher stage", () => {
+    expect(defaultAvatarPlant([plant(A, 4, 900), plant(B, 0, 100, 2)])?.portfolioId).toBe(B);
   });
 
   it("picks the larger portfolio among equally grown plants", () => {
@@ -30,7 +34,7 @@ describe("defaultAvatarPlant", () => {
 });
 
 describe("resolveProfileAvatar", () => {
-  const plants = [plant(A, 3, 100, true), plant(B, 1, 900)];
+  const plants = [plant(A, 3, 100), plant(B, 1, 900)];
 
   it("draws the chosen plant", () => {
     expect(resolveProfileAvatar(`plant:${B}|seed:pot-3-mint`, plants)).toEqual({
@@ -38,7 +42,8 @@ describe("resolveProfileAvatar", () => {
       portfolioId: B,
       color: "#111",
       stage: 1,
-      drooping: false,
+      plantKind: "tree",
+      ripe: false,
       chosen: true,
     });
   });
@@ -48,7 +53,6 @@ describe("resolveProfileAvatar", () => {
       kind: "plant",
       portfolioId: A,
       stage: 3,
-      drooping: true,
       chosen: false,
     });
   });
