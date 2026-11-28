@@ -19,6 +19,7 @@
     "dev:ios-sim:stop": "node ../../scripts/dev-app.mjs ios-sim-stop",
     "dev:ios-device": "node ../../scripts/dev-app.mjs ios",
     "dev:android-device": "node ../../scripts/dev-app.mjs android",
+    "dev:ota-publish": "node ../../scripts/dev-app.mjs ota-publish",
     "open:ios": "cap open ios",
     "open:android": "cap open android"
   },

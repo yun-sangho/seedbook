@@ -34,6 +34,7 @@ import { createServer } from "node:net";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { localOtaPaths } from "./dev-app-lib.mjs";
 import {
   apiPort,
   databaseUrl,
@@ -376,6 +377,18 @@ function envForSlot(slot) {
   return { injected, env: { ...process.env, ...injected } };
 }
 
+/**
+ * 로컬 OTA 운영자 토큰 (`scripts/dev-app.mjs` 가 만든 `~/.seedbook/ota-dev/admin-token`). 있으면 dev 서버(Next)에
+ * `APP_BUNDLE_ADMIN_TOKEN` 으로 넣어 로컬 publish(`dev:ota-publish`)를 받게 한다. 이미 설정돼 있으면 그대로 둔다.
+ */
+function localOtaAdminEnv() {
+  if (process.env.APP_BUNDLE_ADMIN_TOKEN !== undefined) return {};
+  const file = localOtaPaths(process.env, homedir()).adminToken;
+  if (!existsSync(file)) return {};
+  const token = readFileSync(file, "utf8").trim();
+  return token ? { APP_BUNDLE_ADMIN_TOKEN: token } : {};
+}
+
 // 래퍼가 SIGKILL 로 죽으면 신호를 넘길 수 없고, 자식 그룹은 별도 그룹이라 고아로 남는다. 그래서 작은 감시
 // 프로세스를 따로 둔다. 감시는 래퍼와 파이프(감시의 stdin) 하나만 잇고, 래퍼가 어떻게 끝나든 커널이 파이프를
 // 닫으면 EOF 를 받아 자식 그룹을 SIGTERM → 유예 뒤 SIGKILL 하고 끝난다 (~/project/teum/scripts/worktree.mjs 와 같다)
@@ -396,7 +409,8 @@ async function run(kind, command) {
   if (!KINDS.includes(kind)) throw new Error(`종류는 ${KINDS.join("|")} 중 하나다: ${kind}`);
   if (!command) throw new Error("실행할 명령이 없다");
   const slot = await ensureSlot();
-  const { injected, env } = envForSlot(slot);
+  const { injected, env: slotProcessEnv } = envForSlot(slot);
+  const env = kind === "web" ? { ...slotProcessEnv, ...localOtaAdminEnv() } : slotProcessEnv;
   if (slot !== 0) {
     const db = slotDatabases(slot);
     const describeKind = {

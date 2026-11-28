@@ -3,6 +3,8 @@
  * apps/web/test/dev-app/dev-app-lib.test.ts
  */
 
+import { generateKeyPairSync, randomBytes } from "node:crypto";
+
 /** VPN·가상 브리지·Docker 등 기기가 닿지 않는 인터페이스. */
 const SKIPPED_INTERFACE = /^(lo|utun|bridge|vmenet|awdl|llw|anpi|ap\d|gif|stf|docker|veth)/;
 
@@ -143,4 +145,48 @@ export function pickSimulatorTarget(runtimesJson) {
   const deviceType = pros[0]?.id ?? iphones.at(-1);
   if (!deviceType) throw new Error(`${runtime.identifier} 에 iPhone 기종이 없다`);
   return { runtime: runtime.identifier, deviceType };
+}
+
+/**
+ * 로컬 OTA 키 폴더: `SEEDBOOK_OTA_DEV_DIR`, 없으면 `~/.seedbook/ota-dev`. 레포 밖이고 모든 체크아웃(메인·워크트리)이
+ * 같이 쓴다 — 로컬 dev 서버에 올린 번들을 어느 슬롯의 Dev 앱이든 받게.
+ *
+ * - `signing.pem`: 로컬 서명 개인 키 (2048비트 RSA, 0600). 로컬 publish 만 쓴다.
+ * - `public.pem`: 그 공개 키. Dev 앱 빌드(`SEEDBOOK_OTA_PUBLIC_KEY`)에 들어간다.
+ * - `admin-token`: 로컬 dev 서버의 운영자 API 토큰 (0600). `pnpm dev` 가 `APP_BUNDLE_ADMIN_TOKEN` 으로 넣는다.
+ *
+ * 운영 서명 키(비밀번호 관리자)와 다른 키다 — 운영 번들은 Dev 앱이 받지 않고, 로컬 번들은 출시 앱이 받지 않는다.
+ */
+export function localOtaPaths(env, homeDir) {
+  const dir =
+    env.SEEDBOOK_OTA_DEV_DIR?.trim() || `${homeDir.replace(/\/+$/, "")}/.seedbook/ota-dev`;
+  return {
+    dir,
+    signingKey: `${dir}/signing.pem`,
+    publicKey: `${dir}/public.pem`,
+    adminToken: `${dir}/admin-token`,
+  };
+}
+
+/** 로컬 OTA 키 짝과 운영자 토큰을 새로 만든다 (파일 쓰기는 부르는 쪽). */
+export function createLocalOtaKeys() {
+  const { privateKey, publicKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: "spki", format: "pem" },
+    privateKeyEncoding: { type: "pkcs8", format: "pem" },
+  });
+  return { signingKey: privateKey, publicKey, adminToken: randomBytes(32).toString("hex") };
+}
+
+/** Dev 앱 `cap sync` 에 넣는 OTA 설정: beta 채널 + 로컬 공개 키 (`apps/mobile/capacitor.config.ts`). */
+export function devAppOtaEnv(publicKeyPem) {
+  return { SEEDBOOK_OTA_CHANNEL: "beta", SEEDBOOK_OTA_PUBLIC_KEY: publicKeyPem.trim() };
+}
+
+/**
+ * 로컬 publish 의 번들 id 재료 (`scripts/app-bundle.mjs publish --build --run`): 커밋 sha 그대로, run 번호 대신
+ * 초 단위 시각 — 같은 커밋을 여러 번 올려도 id 가 겹치지 않고, 나중에 올린 것이 더 큰 수다.
+ */
+export function localPublishIds(sha, nowMs) {
+  return { build: sha, run: String(Math.floor(nowMs / 1000)) };
 }
