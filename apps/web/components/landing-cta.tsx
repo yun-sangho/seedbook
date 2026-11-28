@@ -1,12 +1,12 @@
 "use client";
 
 import { IconArrowRightLine } from "@karrotmarket/react-monochrome-icon";
+import { AppleSignInActionButton } from "@mobile/components/apple-sign-in-action-button";
+import { useSocialSignIn } from "@mobile/hooks/use-social-sign-in";
+import { useSession } from "@mobile/lib/auth-client";
+import { DEFAULT_RETURN_PATH, LOGIN_FAILED_MESSAGE } from "@mobile/lib/login-flow";
+import { ActionButton, type ActionButtonProps } from "@mobile/seed-design/ui/action-button";
 import { SuffixIcon } from "@seed-design/react";
-import { AppleSignInActionButton } from "@web/components/apple-sign-in-action-button";
-import { useSocialSignIn } from "@web/hooks/use-social-sign-in";
-import { useSession } from "@web/lib/auth-client";
-import { DEFAULT_RETURN_PATH, LOGIN_FAILED_MESSAGE } from "@web/lib/login-flow";
-import { ActionButton, type ActionButtonProps } from "@web/seed-design/ui/action-button";
 
 /** 놓이는 자리별 로그인 버튼 모양. 로그인 뒤의 "내 자산 보기" 는 어디서나 brand 로 강조한다. */
 const PLACEMENT_PROPS = {

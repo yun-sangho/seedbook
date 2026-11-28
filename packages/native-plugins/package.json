@@ -2,7 +2,7 @@
   "name": "@seedbook/native-plugins",
   "version": "1.0.0",
   "private": true,
-  "description": "네이티브 앱(apps/mobile)의 로컬 Capacitor 플러그인. 네이티브 코드만 있고 웹은 apps/web/lib/native 로 부른다",
+  "description": "네이티브 앱(apps/mobile)의 로컬 Capacitor 플러그인. 네이티브 코드만 있고 웹은 apps/mobile/src/lib/native 로 부른다",
   "capacitor": {
     "ios": {
       "src": "ios"

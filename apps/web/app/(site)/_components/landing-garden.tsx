@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { GardenCanvas } from "@web/features/garden/components/garden-canvas";
-import type { PlantSceneMetrics } from "@web/features/garden/plant-3d/plant-renderer";
-import { cn } from "@web/lib/utils";
+import type { PlantSceneMetrics } from "@mobile/features/garden/plant-3d/plant-renderer";
+import { cn } from "@mobile/lib/utils";
+import { GardenCanvas } from "@web/app/(site)/_components/garden-canvas";
 import {
   type GardenEnvironment,
   type LandingGardenScene,

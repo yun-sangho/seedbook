@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!-- 앱바(bg-layer-default) 색과 맞춰 설치 앱의 상태바가 이어져 보이게 한다. -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#16171b" />
+    <title>Seedbook - 자산 관리</title>
+    <meta name="description" content="투자 계좌 · 포트폴리오 · 리밸런싱 관리 도구" />
+    <!-- iOS 홈 화면 앱 (Safari "홈 화면에 추가"). 스플래시는 vite.config.ts 가 src/lib/ios-splash.ts 로 넣는다. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Seedbook" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- manifest·아이콘·스플래시 이미지는 웹 서버(apps/web: app/manifest.ts, app/icon.svg, public/)가 준다. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" sizes="any" />
+    <link rel="apple-touch-icon" href="/apple-icon.png" />
+    <!-- 첫 페인트 전에 SEED 색 모드를 정한다 (CSP 가 인라인 스크립트를 막아 파일로 둔다). -->
+    <script src="/_app/seed-color-scheme.js"></script>
+  </head>
+  <body class="h-screen w-screen" style="font-family: var(--seed-font-family)">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

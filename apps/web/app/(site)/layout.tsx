@@ -1,9 +1,9 @@
 import "@seed-design/css/base.css";
 import type { Viewport } from "next";
 import { headers } from "next/headers";
-import { SeedColorScheme } from "@web/components/mobile/seed-color-scheme";
-import { CSP_NONCE_HEADER } from "@web/lib/csp";
-import { isIosAppUserAgent } from "@web/lib/device";
+import { SeedColorScheme } from "@mobile/components/mobile/seed-color-scheme";
+import { CSP_NONCE_HEADER } from "@mobile/lib/csp";
+import { isIosAppUserAgent } from "@mobile/lib/device";
 
 /**
  * iOS 앱은 WebView 가 상태바·홈 인디케이터 뒤까지 차고, `viewport-fit=cover` 가 있어야
@@ -16,7 +16,7 @@ export async function generateViewport(): Promise<Viewport> {
 }
 
 /**
- * 앱 밖 공개 페이지(소개·개인정보처리방침·오프라인). `/m` 처럼 SEED Design CSS 와 색 모드를
+ * 앱 밖 공개 페이지(소개·개인정보처리방침·오프라인). 앱 화면처럼 SEED Design CSS 와 색 모드를
  * 이 트리에서만 켠다. body 는 화면 높이에 고정돼 있어 스크롤은 이 래퍼가 맡는다.
  */
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {

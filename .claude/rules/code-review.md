@@ -19,7 +19,7 @@ Every change is evaluated across these dimensions:
 
 ### 3. Architecture
 - Follows existing feature organization (`features/<domain>/types|stores|utils|components`)
-- Cross-feature code in `apps/web/utils/` or `apps/web/components/`
+- Cross-feature code in `apps/mobile/src/utils/` or `apps/mobile/src/components/`
 - No circular dependencies
 - Zustand stores: no immer, use object spreads. Heavy logic in utils, not components.
 

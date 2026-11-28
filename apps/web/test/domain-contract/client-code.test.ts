@@ -1,4 +1,32 @@
 // @vitest-environment node
+
+import { HOLDINGS_SORT_OPTION_VALUES } from "@mobile/features/investments/types/holdings-sort";
+import type {
+  CashItem,
+  InvestmentItem,
+  InvestmentRecord,
+  StockHolding,
+} from "@mobile/features/investments/types/types";
+import { normalizeInvestment } from "@mobile/features/investments/utils/normalize-investment";
+import { ACCOUNT_SORT_OPTION_VALUES } from "@mobile/features/investments/utils/sort-accounts";
+import {
+  DEFAULT_DRIFT_THRESHOLD_PERCENT,
+  LEGACY_DRIFT_MODE,
+  MAX_PLANT_STAGE as WEB_MAX_PLANT_STAGE,
+} from "@mobile/features/portfolio/types/constants";
+import type { PortfolioAllocation, PortfolioItem } from "@mobile/features/portfolio/types/types";
+import { normalizePortfolio } from "@mobile/features/portfolio/utils/normalize-portfolio";
+import { PORTFOLIO_STOCK_SORT_OPTION_VALUES } from "@mobile/features/portfolio/utils/sort-portfolio-stock-rows";
+import type { RebalancingSession, RebalancingTask } from "@mobile/features/rebalancing/types/types";
+import { parseCollapsedSections } from "@mobile/features/rebalancing/utils/collapsed-sections";
+import { normalizeSession } from "@mobile/features/rebalancing/utils/normalize-session";
+import { isRebalancingTaskSort } from "@mobile/features/rebalancing/utils/sort-rebalancing-tasks";
+import {
+  type AccountPreferences,
+  DEFAULT_ACCOUNT_PREFERENCES,
+  invalidPreferenceKeys,
+  parseAccountPreferences,
+} from "@mobile/features/settings/utils/account-preferences";
 import {
   ACCOUNT_SORT_OPTIONS,
   account,
@@ -25,33 +53,6 @@ import {
   sampleRecord,
   settings,
 } from "@seedbook/domain";
-import { HOLDINGS_SORT_OPTION_VALUES } from "@web/features/investments/types/holdings-sort";
-import type {
-  CashItem,
-  InvestmentItem,
-  InvestmentRecord,
-  StockHolding,
-} from "@web/features/investments/types/types";
-import { normalizeInvestment } from "@web/features/investments/utils/normalize-investment";
-import { ACCOUNT_SORT_OPTION_VALUES } from "@web/features/investments/utils/sort-accounts";
-import {
-  DEFAULT_DRIFT_THRESHOLD_PERCENT,
-  LEGACY_DRIFT_MODE,
-  MAX_PLANT_STAGE as WEB_MAX_PLANT_STAGE,
-} from "@web/features/portfolio/types/constants";
-import type { PortfolioAllocation, PortfolioItem } from "@web/features/portfolio/types/types";
-import { normalizePortfolio } from "@web/features/portfolio/utils/normalize-portfolio";
-import { PORTFOLIO_STOCK_SORT_OPTION_VALUES } from "@web/features/portfolio/utils/sort-portfolio-stock-rows";
-import type { RebalancingSession, RebalancingTask } from "@web/features/rebalancing/types/types";
-import { parseCollapsedSections } from "@web/features/rebalancing/utils/collapsed-sections";
-import { normalizeSession } from "@web/features/rebalancing/utils/normalize-session";
-import { isRebalancingTaskSort } from "@web/features/rebalancing/utils/sort-rebalancing-tasks";
-import {
-  type AccountPreferences,
-  DEFAULT_ACCOUNT_PREFERENCES,
-  invalidPreferenceKeys,
-  parseAccountPreferences,
-} from "@web/features/settings/utils/account-preferences";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { PLANNED_CLIENT_FIELDS } from "./exceptions";
 

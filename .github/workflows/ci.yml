@@ -62,12 +62,14 @@ jobs:
           pattern='\.db\.test\.ts$'
           pattern+='|^packages/(database|domain)/'
           pattern+='|^apps/web/(server|test/db|app/api)/'
-          pattern+='|^apps/web/lib/(auth|apple-auth|storage-|account-header|login-flow)'
-          pattern+='|^apps/web/lib/(sync|legal|seed-identity|stock-quotes)/'
-          pattern+='|^apps/web/features/[^/]+/(types|sync)/'
-          pattern+='|^apps/web/features/settings/utils/(data-backup|backup-ids|reassign-ids)'
-          pattern+='|^apps/web/features/portfolio/utils/portfolio-links'
-          pattern+='|^apps/web/features/rebalancing/utils/(collapsed-sections|sort-rebalancing-tasks)'
+          pattern+='|^apps/web/lib/(auth|apple-auth|stock-quotes)'
+          pattern+='|^apps/web/test/(sync|legal)/'
+          pattern+='|^apps/mobile/src/lib/(auth|storage-|account-header|login-flow)'
+          pattern+='|^apps/mobile/src/lib/(sync|legal|seed-identity|native/device-db)/'
+          pattern+='|^apps/mobile/src/features/[^/]+/(types|sync)/'
+          pattern+='|^apps/mobile/src/features/settings/utils/(data-backup|backup-ids|reassign-ids)'
+          pattern+='|^apps/mobile/src/features/portfolio/utils/portfolio-links'
+          pattern+='|^apps/mobile/src/features/rebalancing/utils/(collapsed-sections|sort-rebalancing-tasks)'
           pattern+='|^apps/web/(vitest\.db\.config\.ts|package\.json|tsconfig\.json)$'
           pattern+='|^scripts/worktree'
           pattern+='|^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|\.nvmrc)$'
@@ -115,12 +117,19 @@ jobs:
       - name: Unit tests
         run: pnpm --filter @seedbook/web test
 
+      - name: App unit tests
+        run: pnpm --filter @seedbook/mobile test
+
       - name: Crawler unit tests
         run: pnpm --filter @seedbook/stock-crawler test
 
       - name: DB integration tests
         if: steps.db.outputs.run == 'true'
         run: pnpm --filter @seedbook/web test:db
+
+      # 웹 빌드가 앱 화면(Vite SPA) 빌드 결과를 public/_app 으로 복사해 같이 서빙한다.
+      - name: Build app
+        run: pnpm --filter @seedbook/mobile build
 
       - name: Build web
         run: pnpm --filter @seedbook/web build

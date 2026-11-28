@@ -1,5 +1,5 @@
+import { ACCOUNT_HEADER } from "@mobile/lib/account-header";
 import { db } from "@seedbook/database";
-import { ACCOUNT_HEADER } from "@web/lib/account-header";
 import { auth } from "@web/lib/auth";
 import { hasRequiredConsents } from "@web/server/consents/consents";
 import { getLegalVersions } from "@web/server/legal/legal-versions";

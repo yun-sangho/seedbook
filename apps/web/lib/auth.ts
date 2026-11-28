@@ -1,3 +1,4 @@
+import { DEFAULT_RETURN_PATH } from "@mobile/lib/login-flow";
 import { db, schema } from "@seedbook/database";
 import { createAppleClientSecret, readAppleConfig } from "@web/lib/apple-auth";
 import {
@@ -6,7 +7,6 @@ import {
   privacyAccountOptions,
   privacyDatabaseHooks,
 } from "@web/lib/auth-privacy";
-import { DEFAULT_RETURN_PATH } from "@web/lib/login-flow";
 import { deviceCredentialPlugin } from "@web/server/device-credentials/device-credential-plugin";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";

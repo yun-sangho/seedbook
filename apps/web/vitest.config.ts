@@ -27,6 +27,8 @@ export default defineConfig({
     alias: {
       "@": resolve(__dirname),
       "@web": resolve(__dirname),
+      // 앱 코드 (apps/mobile/src). 소개 사이트·서버·대조 테스트가 같이 쓴다.
+      "@mobile": resolve(__dirname, "../mobile/src"),
       // tsconfig paths 와 같이 소스를 본다 — database 패키지를 빌드(dist)하지 않아도 테스트가 돈다.
       "@seedbook/database": resolve(__dirname, "../../packages/database/src"),
       // 서버·앱 공용 순수 로직. `@seedbook/domain/legal` 같은 하위 경로도 src 아래로 간다.

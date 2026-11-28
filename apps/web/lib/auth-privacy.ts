@@ -1,11 +1,11 @@
-import { type Database, schema } from "@seedbook/database";
-import { ANONYMOUS_USER_NAME, anonymousEmail } from "@seedbook/domain/anonymous-identity";
 import {
   nicknameError,
   normalizeNickname,
   profileImageError,
-} from "@web/lib/seed-identity/profile";
-import { parseProfileImage } from "@web/lib/seed-identity/profile-image";
+} from "@mobile/lib/seed-identity/profile";
+import { parseProfileImage } from "@mobile/lib/seed-identity/profile-image";
+import { type Database, schema } from "@seedbook/database";
+import { ANONYMOUS_USER_NAME, anonymousEmail } from "@seedbook/domain/anonymous-identity";
 import type { BetterAuthOptions } from "better-auth";
 import { APIError } from "better-auth/api";
 import { eq } from "drizzle-orm";

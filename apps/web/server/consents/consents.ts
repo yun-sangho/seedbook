@@ -1,13 +1,13 @@
-import { type Database, schema } from "@seedbook/database";
-import { kstDateString } from "@seedbook/domain/kst";
-import type { LegalDocumentVersion } from "@seedbook/domain/legal";
 import {
   type ConsentDocument,
   consentDocuments,
   hasAgreedToCurrent,
   type LegalNotice,
   upcomingNotices,
-} from "@web/lib/legal/catalog";
+} from "@mobile/lib/legal/catalog";
+import { type Database, schema } from "@seedbook/database";
+import { kstDateString } from "@seedbook/domain/kst";
+import type { LegalDocumentVersion } from "@seedbook/domain/legal";
 import { and, eq, gt, notExists, type SQL } from "drizzle-orm";
 
 /**

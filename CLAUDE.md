@@ -5,12 +5,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build & Dev Commands
 
 ```bash
-pnpm dev                              # Start dev server (Next.js on :4001 with turbopack)
+pnpm dev                              # 앱 dev 서버 (Vite, :4001 — 브라우저는 여기) + Next (API·소개, :4002)
 pnpm build                            # Production build (runs format:check first)
 pnpm lint                             # Biome lint (warnings fail)
 pnpm check-types                      # TypeScript type checking
 pnpm format                           # Biome format + import sort (`biome.json`)
-pnpm --filter @seedbook/web test      # Run Vitest tests
+pnpm --filter @seedbook/mobile test   # 앱 화면 Vitest (apps/mobile/src)
+pnpm --filter @seedbook/web test      # 서버·소개 사이트 Vitest (apps/web)
 pnpm --filter @seedbook/stock-crawler test  # Crawler unit tests (DB/HTTP mocked)
 pnpm --filter @seedbook/web test:watch
 pnpm --filter @seedbook/web test:db   # DB integration tests (*.db.test.ts) — needs `pnpm db:dev:up`
@@ -25,28 +26,30 @@ Requires Node >= 24 (LTS, `.nvmrc`), pnpm 8.
 
 ### Dev topology
 
-Web 은 **호스트에서** `pnpm dev` 로 직접 띄운다 (Next.js + turbopack, port 4001). Docker 안에서는 `postgres` + `stock-crawler` 만 띄운다 — Docker for Mac (VirtioFS) 의 bind mount fs-event 전파 이슈로 컨테이너 내부 turbopack HMR 이 변경을 자주 놓치기 때문.
+Web 은 **호스트에서** `pnpm dev` 로 직접 띄운다. Docker 안에서는 `postgres` + `stock-crawler` 만 띄운다 — Docker for Mac (VirtioFS) 의 bind mount fs-event 전파 이슈로 컨테이너 내부 HMR 이 변경을 자주 놓치기 때문.
 
-- 호스트 `pnpm dev` → `localhost:4001` 에서 서비스 (링크된 워크트리는 아래 슬롯 포트)
+- 호스트 `pnpm dev` 는 둘을 같이 띄운다: **앱 dev 서버 (Vite, apps/mobile, port 4001)** 와 **Next (apps/web: API·인증·소개·약관, port 4002)**. 브라우저는 4001 하나만 연다 — Vite 가 앱 경로(`/assets/...`)에 SPA 를 주고 그 밖(`/api`, `/`, `/terms`, 아이콘·manifest 등)은 Next 로 넘긴다 (`apps/mobile/vite.config.ts`). 같은 origin 이라 쿠키 세션·카카오 로그인·개발용 빠른 로그인이 그대로 된다 (링크된 워크트리는 아래 슬롯 포트)
+- dev 에서는 어떤 브라우저든 앱 경로에서 앱 화면을 받는다 (데스크탑도 `seedbook.view` 쿠키 없이). `/m/...`·`/admin`·지원하지 않는 앱 경로의 redirect 와 끝 `/` 제거는 운영과 같다
 - 컨테이너 postgres → `127.0.0.1:5432` 노출, 호스트 dev 가 그대로 접속
 - DB 접근: `docker compose -f docker-compose.dev.yml exec postgres psql -U seedbook` (슬롯 DB 는 `-d seedbook_sN`)
 
 **워크트리 슬롯** — 여러 워크트리에서 동시에 개발할 수 있게 dev 서버 포트와 DB 를 슬롯 번호 N 으로 나눈다 (`scripts/worktree.mjs`, 순수 로직·테스트는 `scripts/worktree-lib.mjs` · `apps/web/test/worktree/`).
 
-|                                | web      | DB (dev / test:db)                         |
-| ------------------------------ | -------- | ------------------------------------------ |
-| 슬롯 0 (메인 체크아웃)         | 4001     | `seedbook` / `seedbook_test` (기존 그대로) |
-| 슬롯 N (링크된 워크트리, 1..9) | 4001+10N | `seedbook_sN` / `seedbook_sN_test`         |
+|                                | web (앱, Vite) | API (Next) | DB (dev / test:db)                         |
+| ------------------------------ | -------------- | ---------- | ------------------------------------------ |
+| 슬롯 0 (메인 체크아웃)         | 4001           | 4002       | `seedbook` / `seedbook_test` (기존 그대로) |
+| 슬롯 N (링크된 워크트리, 1..9) | 4001+10N       | 4002+10N   | `seedbook_sN` / `seedbook_sN_test`         |
 
+- 브라우저·QA 는 web 포트를 연다. API 포트(Next)는 web 이 넘기는 곳이라 직접 열 일이 거의 없다.
 - web 포트는 4000번대(슬롯 0 은 4001, 슬롯 N 은 4011..4091)다. 3000번대는 다른 개발 서비스(teum 의 3000+10N·3001+10N·3002+10N)와 겹친다. 운영 컨테이너의 web 포트는 3001 이다 (아래 "Deployment").
 - 슬롯 DB 는 같은 dev postgres 컨테이너 안의 DB 다. 컨테이너·compose 프로젝트를 슬롯마다 따로 띄우지 않고, stock-crawler 는 메인 DB 에만 붙는다 (슬롯 DB 의 종목·가격은 시드 fixture 그대로).
-- `pnpm dev`, `pnpm --filter @seedbook/web test:db`, `pnpm db:seed:reset` 이 슬롯을 따른다. 링크된 워크트리에서 처음 실행하면 **빈 슬롯을 자동 배정**(다른 워크트리가 쓰는 슬롯과 web 포트가 이미 쓰이는 슬롯은 건너뜀)해 워크트리 루트의 `.worktree-slot` (gitignore) 에 `SEEDBOOK_SLOT=N` 을 쓰고, 메인 체크아웃의 로컬 환경 파일(루트·`apps/*`·`packages/*` 의 `.env.local` 등, 심링크는 심링크로)이 없으면 복사한다.
-- 슬롯 N 에는 `PORT`, `DATABASE_URL` (`127.0.0.1:5432/seedbook_sN`), `TEST_DATABASE_URL` (`…/seedbook_sN_test`), `BETTER_AUTH_URL=http://localhost:<port>` 를 넣는다. 이미 설정된 환경변수는 덮어쓰지 않는다.
+- `pnpm dev`, `pnpm --filter @seedbook/web test:db`, `pnpm db:seed:reset` 이 슬롯을 따른다. 링크된 워크트리에서 처음 실행하면 **빈 슬롯을 자동 배정**(다른 워크트리가 쓰는 슬롯과 web·API 포트가 이미 쓰이는 슬롯은 건너뜀)해 워크트리 루트의 `.worktree-slot` (gitignore) 에 `SEEDBOOK_SLOT=N` 을 쓰고, 메인 체크아웃의 로컬 환경 파일(루트·`apps/*`·`packages/*` 의 `.env.local` 등, 심링크는 심링크로)이 없으면 복사한다.
+- 슬롯 N 에는 `PORT` (web), `API_PORT` (Next), `DATABASE_URL` (`127.0.0.1:5432/seedbook_sN`), `TEST_DATABASE_URL` (`…/seedbook_sN_test`), `BETTER_AUTH_URL=http://localhost:<port>` 를 넣는다. 이미 설정된 환경변수는 덮어쓰지 않는다.
 - `pnpm dev` 는 시작할 때 슬롯 DB 를 준비한다: postgres 가 안 떠 있으면 `pnpm db:dev:up` 과 같은 명령으로 띄우고, DB 가 없으면 만들고, drizzle 마이그레이션을 적용하고(매번), 종목이 비어 있으면 `db:seed` (fixture + dev 사용자 시나리오) 를 돌린다. `db:seed:reset` 은 슬롯 N 에서는 호스트 tsx 로 슬롯 DB 만 리셋한다 (슬롯 0 은 기존처럼 crawler 컨테이너에서).
-- `pnpm wt:info` (슬롯·URL·DB, 없으면 배정) / `pnpm wt:stop` (자기 슬롯 web 포트를 듣는 프로세스의 cwd 가 자기 체크아웃 안일 때만 dev 서버를 끈다. DB·슬롯은 그대로, 메인 체크아웃에서도 동작. 다른 프로젝트·워크트리 프로세스면 끄지 않고 실패) / `pnpm wt:down` (이 워크트리의 dev 서버 종료 + 슬롯 DB 2개 drop + 슬롯 반납, 워크트리를 지우기 전에) / `pnpm wt:gc [--dry-run]` (살아 있는 워크트리가 쥐지 않은 `seedbook_s*` DB 와, 없어진 워크트리 경로(`~/.herdr/worktrees/seedbook/*`)를 cwd 로 쥔 node 프로세스를 정리. 슬롯 0·메인 체크아웃·살아 있는 워크트리는 건드리지 않는다. 머지 큐가 정리 때 `mergeQueue.gc` 로 돌린다). 새 슬롯을 배정할 때도 주인 없는 슬롯 DB 를 먼저 치운다.
+- `pnpm wt:info` (슬롯·URL·DB, 없으면 배정) / `pnpm wt:stop` (자기 슬롯 web·API 포트를 듣는 프로세스의 cwd 가 자기 체크아웃 안일 때만 dev 서버를 끈다. DB·슬롯은 그대로, 메인 체크아웃에서도 동작. 다른 프로젝트·워크트리 프로세스면 끄지 않고 실패) / `pnpm wt:down` (이 워크트리의 dev 서버 종료 + 슬롯 DB 2개 drop + 슬롯 반납, 워크트리를 지우기 전에) / `pnpm wt:gc [--dry-run]` (살아 있는 워크트리가 쥐지 않은 `seedbook_s*` DB 와, 없어진 워크트리 경로(`~/.herdr/worktrees/seedbook/*`)를 cwd 로 쥔 node 프로세스를 정리. 슬롯 0·메인 체크아웃·살아 있는 워크트리는 건드리지 않는다. 머지 큐가 정리 때 `mergeQueue.gc` 로 돌린다). 새 슬롯을 배정할 때도 주인 없는 슬롯 DB 를 먼저 치운다.
 - **서버를 이름으로 끄지 않는다**: `pkill`·`killall`·`pgrep … | xargs kill` 처럼 이름·명령줄 패턴으로 끄는 것은 `-n`·`-f` 를 붙여도 금지다 (다른 워크트리·프로젝트의 서버까지 걸린다). dev 서버는 `pnpm wt:stop` 으로 끈다. QA 로 다른 포트에 띄운 서버(프로덕션 빌드 `next start` 등)는 `lsof -nP -iTCP:<port> -sTCP:LISTEN -t` 로 PID 를, `lsof -a -p <pid> -d cwd -Fn` 로 cwd 를 확인해 자기 체크아웃 안일 때만 그 PID 를 `kill` 한다.
-- **슬롯 N 에서 로그인**: 카카오 OAuth Redirect URI 는 메인 `:4001` 과 슬롯 1~3 (`:4011`·`:4021`·`:4031`) 을 등록해 카카오 로그인이 된다. 슬롯 4~9 는 등록하지 않아 카카오 로그인이 안 된다. 카카오 로그인이 안 되는 슬롯은 로그인 화면의 "개발용 빠른 로그인 (카카오 우회)" (`/api/auth/dev-login`, dev 사용자) 로 QA 한다. localhost 쿠키는 포트를 가리지 않으므로 데스크탑 브라우저에서 `/m` 을 보려면 `seedbook.view=mobile` 쿠키를 둔다. 새 포트는 새 origin 이라 저장 위치가 local 로 시작한다 — 시드 시나리오를 보려면 설정에서 "클라우드에 저장" 을 고른다.
-- **브라우저에서 앱의 기기 저장(SQLite `records`) 확인**: 개발 서버에서 `seedbook.deviceDb=sqlite` 쿠키를 두면 브라우저가 localStorage 대신 WASM SQLite(`sql.js`, 파일은 IndexedDB)로 앱과 같은 저장 경로를 쓴다 (`lib/native/device-db/sqljs-driver.ts`). 켤 때 브라우저 데이터를 복사하고 원본은 남긴다 — 쿠키를 지우면 원래 localStorage 로 돌아간다. 프로덕션 빌드는 쿠키를 무시한다.
+- **슬롯 N 에서 로그인**: 카카오 OAuth Redirect URI 는 메인 `:4001` 과 슬롯 1~3 (`:4011`·`:4021`·`:4031`) 을 등록해 카카오 로그인이 된다. 슬롯 4~9 는 등록하지 않아 카카오 로그인이 안 된다. 카카오 로그인이 안 되는 슬롯은 로그인 화면의 "개발용 빠른 로그인 (카카오 우회)" (`/api/auth/dev-login`, dev 사용자) 로 QA 한다. localhost 쿠키는 포트를 가리지 않는다. 프로덕션 빌드(Next 가 앱을 서빙)를 데스크탑 브라우저에서 보려면 `seedbook.view=mobile` 쿠키를 둔다 (dev 의 Vite 는 쿠키 없이도 앱을 준다). 새 포트는 새 origin 이라 저장 위치가 local 로 시작한다 — 시드 시나리오를 보려면 설정에서 "클라우드에 저장" 을 고른다.
+- **브라우저의 기기 저장은 dev 에서 WASM SQLite 가 기본이다**: 앱 dev 서버(Vite)에서는 브라우저가 localStorage 대신 WASM SQLite(`sql.js`, 파일은 IndexedDB `seedbook-device-db`)로 앱과 같은 `records` 테이블·제약을 쓴다 (`apps/mobile/src/lib/native/device-db/sqljs-driver.ts` `wantsDevSqlite`). 처음 켤 때 브라우저 데이터를 복사하고 원본은 남긴다 — localStorage 로 보려면 `seedbook.deviceDb=local` 쿠키를 둔다. 프로덕션 빌드(운영 모바일 웹)는 쿠키와 상관없이 localStorage 다. 네이티브 플러그인·OAuth 딥링크·기기 동작·릴리스 확인이 아니면 에뮬레이터를 켜지 않고 브라우저로 개발·QA 한다.
 
 ### DB seed (capture/replay)
 
@@ -66,22 +69,23 @@ dev 사용자(`dev-user-v1`)의 계좌·포트폴리오는 **테스트 시나리
 
 **Monorepo** (Turborepo + pnpm workspaces):
 
-- `apps/web` — Next.js 16 (App Router, Turbopack), React 19, main application. 앱 화면은 모바일 UI (`app/m`, SEED Design) 하나뿐이다 — 휴대폰·태블릿·네이티브 앱은 `/m` 트리로 rewrite 되고, 데스크탑은 앱 경로에서 소개 페이지(`/`)로 redirect 된다 (`lib/device.ts`, 데스크탑에서 쓰려면 `seedbook.view=mobile` 쿠키). UA 분기는 `proxy.ts` (옛 middleware), PWA 서비스 워커는 `next build` 뒤 `serwist build` (`serwist.config.js`) 가 만든다
+- `apps/mobile` — **앱 화면**: Vite + React 19 SPA (`src/`, 별칭 `@mobile/*`, SEED Design, stackflow) + Capacitor 네이티브 프로젝트 (`android/`·`ios/`, 아직 운영 서버를 WebView 로 띄우는 셸 — `capacitor.config.ts`). 시작점은 `index.html` → `src/main.tsx` (게이트 → `src/app/_stack` 스택이 URL 을 보고 화면을 그린다). 빌드(`vite build`)는 `dist/` 에 `index.html` + `_app/` (앱 경로 `/assets` 와 겹치지 않게 번들 폴더 이름을 `_app` 으로). 앱 번들 빌드 값은 `process.env.SEEDBOOK_API_BASE_URL`·`SEEDBOOK_APP_BUILD`·`NODE_ENV` 를 `vite.config.ts` `define` 이 넣는다 (`import.meta.env` 는 쓰지 않는다 — 소개 사이트(Next)도 같은 파일을 쓴다). CSP 는 빌드가 `index.html` 의 meta 로 건다 (인라인 스크립트 없음, `lib/csp.ts` `buildAppContentSecurityPolicy`)
+- `apps/web` — Next.js 16 (App Router, Turbopack): API·인증·소개(`/`)·약관 서버, 그리고 운영에서 앱 화면을 서빙한다. 빌드(`scripts/copy-app.mjs`)가 `apps/mobile/dist` 를 `public/_app/` 에 복사하고, `proxy.ts` 가 휴대폰·태블릿·네이티브 앱의 앱 경로(`/assets/...`)를 URL 그대로 `/_app/index.html` 로 rewrite 한다 (nonce 없는 앱 CSP 헤더, `no-cache`). 데스크탑은 앱 경로에서 소개 페이지(`/`)로 redirect (`apps/mobile/src/lib/device.ts`, 데스크탑에서 쓰려면 `seedbook.view=mobile` 쿠키). PWA 서비스 워커는 `next build` 뒤 `serwist build` (`serwist.config.js`) 가 만들고 앱이 등록한다 (`lib/service-worker.ts`). 소개 사이트는 앱 코드(정원·SEED UI)를 `@mobile/*` 로 가져다 쓰고 스타일 원본도 `apps/mobile/src/globals.css` 하나다 — 서버 렌더에서 three 를 돌리지 않도록 3D 정원은 `app/(site)/_components/garden-canvas.tsx` (`next/dynamic` `ssr:false`) 로 감싼다
 - `packages/` — shared configs (tailwind, tsconfig), database (Drizzle ORM, 서버 전용), domain (서버·앱 공용 순수 TS — 동기화 레코드 정의, `v1/*-record.ts` 행 변환·검증, `kst`, `account-snapshot-values`, 약관 `legal`)
-- **클라이언트는 서버 코드를 import 하지 않는다** (`/m` 은 앱 번들로 옮겨진다): `app/m`·`features`·`components`·`lib` 등 클라이언트 코드에서 `@web/server/*`·`@web/app/api/*`·`@seedbook/database`·node 모듈 금지 (타입 import 포함). 서버와 같이 쓰는 것은 `@seedbook/domain/<경로>` 에 두고 양쪽이 거기서 import 한다. biome `noRestrictedImports` (biome.json overrides) 가 직접 import 를, `lib/client-imports-guard.test.ts` 가 간접으로 닿는 것까지 막는다 — 서버 전용 파일을 클라이언트 트리에 두면 두 곳의 예외 목록에 함께 넣는다.
+- **앱 코드는 웹 서버 코드를 import 하지 않는다** (앱 번들로 나간다): `apps/mobile/src` 에서 `@web/*`·`@seedbook/database`·node 모듈 금지 (타입 import 포함). 웹 서버가 앱 코드를 가져다 쓰는 것(`@mobile/*`)은 된다. 서버와 같이 쓰는 순수 로직은 `@seedbook/domain/<경로>` 에 두고 양쪽이 거기서 import 한다. biome `noRestrictedImports` (biome.json overrides) 가 직접 import 를, `apps/mobile/src/lib/client-imports-guard.test.ts` 가 간접으로 닿는 것(앱 밖 파일 전부)까지 막는다. 서버와 클라이언트 코드를 함께 쓰는 테스트(예: 동기화 엔진 ↔ 서버 `test/sync/*.db.test.ts`, 대조 테스트)는 apps/web 에 둔다.
 - database 패키지가 import 하는 domain 모듈 (`kst`·`anonymous-identity`·`account-snapshot-values`·`legal/types`·`legal/markdown`) 은 다른 모듈을 import 하지 않는다 — database dist 를 운영 stock-crawler 가 node 로 실행하는데, node 와 nodenext `tsc` 모두 확장자 없는 상대 import 를 못 푼다 (`packages/domain/src/database-imports.test.ts`). 여러 파일에 걸친 서버 전용 로직은 database 에 둔다.
 - 도구: TypeScript 7 (네이티브 `tsc`, `@types/*` 는 tsconfig `types` 에 적어야 포함된다), Biome (lint + format)
 
 **Service scope**: 투자 (계좌·보유 종목), 포트폴리오 (목표 비중), 리밸런싱 세 가지만 다룬다. 이 셋을 먼저 확실히 만든 뒤 도메인을 하나씩 넓힌다. (저축·대출·실물자산·자산 계획·자산 기록은 2026-11 제거됨 — DB 테이블은 아직 남아 있고 별도로 삭제 예정.)
 
-**Feature organization** (`apps/web/features/<domain>/`):
+**Feature organization** (`apps/mobile/src/features/<domain>/`):
 
 - `types/` — interfaces and constants
 - `stores/` — Zustand store (one per domain: investments, portfolio, rebalancing)
 - `utils/` — calculation logic and helpers (kept out of components for testability)
 - `components/` — domain-specific UI
 
-**Cross-feature code** lives in `apps/web/utils/` (number-format, monthly-summary-utils) and `apps/web/components/` (shared UI).
+**Cross-feature code** lives in `apps/mobile/src/utils/` (number-format, monthly-summary-utils) and `apps/mobile/src/components/` (shared UI). 아래에서 경로 앞이 없는 `lib/…`·`features/…`·`components/…` 는 `apps/mobile/src/`, `server/…`·`app/api/…` 는 `apps/web/` 아래다.
 
 **State management**: Zustand. No immer — use object spreads/shallow copies. Keep derived heavy logic in utils or memoized selectors, not in components. 저장은 store 마다 정해진 저장 어댑터를 거친다 (아래 Storage & sync) — 자산 store 는 기기 레코드, 그 밖은 기기 저장소 envelope. 자산 store(투자·포트폴리오·리밸런싱)에는 persist `version`·`migrate` 를 두지 않는다 (모양은 레코드 정의가 정한다).
 
@@ -131,13 +135,13 @@ dev 사용자(`dev-user-v1`)의 계좌·포트폴리오는 **테스트 시나리
 
 ## Testing
 
-Vitest with jsdom and globals. Tests live alongside source as `*.test.ts`. Focus on calculation correctness (valuation, rebalancing gaps, sync state transitions) and edge cases (empty holdings, missing prices, cash-only accounts).
+Vitest with jsdom and globals. Tests live alongside source as `*.test.ts`. 앱 코드 테스트는 `apps/mobile` (`vitest.config.ts` 가 `vite.config.ts` 를 이어받는다), 서버·소개 사이트·DB·대조·스크립트 테스트는 `apps/web`. Focus on calculation correctness (valuation, rebalancing gaps, sync state transitions) and edge cases (empty holdings, missing prices, cash-only accounts).
 
 DB integration tests (`*.db.test.ts`, e.g. storage translators) run against real Postgres via `test:db` (`vitest.db.config.ts`), and are excluded from the default `test` run. They use a separate `seedbook_test` database on the local dev postgres — `seedbook_sN_test` in a linked worktree (slot N, see "워크트리 슬롯") — (override with `TEST_DATABASE_URL`; the name must end in `_test`). Global setup applies the drizzle migrations; each test creates its own user via `openTestDb().createTestUser()` and rows are cleaned up by cascade.
 
 ### QA (구현 완료 후 필수)
 
-구현이 끝나면 테스트 통과와 별개로 **ego-lite 브라우저(`ego-browser` 스킬)로 로컬 환경에서 직접 QA 한다.** 호스트에서 `pnpm dev` (+ 필요하면 `pnpm db:dev:up` / `pnpm docker:dev`) 로 띄운 자기 슬롯 포트(`pnpm wt:info`, 메인 체크아웃은 `localhost:4001`)에 접속해 바뀐 화면·흐름을 실제로 조작하고 결과를 확인한다. 모바일 화면(`/m/...`)을 바꿨다면 모바일 뷰포트로 확인한다. 슬롯 1~3 은 카카오 로그인이나 "개발용 빠른 로그인", 슬롯 4~9 는 카카오 로그인이 안 되니 "개발용 빠른 로그인" 으로 들어간다 (위 "워크트리 슬롯" 참조). QA 로 띄운 서버를 끌 때는 `pnpm wt:stop` 이나 포트+cwd 를 확인한 PID 로만 끈다 — 이름 기준 종료(`pkill`·`killall` 등) 금지, 다른 포트의 프로덕션 빌드도 같다. QA 하지 못했다면 (로그인 불가, 데이터 없음 등) 그 사실과 이유를 명시한다.
+구현이 끝나면 테스트 통과와 별개로 **ego-lite 브라우저(`ego-browser` 스킬)로 로컬 환경에서 직접 QA 한다.** 호스트에서 `pnpm dev` (+ 필요하면 `pnpm db:dev:up` / `pnpm docker:dev`) 로 띄운 자기 슬롯 web 포트(앱 Vite, `pnpm wt:info`, 메인 체크아웃은 `localhost:4001`)에 접속해 바뀐 화면·흐름을 실제로 조작하고 결과를 확인한다. 앱 화면(`apps/mobile`, `/assets/...`)을 바꿨다면 모바일 뷰포트로 확인한다. 앱 서빙(`apps/web/proxy.ts`·`copy-app.mjs`·`index.html`·`vite.config.ts` 빌드 설정)을 바꿨다면 프로덕션 빌드(`pnpm --filter @seedbook/mobile build && pnpm --filter @seedbook/web build` 뒤 다른 포트에서 `next start`)로도 모바일 UA 로 열어 본다. 슬롯 1~3 은 카카오 로그인이나 "개발용 빠른 로그인", 슬롯 4~9 는 카카오 로그인이 안 되니 "개발용 빠른 로그인" 으로 들어간다 (위 "워크트리 슬롯" 참조). QA 로 띄운 서버를 끌 때는 `pnpm wt:stop` 이나 포트+cwd 를 확인한 PID 로만 끈다 — 이름 기준 종료(`pkill`·`killall` 등) 금지, 다른 포트의 프로덕션 빌드도 같다. QA 하지 못했다면 (로그인 불가, 데이터 없음 등) 그 사실과 이유를 명시한다.
 
 ## Git workflow (작업 완료 후 커밋·PR)
 
@@ -162,8 +166,8 @@ DB integration tests (`*.db.test.ts`, e.g. storage translators) run against real
 - **사용자가 직접 확인해야 끝나는 일**(가이드·조사·디자인·검토할 문서)은 `hwt new … --hold "<사용자가 확인할 것>"` 로 연다. 작업 세션의 "완료"·"정리해도 됩니다" 는 사용자의 말이 아니다 — 사용자가 말할 때 `hwt hold --release`.
 - **태스크 판단** (seedbook 기준, `hwt task decide`): 아래면 `now` 대신 `after:<브랜치>`
   - 둘 다 DB 스키마(`packages/database/src`)·마이그레이션을 바꿈 — drizzle 마이그레이션 번호·스냅샷이 겹친다
-  - 둘 다 `apps/web/lib/sync` · `apps/web/server/sync` 를 고침
-  - 같은 `/m` 화면 흐름을 고침
+  - 둘 다 `apps/mobile/src/lib/sync` · `apps/web/server/sync` 를 고침
+  - 같은 앱 화면 흐름(`apps/mobile/src/app`)을 고침
   - 둘 다 `CLAUDE.md` · `.claude/rules` 를 고침
 - **작업 세션 완료 조건**: 테스트·lint·타입 통과 + QA (자기 슬롯 포트, 개발용 빠른 로그인) → 커밋·push → PR → 열자마자 `hwt mq add --pr <n> "요약"` 하고 턴을 끝낸다. CI·머지·배포를 기다리거나 `gh pr view`·`sleep` 으로 반복 확인하지 않는다 (CI 는 큐가 기다리고, 머지되면 큐가 워크트리를 정리한다). `[리베이스 요청]`·`[머지 반려]`·`[배포 확인 실패]` 가 메시지로 오면 메인에 알리지 않고 같은 워크트리에서 고쳐 다시 `mq add`, `[베이스 반영]` 이 오면 더 커밋하기 전에 `git pull` 한다.
 - **배포 뒤 점검**: 운영에서만 드러나는 위험이 있는 변경은 `hwt mq add --pr <n> "요약" --post-deploy "<점검할 것>"` (여러 번 가능) 로 점검 항목을 더한다 — DB 마이그레이션·backfill, 배포·인프라(workflows·Dockerfile·compose·Caddy), 네이티브 `server.url`·앱 설정, 운영 외부 연동(카카오·애플 로그인·네이버 시세 등). 배포 확인 뒤 `[배포 점검]` 이 오면 운영을 점검하고 `hwt mq release --result "<항목별 결과>"`, 문제가 있으면 `hwt mq problem "<무엇이 어떻게>"` 한다.
@@ -190,8 +194,8 @@ Self-hosted Docker Compose + Caddy 리버스 프록시 + Supabase managed Postgr
   - **Sign in with Apple (선택)**: Secret `APPLE_PRIVATE_KEY_BASE64` + Variables `APPLE_CLIENT_ID`/`APPLE_TEAM_ID`/`APPLE_KEY_ID`/`APPLE_APP_BUNDLE_ID`. 넷(번들 ID 제외)이 모두 있을 때만 Apple 로그인이 켜진다 (`apps/web/lib/apple-auth.ts`, 설정 방법은 `.env.example`).
   - **Variables**: `BETTER_AUTH_URL` (필수, 예: `https://seedbook.boogie.ing`), `DEPLOY_PATH` (기본 `~/seedbook` — deployer 홈 아래라 sudo 없이 생성됨), `DEPLOY_PORT` (기본 22), `WEB_PORT` (기본 `127.0.0.1:3001`), `CRON_MORNING`/`CRON_AFTERNOON` (선택).
 - 이미지는 GitHub Actions (`deploy-web.yml`·`deploy-crawler.yml` → 공용 `deploy-service.yml`) 가 해당 서비스 경로가 바뀐 main push 마다 GHCR (`ghcr.io/<owner>/<repo>/{web,stock-crawler}`) 에 `latest` + `<sha>` 두 태그로 푸시한다. 서버는 빌드하지 않고 pull 만 한다.
-- CI (`.github/workflows/ci.yml`): PR 마다, 그리고 main push 때 배포 워크플로의 첫 단계로 깨끗한 checkout 에서 format · lint · 타입 · 단위 테스트 · DB 통합 테스트(postgres 서비스) · `next build` 를 돌린다. DB 통합 테스트는 PR 에서는 DB 를 쓰는 코드(database 패키지·`server`·`app/api`·auth·sync·`*.db.test.ts` 등, `ci.yml` "DB 테스트 대상 판단" 목록)가 바뀐 PR 에서만 돌고, main push 에서는 항상 돈다. 실패하면 이미지 빌드/배포로 넘어가지 않는다.
-- 배포 흐름: 서비스마다 워크플로가 따로 돈다 — `on.push.paths` 로 `deploy-web.yml` 은 `apps/web/**`·`tailwind-config`, `deploy-crawler.yml` 은 `apps/stock-crawler/**` · DB 마이그레이션 (`packages/database/migrations`, `migrate.ts`, `backfill-*`), 공통 (`packages/database/src`·`package.json`, `packages/domain/src`·`package.json`, `typescript-config`, 루트 `package.json`/lockfile, `docker-compose.yml`, `deploy-service.yml`) 은 둘 다. dev 전용 시드 (`packages/database/seed-data`, seed·reset 스크립트)·문서 등은 run 이 생기지 않는다. paths 를 바꾸면 `scripts/check-deploy-lib.mjs` 의 `DEPLOY_WORKFLOWS` 도 같이 바꾼다 (테스트가 확인). concurrency 는 서비스별(`deploy-web`·`deploy-stock-crawler`)이라 서로 취소하지 않고, 같은 서비스끼리 대기 run 이 취소돼도 다음 run 이 최신 코드로 그 서비스 전체를 빌드한다. CI 통과 → 그 서비스 이미지 빌드·push → 서버에서 배포 잠금(`flock`) 안에서 그 서비스의 `WEB_IMAGE_TAG`/`CRAWLER_IMAGE_TAG` 만 새 sha 로 바꾸고 다른 서비스는 `.env` 의 이전 태그를 유지 → `docker compose pull <서비스> && up -d` (태그가 그대로인 서비스는 재시작되지 않음). 수동 실행(`Run workflow`)은 그 서비스를 고른 ref 로 재배포한다. 롤백은 이전 커밋 sha 로 `Run workflow` 또는 서버에서 임시로 `WEB_IMAGE_TAG=<이전 sha> docker compose up -d web`.
+- CI (`.github/workflows/ci.yml`): PR 마다, 그리고 main push 때 배포 워크플로의 첫 단계로 깨끗한 checkout 에서 format · lint · 타입 · 단위 테스트(앱·웹) · DB 통합 테스트(postgres 서비스) · 앱 `vite build` → `next build` 를 돌린다. DB 통합 테스트는 PR 에서는 DB 를 쓰는 코드(database 패키지·`server`·`app/api`·auth·sync·`*.db.test.ts` 등, `ci.yml` "DB 테스트 대상 판단" 목록)가 바뀐 PR 에서만 돌고, main push 에서는 항상 돈다. 실패하면 이미지 빌드/배포로 넘어가지 않는다.
+- 배포 흐름: 서비스마다 워크플로가 따로 돈다 — `on.push.paths` 로 `deploy-web.yml` 은 `apps/web/**`·앱 화면(`apps/mobile` 의 `src`·`public`·`index.html`·설정 파일, android·ios 제외)·`tailwind-config`, `deploy-crawler.yml` 은 `apps/stock-crawler/**` · DB 마이그레이션 (`packages/database/migrations`, `migrate.ts`, `backfill-*`), 공통 (`packages/database/src`·`package.json`, `packages/domain/src`·`package.json`, `typescript-config`, 루트 `package.json`/lockfile, `docker-compose.yml`, `deploy-service.yml`) 은 둘 다. dev 전용 시드 (`packages/database/seed-data`, seed·reset 스크립트)·문서 등은 run 이 생기지 않는다. paths 를 바꾸면 `scripts/check-deploy-lib.mjs` 의 `DEPLOY_WORKFLOWS` 도 같이 바꾼다 (테스트가 확인). concurrency 는 서비스별(`deploy-web`·`deploy-stock-crawler`)이라 서로 취소하지 않고, 같은 서비스끼리 대기 run 이 취소돼도 다음 run 이 최신 코드로 그 서비스 전체를 빌드한다. CI 통과 → 그 서비스 이미지 빌드·push → 서버에서 배포 잠금(`flock`) 안에서 그 서비스의 `WEB_IMAGE_TAG`/`CRAWLER_IMAGE_TAG` 만 새 sha 로 바꾸고 다른 서비스는 `.env` 의 이전 태그를 유지 → `docker compose pull <서비스> && up -d` (태그가 그대로인 서비스는 재시작되지 않음). 수동 실행(`Run workflow`)은 그 서비스를 고른 ref 로 재배포한다. 롤백은 이전 커밋 sha 로 `Run workflow` 또는 서버에서 임시로 `WEB_IMAGE_TAG=<이전 sha> docker compose up -d web`.
 - 수동 재배포: `gh workflow run deploy-web.yml` / `gh workflow run deploy-crawler.yml` 또는 Actions 탭 `Run workflow`.
 
 ```bash
@@ -199,7 +203,7 @@ pnpm docker:prod                      # 서버: pull 최신 이미지 + restart
 docker compose logs web --tail 100    # 서비스 로그
 ```
 
-The web app builds with `output: 'standalone'` (see `apps/web/next.config.js`) and runs as a non-root Node process on port `3001` inside the `web` service in `docker-compose.yml`. `apps/web/Dockerfile` follows the same multi-stage pattern as `apps/stock-crawler/Dockerfile` (base → deps → build → production).
+The web app builds with `output: 'standalone'` (see `apps/web/next.config.js`) and runs as a non-root Node process on port `3001` inside the `web` service in `docker-compose.yml`. `apps/web/Dockerfile` follows the same multi-stage pattern as `apps/stock-crawler/Dockerfile` (base → deps → build → production). build 단계는 앱 화면(`apps/mobile`, android·ios 는 `.dockerignore` 로 제외)을 먼저 `vite build` 하고 웹 빌드가 그 결과를 `public/_app` 으로 복사해 같은 이미지가 서빙한다 — 모바일 웹(휴대폰 브라우저·PWA·지금의 네이티브 셸)은 지금처럼 같은 주소에서 동작한다. Caddy 설정은 바뀌지 않는다.
 
 **Only use Next.js features that are supported by `output: 'standalone'`.** Do not add functionality that depends on Vercel-only infrastructure.
 
@@ -211,7 +215,7 @@ DB 마이그레이션은 stock-crawler 이미지 entrypoint (`apps/stock-crawler
 - 데이터 backfill / 정리 같은 데이터 변경은 마이그레이션에 넣지 않는다. `packages/database/scripts/` 에 멱등 스크립트로 만들고 `package.json` 에 `db:backfill:*` 스크립트로 등록한다 (예: `db:backfill:sync-v2`). 배포 후 `docker compose exec stock-crawler pnpm --filter @seedbook/database db:backfill:<name>` 로 실행.
 - 생성 결과가 의도와 다르면 파일을 고치지 말고 `schema.ts` 를 고친 뒤, 아직 배포 전인 해당 마이그레이션(sql + snapshot + journal entry)을 지우고 다시 생성한다.
 
-Local dev: `pnpm docker:dev` 로 인프라(postgres + stock-crawler) 를 띄우고, 별도 터미널에서 `pnpm dev` 로 web 을 호스트에서 실행한다. DB 만 필요하면 `pnpm db:dev:up`. 링크된 워크트리에서는 `pnpm dev` 가 슬롯 포트(4001+10N)와 슬롯 DB(`seedbook_sN`, 없으면 만들고 시드)로 뜬다 (위 "Dev topology" 의 "워크트리 슬롯" 참조).
+Local dev: `pnpm docker:dev` 로 인프라(postgres + stock-crawler) 를 띄우고, 별도 터미널에서 `pnpm dev` 로 web 을 호스트에서 실행한다. DB 만 필요하면 `pnpm db:dev:up`. 링크된 워크트리에서는 `pnpm dev` 가 슬롯 포트(앱 4001+10N, Next 4002+10N)와 슬롯 DB(`seedbook_sN`, 없으면 만들고 시드)로 뜬다 (위 "Dev topology" 의 "워크트리 슬롯" 참조).
 
 ## Shell Command Rules
 
@@ -219,9 +223,10 @@ Local dev: `pnpm docker:dev` 로 인프라(postgres + stock-crawler) 를 띄우�
 
 ## Key Files
 
-- Number formatting: `apps/web/utils/number-format.ts`
-- Rebalancing math: `apps/web/features/portfolio/utils/compute-rebalancing-gap.ts`, `linked-portfolio-status.ts`
+- App entry + dev/build config: `apps/mobile/index.html`, `apps/mobile/src/main.tsx`, `apps/mobile/vite.config.ts`; 운영 서빙: `apps/web/proxy.ts`, `apps/web/scripts/copy-app.mjs`
+- Number formatting: `apps/mobile/src/utils/number-format.ts`
+- Rebalancing math: `apps/mobile/src/features/portfolio/utils/compute-rebalancing-gap.ts`, `linked-portfolio-status.ts`
 - Record definitions + schema versions: `packages/domain/src/records/`, `packages/domain/src/version.ts`, `packages/domain/schema-snapshots/`
-- Sync client: `apps/web/lib/sync/v2/` (record layer, store ↔ records, sync state, engine, mode switch, backup), `apps/web/lib/sync/record-sync.ts`
+- Sync client: `apps/mobile/src/lib/sync/v2/` (record layer, store ↔ records, sync state, engine, mode switch, backup), `apps/mobile/src/lib/sync/record-sync.ts`
 - Sync server: `apps/web/server/sync/v2/` (push/pull, version gate, record repo)
-- Store storage + mode switching: `apps/web/lib/hybrid-storage.ts`, `apps/web/lib/storage-migration.ts`
+- Store storage + mode switching: `apps/mobile/src/lib/hybrid-storage.ts`, `apps/mobile/src/lib/storage-migration.ts`

@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { GardenCanvas } from "@web/features/garden/components/garden-canvas";
-import { PlantAvatar } from "@web/features/garden/components/plant-avatar";
-import { gardenLayout } from "@web/features/garden/plant-3d/garden-layout";
+import { PlantAvatar } from "@mobile/features/garden/components/plant-avatar";
+import { gardenLayout } from "@mobile/features/garden/plant-3d/garden-layout";
 import {
   DEFAULT_PLANT_OPTIONS,
   FERN_STAGE_LABELS,
@@ -12,8 +11,9 @@ import {
   type PlantKind,
   type PlantOptions,
   type PlantStage,
-} from "@web/features/garden/plant-3d/plant-options";
-import type { PlantSlot } from "@web/features/garden/plant-3d/plant-renderer";
+} from "@mobile/features/garden/plant-3d/plant-options";
+import type { PlantSlot } from "@mobile/features/garden/plant-3d/plant-renderer";
+import { GardenCanvas } from "@web/app/(site)/_components/garden-canvas";
 import { DroopSlider, MetricsBadge, ON_OFF, Segmented, useMetrics } from "./plant-preview";
 
 /**
@@ -242,7 +242,7 @@ function useWeights() {
   );
   useEffect(() => {
     let cancelled = false;
-    Promise.all([import("three"), import("@web/features/garden/plant-3d/build-plant")]).then(
+    Promise.all([import("three"), import("@mobile/features/garden/plant-3d/build-plant")]).then(
       ([THREE, { buildPlant }]) => {
         const measure = (options: Partial<PlantOptions>): Weight => {
           const built = buildPlant({ ...DEFAULT_PLANT_OPTIONS, ...options });

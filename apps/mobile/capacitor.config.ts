@@ -4,8 +4,8 @@ import type { CapacitorConfig } from "@capacitor/cli";
  * Seedbook 네이티브 앱 셸. 앱 안에 웹 번들을 담지 않고 운영 서버를 WebView 로 띄운다 —
  * 웹앱은 서버(로그인·API·proxy)가 있어야 동작하고, 웹 배포가 곧 앱 업데이트가 된다.
  *
- * - 서버 주소: 기본은 운영. 로컬 서버로 띄우려면 `CAP_SERVER_URL=http://<맥 LAN IP>:4001 pnpm sync`.
- * - `appendUserAgent` 는 웹의 `NATIVE_APP_UA_MARKER` (apps/web/lib/device.ts) 와 같아야 한다.
+ * - 서버 주소: 기본은 운영. 로컬 dev 서버(앱 Vite, 슬롯 web 포트)로 띄우려면 `CAP_SERVER_URL=http://<맥 LAN IP>:4001 pnpm sync`.
+ * - `appendUserAgent` 는 웹의 `NATIVE_APP_UA_MARKER` (apps/mobile/src/lib/device.ts) 와 같아야 한다.
  *   웹은 이 표시를 보고 iPad 에서도 모바일 UI 를 주고 PWA 설치 안내를 숨긴다.
  * - 서버에 닿지 않으면 `www/error.html` (scripts/build-www.mjs 가 만든다) 을 보여준다.
  */
@@ -27,7 +27,7 @@ const config: CapacitorConfig = {
     allowNavigation: ["*.kakao.com", "appleid.apple.com"],
   },
   plugins: {
-    // Android 뒤로가기는 웹이 리스너를 건 뒤에 켠다 (apps/web/lib/native/system-back.ts). 처음부터
+    // Android 뒤로가기는 웹이 리스너를 건 뒤에 켠다 (apps/mobile/src/lib/native/system-back.ts). 처음부터
     // 켜면 웹이 뜨지 못한 화면(error.html)에서 뒤로가기가 아무 일도 하지 않는다.
     App: { disableBackButtonHandler: true },
   },

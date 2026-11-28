@@ -1,5 +1,5 @@
+import type { StorageMode } from "@mobile/lib/storage-mode";
 import { type Database, schema } from "@seedbook/database";
-import type { StorageMode } from "@web/lib/storage-mode";
 import { isNull, sql } from "drizzle-orm";
 
 /**

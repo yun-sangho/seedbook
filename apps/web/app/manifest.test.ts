@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { decideMobileRoute } from "@web/lib/device";
+import { decideMobileRoute } from "@mobile/lib/device";
 import { describe, expect, it } from "vitest";
 import manifest from "./manifest";
 

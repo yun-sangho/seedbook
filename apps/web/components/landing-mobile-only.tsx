@@ -1,10 +1,10 @@
 "use client";
 
 import { IconMobileLine } from "@karrotmarket/react-monochrome-icon";
+import { ActionButton } from "@mobile/seed-design/ui/action-button";
+import { Callout } from "@mobile/seed-design/ui/callout";
 import { VStack } from "@seed-design/react";
 import { setViewOverride } from "@web/lib/view-override";
-import { ActionButton } from "@web/seed-design/ui/action-button";
-import { Callout } from "@web/seed-design/ui/callout";
 
 /**
  * 데스크탑 소개 페이지의 CTA. 앱 화면은 모바일 UI 뿐이라 로그인 대신 휴대폰 이용을 안내하고,

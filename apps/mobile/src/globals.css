@@ -1,0 +1,128 @@
+@import "tailwindcss";
+@import "@repo/tailwind-config";
+@import "tw-animate-css";
+/* SEED 토큰 유틸리티 (bg-bg-layer-default, p-x4, t5-bold ...). 실제 --seed-* 값은
+   앱(`main.tsx`)과 소개 사이트(apps/web `app/(site)` 레이아웃)가 불러오는 @seed-design/css/base.css 가 정의한다. */
+@import "@seed-design/tailwind4-theme";
+
+@custom-variant dark (&:is(.dark *));
+
+/* 리밸런싱 할 일: 체크된 모습을 잠깐 보여준 뒤 접히며 사라진다.
+   지연(500ms) + 애니메이션(300ms) 합계는 화면의 TASK_LEAVE_MS 와 맞춘다. */
+@theme {
+  --animate-task-leave: task-leave 300ms ease-in 500ms both;
+
+  /* 정원 홈: 식물에 다가간 뒤 바텀시트 위에 뜨는 "자세히 보기" 칩. */
+  --animate-garden-chip-in: garden-chip-in 220ms ease-out both;
+
+  @keyframes garden-chip-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* 정원 홈: 식물이 자랐을 때 정원 창 위에 잠깐 뜨는 축하 문구. */
+  --animate-garden-celebrate: garden-celebrate 3200ms ease-out both;
+
+  @keyframes garden-celebrate {
+    0% {
+      opacity: 0;
+      transform: translateY(-8px) scale(0.9);
+    }
+    10% {
+      opacity: 1;
+      transform: translateY(0) scale(1.04);
+    }
+    16%,
+    85% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-4px) scale(1);
+    }
+  }
+
+  @keyframes task-leave {
+    from {
+      opacity: 1;
+      max-height: 120px;
+    }
+    to {
+      opacity: 0;
+      max-height: 0;
+      padding-block: 0;
+    }
+  }
+}
+
+/* 첫 가입 씨앗 심기: 씨앗이 심기는 순간 흙이 살짝 눌렸다가 튀어 오른다 (`planting-step.tsx`). */
+@theme {
+  --animate-seed-plant: seed-plant 600ms cubic-bezier(0.3, 1.5, 0.5, 1) both;
+
+  @keyframes seed-plant {
+    0% {
+      transform: scale(1);
+    }
+    35% {
+      transform: scale(0.97, 0.94);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+}
+
+@layer base {
+  /* SEED 테마가 Tailwind 기본 키(font-medium/bold, rounded-full) 를 --seed-* 로
+     재정의한다. base.css 를 부르지 않는 화면(404 등)을 위해 같은 값으로 fallback 을 둔다.
+     base.css 를 부르는 화면에선 unlayered 값이 이 값을 덮는다. */
+  :root {
+    --seed-font-weight-regular: 400;
+    --seed-font-weight-medium: 500;
+    --seed-font-weight-bold: 700;
+    --seed-radius-full: 9999px;
+  }
+
+  /* 앱 기본 바탕·글자·테두리는 SEED 토큰. --seed-* 는 앱·소개 사이트가 부르는 base.css 가
+     정의하고, 그 밖의 화면(Next 기본 404)에서는 값이 없어 브라우저 기본색이 된다. */
+  * {
+    @apply border-stroke-neutral-muted outline-stroke-focus-ring/50;
+  }
+  body {
+    @apply bg-bg-layer-default text-fg-neutral;
+  }
+}
+
+/* 정원 홈: 정원 창 하늘 배경. 앱 색 모드(SEED `data-seed-user-color-scheme`)를 따라 다크 모드에서는
+   앱 배경과 이어지는 어두운 밤하늘로 바꾼다 (3D 캔버스는 투명이라 이 배경이 비친다). */
+.garden-sky {
+  background: linear-gradient(180deg, #eaf6ff 0%, #f6fbef 100%);
+}
+[data-seed-user-color-scheme="dark"] {
+  /* 식물 아바타(`PlantAvatar`) 원형 배경: 밝은 연두 대신 정원 밤하늘과 이어지는 어두운 초록. */
+  --plant-avatar-bg: #243328;
+}
+[data-seed-user-color-scheme="dark"] .garden-sky {
+  background: linear-gradient(180deg, #1b2230 0%, #1e2620 100%);
+}
+
+/* 소개 페이지 색: 브랜드 마크(씨앗에서 싹)의 민트 바탕·잎 초록. 다크 모드는 정원 밤하늘에 맞춘 어두운 초록. */
+.landing-mint {
+  background-color: #e2f4df;
+}
+.landing-leaf {
+  color: #2f8a40;
+}
+[data-seed-user-color-scheme="dark"] .landing-mint {
+  background-color: #1f2b22;
+}
+[data-seed-user-color-scheme="dark"] .landing-leaf {
+  color: #7cc870;
+}
