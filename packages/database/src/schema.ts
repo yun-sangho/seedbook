@@ -399,141 +399,6 @@ export const investmentAccountSnapshot = seedbook.table(
   ]
 );
 
-// ─── Savings ────────────────────────────────────────────────────────────────
-
-export const savingsAccount = seedbook.table(
-  "savings_account",
-  {
-    id: uuid("id").primaryKey(),
-    userId: text("userId")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
-    accountName: text("accountName").notNull(),
-    accountType: text("accountType").notNull(),
-    currency: text("currency").notNull(),
-    balance: bigint("balance", { mode: "bigint" }).notNull(),
-    interestRate: doublePrecision("interestRate"),
-    note: text("note").notNull().default(""),
-    color: text("color").notNull(),
-    ...syncColumns(),
-    createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
-    updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })
-      .notNull()
-      .$onUpdate(() => new Date()),
-  },
-  (t) => [
-    index("savings_account_userId_idx").on(t.userId),
-    index("savings_account_userId_updatedAt_idx").on(t.userId, t.updatedAt),
-  ]
-);
-
-export const savingsRecord = seedbook.table(
-  "savings_record",
-  {
-    accountId: uuid("accountId")
-      .notNull()
-      .references(() => savingsAccount.id, { onDelete: "cascade", onUpdate: "cascade" }),
-    date: date("date", { mode: "date" }).notNull(),
-    balance: bigint("balance", { mode: "bigint" }).notNull(),
-  },
-  (t) => [
-    primaryKey({ columns: [t.accountId, t.date], name: "savings_record_pkey" }),
-    index("savings_record_accountId_date_idx").on(t.accountId, t.date),
-  ]
-);
-
-// ─── Debts ──────────────────────────────────────────────────────────────────
-
-export const debt = seedbook.table(
-  "debt",
-  {
-    id: uuid("id").primaryKey(),
-    userId: text("userId")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
-    loanName: text("loanName").notNull(),
-    loanType: text("loanType").notNull(),
-    lender: text("lender").notNull(),
-    amount: bigint("amount", { mode: "bigint" }).notNull(),
-    interestRate: doublePrecision("interestRate").notNull(),
-    maturityDate: date("maturityDate", { mode: "date" }),
-    monthlyPayment: bigint("monthlyPayment", { mode: "bigint" }).notNull(),
-    note: text("note").notNull().default(""),
-    ...syncColumns(),
-    createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
-    updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })
-      .notNull()
-      .$onUpdate(() => new Date()),
-  },
-  (t) => [
-    index("debt_userId_idx").on(t.userId),
-    index("debt_userId_updatedAt_idx").on(t.userId, t.updatedAt),
-  ]
-);
-
-// ─── Real Assets ────────────────────────────────────────────────────────────
-
-export const realAsset = seedbook.table(
-  "real_asset",
-  {
-    id: uuid("id").primaryKey(),
-    userId: text("userId")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
-    assetName: text("assetName").notNull(),
-    assetType: text("assetType").notNull(),
-    currentValue: bigint("currentValue", { mode: "bigint" }).notNull(),
-    purchaseValue: bigint("purchaseValue", { mode: "bigint" }).notNull(),
-    purchaseDate: date("purchaseDate", { mode: "date" }),
-    note: text("note").notNull().default(""),
-    color: text("color").notNull(),
-    createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
-    updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })
-      .notNull()
-      .$onUpdate(() => new Date()),
-  },
-  (t) => [index("real_asset_userId_idx").on(t.userId)]
-);
-
-// ─── Asset Plans ────────────────────────────────────────────────────────────
-
-export const assetPlan = seedbook.table(
-  "asset_plan",
-  {
-    id: uuid("id").primaryKey(),
-    userId: text("userId")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
-    planName: text("planName").notNull(),
-    planPeriod: integer("planPeriod").notNull(),
-    totalMonthlyContribution: bigint("totalMonthlyContribution", { mode: "bigint" }).notNull(),
-    averageTargetReturn: doublePrecision("averageTargetReturn").notNull(),
-    createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
-    updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })
-      .notNull()
-      .$onUpdate(() => new Date()),
-  },
-  (t) => [index("asset_plan_userId_idx").on(t.userId)]
-);
-
-export const assetPlanAccountItem = seedbook.table(
-  "asset_plan_account_item",
-  {
-    planId: uuid("planId")
-      .notNull()
-      .references(() => assetPlan.id, { onDelete: "cascade", onUpdate: "cascade" }),
-    accountId: uuid("accountId").notNull(),
-    accountKind: text("accountKind").notNull(),
-    contributionAmount: bigint("contributionAmount", { mode: "bigint" }).notNull(),
-    contributionFrequency: text("contributionFrequency").notNull(),
-    targetAnnualReturn: doublePrecision("targetAnnualReturn").notNull(),
-  },
-  (t) => [
-    primaryKey({ columns: [t.planId, t.accountId], name: "asset_plan_account_item_pkey" }),
-    index("asset_plan_account_item_planId_idx").on(t.planId),
-  ]
-);
-
 // ─── Portfolios ─────────────────────────────────────────────────────────────
 
 export const portfolio = seedbook.table(
@@ -744,28 +609,6 @@ export const userSyncState = seedbook.table("user_sync_state", {
   seq: bigint("seq", { mode: "number" }).notNull().default(0),
 });
 
-// ─── Progress ───────────────────────────────────────────────────────────────
-
-export const assetProgressPoint = seedbook.table(
-  "asset_progress_point",
-  {
-    userId: text("userId")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
-    date: date("date", { mode: "date" }).notNull(),
-    totalAssets: bigint("totalAssets", { mode: "bigint" }).notNull(),
-    netAssets: bigint("netAssets", { mode: "bigint" }).notNull(),
-    investments: bigint("investments", { mode: "bigint" }).notNull(),
-    savings: bigint("savings", { mode: "bigint" }).notNull(),
-    realAssets: bigint("realAssets", { mode: "bigint" }).notNull(),
-    loans: bigint("loans", { mode: "bigint" }).notNull(),
-  },
-  (t) => [
-    primaryKey({ columns: [t.userId, t.date], name: "asset_progress_point_pkey" }),
-    index("asset_progress_point_userId_date_idx").on(t.userId, t.date),
-  ]
-);
-
 // ─── User preferences ───────────────────────────────────────────────────────
 
 export const userPreference = seedbook.table("user_preference", {
@@ -805,11 +648,6 @@ export const userRelations = relations(user, ({ many, one }) => ({
   sessions: many(session),
   accounts: many(account),
   investmentAccounts: many(investmentAccount),
-  savingsAccounts: many(savingsAccount),
-  debts: many(debt),
-  realAssets: many(realAsset),
-  assetPlans: many(assetPlan),
-  assetProgressPoints: many(assetProgressPoint),
   portfolios: many(portfolio),
   rebalancings: many(rebalancing),
   plantHarvests: many(plantHarvest),
@@ -856,35 +694,6 @@ export const cashItemRelations = relations(cashItem, ({ one }) => ({
   }),
 }));
 
-export const savingsAccountRelations = relations(savingsAccount, ({ one, many }) => ({
-  user: one(user, { fields: [savingsAccount.userId], references: [user.id] }),
-  records: many(savingsRecord),
-}));
-
-export const savingsRecordRelations = relations(savingsRecord, ({ one }) => ({
-  account: one(savingsAccount, {
-    fields: [savingsRecord.accountId],
-    references: [savingsAccount.id],
-  }),
-}));
-
-export const debtRelations = relations(debt, ({ one }) => ({
-  user: one(user, { fields: [debt.userId], references: [user.id] }),
-}));
-
-export const realAssetRelations = relations(realAsset, ({ one }) => ({
-  user: one(user, { fields: [realAsset.userId], references: [user.id] }),
-}));
-
-export const assetPlanRelations = relations(assetPlan, ({ one, many }) => ({
-  user: one(user, { fields: [assetPlan.userId], references: [user.id] }),
-  accountItems: many(assetPlanAccountItem),
-}));
-
-export const assetPlanAccountItemRelations = relations(assetPlanAccountItem, ({ one }) => ({
-  plan: one(assetPlan, { fields: [assetPlanAccountItem.planId], references: [assetPlan.id] }),
-}));
-
 export const portfolioRelations = relations(portfolio, ({ one, many }) => ({
   user: one(user, { fields: [portfolio.userId], references: [user.id] }),
   allocations: many(portfolioAllocation),
@@ -915,10 +724,6 @@ export const stockPriceRelations = relations(stockPrice, ({ one }) => ({
     fields: [stockPrice.stockMarket, stockPrice.stockTicker],
     references: [stock.market, stock.ticker],
   }),
-}));
-
-export const assetProgressPointRelations = relations(assetProgressPoint, ({ one }) => ({
-  user: one(user, { fields: [assetProgressPoint.userId], references: [user.id] }),
 }));
 
 export const userPreferenceRelations = relations(userPreference, ({ one }) => ({
