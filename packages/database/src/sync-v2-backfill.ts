@@ -16,7 +16,8 @@ import { reserveChangeSeqs } from "./sync-state";
  * 7. `changeSeq`: 번호가 없는(0) 행에 사용자별로 updatedAt 순 (하위는 부모의 updatedAt)
  *
  * 멱등이다 — 채워진 값은 건드리지 않고, 다시 돌리면 그 사이 v1 쓰기가 만든 빈 칸만 채운다
- * (v1 은 하위 행을 지우고 다시 넣으므로 새 열이 기본값으로 돌아간다). 사용자마다 한 트랜잭션.
+ * (v1 은 하위 행을 지우고 다시 넣으므로 새 열이 기본값으로 돌아간다). v2 로 쓴 행은 그대로 둔다 —
+ * 할 일은 v1 이 세션을 마지막으로 쓴 경우에만 jsonb 를 따른다 (`tasksJsonIsNewer`). 사용자마다 한 트랜잭션.
  * 루트 테이블의 `updatedAt` 은 바꾸지 않는다 — v1 pull 커서라 바꾸면 모든 기기가 전부 다시 받는다.
  */
 
@@ -291,6 +292,26 @@ const maxKey = (values: Array<string | null>): string | null =>
     null
   );
 
+/**
+ * 이미 펼친 세션의 `tasks` jsonb 가 할 일 행보다 새것인지 — v1 이 세션을 마지막으로 썼을 때만이다.
+ * v2 는 jsonb 를 쓰지 않으므로 (v2 로 만든 세션은 `[]`) jsonb 를 따르면 v2 로 쓴 할 일을 되돌리거나
+ * 지운다. v1 저장은 세션의 `updatedAt` 만 올리고 `changeSeq` 는 그대로 두지만, v2 의 세션 쓰기는
+ * 새 번호를 받아 할 일들의 번호보다 커진다. 그래서:
+ * - 세션이 모든 할 일 행보다 나중에 쓰였고 (할 일을 v2 로 고친 뒤 v1 이 다시 쓰지 않았으면 아니다)
+ * - 세션의 번호가 할 일 번호보다 작다 (그 마지막 쓰기가 v2 였으면 아니다)
+ */
+function tasksJsonIsNewer(
+  session: { updatedAt: Date; changeSeq: number },
+  tasks: Array<{ updatedAt: Date; changeSeq: number }>
+): boolean {
+  const lastTaskWrite = Math.max(...tasks.map((r) => r.updatedAt.getTime()));
+  const lastTaskSeq = Math.max(...tasks.map((r) => r.changeSeq));
+  return (
+    session.updatedAt.getTime() > lastTaskWrite &&
+    (session.changeSeq === 0 || session.changeSeq < lastTaskSeq)
+  );
+}
+
 async function expandRebalancingTasks(tx: Tx, userId: string, keys: SyncV2Keys) {
   const result = { tasksInserted: 0, tasksUpdated: 0, tasksTombstoned: 0, tasksSkipped: 0 };
   const t = schema.rebalancingTask;
@@ -299,6 +320,8 @@ async function expandRebalancingTasks(tx: Tx, userId: string, keys: SyncV2Keys) 
       id: schema.rebalancing.id,
       tasks: schema.rebalancing.tasks,
       deletedAt: schema.rebalancing.deletedAt,
+      updatedAt: schema.rebalancing.updatedAt,
+      changeSeq: schema.rebalancing.changeSeq,
     })
     .from(schema.rebalancing)
     .where(eq(schema.rebalancing.userId, userId))
@@ -307,6 +330,7 @@ async function expandRebalancingTasks(tx: Tx, userId: string, keys: SyncV2Keys) 
 
   for (const session of sessions) {
     const current = existing.filter((r) => r.rebalancingId === session.id);
+    if (current.length > 0 && !session.deletedAt && !tasksJsonIsNewer(session, current)) continue;
     const byId = new Map(current.map((r) => [r.id, r]));
     const expected = new Map<string, TaskColumns>();
     for (const raw of Array.isArray(session.tasks) ? session.tasks : []) {
