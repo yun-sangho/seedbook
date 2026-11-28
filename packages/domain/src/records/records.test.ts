@@ -1,16 +1,25 @@
 import { describe, expect, it } from "vitest";
+import { readReleasedSnapshots } from "../../scripts/snapshot-files";
 import { deriveRecordId } from "../define-record";
 import { parsePatch } from "../parse-patch";
 import { sampleRecord } from "../samples";
 import { createSnapshot } from "../snapshot";
 import { validateDefinitions } from "../validate-definitions";
-import { accountRecord, RECORDS, rebalancingTask, settings } from "./index";
+import { SCHEMA_VERSION } from "../version";
+import {
+  accountRecord,
+  harvestId,
+  RECORDS,
+  rebalancingTask,
+  recordTypesAt,
+  settings,
+} from "./index";
 
 const ACCOUNT_ID = "0b5e4e8c-5f3a-4c7e-9a51-6f0f2d1e8a11";
 const REBALANCING_ID = "4f9d2c1a-7b3e-4e2f-8a6d-1c5b9e7f3a20";
 
 describe("record definitions", () => {
-  it("defines the nine record types of the sync design", () => {
+  it("defines the ten record types of the sync design", () => {
     expect(RECORDS.map((r) => r.type)).toEqual([
       "account",
       "holding",
@@ -20,6 +29,7 @@ describe("record definitions", () => {
       "allocation",
       "rebalancing",
       "rebalancingTask",
+      "harvest",
       "settings",
     ]);
   });
@@ -73,8 +83,22 @@ describe("record definitions", () => {
         "quantity",
         "done",
       ],
+      harvest: ["sourceId", "sourceName", "season", "plantKind", "goals", "harvestedAt"],
       settings: [],
     });
+  });
+});
+
+describe("recordTypesAt", () => {
+  it.each(readReleasedSnapshots().map((s) => [s.schemaVersion, s] as const))(
+    "lists the record types of released snapshot v%s",
+    (version, snapshot) => {
+      expect(recordTypesAt(version).sort()).toEqual(Object.keys(snapshot.records).sort());
+    }
+  );
+
+  it("lists every record type at the current version", () => {
+    expect(recordTypesAt(SCHEMA_VERSION)).toEqual(RECORDS.map((r) => r.type));
   });
 });
 
@@ -111,6 +135,12 @@ describe("deriveRecordId", () => {
     const second = deriveRecordId(rebalancingTask, { parentId: ACCOUNT_ID, fields });
 
     expect(first).not.toBe(second);
+  });
+
+  it("gives the same harvest id for the same portfolio and season", () => {
+    expect(harvestId(ACCOUNT_ID, 1)).toBe(harvestId(ACCOUNT_ID, 1));
+    expect(harvestId(ACCOUNT_ID, 1)).not.toBe(harvestId(ACCOUNT_ID, 2));
+    expect(harvestId(ACCOUNT_ID, 1)).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-/);
   });
 
   it("uses the user id for settings", () => {

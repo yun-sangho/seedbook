@@ -61,7 +61,7 @@ const CHILD_TABLES = [
 ] as const;
 
 /** 목록 순서(`sortKey`)를 가진 루트 테이블. */
-const ROOT_TABLES = ["investment_account", "portfolio", "rebalancing"] as const;
+const ROOT_TABLES = ["investment_account", "portfolio", "rebalancing", "plant_harvest"] as const;
 
 /**
  * changeSeq 를 매길 테이블 (레코드 정의 순서 — 같은 시각이면 부모가 먼저). `parent` 가 있으면 부모의
@@ -76,6 +76,7 @@ const SEQ_TABLES = [
   { table: "portfolio_allocation", key: "id", parent: CHILD_TABLES[3] },
   { table: "rebalancing", key: "id", parent: null },
   { table: "rebalancing_task", key: "id", parent: CHILD_TABLES[4] },
+  { table: "plant_harvest", key: "id", parent: null },
   { table: "user_preference", key: "userId", parent: null },
 ] as const;
 

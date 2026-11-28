@@ -562,6 +562,16 @@ export const portfolio = seedbook.table(
       .$type<Array<{ amount: number; reachedAt: string }>>()
       .notNull()
       .default([]),
+    // 계절 번호 (1부터). 열매 목표까지 이뤄 수확하면 다음 계절이 씨앗부터 다시 시작한다.
+    season: integer("season").notNull().default(1),
+    // 고른 식물 종류 ("tree" | "fern", 값이 늘 수 있다). null 이면 포트폴리오 id 해시로 정한다.
+    plantKind: text("plantKind"),
+    // 이번 계절에 목표를 이루면 하고 싶은 일.
+    wish: text("wish").notNull().default(""),
+    // 익은 열매 목표 { amount, reachedAt } (계절의 다섯 번째 목표). 있으면 수확할 수 있다.
+    fruitGoal: jsonb("fruitGoal").$type<{ amount: number; reachedAt: string }>(),
+    // 비중 이탈을 처음 본 시각 (KST 날짜 시작). 기준 안으로 돌아오면 null.
+    driftSince: timestamp("driftSince", { precision: 3, mode: "date" }),
     ...syncColumns(),
     changeSeq: changeSeqColumn(),
     sortKey: sortKeyColumn(),
@@ -595,6 +605,46 @@ export const portfolioAllocation = seedbook.table(
   (t) => [
     index("portfolio_allocation_portfolioId_idx").on(t.portfolioId),
     index("portfolio_allocation_userId_changeSeq_idx").on(t.userId, t.changeSeq),
+  ]
+);
+
+// ─── Plant harvests ─────────────────────────────────────────────────────────
+
+/**
+ * 수확 기록 (동기화 v2 `harvest` 레코드). 식물(지금은 포트폴리오, `sourceType`)이 열매 목표까지 이룬
+ * 계절 하나. 주인이 지워져도 남도록 FK 대신 id 와 이름을 함께 보관한다.
+ * id = uuidv5(sourceId, `season:<season>`) (클라이언트가 만든다).
+ */
+export const plantHarvest = seedbook.table(
+  "plant_harvest",
+  {
+    id: uuid("id").primaryKey(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    // 식물의 주인 종류 ("portfolio", 값이 늘 수 있다).
+    sourceType: text("sourceType").notNull().default("portfolio"),
+    sourceId: text("sourceId").notNull(),
+    sourceName: text("sourceName").notNull(),
+    season: integer("season").notNull(),
+    plantKind: text("plantKind").notNull(),
+    wish: text("wish").notNull().default(""),
+    // 이룬 목표들 [{ amount, reachedAt }] (오래된 순, 최대 5개).
+    goals: jsonb("goals").$type<Array<{ amount: number; reachedAt: string }>>().notNull(),
+    harvestedAt: timestamp("harvestedAt", { precision: 3, mode: "date" }).notNull(),
+    // 소원을 "했어요" 로 표시한 시각.
+    doneAt: timestamp("doneAt", { precision: 3, mode: "date" }),
+    ...syncColumns(),
+    changeSeq: changeSeqColumn(),
+    sortKey: sortKeyColumn(),
+    createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" })
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [
+    index("plant_harvest_userId_idx").on(t.userId),
+    index("plant_harvest_userId_changeSeq_idx").on(t.userId, t.changeSeq),
   ]
 );
 
@@ -762,6 +812,7 @@ export const userRelations = relations(user, ({ many, one }) => ({
   assetProgressPoints: many(assetProgressPoint),
   portfolios: many(portfolio),
   rebalancings: many(rebalancing),
+  plantHarvests: many(plantHarvest),
   preference: one(userPreference, { fields: [user.id], references: [userPreference.userId] }),
 }));
 
@@ -838,6 +889,10 @@ export const portfolioRelations = relations(portfolio, ({ one, many }) => ({
   user: one(user, { fields: [portfolio.userId], references: [user.id] }),
   allocations: many(portfolioAllocation),
   accounts: many(investmentAccount),
+}));
+
+export const plantHarvestRelations = relations(plantHarvest, ({ one }) => ({
+  user: one(user, { fields: [plantHarvest.userId], references: [user.id] }),
 }));
 
 export const rebalancingRelations = relations(rebalancing, ({ one }) => ({

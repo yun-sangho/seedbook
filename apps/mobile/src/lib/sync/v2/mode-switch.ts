@@ -1,3 +1,8 @@
+import {
+  comparePlantGrowth,
+  PLANT_FIELDS,
+  readPlantProgress,
+} from "@mobile/features/portfolio/utils/portfolio-plant";
 import { portfolio } from "@seedbook/domain";
 import type { RecordChange } from "./changes";
 import type { SyncEngine } from "./engine";
@@ -17,7 +22,8 @@ import { emptySyncState, type OutboxEntry, type ShadowEntry } from "./sync-state
  *
  * - **local → cloud**: 서버 레코드를 받아, 로컬 레코드마다 서버에 없으면 만들고 있으면 다른 필드만
  *   패치한다 (로컬 우선). 서버에만 있는 레코드는 이어지는 전체 pull 로 기기에 들어온다 (합집합).
- *   예외 하나: 포트폴리오 식물(`growthStage`·`goalAmount`·`goalHistory`)은 묶어서 더 자란 쪽을 남긴다.
+ *   예외 하나: 포트폴리오 식물(`PLANT_FIELDS` — 계절·종류·소원·목표·단계·이력·열매)은 묶어서 더 자란
+ *   쪽을 남긴다 — (계절, 단계, 열매가 익음) 사전순. `driftSince` 는 묶음 밖이라 로컬 우선.
  * - **cloud → local**: 보내지 못한 변경을 먼저 보낸다 — 실패하면 전환을 막는다. 기기 레코드는 이미
  *   서버 레코드 전체(모르는 필드 포함)를 담고 있으니, 최신까지 받은 뒤 outbox·섀도를 비운다.
  *
@@ -31,10 +37,12 @@ export class ModeSwitchError extends Error {
   }
 }
 
-const PLANT_FIELDS = ["growthStage", "goalAmount", "goalHistory"] as const;
-
-function growthStage(fields: Record<string, unknown>): number {
-  return typeof fields.growthStage === "number" ? fields.growthStage : 0;
+/** 서버의 식물이 이 기기보다 더 자랐는가. */
+function serverPlantFurther(
+  local: Record<string, unknown>,
+  server: Record<string, unknown>
+): boolean {
+  return comparePlantGrowth(readPlantProgress(server), readPlantProgress(local)) > 0;
 }
 
 /** 로컬 레코드 하나를 서버 값과 합치는 op 와 기기 변경. */
@@ -56,8 +64,8 @@ function mergeWithServer(
   }
   const fields = changedKnownFields(local.type, server.fields, local.fields);
   let change: RecordChange | null = null;
-  if (local.type === portfolio.type && growthStage(server.fields) > growthStage(local.fields)) {
-    // 서버의 식물이 더 자랐다 — 그 셋을 기기에 받고 보내지 않는다.
+  if (local.type === portfolio.type && serverPlantFurther(local.fields, server.fields)) {
+    // 서버의 식물이 더 자랐다 — 그 묶음을 기기에 받고 보내지 않는다.
     const plant: Record<string, unknown> = {};
     for (const name of PLANT_FIELDS) {
       delete fields[name];
