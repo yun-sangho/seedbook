@@ -252,4 +252,19 @@ describe("accountFetch", () => {
       headers: { "content-type": "x", "x-seedbook-account": "user-a" },
     });
   });
+
+  it("sends the request to the API base URL", async () => {
+    const fetchMock = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "https://api.example.com");
+    const a = await launch("user-a", "web");
+
+    await a.accountFetch("/api/me/preferences", { credentials: "include" });
+    vi.unstubAllEnvs();
+
+    expect(fetchMock).toHaveBeenCalledWith("https://api.example.com/api/me/preferences", {
+      credentials: "include",
+      headers: { "x-seedbook-account": "user-a" },
+    });
+  });
 });
