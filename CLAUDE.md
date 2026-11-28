@@ -83,27 +83,49 @@ dev 사용자(`dev-user-v1`)의 계좌·포트폴리오는 **테스트 시나리
 
 **Cross-feature code** lives in `apps/web/utils/` (number-format, monthly-summary-utils) and `apps/web/components/` (shared UI).
 
-**State management**: Zustand with localStorage persistence. No immer — use object spreads/shallow copies. Keep derived heavy logic in utils or memoized selectors, not in components.
+**State management**: Zustand. No immer — use object spreads/shallow copies. Keep derived heavy logic in utils or memoized selectors, not in components. 저장은 store 마다 정해진 저장 어댑터를 거친다 (아래 Storage & sync) — 자산 store 는 기기 레코드, 그 밖은 기기 저장소 envelope. 자산 store(투자·포트폴리오·리밸런싱)에는 persist `version`·`migrate` 를 두지 않는다 (모양은 레코드 정의가 정한다).
 
-**Storage & sync**: 로그인(카카오) 필수. 저장소 모드는 사용자가 고른다 — `local` (이 브라우저에만) / `cloud` (서버 동기화). 모드 전환은 덮어쓰지 않고 양쪽을 합친다 (`lib/storage-merge.ts`, 같은 항목은 로컬 우선). cloud 모드에서는:
+**Storage & sync** (동기화 v2): 로그인(카카오) 필수. 저장소 모드는 사용자가 고른다 — `local` (이 기기에만) / `cloud` (서버 동기화).
 
-- 엔티티 동기화로 옮긴 store (`lib/sync/managed-stores.ts`, 현재 투자·포트폴리오·리밸런싱) 는 `/api/sync/mutations` · `/api/sync/pull` 로 바뀐 항목만 주고받는다. 자산은 본인만 수정하므로 **마지막 저장이 이긴다** (version 은 pull 중복 제거용). 삭제는 톰스톤(`deletedAt`). 로컬 변경은 저장 어댑터(`lib/hybrid-storage.ts` → `lib/sync/local-change-recorder.ts`)가 저장될 때마다 대기열에 기록하고, `EntitySyncRunner` 가 전송한다.
-- **계좌 총액 일별 기록**: cloud 모드는 stock-crawler 가 평일마다 서버 `investment_account_snapshot` 에 쓴다. local 모드는 기기가 쓴다 — 보유 종목·현금이 바뀌면 그 날의 보유 내역을 이력(`holdings-history-storage`)에 남기고, 앱을 열거나 다시 볼 때 마지막 기록 이후 빠진 평일(어제까지)을 그 날 보유 × 그 날(없으면 직전) 종가(`/api/stocks/price-history`)로 채운다 (`account-snapshot-storage`, `components/account-value-history-runner.tsx`, 계산은 `@seedbook/domain/account-snapshot-values` 공용). cloud 모드로 있던 기간은 "기록 중단" 표시로 채우지 않는다. 모드 전환 때 기기 ↔ 서버 기록을 합친다 (`/api/account-snapshots`, 같은 계좌·날짜는 기기 우선).
-- 나머지 store 는 도메인 단위 envelope (`/api/storage/[key]` → `_translators/`) 로 저장한다.
-- 도메인을 엔티티 동기화로 옮길 때: 서버 `server/<domain>/` (`createEntityRepo`, 행 변환·검증은 `packages/domain/src/v1/<domain>-record.ts`) 를 만들고 `server/sync/registry.ts` 의 `SYNC_ENTITIES`, 클라이언트 `features/<domain>/sync/` 설정을 `managed-stores.ts` · `synced-stores.ts` 에 등록한다. 테이블엔 `syncColumns()` 추가 (마이그레이션은 drizzle-kit 생성만).
+- **자산은 모드와 상관없이 기기 레코드에 둔다**: 화면 store 저장 → `lib/hybrid-storage.ts` → 레코드 계층(`lib/sync/v2/record-layer.ts`)이 레코드로 나눠(`store-records.ts` decompose/compose) 바뀐 레코드만 패치로 저장한다. 브라우저는 계정 자리의 키 하나(`seedbook.records`), 앱은 SQLite `records`. 저장 전에 화면 값 정리(`lib/sync/normalize-envelope.ts`, 입력 도중의 NaN → 0 등) 를 거친다.
+- **cloud 모드**: 실제로 바뀐 필드를 outbox 에 기록하고 엔진(`lib/sync/v2/engine.ts`, `RecordSyncRunner`)이 `POST /api/sync/v2/push` · `GET /api/sync/v2/pull` 로 주고받는다. 서버는 `server/sync/v2/` (`record-repo.ts` 하나가 레코드 9종을 정의로 다룬다). 쓰기는 **패치**(보낸 필드만 바꾸고 안 보낸 필드는 그대로), 같은 필드는 나중 도착이 이긴다, **삭제가 이긴다**(톰스톤 `deletedAt`, 되살리지 않음), 부모를 지우면 하위도 톰스톤. pull 커서는 사용자별 `changeSeq` (`user_sync_state`). 서버가 레코드 테이블에 쓸 때는 반드시 `reserveChangeSeqs` 로 번호를 받는다 (안 받으면 pull 이 놓친다).
+- **모드 전환**은 push/pull 로 합친다 (`lib/storage-migration.ts` → `lib/sync/v2/mode-switch.ts`, 같은 항목은 로컬 우선, 식물은 더 자란 쪽, 서버에서 지운 것은 되살리지 않음). cloud→local 은 보내지 못한 변경이 남으면 막는다. **백업**은 기기 레코드 그대로(`lib/sync/v2/backup.ts`, 파일 버전 ≤ 앱 버전만 불러온다).
+- 동기화 v1(`/api/sync/mutations`·`/api/sync/pull`·`/api/storage/[key]`)은 지웠다 — 옛 JS 를 캐시한 클라이언트에 426 으로 답한다 (`server/sync/v1-retired.ts`).
+- 계정 화면 설정(정렬·접힘)은 동기화 밖이다 — `/api/me/preferences` (기기에는 `settings` 레코드).
+- **계좌 총액 일별 기록**: cloud 모드는 stock-crawler 가 평일마다 서버 `investment_account_snapshot` 에 쓴다. local 모드는 기기가 쓴다 — 보유 종목·현금이 바뀌면 그 날의 보유 내역을 이력(`holdings-history-storage`)에 남기고, 앱을 열거나 다시 볼 때 마지막 기록 이후 빠진 평일(어제까지)을 그 날 보유 × 그 날(없으면 직전) 종가(`/api/stocks/price-history`)로 채운다 (`account-snapshot-storage`, `components/account-value-history-runner.tsx`, 계산은 `@seedbook/domain/account-snapshot-values` 공용). cloud 모드로 있던 기간은 "기록 중단" 표시로 채우지 않는다. 모드 전환 때 기기 ↔ 서버 기록을 합친다 (`/api/account-snapshots`, 같은 계좌·날짜는 기기 우선). 파생 데이터라 동기화 v2 에 넣지 않는다.
 
-**네이티브 앱 저장소**: 기기 데이터는 `lib/device-storage.ts` 를 거친다 (브라우저 localStorage, 앱은 SQLite — 앱에서는 localStorage 를 쓰지 않는다). 직접 `window.localStorage` 를 쓰지 말고 `getDeviceStorage()` / `createDeviceStateStorage()` 를 쓴다. **계정 데이터(자산·동기화 대기열·저장소 모드·개인 설정)는 `lib/account-storage.ts` 의 `accountStorage` / `createAccountStateStorage()` 로만** 읽고 쓰고, 그 API 요청은 `accountFetch` 로 보낸다 — 계정별 자리로 나뉘고, 세션이 확인되기 전에는 비어 있다 (첫 계정은 원래 키·테이블, 그 밖의 계정은 `seedbook.account.<userId>.` 접두사).
+**동기화 규칙 (데이터 모양을 바꿀 때 반드시 지킨다)**: 레코드 모양의 원본은 `packages/domain/src/records/*.ts` 의 정의(DSL) 하나다. 서버 컬럼(`schema.ts`)·클라이언트 store·기기 저장은 정의를 따르고, 대조 테스트(`apps/web/test/domain-contract/`)가 어긋남을 막는다. 손으로 쓴 사본을 두지 않는다.
+
+- **서버 스키마는 확장만 한다.** 서버에는 늘 최신 정의 하나만 있고 버전별 변환 코드가 없다. 그래서 옛 앱(옛 JS·옛 번들)도 그대로 동기화한다 — 옛 앱은 모르는 필드를 보내지 않고(패치), 서버는 `default` 를 생성 때만 채우고, 기기는 받은 레코드를 통째로 보관한다.
+- **변경 분류** (`packages/domain/src/compat.ts` 가 기계로 가른다):
+  - **확장** (옛 앱을 막지 않음): 필드 추가 (생성 `default` 또는 nullable), 레코드 타입 추가, `open` enum 에 값 추가, 검증 완화, 기존 값을 `normalize` 로 고칠 수 있는 정리.
+  - **깨는 변경**: 필드·레코드 타입 **제거**, **이름 변경**, **의미·단위·타입 변경**, **검증 강화** (옛 앱이 만들 수 있는 값을 거부하게 됨), 레코드 **분리·합치기**, `open` 이 아닌 enum 에 값 추가. 이름·의미를 바꾸고 싶으면 먼저 새 필드를 확장으로 더해 쓰고, 옛 필드 정리는 다음 깨는 변경에 모은다.
+- **깨는 변경은 `MIN_SCHEMA` 를 같은 PR 에서 올리고 `up` 단계를 적는다** (`packages/domain/src/version.ts`). `up` 은 기기 레코드·outbox, 백업 불러오기(`lib/sync/v2/backup.ts` `BACKUP_STEPS`), 서버 backfill(`db:backfill:*`) 이 같은 함수를 쓴다 — 단계는 지우지 않는다 (오래된 기기·옛 백업이 여러 버전을 건너뛴다). `MIN_SCHEMA` 아래 앱은 push/pull 이 426 으로 멈추고 편집은 기기에 쌓인다. 서버보다 높은 앱은 409 로 기다린다.
+- **버전 스냅샷**: 정의가 바뀌면(확장 포함) `SCHEMA_VERSION` 을 올린다. 출시(배포)한 버전의 정의는 `pnpm --filter @seedbook/domain schema:snapshot` 으로 `packages/domain/schema-snapshots/v<N>.json` 에 남기고 **고치거나 지우지 않는다** (첫 스냅샷 `v1` 은 동기화 v2-5 에서 커밋). `pnpm schema:check` (CI 필수) 가 지금 정의를 스냅샷과 비교한다 — 정의가 바뀌었는데 `SCHEMA_VERSION` 이 그대로거나, 깨는 변경인데 `MIN_SCHEMA` 를 안 올렸거나, 확장 조건(기본값 없는 필수 필드 등)을 어기면 실패한다.
+- **옛 앱 재생 테스트** (`apps/web/server/sync/v2/old-app-replay.db.test.ts`): 지원 구간 `[MIN_SCHEMA, SCHEMA_VERSION]` 의 모든 스냅샷에 대해, 그 버전만 아는 클라이언트가 지금 서버로 모든 레코드를 만들고 받고 읽을 수 있는지, 새 기기가 쓴 레코드를 옛 앱이 패치해도 모르는 필드가 그대로인지 본다. 스냅샷을 추가하면 자동으로 대상이 된다.
+- **서버 컬럼은 `schema.ts` → `pnpm --filter @seedbook/database db:generate` 로만** 바꾼다 (아래 "마이그레이션 규칙"). 추가는 nullable/default, 이름·타입 변경 금지. 컬럼 제거는 그 컬럼을 읽고 쓰는 코드를 먼저 배포한 **다음 PR** 에서 한다 — web 과 마이그레이션(stock-crawler)은 따로 배포돼 순서가 정해지지 않는다. 서버 repo 는 정의·공통 열만 읽는다 (`select()` 로 모든 컬럼을 읽지 않는다).
+- **릴리스 순서**:
+  - 확장: **서버 먼저** 배포 → 앱은 아무 때나 (서버보다 먼저 깔린 앱은 409 로 잠깐 기다린다).
+  - 깨는 변경: 앱 빌드 → **스토어 심사 통과 후 수동 출시로 대기** → **서버 배포 + backfill** (이때부터 옛 앱은 426, 기기 저장은 계속) → 바로 **앱 공개** (OTA 면 번들 배포).
+- **PR 체크리스트** (정의·서버 컬럼·동기화 코드를 바꾼 PR 은 본문에 적는다):
+  1. 정의를 바꿨는가? 손으로 쓴 사본이 남지 않았는가? (`SCHEMA_VERSION` 올림)
+  2. `pnpm schema:check` 가 확장으로 분류하는가? 깨는 변경이면 `MIN_SCHEMA`·`up`·backfill 이 같은 PR 에 있는가?
+  3. 대조 테스트(`test/domain-contract`)와 옛 앱 재생 테스트(`test:db`)가 통과하는가?
+  4. 스냅샷(`schema-snapshots/`)을 고치거나 지우지 않았는가? 배포했다면 새 스냅샷을 남겼는가?
+  5. 릴리스 순서(확장: 서버 먼저 / 깨는 변경: 심사 통과 → 서버 → 앱 공개)와, 컬럼 제거라면 앞선 코드 배포를 PR 본문에 적었는가?
+- **도메인을 동기화에 추가하는 방법**: ① `packages/domain/src/records/<type>.ts` 에 `defineRecord` 로 정의 (`table`·`parent`·`key`·`fields`·`sortable`) 하고 `records/index.ts` 의 `RECORDS` 에 부모 다음 순서로 넣는다. ② `schema.ts` 에 같은 이름의 컬럼 + 공통 열(`syncColumns()`·`changeSeq`·`sortKey`, 하위 레코드는 `childSyncColumns()`) 을 더하고 `db:generate`. 서버 repo 는 정의로 자동으로 다룬다 (`server/sync/v2/record-tables.ts`). ③ 클라이언트 store ↔ 레코드 변환을 `lib/sync/v2/store-records.ts` 의 `STORE_SHAPES`·decompose/compose 에, store 를 `record-sync-stores.ts` 에 등록하고, 저장 전 값 정리를 `normalize-envelope.ts` 에 더한다. store 는 `createHybridStorage(<key>)` 로 저장한다. ④ `SCHEMA_VERSION` 을 올리고 `schema:check`·대조 테스트·재생 테스트를 통과시킨다 (레코드 타입 추가는 확장 — 서버 먼저 배포).
+
+**네이티브 앱 저장소**: 기기 데이터는 `lib/device-storage.ts` 를 거친다 (브라우저 localStorage, 앱은 SQLite — 앱에서는 localStorage 를 쓰지 않는다). 직접 `window.localStorage` 를 쓰지 말고 `getDeviceStorage()` / `createDeviceStateStorage()` 를 쓴다. **계정 데이터(자산·동기화 상태·저장소 모드·개인 설정)는 `lib/account-storage.ts` 의 `accountStorage` / `createAccountStateStorage()` 로만** 읽고 쓰고, 그 API 요청은 `accountFetch` 로 보낸다 — 계정별 자리로 나뉘고, 세션이 확인되기 전에는 비어 있다 (첫 계정은 원래 키·테이블, 그 밖의 계정은 `seedbook.account.<userId>.` 접두사).
 
 **기기 레코드 저장소** (`lib/native/device-db/`): 앱 SQLite 의 자산·계정 설정은 레코드 JSON 테이블 `records` 하나에 둔다 (서버는 필드별 컬럼 그대로). 레코드 정의의 원본은 `packages/domain` 이다.
 
 - **기기에 쓰는 길은 `writeRecords()` (`record-store.ts`) 하나**: 정의 검증 → 정규 직렬화(`NaN`·`Infinity`·`undefined` 는 예외) → 왕복 확인 → SHA-256 체크섬 → 이력(`records_history`, 레코드당 3개) → 한 트랜잭션. 다른 코드가 `records` 에 직접 쓰면 `record-store.test.ts` 가 실패한다. 검증에 실패한 값은 쓰지 않고 `records_quarantine` 에 남긴다 — 기기 데이터를 지우는 길은 사용자의 삭제(톰스톤)뿐이다.
 - 읽기는 체크섬·정의를 확인하고, 실패한 행은 지우지 않고 격리한 뒤 이력의 마지막 정상 값을 쓴다. SQLite 도 `CHECK (json_valid(data))`·체크섬 길이로 막는다. 시작할 때 `PRAGMA quick_check`, 하루 1회·저장 틀 마이그레이션 직전에 `records` 스냅샷(최근 7개)을 남긴다 (`integrity.ts`).
-- **레코드 필드가 늘어도 기기 마이그레이션은 없다.** `migrations.ts` 에 새 버전을 더하는 것은 `records`·outbox 같은 저장 틀을 바꿀 때뿐이다. 버전 1~6 의 서버 모양 자산 테이블은 `records` 로 옮긴(`records-migration.ts`) 뒤 읽지 않는 옛 사본이라 서버 컬럼이 바뀌어도 고치지 않는다 (v2-5 에서 삭제). 계좌 총액 기록 표·`device_kv`·저장소 모드는 그대로 쓴다.
-- 화면 store 는 아직 중첩 모양이라 `record-envelopes.ts` 가 envelope ↔ 레코드를 나누고 묶는다 (v2-4b 에서 동기화 엔진과 함께 바뀐다).
+- **레코드 필드가 늘어도 기기 마이그레이션은 없다.** `migrations.ts` 에 새 버전을 더하는 것은 `records`·outbox 같은 저장 틀을 바꿀 때뿐이다 (버전 8 이 옛 서버 모양 자산 표·`user_list_order`·`device_quarantine` 을 지웠다). 계좌 총액 기록 표(`table-envelopes.ts`)·`device_kv`·저장소 모드(`user_preference.storageMode`)는 그대로 쓴다. 계정 설정 envelope 은 `settings` 레코드다 (`settings-envelope.ts`).
 
 ## Domain Rules
 
-**Monetary unit**: All amounts are in 원 (KRW) internally. `numberToKorean()` converts 원 → 만원 display (만원 미만 절삭). Stores use Zustand persist `version: 1` with migration from legacy 만원 format.
+**Monetary unit**: All amounts are in 원 (KRW) internally (레코드 정의의 `money` 필드). `numberToKorean()` converts 원 → 만원 display (만원 미만 절삭).
 
 **Portfolio links**: 한 계좌는 최대 하나의 포트폴리오에만 연결된다 (`features/portfolio/utils/portfolio-links.ts`, 서버 `investment_account.portfolioId`).
 
@@ -196,6 +218,7 @@ Local dev: `pnpm docker:dev` 로 인프라(postgres + stock-crawler) 를 띄우�
 
 - Number formatting: `apps/web/utils/number-format.ts`
 - Rebalancing math: `apps/web/features/portfolio/utils/compute-rebalancing-gap.ts`, `linked-portfolio-status.ts`
-- Sync client: `apps/web/lib/sync/` (core state transitions, engine, change recorder, managed/synced store registries)
-- Sync server: `apps/web/server/sync/` (registry, shared entity repo, mutations/pull)
-- Envelope storage + mode switching: `apps/web/lib/hybrid-storage.ts`, `apps/web/lib/storage-migration.ts`, `apps/web/app/api/storage/`
+- Record definitions + schema versions: `packages/domain/src/records/`, `packages/domain/src/version.ts`, `packages/domain/schema-snapshots/`
+- Sync client: `apps/web/lib/sync/v2/` (record layer, store ↔ records, sync state, engine, mode switch, backup), `apps/web/lib/sync/record-sync.ts`
+- Sync server: `apps/web/server/sync/v2/` (push/pull, version gate, record repo)
+- Store storage + mode switching: `apps/web/lib/hybrid-storage.ts`, `apps/web/lib/storage-migration.ts`
