@@ -10,7 +10,8 @@
       "@web/*": ["./*"],
       "@seedbook/database": ["../../packages/database/src"],
       "@seedbook/database/*": ["../../packages/database/src/*"],
-      "@seedbook/domain": ["../../packages/domain/src"]
+      "@seedbook/domain": ["../../packages/domain/src"],
+      "@seedbook/domain/*": ["../../packages/domain/src/*"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", "next-env.d.ts", "next.config.js", ".next/types/**/*.ts"],

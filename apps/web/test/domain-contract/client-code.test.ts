@@ -27,6 +27,12 @@ import {
   sampleRecord,
   settings,
 } from "@seedbook/domain";
+import { parseInvestmentFields } from "@seedbook/domain/v1/investment-record";
+import { parsePortfolioFields } from "@seedbook/domain/v1/portfolio-record";
+import {
+  MAX_REBALANCING_TASKS,
+  parseRebalancingFields,
+} from "@seedbook/domain/v1/rebalancing-record";
 import { investmentsSyncConfig } from "@web/features/investments/sync/investments-sync-config";
 import { HOLDINGS_SORT_OPTION_VALUES } from "@web/features/investments/types/holdings-sort";
 import type {
@@ -55,19 +61,13 @@ import {
   parseAccountPreferences,
 } from "@web/features/settings/utils/account-preferences";
 import type { ManagedStoreConfig } from "@web/lib/sync/managed-store-config";
-import { parseInvestmentFields } from "@web/server/investments/investment-record";
-import { parsePortfolioFields } from "@web/server/portfolio/portfolio-record";
-import {
-  MAX_REBALANCING_TASKS,
-  parseRebalancingFields,
-} from "@web/server/rebalancing/rebalancing-record";
 import { TimeRange } from "@web/types/time.consts";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { PLANNED_CLIENT_FIELDS } from "./exceptions";
 
 /**
  * 레코드 정의 ↔ 지금 클라이언트 코드 (store 타입, 동기화 설정의 normalize·toData·fromData) 와
- * 서버 검증 (`server/<domain>/*-record.ts`, envelope 번역기도 같은 함수를 쓴다). 필드 이름·타입이
+ * 서버 검증 (`@seedbook/domain/v1/<domain>-record.ts`, envelope 번역기도 같은 함수를 쓴다). 필드 이름·타입이
  * 어긋나면 실패한다. 아직 없는 필드는 `PLANNED_CLIENT_FIELDS`.
  */
 

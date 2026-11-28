@@ -1,5 +1,5 @@
 import type { Database } from "@seedbook/database";
-import { LEGAL_DOCUMENT_VERSIONS } from "@seedbook/database/legal";
+import { LEGAL_DOCUMENT_VERSIONS } from "@seedbook/domain/legal";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadLegalVersions } from "./legal-versions";
 

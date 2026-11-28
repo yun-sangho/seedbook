@@ -1,4 +1,4 @@
-import { ANONYMOUS_USER_NAME } from "@seedbook/database/anonymous-identity";
+import { ANONYMOUS_USER_NAME } from "@seedbook/domain/anonymous-identity";
 import { isProfileImageKey, parseProfileImage } from "@web/lib/seed-identity/profile-image";
 
 /**

@@ -1,5 +1,6 @@
-import { type Database, kstDateString, schema } from "@seedbook/database";
-import type { LegalDocumentVersion } from "@seedbook/database/legal";
+import { type Database, schema } from "@seedbook/database";
+import { kstDateString } from "@seedbook/domain/kst";
+import type { LegalDocumentVersion } from "@seedbook/domain/legal";
 import {
   type ConsentDocument,
   consentDocuments,

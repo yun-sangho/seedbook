@@ -1,5 +1,5 @@
-import { findMarkdownProblems, parseLegalMarkdown } from "@seedbook/database/legal/markdown";
 import { describe, expect, it } from "vitest";
+import { findMarkdownProblems, parseLegalMarkdown } from "./markdown";
 
 describe("parseLegalMarkdown", () => {
   it("reads headings, paragraphs and lists", () => {

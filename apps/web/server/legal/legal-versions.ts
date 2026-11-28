@@ -3,7 +3,7 @@ import {
   LEGAL_DOCUMENT_IDS,
   LEGAL_DOCUMENT_VERSIONS,
   type LegalDocumentVersion,
-} from "@seedbook/database/legal";
+} from "@seedbook/domain/legal";
 import { inArray } from "drizzle-orm";
 import { DB_TIMEOUT_MS, withDbTimeout } from "../db-timeout";
 

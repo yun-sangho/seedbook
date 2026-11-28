@@ -1,5 +1,5 @@
-import { kstDateString } from "@seedbook/database";
-import { LEGAL_DOCUMENT_IDS, type LegalDocumentId } from "@seedbook/database/legal";
+import { kstDateString } from "@seedbook/domain/kst";
+import { LEGAL_DOCUMENT_IDS, type LegalDocumentId } from "@seedbook/domain/legal";
 import { documentPage } from "@web/lib/legal/catalog";
 import { getLegalVersions } from "@web/server/legal/legal-versions";
 

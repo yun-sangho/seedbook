@@ -21,6 +21,7 @@
     "etl:etf:holdings": "tsx ./scripts/fetch-etf-holdings.ts"
   },
   "dependencies": {
+    "@seedbook/domain": "workspace:*",
     "dotenv": "^18.0.10",
     "drizzle-orm": "^0.45.4",
     "postgres": "^4.1.1"

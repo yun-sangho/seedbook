@@ -1,6 +1,6 @@
 import { type Database, schema } from "@seedbook/database";
-import type { LegalDocumentVersion } from "@seedbook/database/legal";
 import { LegalPublishError, publishLegalDocuments } from "@seedbook/database/legal/publish";
+import type { LegalDocumentVersion } from "@seedbook/domain/legal";
 import { openTestDb } from "@web/test/db/test-db";
 import { TransactionRollbackError } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";

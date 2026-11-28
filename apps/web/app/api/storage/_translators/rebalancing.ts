@@ -3,7 +3,7 @@ import {
   parseRebalancingFields,
   rebalancingPayloadToColumns,
   rebalancingRowToPayload,
-} from "@web/server/rebalancing/rebalancing-record";
+} from "@seedbook/domain/v1/rebalancing-record";
 import { and, eq, isNull, notInArray, sql } from "drizzle-orm";
 import { assertNoForeignRows } from "./ownership";
 import type { DomainTranslator, Envelope } from "./types";

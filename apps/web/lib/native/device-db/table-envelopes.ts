@@ -1,4 +1,26 @@
-import { formatDate } from "@web/app/api/storage/_translators/types";
+import {
+  type AccountSnapshotPayload,
+  isDateString,
+  parseSnapshotPayloads,
+} from "@seedbook/domain/v1/account-snapshot-record";
+import { formatDate } from "@seedbook/domain/v1/convert";
+import {
+  investmentChildRows,
+  investmentFieldsToColumns,
+  investmentRowToFields,
+  parseInvestmentFields,
+} from "@seedbook/domain/v1/investment-record";
+import {
+  parsePortfolioFields,
+  portfolioAllocationRows,
+  portfolioFieldsToColumns,
+  portfolioRowToData,
+} from "@seedbook/domain/v1/portfolio-record";
+import {
+  parseRebalancingFields,
+  rebalancingPayloadToColumns,
+  rebalancingRowToPayload,
+} from "@seedbook/domain/v1/rebalancing-record";
 import {
   ACCOUNT_SNAPSHOT_STORAGE_KEY,
   HOLDINGS_HISTORY_STORAGE_KEY,
@@ -7,35 +29,13 @@ import {
 import { INITIAL_PLANT_PROGRESS } from "@web/features/portfolio/types/constants";
 import { dedupePortfolioLinks } from "@web/features/portfolio/utils/portfolio-links";
 import { readPlantProgress } from "@web/features/portfolio/utils/portfolio-plant";
-import {
-  type AccountSnapshotPayload,
-  isDateString,
-  parseSnapshotPayloads,
-} from "@web/server/account-snapshots/account-snapshot-record";
-import {
-  investmentChildRows,
-  investmentFieldsToColumns,
-  investmentRowToFields,
-  parseInvestmentFields,
-} from "@web/server/investments/investment-record";
-import {
-  parsePortfolioFields,
-  portfolioAllocationRows,
-  portfolioFieldsToColumns,
-  portfolioRowToData,
-} from "@web/server/portfolio/portfolio-record";
-import {
-  parseRebalancingFields,
-  rebalancingPayloadToColumns,
-  rebalancingRowToPayload,
-} from "@web/server/rebalancing/rebalancing-record";
 import type { SqlDriver, SqlStatement, SqlValue } from "./sql-driver";
 
 /**
  * Zustand persist envelope (`{ state, version }`) ↔ 기기 SQLite 테이블.
  *
  * 서버 envelope 번역기 (`app/api/storage/_translators`) 의 기기판이다. 검증·행 변환은 서버와
- * 같은 함수(`server/<domain>/*-record.ts`)를 쓰고, 목록 순서는 서버처럼 `user_list_order` 에
+ * 같은 함수(`@seedbook/domain/v1/<domain>-record.ts`)를 쓰고, 목록 순서는 서버처럼 `user_list_order` 에
  * 둔다. 읽을 때 돌려주는 `version` 도 서버 번역기와 같아 store 의 `migrate` 가 같은 경로로
  * 정리한다.
  *
@@ -272,13 +272,8 @@ async function readInvestments(driver: SqlDriver): Promise<string | null> {
     ...investmentRowToFields(
       {
         ...a,
-        userId: "",
         initialInvestment: BigInt(a.initialInvestment),
         currentValue: BigInt(a.currentValue),
-        version: 1,
-        deletedAt: null,
-        createdAt: new Date(a.createdAt),
-        updatedAt: new Date(a.updatedAt),
       },
       records
         .filter((r) => r.accountId === a.id)
@@ -427,15 +422,12 @@ async function readPortfolios(driver: SqlDriver): Promise<string | null> {
     ...portfolioRowToData(
       {
         ...p,
-        userId: "",
         accountIds: parseJsonArray(p.accountIds).filter(
           (id): id is string => typeof id === "string"
         ),
         goalHistory: readPlantProgress({
           goalHistory: parseJsonArray(p.goalHistory),
         }).goalHistory,
-        version: 1,
-        deletedAt: null,
         createdAt: new Date(p.createdAt),
         updatedAt: new Date(p.updatedAt),
       },
@@ -598,16 +590,11 @@ async function readRebalancings(driver: SqlDriver): Promise<string | null> {
   const sessions = sortByOrder(rows, order).map((r) =>
     rebalancingRowToPayload({
       ...r,
-      userId: "",
       cashDelta: BigInt(r.cashDelta),
       tasks: parseJson(r.tasks),
       result: parseJson(r.result),
       startedAt: new Date(r.startedAt),
       completedAt: r.completedAt ? new Date(r.completedAt) : null,
-      version: 1,
-      deletedAt: null,
-      createdAt: new Date(r.createdAt),
-      updatedAt: new Date(r.updatedAt),
     })
   );
   return serialize({ sessions }, REBALANCING_VERSION);

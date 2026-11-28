@@ -4,6 +4,8 @@ const SHARED_PATHS = [
   "packages/database/src/**",
   "packages/database/package.json",
   "packages/database/tsconfig.json",
+  "packages/domain/src/**",
+  "packages/domain/package.json",
   "packages/typescript-config/**",
   "package.json",
   "pnpm-lock.yaml",

@@ -1,8 +1,5 @@
-import {
-  findVersionProblems,
-  LEGAL_DOCUMENT_VERSIONS,
-  type LegalDocumentVersion,
-} from "@seedbook/database/legal";
+import { findVersionProblems } from "@seedbook/database/legal/validate";
+import { LEGAL_DOCUMENT_VERSIONS, type LegalDocumentVersion } from "@seedbook/domain/legal";
 import { describe, expect, it } from "vitest";
 
 function version(overrides: Partial<LegalDocumentVersion> = {}): LegalDocumentVersion {

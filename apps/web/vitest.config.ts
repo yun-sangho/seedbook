@@ -29,7 +29,7 @@ export default defineConfig({
       "@web": resolve(__dirname),
       // tsconfig paths 와 같이 소스를 본다 — database 패키지를 빌드(dist)하지 않아도 테스트가 돈다.
       "@seedbook/database": resolve(__dirname, "../../packages/database/src"),
-      // 동기화 레코드 정의. 아직 대조 테스트만 쓴다 (앱 코드가 쓰기 시작하면 package.json 의존성 추가).
+      // 서버·앱 공용 순수 로직. `@seedbook/domain/legal` 같은 하위 경로도 src 아래로 간다.
       "@seedbook/domain": resolve(__dirname, "../../packages/domain/src"),
     },
   },

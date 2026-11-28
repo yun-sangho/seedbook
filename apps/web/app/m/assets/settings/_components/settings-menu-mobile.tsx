@@ -12,7 +12,7 @@ import {
   IconTrashcanLine,
 } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
-import { ANONYMOUS_USER_NAME } from "@seedbook/database/anonymous-identity";
+import { ANONYMOUS_USER_NAME } from "@seedbook/domain/anonymous-identity";
 import { useFlow } from "@stackflow/react";
 import { useLegalNotices } from "@web/components/consent-gate";
 import { AppLockSettingItem } from "@web/components/mobile/app-lock";

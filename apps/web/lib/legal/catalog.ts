@@ -2,7 +2,7 @@ import {
   LEGAL_DOCUMENT_IDS,
   type LegalDocumentId,
   type LegalDocumentVersion,
-} from "@seedbook/database/legal";
+} from "@seedbook/domain/legal";
 
 /**
  * 약관 버전 목록에서 "지금 어떤 버전인가"를 정한다. 날짜는 모두 KST 달력일(YYYY-MM-DD) 문자열이라

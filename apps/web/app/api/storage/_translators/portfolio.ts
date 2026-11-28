@@ -1,6 +1,6 @@
 import { type Database, schema } from "@seedbook/database";
+import { parsePortfolioFields, portfolioRowToData } from "@seedbook/domain/v1/portfolio-record";
 import { dedupePortfolioLinks } from "@web/features/portfolio/utils/portfolio-links";
-import { parsePortfolioFields, portfolioRowToData } from "@web/server/portfolio/portfolio-record";
 import { portfolioRepo } from "@web/server/portfolio/portfolio-sync";
 import { and, eq, isNull, notInArray, sql } from "drizzle-orm";
 import { assertNoForeignRows } from "./ownership";
