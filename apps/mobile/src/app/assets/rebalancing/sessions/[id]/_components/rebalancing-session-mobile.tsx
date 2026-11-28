@@ -137,7 +137,7 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
     done: sortRebalancingTasks(steps.done, sort, holdingQuantity),
   };
   const doneCollapsed = collapsedSections.includes("filled");
-  // 팔 것과 살 것이 다 남았을 때만 1. 2. 로 순서를 붙인다.
+  // 팔 것과 살 것이 다 남았을 때만 순서를 안내한다.
   const bothSteps = !completed && stepTasks.sell.length > 0 && stepTasks.buy.length > 0;
   const { done, total } = rebalancingProgress(session);
   const remaining = total - done;
@@ -227,27 +227,18 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
               </p>
             )}
 
-            {/* 하는 순서대로 1. 팔기 → 2. 사기. 빈 묶음은 숨긴다. 어느 종목이든 눌러서 기록할 수 있다. */}
-            {STEP_SECTIONS.map(({ key, title, endedTitle }) => {
-              if (stepTasks[key].length === 0) return null;
-              return (
-                <div key={key} className="pt-x2">
-                  <h3 className="t4-bold px-x4 py-x2">
-                    {completed || !bothSteps ? endedTitle : title}{" "}
-                    <span className="text-fg-neutral-subtle tabular-nums">
-                      {stepTasks[key].length}건
-                    </span>
-                  </h3>
-                  <TaskList
-                    tasks={stepTasks[key]}
-                    leaving={leavingToDone}
-                    ended={completed}
-                    showAction={false}
-                    onOpen={openTrade}
-                  />
-                </div>
-              );
-            })}
+            {/* 종목마다 팔기·사기 배지로 구분한다. 파는 종목이 먼저 나오지만 어느 종목이든 눌러서 기록할 수 있다. */}
+            {stepTasks.sell.length + stepTasks.buy.length > 0 && (
+              <div className="pt-x2">
+                <TaskList
+                  tasks={[...stepTasks.sell, ...stepTasks.buy]}
+                  leaving={leavingToDone}
+                  ended={completed}
+                  showAction
+                  onOpen={openTrade}
+                />
+              </div>
+            )}
 
             {stepTasks.done.length > 0 && (
               <div className="pt-x2">
@@ -380,7 +371,7 @@ function TaskList({
   tasks: RebalancingTask[];
   leaving: ReadonlySet<string>;
   ended: boolean;
-  /** 팔기·사기 묶음 안에서는 묶음 제목이 방향을 알려 줘 배지를 뺀다. */
+  /** 팔기·사기 배지를 단다. */
   showAction: boolean;
   onOpen: (taskId: string) => void;
 }) {
@@ -487,11 +478,6 @@ function TaskStatusBadge({ task, ended }: { task: RebalancingTask; ended: boolea
     </Badge>
   );
 }
-
-const STEP_SECTIONS: { key: "sell" | "buy"; title: string; endedTitle: string }[] = [
-  { key: "sell", title: "1. 팔기", endedTitle: "팔기" },
-  { key: "buy", title: "2. 사기", endedTitle: "사기" },
-];
 
 const TASK_SORT_OPTIONS: SortOptionList<RebalancingTaskSort> = [
   { value: "nameDesc", label: "이름 내림차순" },
