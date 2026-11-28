@@ -17,6 +17,7 @@ import {
   pickLanAddress,
   pickSimulatorTarget,
   readEnvValue,
+  simulatorLimitError,
   simulatorName,
   teamIdFromCertificateSubject,
 } from "../../../../scripts/dev-app-lib.mjs";
@@ -169,25 +170,92 @@ describe("pickSimulatorTarget", () => {
     supportedDeviceTypes: types.map(type),
   });
 
-  it("uses the newest general iOS runtime and the newest Pro iPhone", () => {
+  it("uses the newest general iOS runtime and the newest iPhone SE (the lightest model)", () => {
     expect(
       pickSimulatorTarget({
         runtimes: [
-          runtime("iOS-26-0", "26.0", ["iPhone-17-Pro"]),
+          runtime("iOS-26-0", "26.0", ["iPhone-SE-3rd-generation"]),
           runtime("iOS-27-2-iPhone19-4", "27.2", ["iPhone-Duo"]),
           runtime("iOS-27-2", "27.2", [
-            "iPhone-17-Pro",
             "iPhone-18-Pro",
-            "iPhone-18-Pro-Max",
+            "iPhone-17e",
+            "iPhone-SE-3rd-generation",
+            "iPhone-16",
+            "iPhone-SE--2nd-generation-",
             "iPad-Air",
           ]),
         ],
       })
-    ).toEqual({ runtime: "iOS-27-2", deviceType: type("iPhone-18-Pro").identifier });
+    ).toEqual({ runtime: "iOS-27-2", deviceType: type("iPhone-SE-3rd-generation").identifier });
+  });
+
+  it("falls back to the smallest base iPhone (mini, then the oldest plain model) without an SE", () => {
+    const pick = (types: string[]) =>
+      pickSimulatorTarget({ runtimes: [runtime("iOS-28-0", "28.0", types)] }).deviceType;
+    expect(pick(["iPhone-18-Pro", "iPhone-13-mini", "iPhone-17", "iPhone-12-mini"])).toBe(
+      type("iPhone-13-mini").identifier
+    );
+    expect(pick(["iPhone-18-Pro-Max", "iPhone-18", "iPhone-17e", "iPhone-17", "iPhone-Air"])).toBe(
+      type("iPhone-17e").identifier
+    );
+    expect(pick(["iPhone-18-Pro", "iPhone-18-Pro-Max"])).toBe(type("iPhone-18-Pro").identifier);
   });
 
   it("throws when no iOS runtime is installed", () => {
     expect(() => pickSimulatorTarget({ runtimes: [] })).toThrow(/런타임/);
+  });
+});
+
+describe("simulatorLimitError", () => {
+  const device = (name: string, state: string) => ({
+    name,
+    udid: `UDID-${name}`,
+    state,
+    isAvailable: true,
+  });
+  const list = (...devices: ReturnType<typeof device>[]) => ({
+    devices: { "com.apple.CoreSimulator.SimRuntime.iOS-27-2": devices },
+  });
+
+  it("allows booting while fewer than two seedbook simulators are on", () => {
+    expect(
+      simulatorLimitError(
+        list(device("seedbook-a", "Booted"), device("seedbook-b", "Shutdown")),
+        "seedbook-mine"
+      )
+    ).toBeNull();
+  });
+
+  it("ignores simulators that are not seedbook sessions", () => {
+    expect(
+      simulatorLimitError(
+        list(
+          device("iPhone 17", "Booted"),
+          device("other-app", "Booted"),
+          device("seedbook-a", "Booted")
+        ),
+        "seedbook-mine"
+      )
+    ).toBeNull();
+  });
+
+  it("refuses a third simulator and names the sessions that hold the two", () => {
+    const error = simulatorLimitError(
+      list(device("seedbook-a", "Booted"), device("seedbook-b", "Booted")),
+      "seedbook-mine"
+    );
+    expect(error).toMatch(/seedbook-a/);
+    expect(error).toMatch(/seedbook-b/);
+    expect(error).toMatch(/--force/);
+  });
+
+  it("lets the session reuse its own simulator when it is already on", () => {
+    expect(
+      simulatorLimitError(
+        list(device("seedbook-a", "Booted"), device("seedbook-mine", "Booted")),
+        "seedbook-mine"
+      )
+    ).toBeNull();
   });
 });
 

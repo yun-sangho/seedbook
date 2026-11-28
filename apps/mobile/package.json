@@ -16,6 +16,7 @@
     "sync:ios": "pnpm build && cap sync ios",
     "sync:android": "pnpm build && cap sync android",
     "dev:ios-sim": "node ../../scripts/dev-app.mjs ios-sim",
+    "dev:ios-sim:show": "node ../../scripts/dev-app.mjs ios-sim-show",
     "dev:ios-sim:stop": "node ../../scripts/dev-app.mjs ios-sim-stop",
     "dev:ios-device": "node ../../scripts/dev-app.mjs ios",
     "dev:android-device": "node ../../scripts/dev-app.mjs android",
