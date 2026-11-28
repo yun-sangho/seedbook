@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@web/lib/api-client";
 import { getDeviceStorage } from "@web/lib/device-storage";
 import { createBiometricVault } from "./biometric";
 import type { BiometricLoginDeps } from "./biometric-login";
@@ -12,7 +13,7 @@ export async function getBiometricLoginDeps(): Promise<BiometricLoginDeps | null
     vault,
     storage: getDeviceStorage(),
     request: async (path, body) => {
-      const response = await fetch(`/api/auth${path}`, {
+      const response = await apiFetch(`/api/auth${path}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body ?? {}),

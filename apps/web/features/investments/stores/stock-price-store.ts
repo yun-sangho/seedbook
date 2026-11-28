@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@web/lib/api-client";
 import { createDeviceStateStorage } from "@web/lib/device-storage";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -55,7 +56,7 @@ async function requestPrices(keys: string[]): Promise<PriceApiResponse> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PRICE_REQUEST_TIMEOUT_MS);
   try {
-    const res = await fetch("/api/stocks/prices", {
+    const res = await apiFetch("/api/stocks/prices", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items: keys.map(toQueryItem) }),
