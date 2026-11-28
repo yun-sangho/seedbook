@@ -16,7 +16,7 @@ const NAME_MAX_LENGTH = 30;
 
 export interface SeedBasics {
   name: string;
-  /** 첫 목표 금액 (원). 비워 두면 null — 정원에서 나중에 정한다. */
+  /** 목표 금액 (원, 수확까지의 최종 목표). 비워 두면 null — 정원에서 나중에 정한다. */
   goalAmount: number | null;
 }
 
@@ -31,7 +31,7 @@ function readGoal(draft: string): { amount: number | null } | { error: string } 
   return invalid ? { error: NEXT_GOAL_ERROR_MESSAGES[invalid](null) } : { amount };
 }
 
-/** 이름(카드 이름으로 미리 채움) + 첫 목표 금액. */
+/** 이름(카드 이름으로 미리 채움) + 목표 금액. */
 export function GoalStep({
   initial,
   fallbackName,
@@ -72,8 +72,8 @@ export function GoalStep({
   return (
     <OnboardingStepLayout
       progress={3}
-      title="씨앗에 이름과 첫 목표를 정해 주세요"
-      description="포트폴리오 금액이 목표에 닿으면 새싹이 터요."
+      title="씨앗에 이름과 목표를 정해 주세요"
+      description="포트폴리오 금액이 목표에 가까워질수록 식물이 자라요. 처음엔 빨리, 목표에 가까울수록 천천히 자라요."
       onBack={onBack}
       primary={{ label: "다음", onClick: next }}
       onLater={later}
@@ -88,7 +88,7 @@ export function GoalStep({
       </TextField>
       <div className="flex flex-col gap-x2">
         <MoneyField
-          label="첫 목표 금액"
+          label="목표 금액"
           value={goal}
           onValueChange={(next) => {
             setGoal(next);

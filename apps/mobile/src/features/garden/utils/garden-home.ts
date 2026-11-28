@@ -97,10 +97,17 @@ export function plantConditionLabel(
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
+/** 식물 이름이 있으면 포트폴리오 이름 앞에 — "몽글이 · 연금". 없으면 포트폴리오 이름. */
+export function plantTitle(plantName: string, sourceName: string): string {
+  return plantName ? `${plantName} · ${sourceName}` : sourceName;
+}
+
 /** 정원 목록(포커스 풀림)의 행 하나. */
 export interface GardenRow {
   portfolioId: string;
   name: string;
+  /** 씨앗을 심을 때 정한 식물 이름 (없으면 빈 문자열). */
+  plantName: string;
   stage: PortfolioPlantView["stage"];
   pot: PotColor;
   kind: PlantKind;
@@ -119,7 +126,7 @@ export interface GardenRow {
   goalState: PortfolioPlantView["goalState"];
   /** 지금 목표 금액 (원). 목표가 없으면 null. */
   goalAmount: number | null;
-  /** 지금 목표 대비 금액 (%, 소수 버림, 100 이하). 목표가 없으면 null. 목록의 도달 막대. */
+  /** 심은 뒤 늘어난 금액이 최종 목표까지의 몇 % 인지 (`seasonGoalPercent`). 목표가 없으면 null. 목록의 도달 막대. */
   goalPercent: number | null;
   /** 연결 계좌들의 수익률 (%). 연결 계좌가 없거나 투자원금이 0 이면 null. */
   returnRate: number | null;
@@ -139,6 +146,7 @@ function gardenRow(plant: PortfolioPlantView, accounts: readonly RowAccount[]): 
   return {
     portfolioId: plant.portfolioId,
     name: plant.name || "이름 없는 포트폴리오",
+    plantName: plant.plantName,
     stage: plant.stage,
     pot: potForPortfolio(plant.portfolioId),
     kind: plant.kind,
@@ -150,10 +158,7 @@ function gardenRow(plant: PortfolioPlantView, accounts: readonly RowAccount[]): 
     empty: plant.empty,
     goalState: plant.goalState,
     goalAmount: plant.goalAmount,
-    goalPercent:
-      plant.goalAmount !== null && plant.goalAmount > 0
-        ? Math.min(100, Math.floor((Math.max(0, plant.value) / plant.goalAmount) * 100))
-        : null,
+    goalPercent: plant.goalPercent,
     returnRate: linkedReturnRate(accounts),
   };
 }

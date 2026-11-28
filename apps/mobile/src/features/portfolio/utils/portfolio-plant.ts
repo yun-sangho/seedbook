@@ -1,12 +1,14 @@
 import type { InvestmentItem } from "@mobile/features/investments/types/types";
 import { computeAccountValuation } from "@mobile/features/investments/utils/compute-account-valuation";
 import type { StockPricePoint } from "@mobile/features/investments/utils/use-stock-prices";
+import { PLANT_WISH_HISTORY_MAX } from "@seedbook/domain";
 import { INITIAL_PLANT_PROGRESS, MAX_PLANT_STAGE } from "../types/constants";
 import type {
   PlantGoal,
   PlantKind,
   PlantProgress,
   PlantStage,
+  PlantWish,
   PortfolioItem,
 } from "../types/types";
 import { resolvePortfolioAccounts } from "./resolve-portfolio-accounts";
@@ -50,11 +52,15 @@ export function computePortfolioValuation(
 export const PLANT_FIELDS = [
   "season",
   "plantKind",
+  "plantName",
   "wish",
+  "wishHistory",
   "goalAmount",
   "growthStage",
   "goalHistory",
   "fruitGoal",
+  "stageGoals",
+  "stageBase",
 ] as const satisfies ReadonlyArray<keyof PlantProgress>;
 
 /** 더 자란 정도 비교 — (수확 주기 번호, 단계, 열매가 열림) 사전순. 양수면 `a` 가 더 자랐다. */
@@ -99,6 +105,33 @@ function readGoal(g: unknown): PlantGoal | null {
     : null;
 }
 
+function readWish(w: unknown): PlantWish | null {
+  if (!w || typeof w !== "object") return null;
+  const { wish, at } = w as Record<string, unknown>;
+  if (typeof wish !== "string") return null;
+  if (at === null) return { wish, at: null };
+  return isTimestamp(at) ? { wish, at } : null;
+}
+
+/** 단계 목표 읽기 — 양의 정수 금액이 아니면 전부 버린다 (예전처럼 단계마다 목표를 정한다). */
+function readStageGoals(value: unknown): number[] {
+  if (!Array.isArray(value) || value.length > MAX_PLANT_STAGE + 1) return [];
+  return value.every((g) => typeof g === "number" && Number.isSafeInteger(g) && g > 0)
+    ? (value as number[])
+    : [];
+}
+
+/** 소원 이력 읽기 — 깨진 항목은 빼고 최근 `PLANT_WISH_HISTORY_MAX` 개. */
+export function readWishHistory(value: unknown): PlantWish[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .flatMap((w): PlantWish[] => {
+      const wish = readWish(w);
+      return wish ? [wish] : [];
+    })
+    .slice(-PLANT_WISH_HISTORY_MAX);
+}
+
 /**
  * 저장·동기화된 값을 식물 진행으로 읽는다. 없거나 깨진 값은 첫 수확 주기의 빈 화분 기본값으로 채운다 — 식물이
  * 생기기 전에 저장된 포트폴리오도 그대로 읽힌다.
@@ -113,8 +146,12 @@ export function readPlantProgress(value: {
   goalHistory?: unknown;
   season?: unknown;
   plantKind?: unknown;
+  plantName?: unknown;
   wish?: unknown;
+  wishHistory?: unknown;
   fruitGoal?: unknown;
+  stageGoals?: unknown;
+  stageBase?: unknown;
   driftSince?: unknown;
 }): PlantProgress {
   const initial = INITIAL_PLANT_PROGRESS;
@@ -143,8 +180,17 @@ export function readPlantProgress(value: {
         ? value.season
         : initial.season,
     plantKind: typeof value.plantKind === "string" ? (value.plantKind as PlantKind) : null,
+    plantName: typeof value.plantName === "string" ? value.plantName : initial.plantName,
     wish: typeof value.wish === "string" ? value.wish : initial.wish,
+    wishHistory: readWishHistory(value.wishHistory),
     fruitGoal,
+    stageGoals: readStageGoals(value.stageGoals),
+    stageBase:
+      typeof value.stageBase === "number" &&
+      Number.isSafeInteger(value.stageBase) &&
+      value.stageBase >= 0
+        ? value.stageBase
+        : null,
     driftSince: isTimestamp(value.driftSince) ? value.driftSince : initial.driftSince,
   };
 }

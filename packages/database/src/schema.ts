@@ -434,8 +434,19 @@ export const portfolio = seedbook.table(
     plantKind: text("plantKind"),
     // 목표를 이루면 하고 싶은 일.
     wish: text("wish").notNull().default(""),
+    // 씨앗을 심을 때 정한 식물 이름. 비어 있으면 포트폴리오 이름만 보인다.
+    plantName: text("plantName").notNull().default(""),
+    // 정한 소원들 [{ wish, at }] (오래된 순, 최근 20개). 마지막 항목이 지금 소원.
+    wishHistory: jsonb("wishHistory")
+      .$type<Array<{ wish: string; at: string | null }>>()
+      .notNull()
+      .default([]),
     // 이룬 열매 목표 { amount, reachedAt } (수확 주기의 다섯 번째 목표). 있으면 열매가 열려 바로 수확할 수 있다.
     fruitGoal: jsonb("fruitGoal").$type<{ amount: number; reachedAt: string }>(),
+    // 최종 목표까지의 단계 목표 다섯 개 (원, 새싹·묘목·나무·꽃·열매). 비어 있으면 단계마다 목표를 정하던 식물.
+    stageGoals: jsonb("stageGoals").$type<number[]>().notNull().default([]),
+    // 단계 목표를 나눈 출발 금액 (원, 심을 때의 평가금액). 단계와 막대는 이 금액 뒤로 늘어난 만큼.
+    stageBase: bigint("stageBase", { mode: "number" }),
     // 비중 이탈을 처음 본 시각 (KST 날짜 시작). 기준 안으로 돌아오면 null.
     driftSince: timestamp("driftSince", { precision: 3, mode: "date" }),
     ...syncColumns(),
@@ -495,6 +506,12 @@ export const plantHarvest = seedbook.table(
     season: integer("season").notNull(),
     plantKind: text("plantKind").notNull(),
     wish: text("wish").notNull().default(""),
+    // 수확한 식물의 이름과 소원 이력 [{ wish, at }] (오래된 순, 최근 20개).
+    plantName: text("plantName").notNull().default(""),
+    wishHistory: jsonb("wishHistory")
+      .$type<Array<{ wish: string; at: string | null }>>()
+      .notNull()
+      .default([]),
     // 이룬 목표들 [{ amount, reachedAt }] (오래된 순, 최대 5개).
     goals: jsonb("goals").$type<Array<{ amount: number; reachedAt: string }>>().notNull(),
     harvestedAt: timestamp("harvestedAt", { precision: 3, mode: "date" }).notNull(),

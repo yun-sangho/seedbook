@@ -148,7 +148,7 @@ describe("OnboardingGate", () => {
       await open();
       fireEvent.click(screen.getByRole("radio", { name: /미국 지수/ }));
       await click("이 씨앗으로 시작");
-      fireEvent.change(screen.getByRole("textbox", { name: "첫 목표 금액" }), {
+      fireEvent.change(screen.getByRole("textbox", { name: "목표 금액" }), {
         target: { value: "10000000" },
       });
       await click("다음");
@@ -161,7 +161,8 @@ describe("OnboardingGate", () => {
       await click("씨앗 심기");
 
       expect(portfolios()).toHaveLength(1);
-      expect(portfolios()[0]).toMatchObject({ name: "미국 지수", goalAmount: 10_000_000 });
+      expect(portfolios()[0]).toMatchObject({ name: "미국 지수" });
+      expect(portfolios()[0]?.stageGoals.at(-1)).toBe(10_000_000);
       expect(portfolios()[0]?.allocations.map((a) => [a.name, a.targetPercent])).toEqual([
         ["TIGER 미국S&P500", 25],
         ["KODEX 미국S&P500", 25],

@@ -4,6 +4,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
   EditPlantGoalSheet,
+  EditPlantWishSheet,
   PlantSeasonSheet,
   PortfolioPlantRow,
   plantSeasonSheetText,
@@ -16,12 +17,16 @@ function plant(partial: Partial<PortfolioPlantView> = {}): PortfolioPlantView {
     color: "#111",
     kind: "tree",
     season: 1,
+    plantName: "",
     wish: "",
+    wishHistory: [],
     value: 8_000_000,
     pricesComplete: true,
     stage: 1,
     goalState: "set",
     goalAmount: 10_000_000,
+    finalGoalAmount: 10_000_000,
+    goalPercent: 80,
     remainingToNextStage: 2_000_000,
     drifting: false,
     driftDays: 0,
@@ -137,15 +142,75 @@ describe("PortfolioPlantRow", () => {
     expect(screen.queryByText(/이루면/)).toBeNull();
   });
 
-  it("shows the wish of a grown plant without editing it", () => {
-    render(<PortfolioPlantRow plant={plant({ wish: "제주 여행" })} onAction={vi.fn()} />);
-    expect(screen.getByText("🌱 이루면: 제주 여행")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /이루면/ })).toBeNull();
+  it("names the plant before its stage", () => {
+    const { container } = render(
+      <PortfolioPlantRow plant={plant({ plantName: "몽글이" })} onAction={vi.fn()} />
+    );
+    expect(container.textContent).toContain("몽글이 · 새싹");
   });
 
-  it("shows nothing about the wish once grown without one", () => {
-    render(<PortfolioPlantRow plant={plant()} onAction={vi.fn()} />);
-    expect(screen.queryByText(/이루면/)).toBeNull();
+  it("opens the wish of a grown plant to change it", () => {
+    const onAction = vi.fn();
+    render(<PortfolioPlantRow plant={plant({ wish: "제주 여행" })} onAction={onAction} />);
+    fireEvent.click(screen.getByRole("button", { name: /이루면: 제주 여행/ }));
+    expect(onAction).toHaveBeenCalledWith("wish");
+  });
+
+  it("offers to write a wish on a grown plant without one", () => {
+    const onAction = vi.fn();
+    render(<PortfolioPlantRow plant={plant()} onAction={onAction} />);
+    fireEvent.click(screen.getByRole("button", { name: /이루면 하고 싶은 일 적기/ }));
+    expect(onAction).toHaveBeenCalledWith("wish");
+  });
+});
+
+describe("EditPlantWishSheet", () => {
+  const sheetProps = { open: true, onOpenChange: vi.fn() };
+
+  it("saves the changed wish", () => {
+    const onSave = vi.fn();
+    render(
+      <EditPlantWishSheet
+        {...sheetProps}
+        progress={{ wish: "제주 여행", wishHistory: [] }}
+        onSave={onSave}
+      />
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "이루면 하고 싶은 일" }), {
+      target: { value: "가족 여행" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "저장" }));
+    expect(onSave).toHaveBeenCalledWith("가족 여행");
+  });
+
+  it("lists the wishes newest first with the day each was written (KST)", () => {
+    render(
+      <EditPlantWishSheet
+        {...sheetProps}
+        progress={{
+          wish: "",
+          wishHistory: [
+            { wish: "제주 여행", at: null },
+            { wish: "가족 여행", at: "2026-11-01T16:00:00.000Z" },
+            { wish: "", at: "2026-11-27T16:00:00.000Z" },
+          ],
+        }}
+        onSave={vi.fn()}
+      />
+    );
+    const items = screen.getAllByRole("listitem").map((li) => li.textContent);
+    expect(items).toEqual(["2026.11.28지웠어요", "2026.11.02가족 여행", "처음제주 여행"]);
+  });
+
+  it("has no history for a plant without a wish", () => {
+    render(
+      <EditPlantWishSheet
+        {...sheetProps}
+        progress={{ wish: "", wishHistory: [] }}
+        onSave={vi.fn()}
+      />
+    );
+    expect(screen.queryByText("고친 이력")).toBeNull();
   });
 });
 
@@ -164,7 +229,7 @@ describe("EditPlantGoalSheet", () => {
       />
     );
     expect(screen.getByText(/110만원 이상으로 정할 수 있어요/)).toBeTruthy();
-    fireEvent.change(screen.getByRole("textbox", { name: "식물 목표 금액" }), {
+    fireEvent.change(screen.getByRole("textbox", { name: "목표 금액" }), {
       target: { value: "1,050,000" },
     });
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
@@ -220,15 +285,17 @@ describe("PlantSeasonSheet", () => {
       />
     );
     fireEvent.click(screen.getByRole("radio", { name: "고사리" }));
-    fireEvent.change(screen.getByRole("textbox", { name: "첫 목표 금액" }), {
+    fireEvent.change(screen.getByRole("textbox", { name: "목표 금액" }), {
       target: { value: "1,100,000" },
     });
+    fireEvent.change(screen.getByLabelText("식물 이름"), { target: { value: "몽글이" } });
     fireEvent.change(screen.getByLabelText("이루면 하고 싶은 일"), {
       target: { value: "부모님과 제주 여행" },
     });
     fireEvent.click(screen.getByRole("button", { name: "심기" }));
     expect(onSave).toHaveBeenCalledWith({
       plantKind: "fern",
+      plantName: "몽글이",
       wish: "부모님과 제주 여행",
       goalAmount: 1_100_000,
     });
@@ -245,7 +312,7 @@ describe("PlantSeasonSheet", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "심기" }));
     expect(screen.getByText("목표 금액을 1원 이상으로 입력해 주세요")).toBeTruthy();
-    fireEvent.change(screen.getByRole("textbox", { name: "첫 목표 금액" }), {
+    fireEvent.change(screen.getByRole("textbox", { name: "목표 금액" }), {
       target: { value: "1,050,000" },
     });
     fireEvent.click(screen.getByRole("button", { name: "심기" }));

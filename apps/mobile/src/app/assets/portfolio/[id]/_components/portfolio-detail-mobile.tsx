@@ -53,6 +53,7 @@ import { EditDriftThresholdSheet, PortfolioSettingsSheet } from "./portfolio-edi
 import { PortfolioOverviewTab } from "./portfolio-overview-tab";
 import {
   EditPlantGoalSheet,
+  EditPlantWishSheet,
   type PlantRowAction,
   PlantSeasonSheet,
   PortfolioPlantRow,
@@ -65,8 +66,10 @@ type Editing =
   | { kind: "settings" }
   | { kind: "drift" }
   | { kind: "plant-goal" }
-  /** 씨앗 심기 (종류·첫 목표·소원). `harvestedWish` 가 있으면 방금 수확한 뒤 다시 심기. */
+  /** 씨앗 심기 (종류·이름·목표·소원). `harvestedWish` 가 있으면 방금 수확한 뒤 다시 심기. */
   | { kind: "plant-season"; harvestedWish?: string }
+  /** 소원 고치기·이력. */
+  | { kind: "plant-wish" }
   | { kind: "add-allocation" }
   | { kind: "import-allocations" }
   | { kind: "allocation"; id: string };
@@ -127,6 +130,7 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
   const setPlantGoal = usePortfolioStore((s) => s.setPlantGoal);
   const startPlantSeason = usePortfolioStore((s) => s.startPlantSeason);
   const harvestPlant = usePortfolioStore((s) => s.harvestPlant);
+  const setPlantWish = usePortfolioStore((s) => s.setPlantWish);
   const investments = useInvestmentStore((s) => s.investments);
   const portfolios = usePortfolioStore((s) => s.portfolios);
   // 한 계좌는 하나의 포트폴리오에만 연결된다 — 다른 포트폴리오에 연결된 계좌는 확인 후 옮겨온다.
@@ -194,6 +198,9 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
         return;
       case "season":
         setEditing({ kind: "plant-season" });
+        return;
+      case "wish":
+        setEditing({ kind: "plant-wish" });
         return;
       case "rebalance":
         switchTab("rebalancing");
@@ -490,6 +497,12 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
           startPlantSeason(portfolio.id, input);
           setPlantGoal(portfolio.id, goalAmount, plant);
         }}
+      />
+      <EditPlantWishSheet
+        key={`plant-wish-${editing?.kind === "plant-wish"}`}
+        {...sheetProps(editing?.kind === "plant-wish")}
+        progress={portfolio}
+        onSave={(wish) => setPlantWish(portfolio.id, wish)}
       />
       <ImportAllocationsSheet
         key={`import-${editing?.kind === "import-allocations"}`}

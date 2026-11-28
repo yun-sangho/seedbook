@@ -19,6 +19,7 @@ import {
   gardenRows,
   plantConditionLabel,
   plantStageLabel,
+  plantTitle,
 } from "@mobile/features/garden/utils/garden-home";
 import type { InvestmentItem } from "@mobile/features/investments/types/types";
 import { summarizeAccounts } from "@mobile/features/investments/utils/summarize-accounts";
@@ -166,7 +167,7 @@ export function GardenOverviewList({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex min-w-0 items-baseline gap-x1_5">
-                    <span className="t5-bold truncate">{row.name}</span>
+                    <span className="t5-bold truncate">{plantTitle(row.plantName, row.name)}</span>
                     <span
                       className={`t3-regular shrink-0 ${row.wilt > 0 && !row.ripe ? "text-fg-warning" : "text-fg-neutral-subtle"}`}
                     >

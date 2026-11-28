@@ -3,6 +3,7 @@ import {
   type StockPricePoint,
   stockPriceKey,
 } from "@mobile/features/investments/utils/use-stock-prices";
+import { PLANT_WISH_HISTORY_MAX } from "@seedbook/domain";
 import { describe, expect, it } from "vitest";
 import { INITIAL_PLANT_PROGRESS } from "../types/constants";
 import type { PlantProgress } from "../types/types";
@@ -117,7 +118,13 @@ describe("furtherPlantProgress", () => {
 
   it("keeps a later season even at a lower stage", () => {
     const local = progress({ growthStage: 4, goalHistory: [1, 2, 3, 4].map(reached) });
-    const server = progress({ season: 2, wish: "여행", plantKind: "fern" });
+    const server = progress({
+      season: 2,
+      wish: "여행",
+      plantKind: "fern",
+      plantName: "몽글이",
+      wishHistory: [{ wish: "여행", at: "2026-11-01T00:00:00.000Z" }],
+    });
 
     expect(furtherPlantProgress(local, server)).toEqual(server);
   });
@@ -198,6 +205,8 @@ describe("computePlantStatus", () => {
       empty: true,
       goalState: "needs-goal",
       goalAmount: null,
+      finalGoalAmount: null,
+      goalPercent: null,
       remainingToNextStage: null,
       drifting: false,
       driftDays: 0,
@@ -360,6 +369,11 @@ describe("readPlantProgress", () => {
       season: 3,
       plantKind: "fern",
       wish: "여행",
+      plantName: "몽글이",
+      wishHistory: [
+        { wish: "제주", at: null },
+        { wish: "여행", at: "2026-11-01T00:00:00.000Z" },
+      ],
       driftSince: "2026-11-20T15:00:00.000Z",
     });
 
@@ -374,6 +388,31 @@ describe("readPlantProgress", () => {
     });
 
     expect(readPlantProgress(saved)).toEqual(saved);
+  });
+
+  it("drops broken wish history entries", () => {
+    const read = readPlantProgress({
+      wishHistory: [
+        { wish: "여행", at: "2026-11-01T00:00:00.000Z" },
+        { wish: 3, at: "2026-11-01T00:00:00.000Z" },
+        { wish: "제주", at: "어제" },
+        null,
+      ],
+    });
+
+    expect(read.wishHistory).toEqual([{ wish: "여행", at: "2026-11-01T00:00:00.000Z" }]);
+  });
+
+  it("keeps only the most recent wishes", () => {
+    const read = readPlantProgress({
+      wishHistory: Array.from({ length: PLANT_WISH_HISTORY_MAX + 2 }, (_, i) => ({
+        wish: `소원 ${i}`,
+        at: null,
+      })),
+    });
+
+    expect(read.wishHistory).toHaveLength(PLANT_WISH_HISTORY_MAX);
+    expect(read.wishHistory[0]?.wish).toBe("소원 2");
   });
 
   it("keeps a plant kind this app does not know (added by a newer app)", () => {
