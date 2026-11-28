@@ -7,6 +7,7 @@ import { LandingCta } from "@web/components/landing-cta";
 import { LandingMobileOnly } from "@web/components/landing-mobile-only";
 import { PlantAvatar } from "@web/features/garden/components/plant-avatar";
 import {
+  FERN_STAGE_LABELS,
   PLANT_STAGE_LABELS,
   PLANT_STAGES,
   type PlantStage,
@@ -30,15 +31,6 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
   openGraph: { title: TITLE, description: DESCRIPTION, type: "website", locale: "ko_KR" },
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
-};
-
-/** 고사리 단계 이름. 고사리는 꽃이 없어 마지막 단계가 "풍성" 이다. 그림은 `public/landing/fern-*.svg`. */
-const FERN_STAGE_LABELS: Record<PlantStage, string> = {
-  seed: "씨앗",
-  sprout: "새순",
-  sapling: "어린 잎",
-  tree: "고사리",
-  bloom: "풍성",
 };
 
 const rebalanceSteps = [
@@ -136,22 +128,6 @@ function StageRow({
   );
 }
 
-function FernArt({ stage }: { stage: PlantStage }) {
-  return (
-    <div className="size-full overflow-hidden rounded-full bg-[var(--plant-avatar-bg,#E2F4DF)]">
-      {/* biome-ignore lint/performance/noImgElement: 작은 정적 SVG 라 이미지 최적화가 필요 없다. */}
-      <img
-        src={`/landing/fern-${stage}.svg`}
-        alt=""
-        width={64}
-        height={64}
-        loading="lazy"
-        className="size-full"
-      />
-    </div>
-  );
-}
-
 function RebalanceBadge() {
   return (
     <span
@@ -218,7 +194,7 @@ export default async function HomePage() {
             <StageRow
               kind="고사리"
               labels={FERN_STAGE_LABELS}
-              renderArt={(stage) => <FernArt stage={stage} />}
+              renderArt={(stage) => <PlantAvatar stage={stage} kind="fern" pot="cream" size={64} />}
             />
           </div>
           <p className="t4-regular text-fg-neutral-subtle mt-x6">
