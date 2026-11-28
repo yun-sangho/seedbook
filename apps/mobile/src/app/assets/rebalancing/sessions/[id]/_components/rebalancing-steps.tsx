@@ -194,23 +194,28 @@ function CurrentStep({
     <>
       <section className="flex flex-col px-x4 pt-x2 pb-x3">
         <p className="t6-bold break-keep">{taskName(task)}</p>
-        {/* 금액과 수량은 한 줄에 하나씩, 숫자(원·주)만 굵게 — "58,250원에 / 30주 사는 중". */}
-        {copy.price && (
-          <p className="t9-bold mt-x1 tabular-nums">
-            {copy.price}
-            <span className="font-normal">에</span>
-          </p>
-        )}
-        <p className={cn("t9-bold tabular-nums", !copy.price && "mt-x1")}>
-          {copy.quantity && <>{copy.quantity} </>}
-          <span
-            className={cn(
-              "font-normal",
-              status === "pending" && task.action === "매도" && "text-fg-critical",
-              status === "pending" && task.action === "매수" && "text-fg-positive"
-            )}
-          >
-            {copy.verb}
+        {/* 금액·수량을 각각 끊기지 않는 덩어리로 — 한 줄에 들어가면 한 줄, 넘치면 "58,250원에 / 30주 사는 중"
+            두 줄. 숫자(원·주)만 굵게. */}
+        <p className="t9-bold mt-x1 tabular-nums">
+          {copy.price && (
+            <>
+              <span className="whitespace-nowrap">
+                {copy.price}
+                <span className="font-normal">에</span>
+              </span>{" "}
+            </>
+          )}
+          <span className="whitespace-nowrap">
+            {copy.quantity && <>{copy.quantity} </>}
+            <span
+              className={cn(
+                "font-normal",
+                status === "pending" && task.action === "매도" && "text-fg-critical",
+                status === "pending" && task.action === "매수" && "text-fg-positive"
+              )}
+            >
+              {copy.verb}
+            </span>
           </span>
         </p>
         {copy.note && (

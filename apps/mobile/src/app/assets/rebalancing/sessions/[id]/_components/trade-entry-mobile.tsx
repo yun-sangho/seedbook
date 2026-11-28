@@ -267,7 +267,7 @@ export function TradeEntryForm({
     </ActionButton>
   );
   const actions = confirming ? (
-    <ResponsivePair gap="x2">
+    <ResponsivePair gap="x3">
       <ActionButton variant="neutralWeak" size="large" onClick={() => setPartialInput(true)}>
         일부만 거래됐어요
       </ActionButton>
@@ -275,7 +275,7 @@ export function TradeEntryForm({
       {primary("다 거래됐어요", recordFill)}
     </ResponsivePair>
   ) : status === "pending" && !amending ? (
-    <ResponsivePair gap="x2">
+    <ResponsivePair gap="x3">
       {/* 시장가처럼 주문하자마자 체결됐으면 주문 기록을 건너뛴다. */}
       <ActionButton variant="neutralWeak" size="large" disabled={!canSave} onClick={recordFill}>
         바로 거래됨
