@@ -78,7 +78,7 @@ dev 사용자(`dev-user-v1`)의 계좌·포트폴리오는 **테스트 시나리
 - `utils/` — calculation logic and helpers (kept out of components for testability)
 - `components/` — domain-specific UI
 
-**Cross-feature code** lives in `apps/web/utils/` (number-format, monthly-summary-utils) and `apps/web/components/` (shared UI, chart wrappers).
+**Cross-feature code** lives in `apps/web/utils/` (number-format, monthly-summary-utils) and `apps/web/components/` (shared UI).
 
 **State management**: Zustand with localStorage persistence. No immer — use object spreads/shallow copies. Keep derived heavy logic in utils or memoized selectors, not in components.
 
@@ -139,7 +139,7 @@ DB integration tests (`*.db.test.ts`, e.g. storage translators) run against real
 
 ## Conventions
 
-- Types: prefer explicit nullable (`number | null`) for missing chart points (Recharts `connectNulls=false`)
+- Types: prefer explicit nullable (`number | null`) for missing values over `undefined`
 - Memoize slicing/projection in `useMemo` to avoid recomputing large arrays each render
 - Extract magic numeric factors to top-level consts if reused
 - Search existing utils before adding new ones; mirror established patterns

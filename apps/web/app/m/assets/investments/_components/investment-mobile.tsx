@@ -24,12 +24,12 @@ import { ResultSection } from "@web/seed-design/ui/result-section";
 import { AccountSummaryCard } from "./account-summary-card";
 import { AddAccountSheet } from "./add-account-sheet";
 import { ACCOUNT_SORT_OPTIONS, SortSheet, sortOptionLabel } from "./investment-sheets";
-import { HoldingsSummaryList, InvestmentTrend, MonthlySummaryList } from "./investment-stats";
+import { HoldingsSummaryList, MonthlySummaryList } from "./investment-stats";
 
-type Tab = "accounts" | "holdings" | "monthly" | "trend";
+type Tab = "accounts" | "holdings" | "monthly";
 
 /**
- * 모바일 "계좌" 탭: 계좌 목록과 통계(종목 / 월별 내역 / 투자 추이)를 칩 탭으로 나눠 보여준다 (기본은
+ * 모바일 "계좌" 탭: 계좌 목록과 통계(종목 / 월별 내역)를 칩 탭으로 나눠 보여준다 (기본은
  * 계좌). 계좌를 탭하면 계좌 상세(`/assets/investments/[id]`)로 이동한다. 총 평가금액은 홈(정원)에 있다.
  * 계좌 순서 변경(drag)과 여러 사용자 합산(aggregate) 보기는 데스크탑에서만 지원한다.
  */
@@ -86,11 +86,7 @@ export function InvestmentMobile() {
           <ChipTabsTrigger value="accounts">계좌</ChipTabsTrigger>
           <ChipTabsTrigger value="holdings">종목</ChipTabsTrigger>
           <ChipTabsTrigger value="monthly">월별 내역</ChipTabsTrigger>
-          <ChipTabsTrigger value="trend">투자 추이</ChipTabsTrigger>
         </ChipTabsList>
-        <ChipTabsContent value="trend">
-          <InvestmentTrend investments={storedInvestments} />
-        </ChipTabsContent>
         <ChipTabsContent value="monthly">
           <div className="pt-x2">
             <MonthlySummaryList investments={storedInvestments} />
