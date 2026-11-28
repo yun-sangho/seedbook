@@ -298,11 +298,6 @@ export async function resetDevUserData(userId: string, db: Database = defaultDb)
         changeSeq: 0,
       })
       .where(eq(p.userId, userId));
-    await tx.delete(schema.savingsAccount).where(eq(schema.savingsAccount.userId, userId));
-    await tx.delete(schema.debt).where(eq(schema.debt.userId, userId));
-    await tx.delete(schema.realAsset).where(eq(schema.realAsset.userId, userId));
-    await tx.delete(schema.assetProgressPoint).where(eq(schema.assetProgressPoint.userId, userId));
-    await tx.delete(schema.assetPlan).where(eq(schema.assetPlan.userId, userId));
 
     return writeFixture(tx, userId, fixture, now);
   });
