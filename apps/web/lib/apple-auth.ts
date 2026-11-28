@@ -9,15 +9,22 @@ import { sign } from "node:crypto";
  * - APPLE_TEAM_ID / APPLE_KEY_ID: 개발자 계정 Team ID, Sign in with Apple 키 ID
  * - APPLE_PRIVATE_KEY_BASE64: 키 파일(.p8) 내용을 base64 로 한 줄 인코딩한 값
  *   (`base64 -i AuthKey_XXXX.p8`). 여러 줄 PEM 은 배포 .env 에 안전하게 못 넣는다.
- * - APPLE_APP_BUNDLE_ID (선택): 네이티브 앱에서 받은 id token 의 audience
+ * - APPLE_APP_BUNDLE_ID (선택): 네이티브 앱에서 받은 id token 의 audience (번들 ID). 쉼표로 여럿을 줄 수 있다.
+ *
+ * 개발 서버(`NODE_ENV=development`)는 개발용 앱 Seedbook Dev(`DEV_APP_BUNDLE_ID`)의 토큰도 받는다 — Dev 앱은
+ * 로컬 dev 서버에만 붙는다 (apps/mobile/README.md "Seedbook Dev"). 운영 서버는 설정한 번들 ID 만 받는다.
  */
+
+/** 개발용 앱(Seedbook Dev)의 iOS 번들 ID. 출시 앱(`ing.boogie.seedbook`)과 나란히 설치된다. */
+export const DEV_APP_BUNDLE_ID = "ing.boogie.seedbook.dev";
 
 export interface AppleConfig {
   clientId: string;
   teamId: string;
   keyId: string;
   privateKey: string;
-  appBundleIdentifier?: string;
+  /** 네이티브 앱 id token 의 audience 로 받을 번들 ID 들. */
+  appBundleIdentifiers: string[];
 }
 
 type Env = Record<string, string | undefined>;
@@ -34,14 +41,22 @@ export function readAppleConfig(env: Env): AppleConfig | null {
   const privateKeyBase64 = present(env.APPLE_PRIVATE_KEY_BASE64);
   if (!clientId || !teamId || !keyId || !privateKeyBase64) return null;
 
-  const appBundleIdentifier = present(env.APPLE_APP_BUNDLE_ID) ?? undefined;
   return {
     clientId,
     teamId,
     keyId,
     privateKey: Buffer.from(privateKeyBase64, "base64").toString("utf8"),
-    appBundleIdentifier,
+    appBundleIdentifiers: appBundleIdentifiers(env),
   };
+}
+
+function appBundleIdentifiers(env: Env): string[] {
+  const configured = (env.APPLE_APP_BUNDLE_ID ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  const ids = env.NODE_ENV === "development" ? [...configured, DEV_APP_BUNDLE_ID] : configured;
+  return [...new Set(ids)];
 }
 
 /**

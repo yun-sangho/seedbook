@@ -1,5 +1,5 @@
 {
-  "id": "07ce5608-3dff-4d17-8b60-dd18c51725fc",
+  "id": "d7e956df-21af-487c-b3fe-1c4621fb5811",
   "prevId": "c5d6b1ec-d8e9-4cea-a239-c273960b058a",
   "version": "7",
   "dialect": "postgresql",
@@ -105,6 +105,211 @@
         }
       },
       "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "seedbook.app_bundle": {
+      "name": "app_bundle",
+      "schema": "seedbook",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "appVersion": {
+          "name": "appVersion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "minNative": {
+          "name": "minNative",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "build": {
+          "name": "build",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "checksum": {
+          "name": "checksum",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "signature": {
+          "name": "signature",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "size": {
+          "name": "size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "promotedAt": {
+          "name": "promotedAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rolloutPercent": {
+          "name": "rolloutPercent",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 100
+        },
+        "haltedAt": {
+          "name": "haltedAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "haltReason": {
+          "name": "haltReason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "app_bundle_createdAt_idx": {
+          "name": "app_bundle_createdAt_idx",
+          "columns": [
+            {
+              "expression": "createdAt",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "seedbook.app_bundle_file": {
+      "name": "app_bundle_file",
+      "schema": "seedbook",
+      "columns": {
+        "bundleId": {
+          "name": "bundleId",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "data": {
+          "name": "data",
+          "type": "bytea",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "app_bundle_file_bundleId_app_bundle_id_fk": {
+          "name": "app_bundle_file_bundleId_app_bundle_id_fk",
+          "tableFrom": "app_bundle_file",
+          "tableTo": "app_bundle",
+          "schemaTo": "seedbook",
+          "columnsFrom": [
+            "bundleId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "seedbook.app_bundle_report": {
+      "name": "app_bundle_report",
+      "schema": "seedbook",
+      "columns": {
+        "bundleId": {
+          "name": "bundleId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "installId": {
+          "name": "installId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "app_bundle_report_bundleId_app_bundle_id_fk": {
+          "name": "app_bundle_report_bundleId_app_bundle_id_fk",
+          "tableFrom": "app_bundle_report",
+          "tableTo": "app_bundle",
+          "schemaTo": "seedbook",
+          "columnsFrom": [
+            "bundleId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "app_bundle_report_pkey": {
+          "name": "app_bundle_report_pkey",
+          "columns": [
+            "bundleId",
+            "installId",
+            "outcome"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -1017,20 +1222,6 @@
           "notNull": true,
           "default": "''"
         },
-        "plantName": {
-          "name": "plantName",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "wishHistory": {
-          "name": "wishHistory",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
         "goals": {
           "name": "goals",
           "type": "jsonb",
@@ -1238,36 +1429,9 @@
           "notNull": true,
           "default": "''"
         },
-        "plantName": {
-          "name": "plantName",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "wishHistory": {
-          "name": "wishHistory",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
         "fruitGoal": {
           "name": "fruitGoal",
           "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "stageGoals": {
-          "name": "stageGoals",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
-        "stageBase": {
-          "name": "stageBase",
-          "type": "bigint",
           "primaryKey": false,
           "notNull": false
         },

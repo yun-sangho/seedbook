@@ -4,6 +4,7 @@ import {
   composeSvg,
   encodeIco,
   markInner,
+  withDevBadge,
 } from "../../../../scripts/brand-icons-lib.mjs";
 
 const MARK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
@@ -76,5 +77,21 @@ describe("encodeIco", () => {
     const ico = encodeIco([{ size: 256, png: png(0) }]);
     expect(ico.readUInt8(6)).toBe(0);
     expect(ico.readUInt8(7)).toBe(0);
+  });
+});
+
+describe("withDevBadge", () => {
+  const svg = composeSvg(MARK, { scale: 1, background: "#E2F4DF" });
+
+  it("draws a DEV label on top of the icon (last, before </svg>)", () => {
+    const badged = withDevBadge(svg, { centerY: 80, scale: 1 });
+    expect(badged).toMatch(/>DEV<\/text><\/g><\/svg>\n$/);
+    expect(badged.startsWith(svg.replace("</svg>\n", ""))).toBe(true);
+  });
+
+  it("centers the badge horizontally at the given height and scale", () => {
+    expect(withDevBadge(svg, { centerY: 70, scale: 0.5 })).toContain(
+      'transform="translate(50 70) scale(0.5)"'
+    );
   });
 });

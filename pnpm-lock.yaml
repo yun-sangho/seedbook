@@ -35,6 +35,9 @@ importers:
       '@capacitor/ios':
         specifier: 8.6.0
         version: 8.6.0(@capacitor/core@8.6.0)
+      '@capawesome/capacitor-live-update':
+        specifier: 8.10.0
+        version: 8.10.0(@capacitor/core@8.6.0)
       '@capgo/capacitor-native-biometric':
         specifier: 8.9.1
         version: 8.9.1(@capacitor/core@8.6.0)
@@ -693,6 +696,33 @@ packages:
       '@capacitor/core': ^8.6.0
     dependencies:
       '@capacitor/core': 8.6.0
+    dev: false
+
+  /@capawesome/capacitor-live-update@8.10.0(@capacitor/core@8.6.0):
+    resolution: {integrity: sha512-93PDuD/gP3DDa6HHpZ+mPrpF7TaNipwQsZnv8UmNVdEKCKOYMwyRpxx1t/lU7/jaKrNbFjPBrzDsEzmDTPsCgw==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
+      '@capawesome/capacitor-electron': '>=0.2.0'
+    peerDependenciesMeta:
+      '@capawesome/capacitor-electron':
+        optional: true
+    dependencies:
+      '@capacitor/core': 8.6.0
+      '@capawesome/electron-live-update': 0.3.1
+    transitivePeerDependencies:
+      - electron
+    dev: false
+
+  /@capawesome/electron-live-update@0.3.1:
+    resolution: {integrity: sha512-DCfsiN5gQpg93jgQFYR52cRZA8iUQk/O2cxkgJuUO0tVBT7qXEODZKCnUeGIPg2wdoUGhaww5fq8vqX/k2hpqg==}
+    engines: {node: '>=20.0.0'}
+    peerDependencies:
+      electron: '>=28.0.0'
+    peerDependenciesMeta:
+      electron:
+        optional: true
+    dependencies:
+      yauzl: 3.4.0
     dev: false
 
   /@capgo/capacitor-native-biometric@8.9.1(@capacitor/core@8.6.0):
@@ -5610,7 +5640,6 @@ packages:
 
   /pend@1.2.0:
     resolution: {integrity: sha512-F3asv42UuXchdzt+xXqfW1OGlVBe+mxa2mqI0pg5yAHZPvFmY3Y6drSf/GQ1A86WgWEN9Kzh/WrgKa6iGcHXLg==}
-    dev: true
 
   /picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
@@ -6618,6 +6647,13 @@ packages:
       buffer-crc32: 0.2.13
       fd-slicer: 1.1.0
     dev: true
+
+  /yauzl@3.4.0:
+    resolution: {integrity: sha512-jIH9yLR9wqr0wOS0TpBvo/g/2UgZH5qePVbjgRliiF0BYvOZyaBknKsF+x9Iht0O6sqgnB93rCICdOZFecJuDw==}
+    engines: {node: '>=12'}
+    dependencies:
+      pend: 1.2.0
+    dev: false
 
   /zod@4.6.5:
     resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}

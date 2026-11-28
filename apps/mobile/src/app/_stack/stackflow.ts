@@ -14,6 +14,7 @@ import {
   ProfileActivity,
   RebalancingDetailActivity,
   RebalancingNewActivity,
+  RebalancingPlanActivity,
   RebalancingSessionActivity,
   RebalancingTradeActivity,
   SettingsActivity,
@@ -40,6 +41,7 @@ declare module "@stackflow/config" {
     AccountDetail: { id: string };
     RebalancingNew: Record<string, never>;
     RebalancingDetail: { id: string };
+    RebalancingPlan: { id: string };
     RebalancingSession: { id: string };
     RebalancingTrade: { id: string; taskId: string };
     PortfolioDetail: { id: string };
@@ -80,6 +82,20 @@ const config = defineConfig({
       // 계좌 리밸런싱 계산. 정적 경로(`new`)가 `:id` 보다 먼저 매칭된다 (history-sync 정렬).
       name: "RebalancingDetail",
       route: { path: "/assets/rebalancing/:id", defaultHistory: underTab("rebalancing") },
+    },
+    {
+      // 리밸런싱 2단계(거래 가능 금액·권장 매매). 바로 들어와도 뒤로가기가 1단계(현황)로 간다.
+      name: "RebalancingPlan",
+      route: {
+        path: "/assets/rebalancing/:id/plan",
+        defaultHistory: (params) => [
+          ...underTab("rebalancing")(),
+          {
+            activityName: "RebalancingDetail" as const,
+            activityParams: { id: params.id ?? "" },
+          },
+        ],
+      },
     },
     {
       name: "RebalancingSession",
@@ -157,6 +173,7 @@ export const { Stack, actions } = stackflow({
     AccountDetail: AccountDetailActivity,
     RebalancingNew: RebalancingNewActivity,
     RebalancingDetail: RebalancingDetailActivity,
+    RebalancingPlan: RebalancingPlanActivity,
     RebalancingSession: RebalancingSessionActivity,
     RebalancingTrade: RebalancingTradeActivity,
     PortfolioDetail: PortfolioDetailActivity,

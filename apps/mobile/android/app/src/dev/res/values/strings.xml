@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- Seedbook Dev (dev 빌드 타입): 출시 앱과 나란히 설치되므로 이름으로 가른다. -->
+<resources>
+    <string name="app_name">Seedbook Dev</string>
+    <string name="title_activity_main">Seedbook Dev</string>
+</resources>

@@ -1,0 +1,4 @@
+# 네이티브 앱 릴리스 도구 (fastlane). CI(.github/workflows/mobile-release.yml)와 로컬이 같은 버전을 쓴다.
+source "https://rubygems.org"
+
+gem "fastlane", "~> 2.229"

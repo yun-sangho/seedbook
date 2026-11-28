@@ -7,8 +7,9 @@ android {
         applicationId "ing.boogie.seedbook"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // 릴리스는 fastlane 이 package.json version·빌드 번호를 넣는다 (apps/mobile/fastlane/Fastfile). 없으면 로컬 기본값.
+        versionCode((project.findProperty('SEEDBOOK_VERSION_CODE') ?: '1').toString().toInteger())
+        versionName((project.findProperty('SEEDBOOK_VERSION_NAME') ?: '1.0.0').toString())
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         // 카카오 네이티브 앱 키 — `-PKAKAO_NATIVE_APP_KEY=…` 또는 환경변수. 없으면 카카오 SDK 로그인을 끄고
         // 웹 OAuth 로 로그인한다 (SeedbookKakaoLoginPlugin). 키 해시는 카카오 개발자 콘솔에 등록한다.
@@ -21,8 +22,32 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // 업로드 키 서명 — fastlane 이 `-PSEEDBOOK_UPLOAD_STORE_FILE=…` 등으로 넘길 때만. 없으면 서명하지 않은 release.
+    def uploadStoreFile = project.findProperty('SEEDBOOK_UPLOAD_STORE_FILE')
+    signingConfigs {
+        if (uploadStoreFile) {
+            upload {
+                storeFile file(uploadStoreFile)
+                storePassword project.findProperty('SEEDBOOK_UPLOAD_STORE_PASSWORD')
+                keyAlias project.findProperty('SEEDBOOK_UPLOAD_KEY_ALIAS')
+                keyPassword project.findProperty('SEEDBOOK_UPLOAD_KEY_PASSWORD')
+            }
+        }
+    }
     buildTypes {
+        // 개발용 앱 Seedbook Dev — 출시 앱과 나란히 설치되고 (`ing.boogie.seedbook.dev`) 로컬 dev 서버에 붙는다.
+        // 이름·DEV 아이콘·cleartext(http) 허용은 src/dev 에만 있다. 디버그 키로 서명한다 (카카오 콘솔에 디버그 키 해시).
+        // 빌드: `pnpm --filter @seedbook/mobile dev:android-device` (apps/mobile/README.md "Seedbook Dev").
+        dev {
+            initWith debug
+            applicationIdSuffix ".dev"
+            versionNameSuffix "-dev"
+            matchingFallbacks = ['debug']
+        }
         release {
+            if (uploadStoreFile) {
+                signingConfig signingConfigs.upload
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

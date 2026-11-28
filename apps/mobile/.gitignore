@@ -1,3 +1,9 @@
 node_modules/
-www/
 dist/
+# fastlane (Gemfile, fastlane/) — 설치한 gem·빌드 결과·보고서
+.bundle/
+vendor/
+build/
+fastlane/report.xml
+fastlane/README.md
+fastlane/test_output/

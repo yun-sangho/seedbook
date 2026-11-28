@@ -5,12 +5,18 @@ import { useInvestmentStore } from "@mobile/features/investments/stores/investme
 import { usePortfolioStore } from "@mobile/features/portfolio/stores/portfolio-store";
 import { ResultSection } from "@mobile/seed-design/ui/result-section";
 import { useFlow } from "@stackflow/react";
-import { AccountRebalancingMobile } from "./account-rebalancing-mobile";
+import { AccountRebalancingMobile, type RebalancingStep } from "./account-rebalancing-mobile";
 
 /**
  * 계좌 리밸런싱 상세. 계좌에 연결된 포트폴리오의 목표 비중으로 이 계좌를 맞춘다.
  */
-export function RebalancingDetailMobile({ id }: { id: string }) {
+export function RebalancingDetailMobile({
+  id,
+  step = "status",
+}: {
+  id: string;
+  step?: RebalancingStep;
+}) {
   const account = useInvestmentStore((s) => s.investments.find((inv) => inv.id === id));
   // 한 계좌는 하나의 포트폴리오에만 연결된다 (`portfolio-links.ts`).
   const portfolio = usePortfolioStore((s) => s.portfolios.find((p) => p.accountIds.includes(id)));
@@ -61,7 +67,12 @@ export function RebalancingDetailMobile({ id }: { id: string }) {
         </div>
       ) : (
         // 연결 포트폴리오가 바뀌면 현금 시뮬레이션 입력을 초기화한다.
-        <AccountRebalancingMobile key={portfolio.id} portfolio={portfolio} account={account} />
+        <AccountRebalancingMobile
+          key={portfolio.id}
+          portfolio={portfolio}
+          account={account}
+          step={step}
+        />
       )}
     </div>
   );

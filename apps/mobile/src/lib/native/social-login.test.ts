@@ -1,10 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  canSignInWith,
   createNonce,
   NATIVE_LOGIN_CANCELLED,
   type NativeIdTokenPlugin,
   nativeIdTokenSignIn,
 } from "./social-login";
+
+const bundled = vi.hoisted(() => ({ value: false }));
+vi.mock("./bundled-app", () => ({ isBundledApp: () => bundled.value }));
 
 function fakePlugin(overrides: Partial<NativeIdTokenPlugin> = {}): NativeIdTokenPlugin {
   return {
@@ -72,5 +76,27 @@ describe("createNonce", () => {
 
     expect(first).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(second).not.toBe(first);
+  });
+});
+
+describe("canSignInWith", () => {
+  afterEach(() => {
+    bundled.value = false;
+    vi.unstubAllGlobals();
+  });
+
+  it("allows every provider in the browser (web OAuth)", () => {
+    expect(canSignInWith("apple")).toBe(true);
+  });
+
+  it("hides a provider the bundled app has no native plugin for (web OAuth would leave the bundle)", () => {
+    bundled.value = true;
+    vi.stubGlobal("Capacitor", {
+      isNativePlatform: () => true,
+      isPluginAvailable: (name: string) => name === "SeedbookKakaoLogin",
+    });
+
+    expect(canSignInWith("apple")).toBe(false);
+    expect(canSignInWith("kakao")).toBe(true);
   });
 });

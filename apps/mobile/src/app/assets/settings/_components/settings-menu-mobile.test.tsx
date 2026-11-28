@@ -18,11 +18,8 @@ vi.mock("@mobile/components/mobile/profile-menu", () => ({
 vi.mock("@mobile/hooks/use-biometry-label", () => ({
   useBiometryLabel: () => mocks.biometryLabel,
 }));
-vi.mock("@mobile/components/mobile/app-lock", () => ({
-  AppLockSettingItem: () => <li>앱 잠금</li>,
-}));
 vi.mock("@mobile/components/mobile/biometric-login", () => ({
-  BiometricLoginSettingItem: () => <li>생체 인증 로그인</li>,
+  BiometricSettingItem: () => <li>Face ID 사용</li>,
 }));
 vi.mock("@mobile/lib/storage-mode", () => ({ getStorageMode: () => mocks.storageMode }));
 vi.mock("@mobile/lib/auth-client", () => ({ authClient: { signOut: vi.fn() } }));
@@ -104,12 +101,11 @@ describe("SettingsMenuMobile", () => {
     );
   });
 
-  it("adds the app section with app lock and biometric login when biometrics are available", () => {
+  it("adds one Face ID switch (app lock and biometric login together) when biometrics are available", () => {
     mocks.biometryLabel = "Face ID";
     renderMenu();
 
-    expect(within(section("앱")).getByText("앱 잠금")).toBeVisible();
-    expect(within(section("앱")).getByText("생체 인증 로그인")).toBeVisible();
+    expect(within(section("앱")).getByText("Face ID 사용")).toBeVisible();
   });
 
   it("offers installing to the home screen in the app section", async () => {

@@ -82,6 +82,18 @@ describe("buildAppContentSecurityPolicy", () => {
     expect(meta.has("frame-ancestors")).toBe(false);
     expect(meta.get("object-src")).toEqual(["'none'"]);
   });
+
+  it("lets the app bundle reach its API server", () => {
+    const meta = directives(
+      buildAppContentSecurityPolicy({
+        isDev: false,
+        meta: true,
+        apiOrigins: ["https://seedbook.boogie.ing"],
+      })
+    );
+
+    expect(meta.get("connect-src")).toEqual(["'self'", "https://seedbook.boogie.ing"]);
+  });
 });
 
 describe("createCspNonce", () => {

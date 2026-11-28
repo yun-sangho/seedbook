@@ -18,6 +18,8 @@ import {
   loginErrorMessage,
   resolveReturnPath,
 } from "@mobile/lib/login-flow";
+import { noteSignedInForAppLock } from "@mobile/lib/native/app-lock";
+import { canSignInWith } from "@mobile/lib/native/social-login";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
 import { Callout } from "@mobile/seed-design/ui/callout";
 import { Icon } from "@seed-design/react";
@@ -61,6 +63,7 @@ export function LoginScreen() {
     setDevFailed(false);
     const response = await apiFetch("/api/auth/dev-login", { method: "POST" }).catch(() => null);
     if (response?.ok) {
+      noteSignedInForAppLock();
       window.location.href = returnPath;
       return;
     }
@@ -93,16 +96,20 @@ export function LoginScreen() {
           )}
           {/* 네이티브 앱에서 생체 인증 로그인을 켜 둔 기기에서만 보인다. */}
           <BiometricSignInButton callbackURL={returnPath} />
-          <ActionButton
-            variant="neutralSolid"
-            size="large"
-            loading={pendingProvider === "kakao"}
-            disabled={busy && pendingProvider !== "kakao"}
-            onClick={() => signIn("kakao")}
-          >
-            카카오로 로그인
-          </ActionButton>
-          {lastLoginMethod === "kakao" && <LastLoginHint provider="kakao" />}
+          {canSignInWith("kakao") && (
+            <>
+              <ActionButton
+                variant="neutralSolid"
+                size="large"
+                loading={pendingProvider === "kakao"}
+                disabled={busy && pendingProvider !== "kakao"}
+                onClick={() => signIn("kakao")}
+              >
+                카카오로 로그인
+              </ActionButton>
+              {lastLoginMethod === "kakao" && <LastLoginHint provider="kakao" />}
+            </>
+          )}
           <AppleSignInActionButton
             size="large"
             hint={lastLoginMethod === "apple" && <LastLoginHint provider="apple" />}

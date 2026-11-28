@@ -10,6 +10,7 @@ import {
   type AnyPgColumn,
   bigint,
   boolean,
+  customType,
   date,
   doublePrecision,
   index,
@@ -658,6 +659,71 @@ export const userPreference = seedbook.table("user_preference", {
     .defaultNow()
     .$onUpdate(() => sql`now()`),
 });
+
+// ─── OTA app bundles ────────────────────────────────────────────────────────
+
+/** Postgres `bytea` (postgres-js 는 Buffer 로 주고받는다). */
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType: () => "bytea",
+});
+
+/**
+ * OTA 앱 번들 (`@seedbook/domain/app-bundle`, 서버 `apps/web/server/app-bundles/`). 워크플로
+ * (`.github/workflows/app-bundle.yml`) 가 운영자 API 로 올린다. 올리면 beta 채널, `promotedAt` 이 있으면
+ * production 채널 (`rolloutPercent` 만큼의 기기), `haltedAt` 이 있으면 어느 채널에도 내주지 않는다.
+ */
+export const appBundle = seedbook.table(
+  "app_bundle",
+  {
+    // `<커밋 sha 12자>-<run 번호>` (domain `isAppBundleId`).
+    id: text("id").primaryKey(),
+    // 번들을 만든 코드의 앱 버전과, 돌 수 있는 가장 낮은 바이너리 버전 (semver).
+    appVersion: text("appVersion").notNull(),
+    minNative: text("minNative").notNull(),
+    // 번들을 만든 커밋 sha.
+    build: text("build").notNull(),
+    // zip 의 SHA-256 (hex) 과 그 값에 대한 RSA 서명 (base64).
+    checksum: text("checksum").notNull(),
+    signature: text("signature").notNull(),
+    size: integer("size").notNull(),
+    createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
+    promotedAt: timestamp("promotedAt", { precision: 3, mode: "date" }),
+    rolloutPercent: integer("rolloutPercent").notNull().default(100),
+    haltedAt: timestamp("haltedAt", { precision: 3, mode: "date" }),
+    haltReason: text("haltReason"),
+  },
+  (t) => [index("app_bundle_createdAt_idx").on(t.createdAt)]
+);
+
+/** 번들 zip 본문. 메타와 나눠 목록·확인 쿼리가 본문을 읽지 않게 한다. 오래된 것은 지운다. */
+export const appBundleFile = seedbook.table("app_bundle_file", {
+  bundleId: text("bundleId")
+    .primaryKey()
+    .references(() => appBundle.id, { onDelete: "cascade" }),
+  data: bytea("data").notNull(),
+});
+
+/**
+ * 기기가 보고한 적용 결과 (domain `APP_BUNDLE_OUTCOMES`). 기기(`installId`, 앱 설치마다 무작위)·결과마다
+ * 한 행 — 같은 기기가 여러 번 보내도 한 번만 센다. 사용자와 잇지 않는다.
+ */
+export const appBundleReport = seedbook.table(
+  "app_bundle_report",
+  {
+    bundleId: text("bundleId")
+      .notNull()
+      .references(() => appBundle.id, { onDelete: "cascade" }),
+    installId: text("installId").notNull(),
+    outcome: text("outcome").notNull(),
+    createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({
+      columns: [t.bundleId, t.installId, t.outcome],
+      name: "app_bundle_report_pkey",
+    }),
+  ]
+);
 
 // ─── Relations (for Drizzle relational query API) ───────────────────────────
 

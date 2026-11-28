@@ -30,7 +30,8 @@
         "SEEDBOOK_SLOT",
         "PORT",
         "API_PORT",
-        "DATABASE_URL"
+        "DATABASE_URL",
+        "APP_BUNDLE_ADMIN_TOKEN"
       ]
     },
     "format": {

@@ -1,5 +1,6 @@
 "use client";
 
+import { API_BASE_URL } from "../api-client";
 import { type BiometricVault, classifyBiometricError } from "./biometric-login";
 
 /**
@@ -64,6 +65,21 @@ export async function verifyBiometric(reason: string): Promise<boolean> {
 }
 
 /**
+ * 금고 항목의 키. 토큰은 그것을 발급한 API 서버에서만 쓸 수 있으므로 그 서버의 호스트로 나눈다 —
+ * 번들 앱의 origin(`localhost`) 으로 나누면 운영 앱과 LAN dev 서버에 붙인 dev 빌드가 같은 항목을 쓰고,
+ * `server.url` 로 운영 서버를 띄우던 예전 앱이 저장한 항목(`seedbook.boogie.ing`)도 찾지 못한다.
+ * 화면과 API 가 같은 origin 이면 (예전 앱 셸, dev live-reload) 페이지 호스트를 쓴다.
+ */
+export function biometricVaultServer(input: { apiBaseUrl: string; locationHost: string }): string {
+  if (!input.apiBaseUrl) return input.locationHost;
+  try {
+    return new URL(input.apiBaseUrl).host;
+  } catch {
+    return input.locationHost;
+  }
+}
+
+/**
  * 생체 인증 로그인 토큰을 담는 Keychain (iOS) / Keystore (Android) 금고. 네이티브 앱이 아니면 null.
  * `BIOMETRY_CURRENT_SET`: 하드웨어가 꺼낼 때마다 생체 인증을 강제하고, 지문·얼굴이 새로 등록되면
  * 항목이 무효가 된다 (남이 자기 지문을 추가해 로그인하는 것을 막는다). 흐름은 `biometric-login.ts`.
@@ -74,8 +90,11 @@ export async function createBiometricVault(): Promise<BiometricVault | null> {
   const { plugin } = native;
   const { Capacitor } = await import("@capacitor/core");
   const { AccessControl } = await import("@capgo/capacitor-native-biometric");
-  // 자격 증명의 키. 운영·로컬 서버의 토큰이 섞이지 않게 접속한 호스트로 나눈다.
-  const server = window.location.host;
+  // 자격 증명의 키. 운영·로컬 서버의 토큰이 섞이지 않게 API 서버 호스트로 나눈다.
+  const server = biometricVaultServer({
+    apiBaseUrl: API_BASE_URL,
+    locationHost: window.location.host,
+  });
   // Android 플러그인은 기본으로 한 번만 틀려도 끝낸다 — 시스템 기본처럼 몇 번 다시 대 볼 수 있게.
   // (iOS 는 OS 가 시도 횟수를 관리해 무시된다.)
   const maxAttempts = 5;

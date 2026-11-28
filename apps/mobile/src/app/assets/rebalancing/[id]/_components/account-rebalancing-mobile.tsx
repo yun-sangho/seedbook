@@ -43,19 +43,37 @@ import {
 } from "@mobile/features/rebalancing/utils/start-block";
 import { cn } from "@mobile/lib/utils";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
+import {
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogRoot,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@mobile/seed-design/ui/alert-dialog";
 import { Badge } from "@mobile/seed-design/ui/badge";
 import { List, ListItem } from "@mobile/seed-design/ui/list";
+import { ListHeader } from "@mobile/seed-design/ui/list-header";
 import {
   formatSignedWon,
   formatWithCommas,
   numberToKorean,
   parseNumericString,
 } from "@mobile/utils/number-format";
-import { Divider } from "@seed-design/react";
+import { Divider, ResponsivePair } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 
 const OTHER_HOLDING_COLOR = "#94a3b8";
 const CASH_COLOR = "#e2e8f0";
+
+/**
+ * 리밸런싱 단계. 정보가 한 화면에 몰리지 않게 둘로 나눈다.
+ * - `status`: 이격 기준을 넘은 종목 (왜 리밸런싱하는지) → "리밸런싱 계산"
+ * - `plan`: 거래 가능 금액과 권장 매매 (금액을 바꾸면 매매가 바로 바뀐다) → "리밸런싱 시작"
+ */
+export type RebalancingStep = "status" | "plan";
 
 /**
  * 계좌 하나를 대상으로 한 리밸런싱. 포트폴리오가 여러 계좌에 연결돼 있어도 이 계좌의
@@ -65,9 +83,11 @@ const CASH_COLOR = "#e2e8f0";
 export function AccountRebalancingMobile({
   portfolio,
   account,
+  step,
 }: {
   portfolio: PortfolioItem;
   account: InvestmentItem;
+  step: RebalancingStep;
 }) {
   const holdings = useMemo(() => account.holdings ?? [], [account.holdings]);
   const { prices } = useStockPrices(holdings);
@@ -142,62 +162,66 @@ export function AccountRebalancingMobile({
     <div>
       <PriceAsOfBanner prices={prices} />
       {/* 목표에 없는 종목은 리밸런싱으로 맞출 수 없다 — 시작 전에 정리하도록 막는다. */}
-      {outsideHoldings.length > 0 && (
+      {step === "status" && outsideHoldings.length > 0 && (
         <div className="px-x4 pt-x4">
           <OutsideHoldingsNotice holdings={outsideHoldings} blocking />
         </div>
       )}
-      {unpriced.some((stock) => stock.reason !== "loading") && (
+      {step === "status" && unpriced.some((stock) => stock.reason !== "loading") && (
         <div className="px-x4 pt-x4">
           <UnpricedStocksNotice stocks={unpriced} blocking={!hasInProgress} />
         </div>
       )}
-      <section className="flex flex-col gap-x2 px-x4 py-x4">
-        <h2 className="t5-bold">거래 가능 금액</h2>
-        <MoneyField
-          ariaLabel="거래 가능 금액"
-          value={tradableInput}
-          onValueChange={setTradableDraft}
-        />
-        <p className="t3-regular text-fg-neutral-subtle">
-          현금성 자산 {formatSignedWon(cashBalance)}
-          {tradable !== cashBalance && (
-            <>
-              {" · "}
-              <button
-                type="button"
-                className="text-fg-neutral-muted underline underline-offset-2"
-                onClick={() => setTradableDraft(null)}
-              >
-                현금성 자산으로
-              </button>
-            </>
-          )}
-        </p>
-        <p className="t3-regular text-fg-neutral-subtle">
-          수수료 등으로 남겨 둘 돈이 있으면 줄이고, 더 넣을 돈이 있으면 늘리세요.
-        </p>
-        {tradable < 0 && (
-          // 주문가능금액이 모자란 채로 매수해 현금이 마이너스(미수)다 — 기준 금액에서 빠져 매도로 메운다.
-          <p className="t3-regular text-fg-critical">
-            현금이 마이너스(미수)예요. 그만큼 매수는 줄이고 매도는 늘려 계산해요.
+      {step === "status" &&
+        (pricesKnown ? (
+          <div className="pb-x4">
+            <DriftRows drift={drift} summary={summary} colorMap={colorMap} rule={portfolio} />
+          </div>
+        ) : (
+          <p className="t4-regular text-fg-neutral-subtle px-x4 py-x6 text-center">
+            종목 시세를 모두 알아야 이격을 계산할 수 있어요.
           </p>
-        )}
-      </section>
+        ))}
 
-      <Divider />
-
-      {pricesKnown ? (
+      {step === "plan" && (
         <>
-          {!isEmpty && (
-            <div className="pb-x4">
-              <DriftRows drift={drift} summary={summary} colorMap={colorMap} rule={portfolio} />
-            </div>
-          )}
+          <section className="flex flex-col gap-x2 px-x4 py-x4">
+            <h2 className="t5-bold">거래 가능 금액</h2>
+            <MoneyField
+              ariaLabel="거래 가능 금액"
+              value={tradableInput}
+              onValueChange={setTradableDraft}
+              hints={
+                tradable === cashBalance
+                  ? ["현금성 자산 전부"]
+                  : [
+                      `현금성 자산 ${numberToKorean(cashBalance) || formatSignedWon(cashBalance)}`,
+                      <button
+                        key="reset"
+                        type="button"
+                        className="text-fg-neutral-muted underline underline-offset-2"
+                        onClick={() => setTradableDraft(null)}
+                      >
+                        되돌리기
+                      </button>,
+                    ]
+              }
+            />
+            {tradable < 0 && (
+              // 주문가능금액이 모자란 채로 매수해 현금이 마이너스(미수)다 — 기준 금액에서 빠져 매도로 메운다.
+              <p className="t3-regular text-fg-critical">
+                현금이 마이너스(미수)예요. 그만큼 매수는 줄이고 매도는 늘려 계산해요.
+              </p>
+            )}
+          </section>
 
           <Divider />
 
-          {isEmpty ? (
+          {!pricesKnown ? (
+            <p className="t4-regular text-fg-neutral-subtle px-x4 py-x6 text-center">
+              종목 시세를 모두 알아야 계산할 수 있어요.
+            </p>
+          ) : isEmpty ? (
             <p className="t4-regular text-fg-neutral-subtle px-x4 py-x6 text-center">
               이 계좌에 보유 종목과 거래 가능 금액이 없습니다. 종목을 추가하거나 거래 가능 금액을
               입력하세요.
@@ -205,7 +229,7 @@ export function AccountRebalancingMobile({
           ) : (
             <section className="py-x4">
               <div className="flex items-center gap-x2 px-x4 pb-x3">
-                <h2 className="t5-bold">권장 매매</h2>
+                <h2 className="t5-bold">계산 결과</h2>
               </div>
               <SummaryGrid
                 className="pt-0"
@@ -218,10 +242,6 @@ export function AccountRebalancingMobile({
             </section>
           )}
         </>
-      ) : (
-        <p className="t4-regular text-fg-neutral-subtle px-x4 py-x6 text-center">
-          종목 시세를 모두 알아야 이격과 권장 매매를 계산할 수 있어요.
-        </p>
       )}
 
       <StartRebalancingSection
@@ -231,6 +251,7 @@ export function AccountRebalancingMobile({
         tasks={tasks}
         unpriced={unpriced}
         hasOutsideHoldings={outsideHoldings.length > 0}
+        step={step}
       />
     </div>
   );
@@ -259,6 +280,7 @@ function StartRebalancingSection({
   tasks,
   unpriced,
   hasOutsideHoldings,
+  step,
 }: {
   account: InvestmentItem;
   portfolio: PortfolioItem;
@@ -268,10 +290,12 @@ function StartRebalancingSection({
   unpriced: UnpricedStock[];
   /** 계좌에 포트폴리오에 없는 종목이 있으면 시작을 막는다. */
   hasOutsideHoldings: boolean;
+  /** `status` 는 다음 단계(`plan`)로, `plan` 은 확인 뒤 리밸런싱을 시작한다. */
+  step: RebalancingStep;
 }) {
   const inProgress = useRebalancingStore((s) => findInProgressForAccount(s.sessions, account.id));
   const startRebalancing = useRebalancingStore((s) => s.startRebalancing);
-  const { replace, push } = useFlow();
+  const { replace, push, pop } = useFlow();
 
   const block = rebalancingStartBlock({ hasOutsideHoldings, unpriced, taskCount: tasks.length });
 
@@ -318,29 +342,76 @@ function StartRebalancingSection({
     );
   }
 
+  if (step === "status") {
+    return (
+      <BottomAction>
+        {block && <p className="t3-regular text-fg-neutral-subtle">{BLOCK_MESSAGE[block]}</p>}
+        <ActionButton
+          size="large"
+          className="w-full"
+          disabled={block !== null}
+          loading={block === "prices-loading"}
+          onClick={() => push("RebalancingPlan", { id: account.id })}
+        >
+          리밸런싱 계산
+        </ActionButton>
+      </BottomAction>
+    );
+  }
+
   return (
     <BottomAction>
       {block && <p className="t3-regular text-fg-neutral-subtle">{BLOCK_MESSAGE[block]}</p>}
-      <ActionButton
-        size="large"
-        className="w-full"
-        disabled={block !== null}
-        loading={block === "prices-loading"}
-        onClick={() => {
-          const id = startRebalancing({
-            accountId: account.id,
-            accountName: account.accountName,
-            portfolioId: portfolio.id,
-            portfolioName: portfolio.name,
-            cashDelta: summary.cashDelta,
-            tasks,
-          });
-          // 계산 화면은 스택에서 빼고 할 일 목록으로 바꾼다.
-          replace("RebalancingSession", { id });
-        }}
-      >
-        리밸런싱 시작
-      </ActionButton>
+      {/* 수수료·세금은 계산하지 않는다 — 시작 전에 한 번 알린다. */}
+      <AlertDialogRoot>
+        <AlertDialogTrigger asChild>
+          <ActionButton
+            size="large"
+            className="w-full"
+            disabled={block !== null}
+            loading={block === "prices-loading"}
+          >
+            리밸런싱 시작
+          </ActionButton>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>리밸런싱을 시작할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {/* 투자 권유가 아니라 사용자가 정한 목표 비중의 계산 결과라는 것을 시작할 때 한 번 알린다. */}
+              내가 정한 목표 비중으로 계산한 결과예요. 매매는 직접 판단해 주세요.
+              <br />
+              수수료와 세금 때문에 실제 거래 가능 금액과 차이가 있을 수 있어요.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <ResponsivePair gap="x2">
+              <AlertDialogAction variant="neutralWeak" size="large">
+                취소
+              </AlertDialogAction>
+              <AlertDialogAction
+                variant="neutralSolid"
+                size="large"
+                onClick={() => {
+                  const id = startRebalancing({
+                    accountId: account.id,
+                    accountName: account.accountName,
+                    portfolioId: portfolio.id,
+                    portfolioName: portfolio.name,
+                    cashDelta: summary.cashDelta,
+                    tasks,
+                  });
+                  // 현황·계산 화면은 스택에서 빼고 할 일 목록으로 바꾼다.
+                  pop({ animate: false });
+                  replace("RebalancingSession", { id });
+                }}
+              >
+                시작
+              </AlertDialogAction>
+            </ResponsivePair>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialogRoot>
     </BottomAction>
   );
 }
@@ -392,26 +463,35 @@ function requestableKeys(unpriced: UnpricedStock[]): string[] {
     .filter((key) => !key.startsWith(":") && !key.endsWith(":"));
 }
 
-/**
- * "목표 30.0% · 현재 36.2% · 이격 +20.7%". 이격률은 포트폴리오의 계산 방식(`driftMode`)을 따르고
- * 목표보다 많으면 +.
- * 부호와 상관없이 경고 색으로 보여주고, 이격 기준을 넘으면 굵게.
- */
-function PercentLine({ row, rule }: { row: RebalancingGapRow; rule: DriftRule }) {
-  const drift = driftPercent(row, rule.driftMode);
+/** "목표 30.0% · 현재 36.2%". 이격은 행 오른쪽에 따로 둔다 (`DriftValue`). */
+function PercentLine({ row }: { row: RebalancingGapRow }) {
   return (
     <span className="tabular-nums">
-      목표 {row.targetPercent.toFixed(1)}% · 현재 {row.actualPercent.toFixed(1)}% · 이격{" "}
-      <span className={cn("text-fg-warning", isDriftBreached(row, rule) && "font-bold")}>
-        {formatDriftPercent(drift)}
-      </span>
+      목표 {row.targetPercent.toFixed(1)}% · 현재 {row.actualPercent.toFixed(1)}%
     </span>
   );
 }
 
 /**
- * 현재 평가액 아래 종목 목록. 기본은 이격 기준을 넘은 종목만, "모든 종목 보기" 를 누르면
- * 포트폴리오의 모든 종목과 예수금을 목표 · 현재 · 이격과 함께 보여준다.
+ * 이격률 "+20.7%". 포트폴리오의 계산 방식(`driftMode`)을 따르고 목표보다 많으면 +.
+ * 부호와 상관없이 경고 색으로 보여주고, 이격 기준을 넘으면 굵게.
+ */
+function DriftValue({ row, rule }: { row: RebalancingGapRow; rule: DriftRule }) {
+  return (
+    <span
+      className={cn(
+        "t4-regular tabular-nums text-fg-warning",
+        isDriftBreached(row, rule) && "font-bold"
+      )}
+    >
+      {formatDriftPercent(driftPercent(row, rule.driftMode))}
+    </span>
+  );
+}
+
+/**
+ * 이격 기준을 넘은 종목을 먼저 보여주고, 맨 아래 "나머지 N개 보기" 로 기준 안의 종목과
+ * 예수금(거래 가능 금액)을 펼친다.
  */
 function DriftRows({
   drift,
@@ -424,54 +504,62 @@ function DriftRows({
   colorMap: Map<string, string>;
   rule: DriftRule;
 }) {
-  const [showAll, setShowAll] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const cashRow = summary.cashRow;
   const allRows = cashRow ? [...summary.rows, cashRow] : summary.rows;
-  const rows = showAll ? allRows : drift.breachedRows;
+  const breached = drift.breachedRows;
+  const withinRows = allRows.filter((row) => !breached.includes(row));
+
+  const renderRow = (row: RebalancingGapRow) => {
+    const isCash = row === cashRow;
+    const color = isCash
+      ? CASH_COLOR
+      : (colorMap.get(stockPriceKey(row.market, row.ticker)) ?? OTHER_HOLDING_COLOR);
+    return (
+      <ListItem
+        key={row.allocationId}
+        prefix={
+          <span className="size-[10px] block rounded-full" style={{ backgroundColor: color }} />
+        }
+        title={isCash ? "거래 가능 금액" : row.name || "(미선택)"}
+        detail={<PercentLine row={row} />}
+        suffix={<DriftValue row={row} rule={rule} />}
+      />
+    );
+  };
 
   return (
-    <div className="flex flex-col gap-x2 px-x4">
-      <div className="flex items-center gap-x2">
-        <p className="t3-regular text-fg-neutral-subtle flex-1">
-          {showAll ? "모든 종목" : `이격 기준(${rule.driftThresholdPercent}%)을 넘은 종목`}
+    <div className="flex flex-col">
+      {/* 1단계는 이 목록이 전부라, 무엇을 보는 화면인지 제목으로 크게 알린다. */}
+      <div className="flex flex-col gap-x1 px-x4 pt-x5 pb-x3">
+        <h2 className="t7-bold">
+          {breached.length === 0
+            ? "모든 종목이 이격 기준 안에 있어요"
+            : `이격 기준을 넘은 종목 ${breached.length}개`}
+        </h2>
+        <p className="t4-regular text-fg-neutral-subtle">
+          목표 비중에서 {rule.driftThresholdPercent}% 넘게 벗어난 종목이에요.
         </p>
-        <ActionButton
-          variant="ghost"
-          size="small"
-          bleedX="asPadding"
-          aria-expanded={showAll}
-          onClick={() => setShowAll((v) => !v)}
-        >
-          {showAll ? "기준 넘은 종목만" : "모든 종목 보기"}
-        </ActionButton>
       </div>
-      {rows.length === 0 ? (
-        <p className="t3-regular text-fg-neutral-subtle">모든 종목이 이격 기준 안에 있어요.</p>
-      ) : (
-        <ul className="flex flex-col gap-x3">
-          {rows.map((row) => {
-            const isCash = row === cashRow;
-            const color = isCash
-              ? CASH_COLOR
-              : (colorMap.get(stockPriceKey(row.market, row.ticker)) ?? OTHER_HOLDING_COLOR);
-            return (
-              <li key={row.allocationId} className="flex items-start gap-x2">
-                <span
-                  className="size-[10px] mt-[6px] block shrink-0 rounded-full"
-                  style={{ backgroundColor: color }}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="t4-regular truncate">
-                    {isCash ? "거래 가능 금액" : row.name || "(미선택)"}
-                  </p>
-                  <p className="t3-regular text-fg-neutral-subtle">
-                    <PercentLine row={row} rule={rule} />
-                  </p>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+      {breached.length > 0 && <List>{breached.map(renderRow)}</List>}
+      {expanded && withinRows.length > 0 && (
+        <>
+          <ListHeader>기준 안의 종목</ListHeader>
+          <List>{withinRows.map(renderRow)}</List>
+        </>
+      )}
+      {withinRows.length > 0 && (
+        <div className="px-x4 pt-x2">
+          <ActionButton
+            variant="neutralWeak"
+            size="medium"
+            className="w-full"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {expanded ? "접기" : `나머지 ${withinRows.length}개 보기`}
+          </ActionButton>
+        </div>
       )}
     </div>
   );
@@ -544,7 +632,7 @@ function TradeRows({
             <div className="flex flex-col items-end gap-x1">
               {/* 진행 중 화면과 같은 표기·모양 */}
               <Badge tone={task.action === "매수" ? "positive" : "critical"} variant="outline">
-                {task.action} 권장
+                {task.action === "매수" ? "사기" : "팔기"}
               </Badge>
               <span className="t3-medium tabular-nums">
                 {formatWithCommas(values.byTaskId.get(task.id) ?? task.amount)}원

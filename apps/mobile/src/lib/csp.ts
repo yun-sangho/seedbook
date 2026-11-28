@@ -20,7 +20,11 @@ export function createCspNonce(): string {
 
 type Directive = [string, ...string[]];
 
-function policyDirectives(scriptSources: string[], isDev: boolean): Directive[] {
+function policyDirectives(
+  scriptSources: string[],
+  isDev: boolean,
+  connectSources: string[] = []
+): Directive[] {
   return [
     ["default-src", "'self'"],
     // 개발 모드의 React 는 서버 에러 스택을 eval 로 복원한다.
@@ -28,7 +32,7 @@ function policyDirectives(scriptSources: string[], isDev: boolean): Directive[] 
     ["style-src", "'self'", "'unsafe-inline'"],
     ["img-src", "'self'", "blob:", "data:"],
     ["font-src", "'self'"],
-    ["connect-src", "'self'"],
+    ["connect-src", "'self'", ...connectSources],
     ["worker-src", "'self'"],
     ["manifest-src", "'self'"],
     ["object-src", "'none'"],
@@ -60,14 +64,19 @@ export function buildContentSecurityPolicy({
  * 스크립트는 같은 출처의 번들 파일만. 웹 서버는 응답 헤더로 (`meta: false`), 빌드는 `index.html` 의
  * `<meta http-equiv>` 로 (`meta: true`, 앱 번들은 헤더를 줄 서버가 없다) 같은 정책을 건다.
  * `frame-ancestors` 는 meta 에서 무시되므로 meta 형식에서는 뺀다.
+ *
+ * `apiOrigins`: 앱 번들이 부르는 API 서버 (앱 origin 은 `capacitor://localhost` 라 `'self'` 가 아니다,
+ * `lib/native/bundled-app.ts`). 운영 웹에서는 API 가 같은 origin 이라 더해도 달라지지 않는다.
  */
 export function buildAppContentSecurityPolicy({
   isDev,
   meta,
+  apiOrigins = [],
 }: {
   isDev: boolean;
   meta: boolean;
+  apiOrigins?: string[];
 }): string {
-  const directives = policyDirectives([], isDev);
+  const directives = policyDirectives([], isDev, apiOrigins);
   return serialize(meta ? directives.filter(([name]) => name !== "frame-ancestors") : directives);
 }

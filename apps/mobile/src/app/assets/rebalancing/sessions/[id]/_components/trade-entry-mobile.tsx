@@ -2,6 +2,7 @@
 
 import { type ReactNode, useState } from "react";
 import { IconMinusLine, IconPlusLine } from "@karrotmarket/react-monochrome-icon";
+import { BottomAction } from "@mobile/components/mobile/bottom-action";
 import { formatMoneyDraft } from "@mobile/components/mobile/input-format";
 import { useInvestmentStore } from "@mobile/features/investments/stores/investment-store";
 import { snapToTick, stepByTick, tickSize } from "@mobile/features/investments/utils/krx-tick-size";
@@ -12,6 +13,7 @@ import type {
 } from "@mobile/features/rebalancing/types/types";
 import { affordableQuantity } from "@mobile/features/rebalancing/utils/affordable-quantity";
 import { holdingQuantityFor } from "@mobile/features/rebalancing/utils/holding-quantity";
+import { summarizeRebalancingPriceAsOf } from "@mobile/features/rebalancing/utils/rebalancing-price-as-of";
 import {
   filledQuantityOf,
   fillRebalancingTaskOrder,
@@ -32,11 +34,18 @@ import { ActionButton } from "@mobile/seed-design/ui/action-button";
 import { Callout } from "@mobile/seed-design/ui/callout";
 import { Checkbox } from "@mobile/seed-design/ui/checkbox";
 import { ResultSection } from "@mobile/seed-design/ui/result-section";
+import {
+  SwipeableMenuSheetContent,
+  SwipeableMenuSheetGroup,
+  SwipeableMenuSheetItem,
+  SwipeableMenuSheetRoot,
+  SwipeableMenuSheetTrigger,
+} from "@mobile/seed-design/ui/swipeable-menu-sheet";
 import { TextField, TextFieldInput } from "@mobile/seed-design/ui/text-field";
 import { formatSignedWon, formatWithCommas, parseNumericString } from "@mobile/utils/number-format";
-import { Icon } from "@seed-design/react";
+import { Icon, ResponsivePair } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
-import { markJustMoved } from "./just-moved-tasks";
+import { SnapshotPriceBanner } from "./snapshot-price-banner";
 
 /**
  * 매매 하나의 주문과 체결을 기록하는 화면 (대기 → 주문 → 체결).
@@ -92,7 +101,26 @@ export function TradeEntryMobile({ sessionId, taskId }: { sessionId: string; tas
   return <TradeEntryForm key={task.id} sessionId={session.id} task={task} />;
 }
 
-function TradeEntryForm({ sessionId, task }: { sessionId: string; task: RebalancingTask }) {
+/**
+ * 매매 하나의 기록 폼. 매매 입력 화면과 진행 중 리밸런싱의 단계(`rebalancing-steps.tsx`)가 함께 쓴다.
+ * `embedded` 면 단계 화면이 종목·수량·가격 기준을 이미 크게 보여 주므로 기준 시각 배너와 첫 줄을
+ * 빼고, 단계를 옮길 때마다 키보드가 올라오지 않게 자동 포커스하지 않는다. 기록하면 `onDone`
+ * (기본은 화면 닫기).
+ */
+export function TradeEntryForm({
+  sessionId,
+  task,
+  embedded = false,
+  footerTop,
+  onDone,
+}: {
+  sessionId: string;
+  task: RebalancingTask;
+  embedded?: boolean;
+  /** `embedded` 하단 고정 바에서 행동 버튼 위에 붙일 것 (다 끝냈을 때 "리밸런싱 완료하기"). */
+  footerTop?: ReactNode;
+  onDone?: () => void;
+}) {
   const session = useRebalancingStore((s) => s.sessions.find((x) => x.id === sessionId))!;
   const completeTaskWith = useRebalancingStore((s) => s.completeTaskWith);
   const fillTaskOrder = useRebalancingStore((s) => s.fillTaskOrder);
@@ -100,10 +128,12 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
   const cancelTaskOrder = useRebalancingStore((s) => s.cancelTaskOrder);
   const toggleTask = useRebalancingStore((s) => s.toggleTask);
   const status = rebalancingTaskStatus(task);
+  const priceAsOf = summarizeRebalancingPriceAsOf([task]);
   const account = useInvestmentStore((s) =>
     s.investments.find((inv) => inv.id === session.accountId)
   );
   const { pop } = useFlow();
+  const done = onDone ?? (() => pop());
 
   const partial = isPartiallyFilled(task);
   const filled = filledQuantityOf(task);
@@ -117,6 +147,8 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
   );
   // 주문 정정 중 — 입력 칸이 체결 값이 아니라 주문 값을 고친다.
   const [amending, setAmending] = useState(false);
+  // 주문한 뒤에는 "다 거래됐어요" 한 번이 기본이다 — 입력칸은 일부만 거래됐을 때만 연다.
+  const [partialInput, setPartialInput] = useState(false);
   const quantity = parseNumericString(quantityDraft);
   const price = parseNumericString(priceDraft);
   const quantityOk = isPositive(quantity);
@@ -131,6 +163,11 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
   // 주문 중인 매매의 체결 입력은 이번에 체결된 수량 — 잔량보다 적으면 부분 체결이다.
   const fillingOrder = status === "ordered" && !amending;
   const partialFill = fillingOrder && quantityOk && quantity < remaining;
+  // 주문대로 다 거래됐는지 확인만 하는 화면 — 주문 값과 같은 입력칸을 겹쳐 보이지 않는다.
+  const confirming = fillingOrder && !partialInput;
+  // 단계 화면에서 끝난 거래는 결과만 — 기록을 고칠 때만 입력칸을 연다.
+  const [editingDone, setEditingDone] = useState(false);
+  const viewingDone = embedded && status === "filled" && !editingDone;
   // 부분 체결된 주문은 이미 체결된 수량보다 많게만 정정할 수 있다.
   const amendTooSmall = amending && quantityOk && quantity <= filled;
   // 계좌가 지워졌으면 예수금을 알 수 없어 확인하지 않는다.
@@ -173,30 +210,24 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
   const recordFill = () => {
     if (!canSave || tradePrice === null) return;
     if (fillingOrder) {
-      // 부분 체결이면 주문 중에 그대로 남는다.
-      if (!partialFill) markJustMoved(task.id, "ordered");
       fillTaskOrder(session.id, task.id, quantity, tradePrice);
     } else {
-      if (status !== "filled") markJustMoved(task.id, status);
       completeTaskWith(session.id, task.id, quantity, tradePrice);
     }
-    pop();
+    done();
   };
   const recordOrder = () => {
     if (!canSave || tradePrice === null) return;
-    markJustMoved(task.id, "pending");
     orderTaskWith(session.id, task.id, quantity, tradePrice);
-    pop();
+    done();
   };
   const cancelOrder = () => {
-    // 잔량 취소는 체결된 만큼으로 체결을 마친다.
-    if (partial) markJustMoved(task.id, "ordered");
     cancelTaskOrder(session.id, task.id);
-    pop();
+    done();
   };
   const unfill = () => {
     toggleTask(session.id, task.id);
-    pop();
+    done();
   };
   const startAmend = () => {
     // 정정은 주문 전체 수량을 고친다.
@@ -212,169 +243,279 @@ function TradeEntryForm({ sessionId, task }: { sessionId: string; task: Rebalanc
   const saveAmend = () => {
     if (!canSave || tradePrice === null) return;
     orderTaskWith(session.id, task.id, quantity, tradePrice);
-    pop();
+    // 고친 주문을 저장하면 같은 할 일의 "다 거래됐어요" 확인으로 돌아온다 — 다른 단계로 넘어가지 않는다.
+    setQuantityDraft(draftOf(quantity - filled));
+    setPriceDraft(draftOf(tradePrice));
+    setPartialInput(false);
+    setAmending(false);
   };
 
-  return (
-    <div className="flex flex-col gap-x6 px-x4 pt-x4 pb-x6">
-      <p className="t4-regular text-fg-neutral-muted tabular-nums">{headline(task)}</p>
-
-      {status === "ordered" && !amending && <OrderCard task={task} onAmend={startAmend} />}
-
-      <StepperField
-        label={quantityLabel(task.action, isOrderInput, fillingOrder && partial)}
-        value={quantityDraft}
-        onValueChange={(value) => setQuantityDraft(formatMoneyDraft(value))}
-        suffix="주"
-        canStep={quantityOk}
-        // 1주씩 움직이고 1주 아래로는 내려가지 않는다.
-        onStep={(direction) =>
-          setQuantityDraft(formatWithCommas(Math.max(1, quantity + direction)))
-        }
-        stepLabel="1주"
-        autoFocus
-        hint={
-          fillingOrder ? (
-            fillHint(remaining, quantityOk ? quantity : null)
-          ) : amending && partial ? (
-            <span className={cn(amendTooSmall && "text-fg-critical")}>
-              이미 체결된 {formatWithCommas(filled)}주보다 많아야 해요
-            </span>
-          ) : task.quantity === null ? null : differs ? (
-            // 권장 수량은 시작할 때 계산한 계획이라, 다르게 사고팔면 그 차이는 다른 매매에 반영되지 않는다.
-            <span className="text-fg-warning">
-              권장 {formatWithCommas(task.quantity)}주와 달라요 · 주문가능금액이 남거나 모자랄 수
-              있어요
-            </span>
-          ) : (
-            `권장 ${formatWithCommas(task.quantity)}주`
-          )
-        }
-      />
-
-      <StepperField
-        label={isOrderInput ? "주문 가격 (주당)" : "체결 가격 (주당)"}
-        value={priceDraft}
-        onValueChange={(value) => setPriceDraft(formatMoneyDraft(value))}
-        suffix="원"
-        canStep={priceOk}
-        onStep={(direction) => setPrice(stepByTick(price, direction, securityType))}
-        stepLabel="한 호가"
-        // 직접 입력한 값은 입력을 마치면 가장 가까운 호가로 맞춘다.
-        onBlur={() => priceOk && setPrice(snapToTick(price, securityType))}
-        hint={priceHint(task, tick, priceOk ? price : null, isOrderInput)}
-      />
-
-      <dl className="bg-bg-neutral-weak rounded-r3 flex flex-col gap-y-x2 px-x4 py-x3">
-        <SummaryRow label={`${task.action} 금액`}>
-          {amount !== null ? `${formatWithCommas(amount)}원` : "-"}
-        </SummaryRow>
-        {cash && (
-          <SummaryRow label="주문가능금액">
-            <span className="text-fg-neutral-muted font-normal">
-              {formatSignedWon(cash.before)} →{" "}
-            </span>
-            <span className={cn(cash.after < 0 && "text-fg-critical")}>
-              {formatSignedWon(cash.after)}
-            </span>
-          </SummaryRow>
-        )}
-      </dl>
-
-      {oversold && (
-        <Callout
-          tone="warning"
-          description={`보유한 ${formatWithCommas(held)}주보다 많아요. 보유 수량까지만 계좌에 반영돼요.`}
-        />
+  // 행동 버튼. 비슷한 위계 두 개는 나란히(긴 라벨은 위아래로 — ResponsivePair), 취소처럼 물러나는
+  // 버튼과 함께면 3:7 로 위계를 드러낸다 (SEED Action Button 배치 지침).
+  const dismiss = (label: string, onClick: () => void) => (
+    <ActionButton
+      variant="neutralWeak"
+      size="large"
+      flexGrow={3}
+      className="basis-0"
+      onClick={onClick}
+    >
+      {label}
+    </ActionButton>
+  );
+  const primary = (label: string, onClick: () => void, grow?: number) => (
+    <ActionButton
+      // 하단에 "리밸런싱 완료하기" 가 있으면 그게 화면의 단 하나의 Solid 다 (SEED: CTA 하나).
+      variant={embedded && footerTop ? "neutralWeak" : "neutralSolid"}
+      size="large"
+      flexGrow={grow}
+      className={grow ? "basis-0" : undefined}
+      disabled={!canSave}
+      onClick={onClick}
+    >
+      {label}
+    </ActionButton>
+  );
+  const actions = viewingDone ? null : confirming ? (
+    <ResponsivePair gap="x3">
+      <ActionButton variant="neutralWeak" size="large" onClick={() => setPartialInput(true)}>
+        일부만 거래됐어요
+      </ActionButton>
+      {/* 남은 주문 수량·주문가 그대로 체결로 기록한다. */}
+      {primary("다 거래됐어요", recordFill)}
+    </ResponsivePair>
+  ) : status === "pending" && !amending ? (
+    <ResponsivePair gap="x3">
+      {/* 시장가처럼 주문하자마자 체결됐으면 주문 기록을 건너뛴다. */}
+      <ActionButton variant="neutralWeak" size="large" disabled={!canSave} onClick={recordFill}>
+        바로 거래됨
+      </ActionButton>
+      {primary(PRIMARY_LABEL.pending, recordOrder)}
+    </ResponsivePair>
+  ) : (
+    <div className="flex gap-x2">
+      {amending && dismiss("고치기 취소", stopAmend)}
+      {fillingOrder &&
+        // 일부만 거래됨 입력을 접고 다시 주문대로 확인하는 화면으로.
+        dismiss("취소", () => {
+          setQuantityDraft(draftOf(remaining));
+          setPriceDraft(draftOf(task.orderedPrice));
+          setPartialInput(false);
+        })}
+      {status === "filled" &&
+        (embedded
+          ? // 고치기를 접고 결과 보기로 — 기록 취소는 결과 화면의 링크로 한다.
+            dismiss("취소", () => {
+              setQuantityDraft(draftOf(task.executedQuantity ?? task.quantity));
+              setPriceDraft(draftOf(task.executedPrice ?? task.price));
+              setEditingDone(false);
+            })
+          : dismiss("기록 취소", unfill))}
+      {primary(
+        amending ? "고친 주문 저장" : fillingOrder ? "기록하기" : PRIMARY_LABEL[status],
+        amending ? saveAmend : recordFill,
+        7
       )}
-      {shortOfCash && (
-        <div className="flex flex-col items-start gap-x3">
-          <p className="t4-regular text-fg-critical tabular-nums">
-            주문가능금액이 {formatWithCommas(shortfall)}원 모자라요. 그대로 기록하면 리밸런싱을
-            완료할 때 계좌 현금이 −{formatWithCommas(shortfall)}원(미수)으로 남아요.
-          </p>
-          <Checkbox
-            label={`모자란 ${formatWithCommas(shortfall)}원은 현금 마이너스로 두고 기록할게요`}
-            checked={shortfallConfirmed}
-            onCheckedChange={(checked) => setConfirmedShortfall(checked ? shortfall : null)}
-            tone="neutral"
-          />
-          {affordable > 0 && (
-            <ActionButton
-              variant="neutralWeak"
-              size="small"
-              onClick={() => setQuantityDraft(formatWithCommas(affordable))}
-            >
-              살 수 있는 {formatWithCommas(affordable)}주로 바꾸기
-            </ActionButton>
-          )}
-        </div>
-      )}
-
-      <div className="flex gap-x2">
-        {status === "pending" && (
-          // 시장가처럼 주문하자마자 체결됐으면 주문 기록을 건너뛴다.
-          <ActionButton variant="neutralWeak" size="large" disabled={!canSave} onClick={recordFill}>
-            바로 체결
-          </ActionButton>
-        )}
-        {status === "ordered" && !amending && (
-          <ActionButton variant="neutralWeak" size="large" onClick={cancelOrder}>
-            {partial ? "잔량 취소" : "주문 취소"}
-          </ActionButton>
-        )}
-        {amending && (
-          <ActionButton variant="neutralWeak" size="large" onClick={stopAmend}>
-            정정 취소
-          </ActionButton>
-        )}
-        {status === "filled" && (
-          <ActionButton variant="neutralWeak" size="large" onClick={unfill}>
-            체결 취소
-          </ActionButton>
-        )}
-        <ActionButton
-          size="large"
-          flexGrow
-          disabled={!canSave}
-          onClick={amending ? saveAmend : status === "pending" ? recordOrder : recordFill}
-        >
-          {amending ? "정정 저장" : partialFill ? "부분 체결 기록" : PRIMARY_LABEL[status]}
-        </ActionButton>
-      </div>
     </div>
+  );
+
+  return (
+    <>
+      {/* 주문을 넣을 때 보는 가격이 시작 시점 기준이라는 것과, 오래됐으면 그 경고. */}
+      {!embedded && priceAsOf && status !== "filled" && (
+        <SnapshotPriceBanner summary={priceAsOf} live />
+      )}
+      <div className={cn("flex flex-col px-x4", embedded ? "gap-x3 pb-x1" : "gap-x6 pt-x4 pb-x6")}>
+        {!embedded && (
+          <p className="t4-regular text-fg-neutral-muted tabular-nums">{headline(task)}</p>
+        )}
+
+        {status === "ordered" && !amending && <OrderLine task={task} embedded={embedded} />}
+
+        {!confirming && !viewingDone && (
+          <>
+            <StepperField
+              label={quantityLabel(task.action, isOrderInput, fillingOrder && partial)}
+              value={quantityDraft}
+              onValueChange={(value) => setQuantityDraft(formatMoneyDraft(value))}
+              suffix="주"
+              canStep={quantityOk}
+              // 1주씩 움직이고 1주 아래로는 내려가지 않는다.
+              onStep={(direction) =>
+                setQuantityDraft(formatWithCommas(Math.max(1, quantity + direction)))
+              }
+              stepLabel="1주"
+              autoFocus={!embedded}
+              hint={
+                fillingOrder ? (
+                  // 단계 화면에서는 다 거래됐으면 위 주문 카드와 같은 말이라 일부만 거래될 때만 알린다.
+                  embedded && !partialFill ? null : (
+                    fillHint(remaining, quantityOk ? quantity : null)
+                  )
+                ) : amending && partial ? (
+                  <span className={cn(amendTooSmall && "text-fg-critical")}>
+                    이미 거래된 {formatWithCommas(filled)}주보다 많아야 해요
+                  </span>
+                ) : task.quantity === null ? null : differs ? (
+                  // 권장 수량은 시작할 때 계산한 계획이라, 다르게 사고팔면 그 차이는 다른 매매에 반영되지 않는다.
+                  <span className="text-fg-warning">
+                    계산 {formatWithCommas(task.quantity)}주와 달라요 · 쓸 수 있는 돈이 남거나
+                    모자랄 수 있어요
+                  </span>
+                ) : embedded ? null : (
+                  // 단계 화면은 위에 추천 수량을 크게 보여 준다.
+                  `계산 ${formatWithCommas(task.quantity)}주`
+                )
+              }
+            />
+
+            <StepperField
+              label={isOrderInput ? "주문한 가격 (1주)" : "거래된 가격 (1주)"}
+              value={priceDraft}
+              onValueChange={(value) => setPriceDraft(formatMoneyDraft(value))}
+              suffix="원"
+              canStep={priceOk}
+              onStep={(direction) => setPrice(stepByTick(price, direction, securityType))}
+              stepLabel="한 칸"
+              // 직접 입력한 값은 입력을 마치면 가장 가까운 호가로 맞춘다.
+              onBlur={() => priceOk && setPrice(snapToTick(price, securityType))}
+              hint={
+                embedded && priceOk
+                  ? null
+                  : priceHint(task, tick, priceOk ? price : null, isOrderInput)
+              }
+            />
+
+            <dl className="bg-bg-neutral-weak rounded-r3 flex flex-col gap-y-x2 px-x4 py-x3">
+              <SummaryRow label="거래 금액">
+                {amount !== null ? `${formatWithCommas(amount)}원` : "-"}
+              </SummaryRow>
+              {/* 쓸 수 있는 돈은 목록에서 본다 — 단계 화면은 총 금액만. */}
+              {cash && !embedded && (
+                <SummaryRow label="쓸 수 있는 돈">
+                  <span className="text-fg-neutral-muted font-normal">
+                    {formatSignedWon(cash.before)} →{" "}
+                  </span>
+                  <span className={cn(cash.after < 0 && "text-fg-critical")}>
+                    {formatSignedWon(cash.after)}
+                  </span>
+                </SummaryRow>
+              )}
+            </dl>
+          </>
+        )}
+
+        {oversold && (
+          <Callout
+            tone="warning"
+            description={`보유한 ${formatWithCommas(held)}주보다 많아요. 보유 수량까지만 계좌에 반영돼요.`}
+          />
+        )}
+        {shortOfCash && (
+          <div className="flex flex-col items-start gap-x3">
+            <p className="t4-regular text-fg-critical tabular-nums">
+              쓸 수 있는 돈이 {formatWithCommas(shortfall)}원 모자라요. 그대로 기록하면 리밸런싱을
+              마칠 때 계좌 현금이 −{formatWithCommas(shortfall)}원으로 남아요.
+            </p>
+            <Checkbox
+              label={`모자란 ${formatWithCommas(shortfall)}원은 현금 마이너스로 두고 기록할게요`}
+              checked={shortfallConfirmed}
+              onCheckedChange={(checked) => setConfirmedShortfall(checked ? shortfall : null)}
+              tone="neutral"
+            />
+            {affordable > 0 && (
+              <ActionButton
+                variant="neutralWeak"
+                size="small"
+                onClick={() => setQuantityDraft(formatWithCommas(affordable))}
+              >
+                살 수 있는 {formatWithCommas(affordable)}주로 바꾸기
+              </ActionButton>
+            )}
+          </div>
+        )}
+
+        {/* 끝난 거래·주문을 바꾸는 건 드문 일이라 버튼 하나로 모으고 메뉴 시트에서 고른다.
+            되돌리는 동작은 Critical 톤으로 구분한다 (SEED Menu Sheet). */}
+        {viewingDone && (
+          <ChangeMenu
+            label="기록 바꾸기"
+            editLabel="기록 고치기"
+            onEdit={() => setEditingDone(true)}
+            undoLabel="기록 취소"
+            onUndo={unfill}
+          />
+        )}
+        {confirming && (
+          <ChangeMenu
+            label="주문 바꾸기"
+            editLabel="주문 고치기"
+            onEdit={startAmend}
+            undoLabel={partial ? "남은 주문 취소" : "주문 취소"}
+            onUndo={cancelOrder}
+          />
+        )}
+
+        {/* 단계 화면은 이 단계의 행동(CTA)을 하단 고정 바에 둔다 — SEED: Solid CTA 하나 + Weak 보조. */}
+        {/* 완료 버튼이 하단에 있으면 이 단계의 버튼은 본문에 둔다 — 하단 바에는 굵은 버튼 하나만. */}
+        {embedded && !footerTop ? actions && <BottomAction>{actions}</BottomAction> : actions}
+        {embedded && footerTop && <BottomAction>{footerTop}</BottomAction>}
+      </div>
+    </>
+  );
+}
+
+/** 드물게 쓰는 "고치기 / 취소" 를 모은 입구 버튼과 SEED Swipeable Menu Sheet. */
+function ChangeMenu({
+  label,
+  editLabel,
+  onEdit,
+  undoLabel,
+  onUndo,
+}: {
+  label: string;
+  editLabel: string;
+  onEdit: () => void;
+  undoLabel: string;
+  onUndo: () => void;
+}) {
+  return (
+    <SwipeableMenuSheetRoot>
+      <SwipeableMenuSheetTrigger asChild>
+        <ActionButton variant="neutralWeak" size="small" className="self-start">
+          {label}
+        </ActionButton>
+      </SwipeableMenuSheetTrigger>
+      <SwipeableMenuSheetContent aria-label={label}>
+        <SwipeableMenuSheetGroup>
+          <SwipeableMenuSheetItem label={editLabel} onClick={onEdit} />
+          <SwipeableMenuSheetItem label={undoLabel} tone="critical" onClick={onUndo} />
+        </SwipeableMenuSheetGroup>
+      </SwipeableMenuSheetContent>
+    </SwipeableMenuSheetRoot>
   );
 }
 
 /**
- * 증권사에 넣어 둔 주문: "주문 32주 · 주당 11,800원 / 총 377,600원" 과 [정정].
- * 아래 입력 칸은 체결 값이라, 주문 값은 여기서 따로 보여 정정할 수 있게 한다.
+ * 증권사에 넣어 둔 주문. 단계 화면은 위 큰 글씨에 "가격에 n주" 가 있어 일부만 거래됐을 때만
+ * "주문 111주 중 60주 거래됨" 을 보인다. 매매 입력 화면은 주문 수량·가격을 한 줄로 함께 보인다.
  */
-function OrderCard({ task, onAmend }: { task: RebalancingTask; onAmend: () => void }) {
+function OrderLine({ task, embedded }: { task: RebalancingTask; embedded: boolean }) {
   const quantity = task.orderedQuantity ?? 0;
-  const price = task.orderedPrice ?? 0;
-  const filled = filledQuantityOf(task);
+  const partial = isPartiallyFilled(task);
+  if (embedded && !partial) return null;
   return (
-    <div className="border-stroke-neutral-muted rounded-r3 flex items-center gap-x3 border px-x4 py-x3">
-      <div className="min-w-0 flex-1">
+    <div className="flex flex-col gap-[2px]">
+      {!embedded && (
+        <p className="t4-regular text-fg-neutral-muted tabular-nums">
+          주문 {formatWithCommas(quantity)}주 · 1주 {formatWithCommas(task.orderedPrice ?? 0)}원
+        </p>
+      )}
+      {partial && (
         <p className="t4-medium tabular-nums">
-          {task.action} 주문 {formatWithCommas(quantity)}주 · 주당 {formatWithCommas(price)}원
+          주문 {formatWithCommas(quantity)}주 중 {formatWithCommas(filledQuantityOf(task))}주 거래됨
         </p>
-        <p className="t3-regular text-fg-neutral-muted mt-[2px] tabular-nums">
-          총 {formatWithCommas(Math.round(quantity * price))}원
-        </p>
-        {isPartiallyFilled(task) && (
-          // 부분 체결: 체결된 수량·평균가와 아직 주문 중인 잔량.
-          <p className="t3-regular text-fg-informative mt-[2px] tabular-nums">
-            {formatWithCommas(filled)}주 체결 (평균{" "}
-            {formatWithCommas(Math.round((task.filledAmount ?? 0) / filled))}원) · 잔량{" "}
-            {formatWithCommas(remainingOrderQuantity(task))}주
-          </p>
-        )}
-      </div>
-      <ActionButton variant="neutralWeak" size="small" onClick={onAmend}>
-        정정
-      </ActionButton>
+      )}
     </div>
   );
 }
@@ -460,15 +601,15 @@ function SummaryRow({ label, children }: { label: string; children: ReactNode })
 }
 
 const PRIMARY_LABEL: Record<RebalancingTaskStatus, string> = {
-  pending: "주문 기록",
-  ordered: "체결 기록",
+  pending: "증권사에서 주문했어요",
+  ordered: "거래가 끝났어요",
   filled: "저장",
 };
 
 const STATUS_SUFFIX: Record<RebalancingTaskStatus, string> = {
   pending: "",
-  ordered: " 주문 중",
-  filled: " 체결",
+  ordered: " 주문함",
+  filled: " 끝남",
 };
 
 const isPositive = (value: number) => Number.isFinite(value) && value > 0;
@@ -482,26 +623,27 @@ function quantityLabel(
   isOrderInput: boolean,
   partial: boolean
 ): string {
-  if (isOrderInput) return `${action} 주문 수량`;
-  return partial ? `추가 ${action} 체결 수량` : `${action} 체결 수량`;
+  const verb = action === "매도" ? "판" : "산";
+  if (isOrderInput) return "주문한 수량";
+  return partial ? `이번에 더 ${verb} 수량` : `${verb} 수량`;
 }
 
 /** 주문 체결 입력 아래: "잔량 32주" / 잔량보다 적으면 "잔량 32주 중 · 나머지 20주는 주문 중으로 남아요". */
 function fillHint(remaining: number, quantity: number | null): string {
-  const base = `잔량 ${formatWithCommas(remaining)}주`;
+  const base = `남은 주문 ${formatWithCommas(remaining)}주`;
   if (quantity === null || quantity >= remaining) return base;
-  return `${base} 중 부분 체결 · 나머지 ${formatWithCommas(remaining - quantity)}주는 주문 중으로 남아요`;
+  return `${base} 중 일부 · 나머지 ${formatWithCommas(remaining - quantity)}주는 주문한 채로 남아요`;
 }
 
-/** "매수 · 권장 40주 · 11,800원 기준" / 주문했으면 "매수 주문 중 · …", 체결했으면 "매수 체결 · …". */
+/** "사기 · 계산 40주 · 11,800원 기준" / 주문했으면 "매수 주문 중 · …", 체결했으면 "매수 체결 · …". */
 function headline(task: RebalancingTask): string {
   const suffix = isPartiallyFilled(task)
-    ? " 부분 체결"
+    ? " 일부 거래됨"
     : STATUS_SUFFIX[rebalancingTaskStatus(task)];
-  const action = `${task.action}${suffix}`;
+  const action = `${task.action === "매도" ? "팔기" : "사기"}${suffix}`;
   if (task.quantity === null) return action;
   const basis = task.price !== null ? ` · ${formatWithCommas(task.price)}원 기준` : "";
-  return `${action} · 권장 ${formatWithCommas(task.quantity)}주${basis}`;
+  return `${action} · 계산 ${formatWithCommas(task.quantity)}주${basis}`;
 }
 
 /** 가격 칸 아래: "호가 5원 · 시작 시점 기준가 11,800원". 호가 단위를 모르면 그 부분은 뺀다. */
@@ -512,10 +654,10 @@ function priceHint(
   isOrderInput: boolean
 ): string {
   if (price === null) {
-    return isOrderInput ? "주문한 주당 가격을 입력하세요" : "체결된 주당 가격을 입력하세요";
+    return isOrderInput ? "주문한 1주 가격을 입력하세요" : "거래된 1주 가격을 입력하세요";
   }
   const parts: string[] = [];
-  if (tick !== null) parts.push(`호가 ${formatWithCommas(tick)}원`);
-  if (task.price !== null) parts.push(`시작 시점 기준가 ${formatWithCommas(task.price)}원`);
+  if (tick !== null) parts.push(`한 칸 ${formatWithCommas(tick)}원`);
+  if (task.price !== null) parts.push(`시작할 때 가격 ${formatWithCommas(task.price)}원`);
   return parts.join(" · ");
 }
