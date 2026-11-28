@@ -233,6 +233,9 @@ importers:
 
   packages/database:
     dependencies:
+      '@seedbook/domain':
+        specifier: workspace:*
+        version: link:../domain
       dotenv:
         specifier: ^18.0.10
         version: 18.0.10
@@ -257,6 +260,10 @@ importers:
         version: 7.0.2
 
   packages/domain:
+    dependencies:
+      fractional-indexing:
+        specifier: ^3.2.0
+        version: 3.2.0
     devDependencies:
       '@repo/typescript-config':
         specifier: workspace:*
@@ -4839,6 +4846,11 @@ packages:
   /fraction.js@5.3.4:
     resolution: {integrity: sha512-1X1NTtiJphryn/uLQz3whtY6jK3fTqoE3ohKs0tT+Ujr1W59oopxmoEh7Lu5p6vBaPbgoM0bzveAW4Qi5RyWDQ==}
     dev: true
+
+  /fractional-indexing@3.2.0:
+    resolution: {integrity: sha512-PcOxmqwYCW7O2ovKRU8OoQQj2yqTfEB/yeTYk4gPid6dN5ODRfU1hXd9tTVZzax/0NkO7AxpHykvZnT1aYp/BQ==}
+    engines: {node: ^14.13.1 || >=16.0.0}
+    dev: false
 
   /fs-extra@11.4.1:
     resolution: {integrity: sha512-KYAb4c9BJQI6QqGKthV68OHe0badztdXJWKo0WtBA9IuCFPTKvE5ZdUBglP833aMjhaSPNO4A5j/EkzZtGlKjA==}
