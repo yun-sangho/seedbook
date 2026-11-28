@@ -5,23 +5,19 @@ import { IconLockLine } from "@karrotmarket/react-monochrome-icon";
 import { useBiometryLabel } from "@mobile/hooks/use-biometry-label";
 import { getDeviceStorage } from "@mobile/lib/device-storage";
 import {
-  APP_LOCK_GRACE_MS,
   appSessionStorage,
   clearAppLockSeen,
   isAppLockEnabled,
   readAppLockSeen,
   recordAppLockSeen,
-  setAppLockEnabled,
   shouldLockOnLaunch,
   shouldLockOnReturn,
 } from "@mobile/lib/native/app-lock";
 import { BIOMETRY_WITH_RO, verifyBiometric } from "@mobile/lib/native/biometric";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
-import { ListButtonItem } from "@mobile/seed-design/ui/list";
 import { Icon } from "@seed-design/react";
 
 const UNLOCK_REASON = "자산 정보를 보려면 잠금을 해제하세요";
-const GRACE_MINUTES = APP_LOCK_GRACE_MS / 60_000;
 
 /**
  * 앱 잠금 화면. 네이티브 앱에서 잠금을 켰을 때만 동작한다 — 앱을 새로 띄우거나 백그라운드에
@@ -118,42 +114,5 @@ export function AppLockOverlay() {
         {biometryLabel ? BIOMETRY_WITH_RO[biometryLabel] : ""} 잠금 해제
       </ActionButton>
     </div>
-  );
-}
-
-/**
- * 설정 메뉴의 "앱 잠금" 항목. 네이티브 앱에서 생체 인증을 쓸 수 있을 때만 보인다.
- * 켤 때는 먼저 인증을 한 번 통과해야 한다 (본인 기기에서 켜는지 확인).
- */
-export function AppLockSettingItem() {
-  const biometryLabel = useBiometryLabel();
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    setEnabled(isAppLockEnabled(getDeviceStorage()));
-  }, []);
-
-  if (!biometryLabel) return null;
-
-  const toggle = async () => {
-    if (enabled) {
-      setAppLockEnabled(getDeviceStorage(), false);
-      setEnabled(false);
-      return;
-    }
-    const passed = await verifyBiometric(`${BIOMETRY_WITH_RO[biometryLabel]} 앱 잠금을 켭니다`);
-    if (!passed) return;
-    recordAppLockSeen(appSessionStorage(), Date.now());
-    setAppLockEnabled(getDeviceStorage(), true);
-    setEnabled(true);
-  };
-
-  return (
-    <ListButtonItem
-      prefix={<Icon svg={<IconLockLine />} />}
-      title={`${BIOMETRY_WITH_RO[biometryLabel]} 앱 잠금`}
-      detail={enabled ? `켜짐 · 앱을 열거나 ${GRACE_MINUTES}분 넘게 떠나 있으면 잠겨요` : "꺼짐"}
-      onClick={toggle}
-    />
   );
 }

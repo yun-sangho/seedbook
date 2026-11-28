@@ -11,6 +11,8 @@
  * - 기기 저장소에는 어느 자격 증명이 누구 것인지만 둔다 (토큰은 금고에만).
  */
 
+import { isAppLockEnabled, setAppLockEnabled } from "./app-lock";
+
 export const BIOMETRIC_LOGIN_STORAGE_KEY = "seedbook.biometric-login";
 
 export type BiometricFailure = "cancelled" | "invalidated" | "unavailable" | "error";
@@ -96,13 +98,19 @@ function isIssuedCredential(body: unknown): body is { credentialId: string; toke
   return typeof value?.credentialId === "string" && typeof value?.token === "string";
 }
 
-/** 로그인한 사용자(`userId`) 로 이 기기에 생체 인증 로그인을 켠다. 이전 등록은 바꾼다. */
+/**
+ * 로그인한 사용자(`userId`) 로 이 기기에 생체 인증 로그인을 켠다. 이전 등록은 바꾼다.
+ * `verified`: 방금 생체 인증을 통과했다 — iOS 에서 한 번 더 묻지 않는다.
+ */
 export async function enrollBiometricLogin(
   deps: BiometricLoginDeps,
-  userId: string
+  userId: string,
+  options: { verified?: boolean } = {}
 ): Promise<EnrollResult> {
   const { vault, request, storage } = deps;
-  if (vault.platform === "ios" && !(await vault.verify(ENROLL_REASON))) return "cancelled";
+  if (vault.platform === "ios" && !options.verified && !(await vault.verify(ENROLL_REASON))) {
+    return "cancelled";
+  }
 
   let issued: { credentialId: string; token: string };
   try {
@@ -267,4 +275,46 @@ export function clearSignedOutMark(storage: KeyValueStorage): void {
   } catch {
     // 남아 있으면 이 앱 세션 동안 자동 프롬프트가 뜨지 않을 뿐이다.
   }
+}
+
+/*
+ * 설정의 "Face ID 사용" 스위치 하나로 앱 잠금과 생체 인증 로그인을 함께 켜고 끈다 (2026-11-28 사용자 결정).
+ * 앱 잠금은 기기 단위, 생체 인증 로그인은 계정 단위다.
+ */
+
+const PROTECTION_REASON = "Face ID로 앱 잠금과 로그인을 켭니다";
+
+export type ProtectionResult = { status: "cancelled" } | { status: "enabled"; login: EnrollResult };
+
+/** 생체 인증을 한 번 통과하면 앱 잠금을 켜고 생체 인증 로그인을 등록한다. 로그인 등록이 실패해도 잠금은 켠다. */
+export async function enableBiometricProtection(
+  deps: BiometricLoginDeps,
+  userId: string
+): Promise<ProtectionResult> {
+  if (!(await deps.vault.verify(PROTECTION_REASON))) return { status: "cancelled" };
+  setAppLockEnabled(deps.storage, true);
+  const login = await enrollBiometricLogin(deps, userId, { verified: true });
+  return { status: "enabled", login };
+}
+
+/** 앱 잠금을 끄고, 이 계정의 생체 인증 로그인을 끈다 (다른 계정의 등록은 그대로). */
+export async function disableBiometricProtection(
+  deps: BiometricLoginDeps,
+  userId: string
+): Promise<void> {
+  setAppLockEnabled(deps.storage, false);
+  if (isBiometricLoginEnrolledFor(deps.storage, userId)) await disableBiometricLogin(deps);
+}
+
+/**
+ * 스위치에 보일 상태: 앱 잠금이나 이 계정의 생체 인증 로그인 중 하나라도 켜져 있으면 켜짐. 예전에
+ * 로그인만 켜 둔 기기는 잠금도 켠다 (두 설정을 합치기 전에 켠 것).
+ */
+export async function biometricProtectionEnabledFor(
+  deps: BiometricLoginDeps,
+  userId: string
+): Promise<boolean> {
+  const login = await biometricLoginEnabledFor(deps, userId);
+  if (login && !isAppLockEnabled(deps.storage)) setAppLockEnabled(deps.storage, true);
+  return login || isAppLockEnabled(deps.storage);
 }

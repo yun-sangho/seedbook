@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
+import { isAppLockEnabled, setAppLockEnabled } from "./app-lock";
 import {
   type BiometricLoginDeps,
   type BiometricVault,
   biometricLoginEnabledFor,
+  biometricProtectionEnabledFor,
   classifyBiometricError,
   clearSignedOutMark,
   disableBiometricLogin,
+  disableBiometricProtection,
   dismissBiometricLoginOffer,
+  enableBiometricProtection,
   enrollBiometricLogin,
   hasBiometricLoginOnDevice,
   isSignedOutMarked,
@@ -455,5 +459,102 @@ describe("hasBiometricLoginOnDevice (login screen button and automatic prompt)",
     };
 
     expect(await hasBiometricLoginOnDevice(deps)).toBe(false);
+  });
+});
+
+describe("enableBiometricProtection (one 'Face ID 사용' switch: app lock + biometric login)", () => {
+  it("turns on both the app lock and biometric login", async () => {
+    const { deps, storage } = setup();
+
+    const result = await enableBiometricProtection(deps, "user-1");
+
+    expect(result).toEqual({ status: "enabled", login: "enrolled" });
+    expect(isAppLockEnabled(storage)).toBe(true);
+    expect(readBiometricLoginEnrollment(storage)?.userId).toBe("user-1");
+  });
+
+  it("asks for Face ID only once on iOS", async () => {
+    const { deps, vault } = setup("ios");
+
+    await enableBiometricProtection(deps, "user-1");
+
+    expect(vault.verifyCalls).toBe(1);
+  });
+
+  it("turns nothing on when the user cancels the prompt", async () => {
+    const { deps, vault, server, storage } = setup();
+    vault.verifyPasses = false;
+
+    const result = await enableBiometricProtection(deps, "user-1");
+
+    expect(result).toEqual({ status: "cancelled" });
+    expect(isAppLockEnabled(storage)).toBe(false);
+    expect(server.issued.size).toBe(0);
+  });
+
+  it("keeps the app lock on when the server refuses to enroll an old session", async () => {
+    const { deps, server, storage } = setup();
+    server.enrollStatus = 403;
+
+    const result = await enableBiometricProtection(deps, "user-1");
+
+    expect(result).toEqual({ status: "enabled", login: "reauth-required" });
+    expect(isAppLockEnabled(storage)).toBe(true);
+    expect(readBiometricLoginEnrollment(storage)).toBeNull();
+  });
+});
+
+describe("disableBiometricProtection", () => {
+  it("turns off both the app lock and biometric login", async () => {
+    const { deps, vault, server, storage } = setup();
+    await enableBiometricProtection(deps, "user-1");
+
+    await disableBiometricProtection(deps, "user-1");
+
+    expect(isAppLockEnabled(storage)).toBe(false);
+    expect(vault.stored).toBeNull();
+    expect(server.revoked).toEqual(["cred-1"]);
+  });
+
+  it("leaves another account's biometric login on this device alone", async () => {
+    const { deps, vault, storage } = setup();
+    await enrollBiometricLogin(deps, "user-1");
+    setAppLockEnabled(storage, true);
+
+    await disableBiometricProtection(deps, "user-2");
+
+    expect(isAppLockEnabled(storage)).toBe(false);
+    expect(vault.stored).not.toBeNull();
+  });
+});
+
+describe("biometricProtectionEnabledFor", () => {
+  it("is off when neither is on", async () => {
+    const { deps } = setup();
+
+    expect(await biometricProtectionEnabledFor(deps, "user-1")).toBe(false);
+  });
+
+  it("is on when only the app lock was turned on (before the switches were merged)", async () => {
+    const { deps, storage } = setup();
+    setAppLockEnabled(storage, true);
+
+    expect(await biometricProtectionEnabledFor(deps, "user-1")).toBe(true);
+  });
+
+  it("is on and turns the app lock on when only biometric login was turned on", async () => {
+    const { deps, storage } = setup();
+    await enrollBiometricLogin(deps, "user-1");
+
+    expect(await biometricProtectionEnabledFor(deps, "user-1")).toBe(true);
+    expect(isAppLockEnabled(storage)).toBe(true);
+  });
+
+  it("stays off for another account whose biometric login is on this device", async () => {
+    const { deps, storage } = setup();
+    await enrollBiometricLogin(deps, "user-1");
+
+    expect(await biometricProtectionEnabledFor(deps, "user-2")).toBe(false);
+    expect(isAppLockEnabled(storage)).toBe(false);
   });
 });
