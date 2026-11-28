@@ -10,6 +10,7 @@ import {
 } from "@mobile/features/rebalancing/utils/next-rebalancing-action";
 import { summarizeRebalancingPriceAsOf } from "@mobile/features/rebalancing/utils/rebalancing-price-as-of";
 import {
+  executedPriceOf,
   executedQuantityOf,
   rebalancingTaskStatus,
   remainingOrderQuantity,
@@ -267,7 +268,10 @@ function stepCopy(
   switch (rebalancingTaskStatus(task)) {
     case "filled": {
       const quantity = executedQuantityOf(task);
+      const price = executedPriceOf(task);
+      // 끝난 거래도 가격과 수량으로 — "21,990원에 111주 팔았어요" (평균가는 원 단위로).
       return {
+        price: price === null ? null : `${formatWithCommas(Math.round(price))}원`,
         quantity: quantity === null ? null : `${formatWithCommas(quantity)}주`,
         verb: sell ? "팔았어요" : "샀어요",
         note: null,

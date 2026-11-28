@@ -158,6 +158,9 @@ export function TradeEntryForm({
   const partialFill = fillingOrder && quantityOk && quantity < remaining;
   // 주문대로 다 거래됐는지 확인만 하는 화면 — 주문 값과 같은 입력칸을 겹쳐 보이지 않는다.
   const confirming = fillingOrder && !partialInput;
+  // 단계 화면에서 끝난 거래는 결과만 — 기록을 고칠 때만 입력칸을 연다.
+  const [editingDone, setEditingDone] = useState(false);
+  const viewingDone = embedded && status === "filled" && !editingDone;
   // 부분 체결된 주문은 이미 체결된 수량보다 많게만 정정할 수 있다.
   const amendTooSmall = amending && quantityOk && quantity <= filled;
   // 계좌가 지워졌으면 예수금을 알 수 없어 확인하지 않는다.
@@ -266,7 +269,7 @@ export function TradeEntryForm({
       {label}
     </ActionButton>
   );
-  const actions = confirming ? (
+  const actions = viewingDone ? null : confirming ? (
     <ResponsivePair gap="x3">
       <ActionButton variant="neutralWeak" size="large" onClick={() => setPartialInput(true)}>
         일부만 거래됐어요
@@ -292,7 +295,15 @@ export function TradeEntryForm({
           setPriceDraft(draftOf(task.orderedPrice));
           setPartialInput(false);
         })}
-      {status === "filled" && dismiss("기록 취소", unfill)}
+      {status === "filled" &&
+        (embedded
+          ? // 고치기를 접고 결과 보기로 — 기록 취소는 결과 화면의 링크로 한다.
+            dismiss("취소", () => {
+              setQuantityDraft(draftOf(task.executedQuantity ?? task.quantity));
+              setPriceDraft(draftOf(task.executedPrice ?? task.price));
+              setEditingDone(false);
+            })
+          : dismiss("기록 취소", unfill))}
       {primary(
         amending ? "고친 주문 저장" : fillingOrder ? "기록하기" : PRIMARY_LABEL[status],
         amending ? saveAmend : recordFill,
@@ -314,7 +325,7 @@ export function TradeEntryForm({
 
         {status === "ordered" && !amending && <OrderLine task={task} embedded={embedded} />}
 
-        {!confirming && (
+        {!confirming && !viewingDone && (
           <>
             <StepperField
               label={quantityLabel(task.action, isOrderInput, fillingOrder && partial)}
@@ -417,6 +428,18 @@ export function TradeEntryForm({
           </div>
         )}
 
+        {viewingDone && (
+          // 끝난 거래를 고치거나 되돌리는 건 드문 일이라 본문에 작게 둔다.
+          <div className="flex items-center justify-center gap-x2">
+            <ActionButton variant="ghost" size="small" onClick={() => setEditingDone(true)}>
+              기록 고치기
+            </ActionButton>
+            <ActionButton variant="ghost" size="small" onClick={unfill}>
+              기록 취소
+            </ActionButton>
+          </div>
+        )}
+
         {confirming && (
           // 주문을 고치거나 취소하는 건 드문 일이라 본문에 작게 둔다.
           <div className="flex items-center justify-center gap-x2">
@@ -431,7 +454,7 @@ export function TradeEntryForm({
 
         {/* 단계 화면은 이 단계의 행동(CTA)을 하단 고정 바에 둔다 — SEED: Solid CTA 하나 + Weak 보조. */}
         {/* 완료 버튼이 하단에 있으면 이 단계의 버튼은 본문에 둔다 — 하단 바에는 굵은 버튼 하나만. */}
-        {embedded && !footerTop ? <BottomAction>{actions}</BottomAction> : actions}
+        {embedded && !footerTop ? actions && <BottomAction>{actions}</BottomAction> : actions}
         {embedded && footerTop && <BottomAction>{footerTop}</BottomAction>}
       </div>
     </>
