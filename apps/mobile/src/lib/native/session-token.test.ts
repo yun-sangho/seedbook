@@ -83,4 +83,17 @@ describe("createSessionTokenStore", () => {
 
     expect(await store.read()).toBe("new.sig");
   });
+  it("reads through a Capacitor plugin proxy that turns every property, even then, into a native call", async () => {
+    const { plugin } = fakeSecureStorage({ [SESSION_TOKEN_KEY]: "tok.sig" });
+    // registerPlugin() 의 Proxy 처럼 `then` 도 메서드 래퍼다 — 콜백을 부르지 않고 거부된 promise 를 돌려준다.
+    const proxy = new Proxy(plugin, {
+      get: (target, prop) =>
+        prop === "then"
+          ? () => Promise.reject(new Error('"SeedbookSecureStorage.then()" is not implemented'))
+          : Reflect.get(target, prop),
+    });
+    const store = createSessionTokenStore(async () => ({ plugin: proxy }));
+
+    expect(await store.read()).toBe("tok.sig");
+  });
 });
