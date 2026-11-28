@@ -350,7 +350,7 @@ describe("before the session is known", () => {
     const saved = localStorage.getItem("seedbook.records");
     const page = await openPage(SIGNED_OUT);
 
-    expect(page.text()).toContain("개인정보는");
+    expect(page.text()).toContain("타 서비스의 정보는");
     expect(page.store.getState().investments).toEqual([]);
     expect(localStorage.getItem("seedbook.records")).toBe(saved);
   });

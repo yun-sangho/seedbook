@@ -98,9 +98,9 @@ describe("LoginScreen", () => {
     expect(kakao()).not.toHaveAttribute("data-loading");
   });
 
-  it("tells the user that no name, email or photo is collected", () => {
+  it("tells the user that nothing from the login provider (name, email, ID) is used", () => {
     openAt("/assets");
-    expect(screen.getByText(/이름·이메일·프로필 사진 등 개인정보는/)).toHaveTextContent(
+    expect(screen.getByText(/이름·이메일·아이디 등 타 서비스의 정보는/)).toHaveTextContent(
       "전혀 활용하지 않아요"
     );
   });
