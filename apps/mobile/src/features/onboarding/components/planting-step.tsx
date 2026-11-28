@@ -12,6 +12,9 @@ import {
 import { numberToKorean } from "@mobile/utils/number-format";
 import { OnboardingStepLayout } from "./onboarding-step-layout";
 
+/** 시장 하락을 비로 보여 준다는 안내 (정원과 같은 규칙 — `plantRain`). */
+const RAIN_HINT = "시세가 내려가면 비가 오고, 다시 오르면 그쳐요.";
+
 /** 흙만 보이다가 씨앗이 심기기까지 (ms). */
 const PLANT_DELAY_MS = 700;
 
@@ -20,7 +23,7 @@ export function seedSlotFor(portfolioId: string | null): PlantSlot {
   return {
     options: {
       stage: "seed",
-      wind: 0,
+      rain: 0,
       wilt: 0,
       ripe: false,
       needsRebalance: false,
@@ -67,9 +70,11 @@ export function PlantingStep({
       title={planted ? `'${name}' 씨앗을 심었어요` : "씨앗을 심고 있어요"}
       description={
         planted
-          ? goalAmount === null
-            ? "목표 금액을 정하면, 포트폴리오가 그 금액에 가까워질수록 식물이 자라요."
-            : `포트폴리오가 목표 ${numberToKorean(goalAmount)}에 가까워질수록 식물이 자라요.`
+          ? `${
+              goalAmount === null
+                ? "목표 금액을 정하면, 포트폴리오가 그 금액에 가까워질수록 식물이 자라요."
+                : `포트폴리오가 목표 ${numberToKorean(goalAmount)}에 가까워질수록 식물이 자라요.`
+            } ${RAIN_HINT}`
           : undefined
       }
       primary={{ label: "다음", onClick: onNext, disabled: !planted }}

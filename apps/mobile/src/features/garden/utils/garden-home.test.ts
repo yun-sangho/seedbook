@@ -123,7 +123,7 @@ describe("kindForPortfolio", () => {
 const NOW = "2026-11-27T06:30:00.000Z";
 
 describe("gardenPlantOptions", () => {
-  it("maps stage, wind, wilt, rebalancing and a stable pot", () => {
+  it("maps stage, rain, wilt, rebalancing and a stable pot", () => {
     const p = portfolio({
       accountIds: ["skewed"],
       growthStage: 2,
@@ -139,7 +139,7 @@ describe("gardenPlantOptions", () => {
     expect(gardenPlantOptions(plant)).toEqual({
       stage: "sapling",
       // 마지막 목표보다 9.1% 아래 → (0.091 − 0.05) / 0.15 × 0.5
-      wind: expect.closeTo((10_000 / 110_000 - 0.05) / 0.15 / 2, 6),
+      rain: expect.closeTo((10_000 / 110_000 - 0.05) / 0.15, 6),
       wilt: 0.7,
       ripe: false,
       empty: false,
@@ -196,27 +196,27 @@ describe("plantStageLabel (empty pot)", () => {
 
 describe("plantConditionLabel", () => {
   it("is empty for a calm plant", () => {
-    expect(plantConditionLabel({ wilt: 0, wind: 0, ripe: false })).toBeNull();
+    expect(plantConditionLabel({ wilt: 0, rain: 0, ripe: false })).toBeNull();
   });
 
   it("names wilting by how long the weights have drifted", () => {
-    expect(plantConditionLabel({ wilt: 0.35, wind: 0, ripe: false })).toBe("시들기 시작했어요");
-    expect(plantConditionLabel({ wilt: 0.7, wind: 0, ripe: false })).toBe("시들해요");
-    expect(plantConditionLabel({ wilt: 1, wind: 0, ripe: false })).toBe("많이 시들었어요");
+    expect(plantConditionLabel({ wilt: 0.35, rain: 0, ripe: false })).toBe("시들기 시작했어요");
+    expect(plantConditionLabel({ wilt: 0.7, rain: 0, ripe: false })).toBe("시들해요");
+    expect(plantConditionLabel({ wilt: 1, rain: 0, ripe: false })).toBe("많이 시들었어요");
   });
 
-  it("calls a market drop wind", () => {
-    expect(plantConditionLabel({ wilt: 0, wind: 0.2, ripe: false })).toBe("바람이 불어요");
+  it("calls a market drop rain, heavy once it is 20% below the last goal", () => {
+    expect(plantConditionLabel({ wilt: 0, rain: 0.2, ripe: false })).toBe("비가 와요");
+    expect(plantConditionLabel({ wilt: 0, rain: 0.99, ripe: false })).toBe("비가 와요");
+    expect(plantConditionLabel({ wilt: 0, rain: 1, ripe: false })).toBe("비가 많이 와요");
   });
 
-  it("names wilting before wind when both happen", () => {
-    expect(plantConditionLabel({ wilt: 0.7, wind: 0.2, ripe: false })).toBe(
-      "시들해요 · 바람이 불어요"
-    );
+  it("names wilting before rain when both happen", () => {
+    expect(plantConditionLabel({ wilt: 0.7, rain: 0.2, ripe: false })).toBe("시들해요 · 비가 와요");
   });
 
   it("leaves a ripe fruit to the goal bar, whatever the weather", () => {
-    expect(plantConditionLabel({ wilt: 1, wind: 0.5, ripe: true })).toBeNull();
+    expect(plantConditionLabel({ wilt: 1, rain: 0.5, ripe: true })).toBeNull();
   });
 });
 
@@ -240,7 +240,7 @@ describe("gardenRows", () => {
         value: 100_000,
         needsRebalance: true,
         wilt: 0,
-        wind: 0,
+        rain: 0,
         ripe: false,
         empty: false,
         goalState: "set",

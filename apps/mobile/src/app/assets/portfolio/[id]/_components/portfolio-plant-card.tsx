@@ -59,7 +59,7 @@ function rowButton(plant: PortfolioPlantView): { label: string; action: PlantRow
 }
 
 /**
- * 포트폴리오 상세 상단 요약의 식물 줄: 단계 이름 + 상태(시듦·바람·열매) + 목표 도달 막대(정원 목록과 같은
+ * 포트폴리오 상세 상단 요약의 식물 줄: 단계 이름 + 상태(시듦·비·열매) + 목표 도달 막대(정원 목록과 같은
  * 모양) + 목표 상태에 맞는 버튼, 그 아래 하고 싶은 일 (누르면 고치기·이력). 식물 이름이 있으면 단계 앞에
  * 둔다. 식물 그림은 상단 금액 옆 아바타가 보여준다.
  */
@@ -109,7 +109,7 @@ export function PortfolioPlantRow({
           goalState={plant.goalState}
           goalPercent={plant.goalPercent}
           wilt={plant.wilt}
-          wind={plant.wind}
+          rain={plant.rain}
           ariaLabel="식물 목표 도달"
         />
         <ActionButton

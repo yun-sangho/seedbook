@@ -66,10 +66,11 @@ export function wiltSag(wilt: number): number {
 export interface PlantOptions {
   stage: PlantStage;
   /**
-   * 바람 0 (잔잔) ~ 1. 시장 하락 — 흔들림이 크고 빨라지고 한쪽으로 살짝 눕는다. 잎 색·모양은 그대로다.
-   * 화면 데이터에서는 `plantWind` 가 0.5 까지만 준다 (예전 처짐의 절반이 상한).
+   * 비 0 (맑음) ~ 1. 시장 하락 (`plantRain`) — 식물 위 비구름에서 빗줄기가 떨어지고 화분에 그늘이 진다.
+   * 셀수록 빗줄기가 많고 굵고 구름·그늘이 짙다.
+   * 식물(잎 색·모양·흔들림)은 그대로다.
    */
-  wind: number;
+  rain: number;
   /**
    * 시듦 0 (싱싱) ~ 1. 비중 이탈 기간 (`plantWilt`: 7·14·28일 → 0.35·0.7·1) — 잎이 누렇게 바래고 늘어지고,
    * `WILT_SHED_FROM` 이상이면 잎 일부가 떨어진다. 단계(크기)는 그대로다.
@@ -93,7 +94,7 @@ export interface PlantOptions {
 
 export const DEFAULT_PLANT_OPTIONS: PlantOptions = {
   stage: "sapling",
-  wind: 0,
+  rain: 0,
   wilt: 0,
   ripe: false,
   needsRebalance: false,

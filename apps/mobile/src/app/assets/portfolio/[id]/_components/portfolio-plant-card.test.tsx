@@ -31,7 +31,7 @@ function plant(partial: Partial<PortfolioPlantView> = {}): PortfolioPlantView {
     drifting: false,
     driftDays: 0,
     wilt: 0,
-    wind: 0,
+    rain: 0,
     ripe: false,
     empty: false,
     changed: false,
@@ -122,9 +122,16 @@ describe("PortfolioPlantRow", () => {
     expect(screen.queryByRole("button", { name: /이루면/ })).toBeNull();
   });
 
-  it("names wilting and wind", () => {
-    render(<PortfolioPlantRow plant={plant({ wilt: 0.7, wind: 0.2 })} onAction={vi.fn()} />);
-    expect(screen.getByText(/시들해요 · 바람이 불어요/)).toBeTruthy();
+  it("names wilting and rain", () => {
+    render(<PortfolioPlantRow plant={plant({ wilt: 0.7, rain: 0.2 })} onAction={vi.fn()} />);
+    expect(screen.getByText(/시들해요 · 비가 와요/)).toBeTruthy();
+  });
+
+  it("names the rain once, not again beside the bar", () => {
+    const { container } = render(
+      <PortfolioPlantRow plant={plant({ rain: 0.2 })} onAction={vi.fn()} />
+    );
+    expect(container.textContent?.match(/비가 와요/g)).toHaveLength(1);
   });
 
   it("asks to plant a seed that has no goal yet, without a wish line", () => {

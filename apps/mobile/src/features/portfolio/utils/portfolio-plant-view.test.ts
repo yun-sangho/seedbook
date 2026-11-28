@@ -120,7 +120,7 @@ describe("portfolioPlantView", () => {
       drifting: false,
       driftDays: 0,
       wilt: 0,
-      wind: 0,
+      rain: 0,
       ripe: false,
       empty: false,
       changed: false,
@@ -158,10 +158,37 @@ describe("portfolioPlantView", () => {
     });
   });
 
-  it("has no wind without linked accounts (no market to drop)", () => {
+  it("has no rain without linked accounts (no market to drop)", () => {
     const p = portfolio({ growthStage: 1, goalHistory: [{ amount: 100_000, reachedAt: "x" }] });
 
-    expect(portfolioPlantView(p, [], prices, NOW).wind).toBe(0);
+    expect(portfolioPlantView(p, [], prices, NOW).rain).toBe(0);
+  });
+
+  it("rains when one linked account is below its principal, even if the portfolio is up", () => {
+    // 평가 100,000원씩: 하나는 원금 80,000 (+25%), 하나는 원금 110,000 (-9.1%).
+    const up = { ...balanced, id: "up", initialInvestment: 80_000 };
+    const down = { ...balanced, id: "down", initialInvestment: 110_000 };
+    const p = portfolio({ accountIds: ["up", "down"] });
+
+    expect(portfolioPlantView(p, [up, down], prices, NOW).rain).toBeGreaterThan(0);
+  });
+
+  it("stays dry when every linked account is at or above its principal", () => {
+    const even = { ...balanced, id: "even", initialInvestment: 100_000 };
+    const noPrincipal = { ...balanced, id: "none", initialInvestment: 0 };
+    const p = portfolio({ accountIds: ["even", "none"] });
+
+    expect(portfolioPlantView(p, [even, noPrincipal], prices, NOW).rain).toBe(0);
+  });
+
+  it("does not judge an account's loss before its prices arrive", () => {
+    const unpriced = {
+      ...account("unpriced", [holding("Z", 10)]),
+      initialInvestment: 1_000_000,
+    };
+    const p = portfolio({ accountIds: ["unpriced"] });
+
+    expect(portfolioPlantView(p, [unpriced], prices, NOW).rain).toBe(0);
   });
 
   it("uses the plant kind chosen at planting", () => {

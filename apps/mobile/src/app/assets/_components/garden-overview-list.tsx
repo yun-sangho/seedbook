@@ -37,7 +37,7 @@ import { formatProfitKorean } from "@mobile/utils/profit-color";
 import { Divider, Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 
-/** 이름 옆 단계 + 상태 (시듦·바람·열매). */
+/** 이름 아래 단계 + 상태 (시듦·비). 막대는 같은 상태를 다시 말하지 않는다. */
 function stageLabel(row: GardenRow): string {
   const stage = plantStageLabel(row.kind, row.stage, row.empty);
   const condition = plantConditionLabel(row);
@@ -157,6 +157,7 @@ export function GardenOverviewList({
                     kind={row.kind}
                     ripe={row.ripe}
                     empty={row.empty}
+                    rain={row.rain}
                     size={44}
                   />
                   {row.needsRebalance && (
@@ -166,13 +167,16 @@ export function GardenOverviewList({
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="flex min-w-0 items-baseline gap-x1_5">
-                    <span className="t5-bold truncate">{plantTitle(row.plantName, row.name)}</span>
-                    <span
-                      className={`t3-regular shrink-0 ${row.wilt > 0 && !row.ripe ? "text-fg-warning" : "text-fg-neutral-subtle"}`}
-                    >
-                      {stageLabel(row)}
+                  {/* 식물 이름이 붙으면 길어져 제목은 한 줄을 다 쓰고, 단계·상태는 그 아래 줄에. */}
+                  <span className="block min-w-0">
+                    <span className="t5-bold block truncate">
+                      {plantTitle(row.plantName, row.name)}
                     </span>
+                  </span>
+                  <span
+                    className={`t3-regular mt-[2px] block truncate ${row.wilt > 0 && !row.ripe ? "text-fg-warning" : "text-fg-neutral-subtle"}`}
+                  >
+                    {stageLabel(row)}
                   </span>
                   <GoalBar
                     className="mt-x1_5"
@@ -180,7 +184,7 @@ export function GardenOverviewList({
                     goalState={row.goalState}
                     goalPercent={row.goalPercent}
                     wilt={row.wilt}
-                    wind={row.wind}
+                    rain={row.rain}
                     ariaLabel={`${row.name} 목표 도달`}
                   />
                 </span>

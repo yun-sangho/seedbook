@@ -1,10 +1,18 @@
 import { plantKindOf } from "@mobile/features/garden/utils/garden-home";
 import type { InvestmentItem } from "@mobile/features/investments/types/types";
+import { computeAccountValuation } from "@mobile/features/investments/utils/compute-account-valuation";
 import type { StockPricePoint } from "@mobile/features/investments/utils/use-stock-prices";
+import { calculateReturnRate } from "@mobile/utils/number-format";
 import type { PlantKind, PortfolioItem } from "../types/types";
 import { type LinkedPortfolioState, linkedPortfolioStatus } from "./linked-portfolio-status";
-import { computePlantStatus, type PlantEvaluation, type PlantStatus } from "./plant-season";
+import {
+  accountLossRain,
+  computePlantStatus,
+  type PlantEvaluation,
+  type PlantStatus,
+} from "./plant-season";
 import { computePortfolioValuation } from "./portfolio-plant";
+import { resolvePortfolioAccounts } from "./resolve-portfolio-accounts";
 
 /**
  * 포트폴리오의 리밸런싱 필요 여부. 리밸런싱 대상은 계좌라 연결 계좌마다 계좌 화면과 같은 판정
@@ -24,6 +32,30 @@ export function portfolioRebalancingState(
     if (status?.state === "ok") state = "ok";
   }
   return state;
+}
+
+/**
+ * 연결 계좌 중 가장 낮은 수익률 (%, 지금 시세 기준). 원금이 없거나 시세가 다 오지 않은 계좌는 보지 않는다
+ * (잘못 계산된 손실로 비가 오지 않게). 판정할 계좌가 없으면 null.
+ */
+export function worstAccountReturnRate(
+  portfolio: Pick<PortfolioItem, "accountIds">,
+  investments: InvestmentItem[],
+  prices: Map<string, StockPricePoint>
+): number | null {
+  let worst: number | null = null;
+  for (const account of resolvePortfolioAccounts(portfolio, investments)) {
+    if (!(account.initialInvestment > 0)) continue;
+    const valuation = computeAccountValuation(
+      account.holdings ?? [],
+      account.cashItems ?? [],
+      prices
+    );
+    if (!valuation.allHoldingsHavePrices) continue;
+    const rate = calculateReturnRate(valuation.totalValue, account.initialInvestment);
+    if (worst === null || rate < worst) worst = rate;
+  }
+  return worst;
 }
 
 /** 정원·아바타가 그리는 포트폴리오 식물 하나. */
@@ -91,8 +123,15 @@ export function portfolioPlantView(
     value: evaluation.value,
     pricesComplete: evaluation.pricesComplete,
     ...status,
-    // 연결 계좌가 없으면 평가금액이 0 일 뿐 시장이 내린 것이 아니다.
-    wind: accountCount > 0 ? status.wind : 0,
+    // 연결 계좌가 없으면 평가금액이 0 일 뿐 시장이 내린 것이 아니다. 마지막 목표보다 내렸거나 연결 계좌
+    // 하나라도 원금 아래면 비가 온다 (센 쪽).
+    rain:
+      accountCount > 0
+        ? Math.max(
+            status.rain,
+            accountLossRain(worstAccountReturnRate(portfolio, investments, prices))
+          )
+        : 0,
     rebalancing,
   };
 }

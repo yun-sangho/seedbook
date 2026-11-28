@@ -20,7 +20,7 @@ export function useHourlyNow(): string {
 }
 
 /**
- * 포트폴리오마다 식물 (단계·목표 상태·시듦·바람·리밸런싱 필요 여부). 그리기만 한다 — 저장(자람·이탈
+ * 포트폴리오마다 식물 (단계·목표 상태·시듦·비·리밸런싱 필요 여부). 그리기만 한다 — 저장(자람·이탈
  * 시작일)은 `usePortfolioPlants` (앱 전체에 하나, `PortfolioPlantGrowthRunner`).
  */
 export function usePortfolioPlantViews(): { plants: PortfolioPlantView[]; isFetching: boolean } {

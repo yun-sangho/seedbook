@@ -22,10 +22,13 @@ export function PortfolioPlantAvatar({
   portfolio,
   size,
   needsRebalance = false,
+  rain = 0,
 }: {
   portfolio: PortfolioPlantLook;
   size: number;
   needsRebalance?: boolean;
+  /** 비 (시장 하락, `plantRain`). 식물 상태를 아는 화면만 넘긴다. */
+  rain?: number;
 }) {
   return (
     <span className="relative inline-flex shrink-0 align-middle">
@@ -35,6 +38,7 @@ export function PortfolioPlantAvatar({
         kind={plantKindOf(portfolio)}
         ripe={portfolio.fruitGoal !== null}
         empty={portfolio.growthStage === 0 && portfolio.goalAmount === null}
+        rain={rain}
         size={size}
       />
       {needsRebalance && (

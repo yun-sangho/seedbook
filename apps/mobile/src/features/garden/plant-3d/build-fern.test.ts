@@ -162,13 +162,13 @@ describe("buildPlant (fern)", () => {
     expect(hiddenCount(fern({ stage: "tree", wilt: 1 }).root)).toBe(3);
   });
 
-  it("keeps its colors in the wind", () => {
-    expect(meanVertexRed(fern({ stage: "tree", wind: 0.5 }).root)).toBe(
+  it("keeps its colors in the rain", () => {
+    expect(meanVertexRed(fern({ stage: "tree", rain: 0.5 }).root)).toBe(
       meanVertexRed(fern({ stage: "tree" }).root)
     );
   });
 
-  it("sways wider in the wind, like the tree", () => {
+  it("sways the same in the rain, like the tree", () => {
     const range = (built: ReturnType<typeof fern>) => {
       const samples: number[] = [];
       for (let t = 0; t < 4; t += 0.02) {
@@ -177,9 +177,7 @@ describe("buildPlant (fern)", () => {
       }
       return Math.max(...samples) - Math.min(...samples);
     };
-    expect(range(fern({ stage: "tree", wind: 0.5 }))).toBeGreaterThan(
-      range(fern({ stage: "tree" })) * 2
-    );
+    expect(range(fern({ stage: "tree", rain: 1 }))).toBe(range(fern({ stage: "tree" })));
   });
 
   it("tilts and shows the badge when rebalancing is needed, like the tree", () => {

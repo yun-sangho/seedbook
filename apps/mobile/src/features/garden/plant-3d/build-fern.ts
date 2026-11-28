@@ -48,7 +48,7 @@ export interface FernBuildContext {
   material(color: THREE.Color): THREE.Material;
   /** 다 쓰면 dispose 할 지오메트리 (buildPlant 가 모은다). */
   geometries: THREE.BufferGeometry[];
-  /** 바람에 흔들릴 잎 (buildPlant 의 update 가 `rotation.x` 를 basePitch 둘레로 흔든다). */
+  /** 흔들릴 잎 (buildPlant 의 update 가 `rotation.x` 를 basePitch 둘레로 흔든다). */
   leaves: { mesh: THREE.Object3D; basePitch: number; phase: number }[];
 }
 

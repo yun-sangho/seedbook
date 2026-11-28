@@ -211,7 +211,7 @@ describe("computePlantStatus", () => {
       drifting: false,
       driftDays: 0,
       wilt: 0,
-      wind: 0,
+      rain: 0,
       ripe: false,
       changed: false,
     });
@@ -281,12 +281,12 @@ describe("computePlantStatus", () => {
     expect(computePlantStatus(p, evaluation(1000), NOW)).toMatchObject({ wilt: 0, changed: true });
   });
 
-  it("shows a market drop as wind, never as wilting", () => {
+  it("shows a market drop as rain, never as wilting", () => {
     const p = progress({ growthStage: 1, goalHistory: [reached(10000)] });
 
     const status = computePlantStatus(p, evaluation(8000), NOW);
 
-    expect(status.wind).toBeGreaterThan(0);
+    expect(status.rain).toBeGreaterThan(0);
     expect(status.wilt).toBe(0);
   });
 
@@ -352,7 +352,7 @@ describe("plants saved under the old rules", () => {
   it("no longer marks a small drop below the last goal", () => {
     const old = readPlantProgress({ growthStage: 1, goalHistory: [reached(10000)] });
 
-    expect(computePlantStatus(old, evaluation(9600), NOW)).toMatchObject({ wind: 0, wilt: 0 });
+    expect(computePlantStatus(old, evaluation(9600), NOW)).toMatchObject({ rain: 0, wilt: 0 });
   });
 });
 

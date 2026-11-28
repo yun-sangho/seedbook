@@ -8,11 +8,11 @@ interface GoalBarInput {
   goalPercent: number | null;
   /** 시듦 (비중 이탈 기간). 있으면 경고색. */
   wilt: number;
-  /** 바람 (시장 하락). 있으면 중립색 + "바람이 불어요". */
-  wind: number;
+  /** 비 (시장 하락). 있으면 중립색 — 문구는 식물 상태(`plantConditionLabel`)가 한 번만 말한다. */
+  rain: number;
 }
 
-/** 막대 색 — 기본 브랜드, 바람이면 중립(기다리면 지나간다), 시들면 경고(비중을 맞추면 회복). */
+/** 막대 색 — 기본 브랜드, 비가 오면 중립(기다리면 그친다), 시들면 경고(비중을 맞추면 회복). */
 export type GoalBarTone = "brand" | "neutral" | "warning";
 
 const TONE_CLASS: Record<GoalBarTone, string> = {
@@ -22,18 +22,18 @@ const TONE_CLASS: Record<GoalBarTone, string> = {
 };
 
 /**
- * 목표 도달 막대: 채울 비율(%, 막대 없으면 null), 옆 문구, 색. 목표를 향해 자라는 중이면 막대만(바람이면
- * "바람이 불어요"), 목표가 없는 씨앗은 막대 없이 문구만, 방금 달성했거나 꽃이 피었거나 열매가 열렸으면
+ * 목표 도달 막대: 채울 비율(%, 막대 없으면 null), 옆 문구, 색. 목표를 향해 자라는 중이면 막대만, 목표가
+ * 없는 씨앗은 막대 없이 문구만, 방금 달성했거나 꽃이 피었거나 열매가 열렸으면
  * 꽉 찬 막대 + 문구. (정원 목록과 같은 규칙)
  */
-export function goalBarState({ stage, goalState, goalPercent, wilt, wind }: GoalBarInput): {
+export function goalBarState({ stage, goalState, goalPercent, wilt, rain }: GoalBarInput): {
   percent: number | null;
   label: string | null;
   tone: GoalBarTone;
 } {
-  // 이룬 열매는 시듦·바람과 상관없이 그대로 보인다.
+  // 이룬 열매는 시듦·비와 상관없이 그대로 보인다.
   if (goalState === "ripe") return { percent: 100, label: "열매가 열렸어요", tone: "brand" };
-  const tone: GoalBarTone = wilt > 0 ? "warning" : wind > 0 ? "neutral" : "brand";
+  const tone: GoalBarTone = wilt > 0 ? "warning" : rain > 0 ? "neutral" : "brand";
   switch (goalState) {
     case "needs-fruit-goal":
       return { percent: 100, label: "꽃이 피었어요", tone };
@@ -44,7 +44,7 @@ export function goalBarState({ stage, goalState, goalPercent, wilt, wind }: Goal
     case "blocked-by-drift":
       return { percent: goalPercent ?? 100, label: "비중을 맞추면 자라요", tone };
     case "set":
-      return { percent: goalPercent ?? 0, label: wind > 0 ? "바람이 불어요" : null, tone };
+      return { percent: goalPercent ?? 0, label: null, tone };
   }
 }
 

@@ -11,33 +11,33 @@ export const LANDING_GARDEN_PLANTS = {
   garden: [
     {
       stage: "sapling",
-      wind: 0,
+      rain: 0,
       wilt: 0,
       ripe: false,
       needsRebalance: false,
       pot: "lavender",
       seed: 11,
     },
-    { stage: "bloom", wind: 0, wilt: 0, ripe: true, needsRebalance: false, pot: "sun", seed: 7 },
-    { stage: "tree", wind: 0, wilt: 0, ripe: false, needsRebalance: true, pot: "sky", seed: 3 },
+    { stage: "bloom", rain: 0, wilt: 0, ripe: true, needsRebalance: false, pot: "sun", seed: 7 },
+    { stage: "tree", rain: 0, wilt: 0, ripe: false, needsRebalance: true, pot: "sky", seed: 3 },
   ],
   /** 리밸런싱: 목표 비중 안의 나무와 벗어나 기운 나무. */
   rebalance: [
     {
       stage: "tree",
-      wind: 0,
+      rain: 0,
       wilt: 0,
       ripe: false,
       needsRebalance: false,
       pot: "terracotta",
       seed: 5,
     },
-    { stage: "tree", wind: 0, wilt: 0, ripe: false, needsRebalance: true, pot: "cream", seed: 5 },
+    { stage: "tree", rain: 0, wilt: 0, ripe: false, needsRebalance: true, pot: "cream", seed: 5 },
   ],
   /** 목표에 가까워질수록 자라는 모습: 같은 식물의 다섯 모습을 한 줄로 (마지막은 열매). */
   growth: PLANT_STAGES.map((stage) => ({
     stage,
-    wind: 0,
+    rain: 0,
     wilt: 0,
     ripe: stage === "bloom",
     needsRebalance: false,
