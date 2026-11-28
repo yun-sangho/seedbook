@@ -47,11 +47,6 @@ import { usePreferencesStore } from "@mobile/lib/preferences-store";
 import { cn } from "@mobile/lib/utils";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
 import { Badge } from "@mobile/seed-design/ui/badge";
-import {
-  BottomSheetBody,
-  BottomSheetContent,
-  BottomSheetRoot,
-} from "@mobile/seed-design/ui/bottom-sheet";
 import { Callout } from "@mobile/seed-design/ui/callout";
 import { List, ListButtonItem, ListItem } from "@mobile/seed-design/ui/list";
 import { ResultSection } from "@mobile/seed-design/ui/result-section";
@@ -78,7 +73,6 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
   const { pop } = useFlow();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [completing, setCompleting] = useState(false);
-  const [cashOpen, setCashOpen] = useState(false);
   // 진행 중에는 매매를 하나씩 단계로 본다. "전체 보기" 로 팔기·사기 목록을 연다.
   const [view, setView] = useState<"steps" | "list">("steps");
   /** 고른 단계. null 이면 추천 단계를 따른다 (기록하면 다시 null 로 — 다음 추천 단계로 넘어간다). */
@@ -163,7 +157,6 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
           available={cash?.now ?? null}
           selectedId={selectedId}
           onSelect={setSelectedId}
-          onShowCash={cash ? () => setCashOpen(true) : null}
           onShowList={() => {
             setView("list");
             topRef.current?.scrollIntoView();
@@ -201,6 +194,10 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
 
       {(completed || view === "list") && (
         <>
+          {/* 쓸 수 있는 돈은 목록에서 본다 — 단계 화면은 그 거래의 총 금액만. */}
+          {cash && view === "list" && (
+            <CashOutlook cash={cash} cashDelta={session.cashDelta} hasRemaining={remaining > 0} />
+          )}
           <Divider />
 
           <section className="py-x4">
@@ -323,16 +320,6 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
         value={sort}
         onChange={setSort}
       />
-      {cash && (
-        // 금액은 필요할 때 본다 — 지금 할 일 카드의 "금액 보기" 로 연다.
-        <BottomSheetRoot open={cashOpen} onOpenChange={setCashOpen}>
-          <BottomSheetContent title="금액" showHandle>
-            <BottomSheetBody>
-              <CashOutlook cash={cash} cashDelta={session.cashDelta} hasRemaining={remaining > 0} />
-            </BottomSheetBody>
-          </BottomSheetContent>
-        </BottomSheetRoot>
-      )}
       <CompleteRebalancingSheet
         session={session}
         open={completing}
@@ -562,7 +549,7 @@ function CashOutlook({
 }) {
   const expected = (
     <>
-      남은 매매 다 하면{" "}
+      남은 거래를 다 하면{" "}
       <span className={cn("t3-bold", cash.expected < 0 ? "text-fg-critical" : "text-fg-neutral")}>
         {formatSignedWon(cash.expected)}
       </span>
@@ -570,7 +557,7 @@ function CashOutlook({
   );
   const held =
     cash.heldForOrders > 0
-      ? `매수 주문 ${formatWithCommas(Math.round(cash.heldForOrders))}원 묶임`
+      ? `사는 주문에 ${formatWithCommas(Math.round(cash.heldForOrders))}원 묶임`
       : null;
   const delta =
     cashDelta !== 0
@@ -578,8 +565,8 @@ function CashOutlook({
       : null;
   const notes = [held, delta].filter((note) => note !== null);
   return (
-    <section className="pb-x4">
-      <p className="t3-regular text-fg-neutral-muted">남은 주문가능금액</p>
+    <section className="px-x4 py-x4">
+      <p className="t3-regular text-fg-neutral-muted">쓸 수 있는 돈</p>
       <p className={cn("t7-bold mt-[2px] tabular-nums", cash.now < 0 && "text-fg-critical")}>
         {formatSignedWon(cash.now)}
       </p>
@@ -590,7 +577,7 @@ function CashOutlook({
       </p>
       {hasRemaining && cash.expected < 0 && (
         <p className="t3-regular text-fg-critical mt-x1">
-          이대로면 금액이 모자라요. 매수 수량을 줄여서 기록하세요.
+          이대로면 돈이 모자라요. 사는 수량을 줄여서 기록하세요.
         </p>
       )}
     </section>

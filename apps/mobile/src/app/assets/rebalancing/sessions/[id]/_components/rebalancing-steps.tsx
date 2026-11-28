@@ -34,7 +34,6 @@ export function RebalancingSteps({
   available,
   selectedId,
   onSelect,
-  onShowCash,
   onShowList,
   footerTop,
 }: {
@@ -44,7 +43,6 @@ export function RebalancingSteps({
   available: number | null;
   selectedId: string | null;
   onSelect: (taskId: string | null) => void;
-  onShowCash: (() => void) | null;
   /** 팔기·사기 전체 목록으로. */
   onShowList: () => void;
   /** 내비게이션 위에 함께 고정할 버튼 (다 끝냈을 때 "리밸런싱 완료하기"). */
@@ -76,7 +74,6 @@ export function RebalancingSteps({
           task={current}
           // 추천 단계면 그 이유(판 돈으로 산다·돈이 모자라다)를, 아니면 이 매매의 금액만.
           action={current.id === recommendedId ? recommended : null}
-          onShowCash={onShowCash}
           // 기록하면 다음 추천 단계로.
           onDone={() => onSelect(null)}
         />
@@ -169,13 +166,11 @@ function CurrentStep({
   session,
   task,
   action,
-  onShowCash,
   onDone,
 }: {
   session: RebalancingSession;
   task: RebalancingTask;
   action: NextRebalancingAction | null;
-  onShowCash: (() => void) | null;
   onDone: () => void;
 }) {
   const status = rebalancingTaskStatus(task);
@@ -213,7 +208,6 @@ function CurrentStep({
           sessionId={session.id}
           task={task}
           embedded
-          onShowAmounts={onShowCash}
           onDone={onDone}
         />
       </div>
