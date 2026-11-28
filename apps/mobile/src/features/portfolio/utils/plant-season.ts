@@ -12,14 +12,18 @@ import type { PlantKind, PlantProgress, PlantStage } from "../types/types";
 import { lastReachedGoal, type PortfolioValuation } from "./portfolio-plant";
 
 /**
- * 포트폴리오 식물의 계절 규칙 (명세 `docs/plant-growth.md` §3·§4·§5).
+ * 포트폴리오 식물의 성장·수확 규칙 (명세 `docs/plant-growth.md` §3·§4·§5).
  *
- * - 목표는 지금 평가금액과 이번 계절 마지막 달성 목표 중 큰 값의 +10% 이상이어야 한다 (정할 때만).
+ * - 목표는 지금 평가금액과 이번 수확 주기의 마지막 달성 목표 중 큰 값의 +10% 이상이어야 한다 (정할 때만).
  * - 금액이 목표에 닿고 **비중이 기준 안** 이어야 한 단계 자란다. 4단계에서 다섯 번째(열매) 목표를
- *   이루면 열매가 열리고 바로 수확할 수 있다 (익어 가는 단계는 없다). 수확하면 수확 기록을 남기고 다음 계절이 씨앗부터 시작한다.
+ *   이루면 열매가 열리고 바로 수확할 수 있다 (익어 가는 단계는 없다). 수확하면 수확 기록을 남기고 빈 화분으로 돌아간다.
+ * - `season` 은 수확할 때마다 +1 되는 수확 주기 번호다. 화면에는 보이지 않고 수확 기록 id·병합·아바타
+ *   비교에만 쓴다.
  * - 비중 이탈을 처음 본 날(`driftSince`)부터 센 기간으로 시든다. 시듦은 보이기만 한다.
+ * - 시장 하락은 바람으로만 보인다 (마지막 달성 목표보다 5% 넘게 낮을 때).
  *
- * 화면 연결은 다음 태스크(씨앗 심기·수확 화면)에서 한다 — 그때 `growPlant`·`plantGoalError` 를 대신한다.
+ * 배포 전에 저장된 식물(이전 규칙)은 그대로 읽힌다: 단계·목표·이력은 그대로, 이미 정해 둔 목표는 하한과
+ * 상관없이 유효, 다 자란(4단계) 식물은 열매 목표를 정할 수 있게 되고, 이탈 기간은 배포 뒤 첫 평가부터 센다.
  */
 
 /** 목표 하한 배율 — 지금보다 10% 이상. */
@@ -143,18 +147,6 @@ export function seasonGoalState(
   return reachedAmount && evaluation.drifting ? "blocked-by-drift" : "set";
 }
 
-/**
- * 비중이 기준 밖인가 (`computeDriftAlert(...).hasBreach`). 연결 계좌가 없거나 목표 비중이 비어 있으면
- * 판정할 수 없으니 기준 안으로 본다 — 금액만으로 자라고 시들지 않는다.
- */
-export function isPlantDrifting(input: {
-  accountCount: number;
-  hasAllocations: boolean;
-  hasBreach: boolean;
-}): boolean {
-  return input.accountCount > 0 && input.hasAllocations && input.hasBreach;
-}
-
 // ─── 이탈 기간·시듦 ─────────────────────────────────────────────────────────
 
 /** KST 날짜 `now` 의 00:00 (ISO). */
@@ -201,7 +193,99 @@ export function plantWilt(days: number): number {
   return 0;
 }
 
-// ─── 수확·새 계절 ───────────────────────────────────────────────────────────
+/** 마지막으로 달성한 목표보다 이만큼(비율) 아래까지는 바람이 없다. */
+export const WIND_CALM_DROP = 0.05;
+/** 마지막으로 달성한 목표보다 이만큼(비율) 내려가면 바람이 가장 세다. */
+export const FULL_WIND_DROP = 0.2;
+/** 바람 세기 상한 (예전 처짐의 절반). */
+export const WIND_MAX = 0.5;
+
+/**
+ * 바람 세기 (0~`WIND_MAX`). 시장 하락을 뜻한다 — 사용자가 할 일은 기다리는 것이라 잎 색은 바꾸지 않는다.
+ * 마지막으로 달성한 목표보다 `WIND_CALM_DROP` 넘게 내려가면 불기 시작해 `FULL_WIND_DROP` 에서 가장 세다.
+ * 시세가 다 오기 전이나 달성한 목표가 없으면 0.
+ */
+export function plantWind(
+  value: number,
+  lastGoalAmount: number | null,
+  pricesComplete: boolean
+): number {
+  if (!pricesComplete || lastGoalAmount === null || lastGoalAmount <= 0) return 0;
+  const drop = (lastGoalAmount - value) / lastGoalAmount;
+  const strength = (drop - WIND_CALM_DROP) / (FULL_WIND_DROP - WIND_CALM_DROP);
+  return Math.min(1, Math.max(0, strength)) * WIND_MAX;
+}
+
+// ─── 한 평가 ────────────────────────────────────────────────────────────────
+
+/**
+ * 한 평가로 저장할 진행 — 목표를 이뤘으면 자라고(`advancePlant`), 이탈 시작일을 기록한다
+ * (`trackDriftSince`). 시세가 다 오기 전에는 아무것도 바꾸지 않는다. 그대로면 같은 참조.
+ */
+export function evaluatePlant<T extends PlantProgress>(
+  progress: T,
+  evaluation: PlantEvaluation,
+  now: string
+): T {
+  if (!evaluation.pricesComplete) return progress;
+  return trackDriftSince(advancePlant(progress, evaluation, now), evaluation.drifting, now);
+}
+
+/** 화면이 그리는 식물 상태 (한 평가 뒤). */
+export interface PlantStatus {
+  /** 지금 단계 (이번 평가로 목표를 이뤘으면 자란 뒤의 단계). */
+  stage: PlantStage;
+  /**
+   * 빈 화분 — 목표가 없는 포트폴리오 (씨앗 단계에서 목표가 없음). 목표를 더하면 씨앗이 심긴다.
+   * 포트폴리오가 꼭 목표를 가질 필요는 없다.
+   */
+  empty: boolean;
+  goalState: SeasonGoalState;
+  /** 향하는 목표 (원). `set`·`blocked-by-drift` 일 때만. */
+  goalAmount: number | null;
+  /** 목표까지 남은 금액 (원). 목표가 없으면 null. */
+  remainingToNextStage: number | null;
+  /** 비중이 기준 밖이다 (연결 계좌·목표 비중이 없으면 false). */
+  drifting: boolean;
+  /** 이탈한 지 며칠 (이탈이 아니면 0). */
+  driftDays: number;
+  /** 시듦 (0·0.35·0.7·1) — 이탈 기간으로만. */
+  wilt: number;
+  /** 바람 (0~0.5) — 시장 하락. */
+  wind: number;
+  /** 열매가 열렸다 (바로 수확할 수 있다). */
+  ripe: boolean;
+  /** 이번 평가로 저장할 진행이 바뀌었다 — 호출측이 `evaluatePlant` 결과를 저장해야 한다. */
+  changed: boolean;
+}
+
+export function computePlantStatus(
+  progress: PlantProgress,
+  evaluation: PlantEvaluation,
+  now: string
+): PlantStatus {
+  const next = evaluatePlant(progress, evaluation, now);
+  const goalState = seasonGoalState(next, evaluation);
+  const goalAmount =
+    goalState === "set" || goalState === "blocked-by-drift" ? next.goalAmount : null;
+  const days = driftDays(next.driftSince, now);
+  const lastGoal = next.fruitGoal ?? lastReachedGoal(next);
+  return {
+    stage: next.growthStage,
+    empty: next.growthStage === 0 && next.goalAmount === null,
+    goalState,
+    goalAmount,
+    remainingToNextStage: goalAmount === null ? null : Math.max(0, goalAmount - evaluation.value),
+    drifting: evaluation.drifting,
+    driftDays: days,
+    wilt: plantWilt(days),
+    wind: plantWind(evaluation.value, lastGoal?.amount ?? null, evaluation.pricesComplete),
+    ripe: next.fruitGoal !== null,
+    changed: next !== progress,
+  };
+}
+
+// ─── 수확·다시 심기 ────────────────────────────────────────────────────────
 
 /**
  * UUID 가 아닌 (기기 안에서만 쓰던) 포트폴리오 id 의 수확 기록 id namespace. 그 포트폴리오는 동기화되지
@@ -219,8 +303,8 @@ function seasonHarvestId(portfolioId: string, season: number): string {
 export type HarvestItem = { id: string } & RecordValues<typeof harvestRecord>;
 
 /**
- * 열매가 열린 식물을 수확한다 — 수확 기록과 다음 계절의 씨앗 (`season + 1`, 단계·목표·열매·소원을 비운다.
- * 이탈 시작일은 계절과 무관해 그대로). 열매가 열리지 않았으면 null. `shownKind` 는 종류를 고른 적
+ * 열매가 열린 식물을 수확한다 — 수확 기록과 빈 화분 (`season + 1`, 단계·목표·열매·소원을 비운다.
+ * 이탈 시작일은 수확과 무관해 그대로). 열매가 열리지 않았으면 null. `shownKind` 는 종류를 고른 적
  * 없을 때 화면에 보이던 종류 (`kindForPortfolio`).
  */
 export function harvestPlant<T extends PlantProgress & { id: string; name: string }>(
@@ -262,7 +346,7 @@ export function wishError(wish: string): WishError | null {
   return wish.trim().length > WISH_MAX_LENGTH ? "too-long" : null;
 }
 
-/** 씨앗 심기 — 이번 계절의 식물 종류와 소원을 정한다. */
+/** 씨앗 심기 — 식물 종류와 소원을 정한다 (첫 목표는 `setPlantGoal`). */
 export function startPlantSeason<T extends PlantProgress>(
   progress: T,
   input: { plantKind: PlantKind; wish: string }

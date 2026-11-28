@@ -76,8 +76,7 @@ export function PortfolioListMobile() {
               className="active:bg-bg-layer-default-pressed flex w-full items-center gap-x3 px-x4 py-x4 text-left"
             >
               <PortfolioPlantAvatar
-                portfolioId={portfolio.id}
-                stage={plant?.stage ?? portfolio.growthStage}
+                portfolio={portfolio}
                 size={44}
                 needsRebalance={plant?.rebalancing === "needs-rebalancing"}
               />

@@ -2,6 +2,7 @@
 
 import { type CSSProperties, Fragment, useMemo, useState } from "react";
 import { IconArrowDownHorizlineLine, IconPlusLine } from "@karrotmarket/react-monochrome-icon";
+import { switchTab } from "@mobile/app/_stack/stack-control";
 import { usePopThenRemove } from "@mobile/app/_stack/use-pop-then-remove";
 import { EditHint, EmptyLine, TabToolbar } from "@mobile/components/mobile/detail-layout";
 import { HeaderAction } from "@mobile/components/mobile/header-action";
@@ -21,13 +22,10 @@ import {
   otherLinkedPortfolio,
   sortLinkedElsewhereLast,
 } from "@mobile/features/portfolio/utils/portfolio-links";
-import {
-  computePlantStatus,
-  computePortfolioValuation,
-} from "@mobile/features/portfolio/utils/portfolio-plant";
-import { portfolioRebalancingState } from "@mobile/features/portfolio/utils/portfolio-plant-view";
+import { portfolioPlantView } from "@mobile/features/portfolio/utils/portfolio-plant-view";
 import { resolvePortfolioAccounts } from "@mobile/features/portfolio/utils/resolve-portfolio-accounts";
 import { summarizePortfolioDrift } from "@mobile/features/portfolio/utils/summarize-portfolio-drift";
+import { useHourlyNow } from "@mobile/features/portfolio/utils/use-portfolio-plants";
 import { validateAllocations } from "@mobile/features/portfolio/utils/validate-allocations";
 import { cn } from "@mobile/lib/utils";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
@@ -53,7 +51,13 @@ import { type AccountMove, MoveAccountSheet } from "./move-account-sheet";
 import { PortfolioDriftRow } from "./portfolio-drift-card";
 import { EditDriftThresholdSheet, PortfolioSettingsSheet } from "./portfolio-edit-sheets";
 import { PortfolioOverviewTab } from "./portfolio-overview-tab";
-import { EditPlantGoalSheet, PortfolioPlantRow } from "./portfolio-plant-card";
+import {
+  EditPlantGoalSheet,
+  type PlantRowAction,
+  PlantSeasonSheet,
+  PortfolioPlantRow,
+  plantSeasonSheetText,
+} from "./portfolio-plant-card";
 
 type Tab = "overview" | "allocations" | "accounts" | "memo";
 
@@ -61,6 +65,8 @@ type Editing =
   | { kind: "settings" }
   | { kind: "drift" }
   | { kind: "plant-goal" }
+  /** 씨앗 심기 (종류·첫 목표·소원). `harvestedWish` 가 있으면 방금 수확한 뒤 다시 심기. */
+  | { kind: "plant-season"; harvestedWish?: string }
   | { kind: "add-allocation" }
   | { kind: "import-allocations" }
   | { kind: "allocation"; id: string };
@@ -119,6 +125,8 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
   const setDriftThreshold = usePortfolioStore((s) => s.setDriftThreshold);
   const setDriftMode = usePortfolioStore((s) => s.setDriftMode);
   const setPlantGoal = usePortfolioStore((s) => s.setPlantGoal);
+  const startPlantSeason = usePortfolioStore((s) => s.startPlantSeason);
+  const harvestPlant = usePortfolioStore((s) => s.harvestPlant);
   const investments = useInvestmentStore((s) => s.investments);
   const portfolios = usePortfolioStore((s) => s.portfolios);
   // 한 계좌는 하나의 포트폴리오에만 연결된다 — 다른 포트폴리오에 연결된 계좌는 확인 후 옮겨온다.
@@ -173,15 +181,30 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
     () => summarizePortfolioDrift(linkedAccounts.map((inv) => accountStatuses.get(inv.id) ?? null)),
     [linkedAccounts, accountStatuses]
   );
-  // 목표 달성으로 자라는 것은 앱 전체의 `PortfolioPlantGrowthRunner` 가 저장한다.
-  const plantValuation = useMemo(
-    () => computePortfolioValuation(portfolio, linkedAccounts, prices),
-    [portfolio, linkedAccounts, prices]
+  // 목표 달성으로 자라는 것·이탈 시작일은 앱 전체의 `PortfolioPlantGrowthRunner` 가 저장한다.
+  const now = useHourlyNow();
+  const plant = useMemo(
+    () => portfolioPlantView(portfolio, linkedAccounts, prices, now),
+    [portfolio, linkedAccounts, prices, now]
   );
-  const plantStatus = useMemo(
-    () => computePlantStatus(portfolio, plantValuation),
-    [portfolio, plantValuation]
-  );
+  const onPlantAction = (action: PlantRowAction) => {
+    switch (action) {
+      case "goal":
+        setEditing({ kind: "plant-goal" });
+        return;
+      case "season":
+        setEditing({ kind: "plant-season" });
+        return;
+      case "rebalance":
+        switchTab("rebalancing");
+        return;
+      case "harvest": {
+        const wish = portfolio.wish;
+        if (harvestPlant(portfolio.id)) setEditing({ kind: "plant-season", harvestedWish: wish });
+        return;
+      }
+    }
+  };
 
   const totalPct = validation.totalPercent;
   const totalClass = totalToneClass(totalPct, portfolio.allocations.length > 0);
@@ -203,12 +226,9 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
       <section className="px-x4 pt-x4 pb-x3">
         <div className="flex items-center gap-x4">
           <PortfolioPlantAvatar
-            portfolioId={portfolio.id}
-            stage={plantStatus.stage}
+            portfolio={portfolio}
             size={64}
-            needsRebalance={
-              portfolioRebalancingState(portfolio, linkedAccounts, prices) === "needs-rebalancing"
-            }
+            needsRebalance={plant.rebalancing === "needs-rebalancing"}
           />
           <div className="min-w-0 flex-1">
             {/* 계좌 상세와 같은 모양 (1원 단위 + 만원 단위 보조) — 이 포트폴리오에 연결된 계좌만 합친다. */}
@@ -244,11 +264,7 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
             linkedCount={linkedCount}
             onEdit={() => setEditing({ kind: "drift" })}
           />
-          <PortfolioPlantRow
-            status={plantStatus}
-            value={plantValuation.value}
-            onEdit={() => setEditing({ kind: "plant-goal" })}
-          />
+          <PortfolioPlantRow plant={plant} onAction={onPlantAction} />
         </div>
       </section>
 
@@ -457,7 +473,23 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
         key={`plant-goal-${editing?.kind === "plant-goal"}`}
         {...sheetProps(editing?.kind === "plant-goal")}
         progress={portfolio}
-        onSave={(amount) => setPlantGoal(portfolio.id, amount)}
+        valuation={plant}
+        onSave={(amount) => setPlantGoal(portfolio.id, amount, plant)}
+      />
+      <PlantSeasonSheet
+        key={`plant-season-${editing?.kind === "plant-season"}`}
+        {...sheetProps(editing?.kind === "plant-season")}
+        {...plantSeasonSheetText(
+          editing?.kind === "plant-season" ? editing.harvestedWish : undefined
+        )}
+        initialKind={plant.kind}
+        initialWish={portfolio.wish}
+        progress={portfolio}
+        valuation={plant}
+        onSave={({ goalAmount, ...input }) => {
+          startPlantSeason(portfolio.id, input);
+          setPlantGoal(portfolio.id, goalAmount, plant);
+        }}
       />
       <ImportAllocationsSheet
         key={`import-${editing?.kind === "import-allocations"}`}

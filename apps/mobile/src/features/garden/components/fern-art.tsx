@@ -210,7 +210,16 @@ function frondShapes(stage: keyof typeof STAGE_FRONDS, layer: FrondSpec["layer"]
   return shapes;
 }
 
-export function FernArt({ stage, layer }: { stage: PlantStage; layer: "back" | "front" }) {
+export function FernArt({
+  stage,
+  layer,
+  ripe = false,
+}: {
+  stage: PlantStage;
+  layer: "back" | "front";
+  /** 열매가 열림 (꽃·열매 단계). */
+  ripe?: boolean;
+}) {
   if (stage === "seed") {
     if (layer === "front") return null;
     // 나무 씨앗(`plant-avatar.tsx`)과 같은 모양·자리.
@@ -244,8 +253,12 @@ export function FernArt({ stage, layer }: { stage: PlantStage; layer: "back" | "
           <Flower x={21} y={22} />
           <Flower x={43} y={21} />
           <Flower x={32} y={14} />
-          <Fruit x={15} y={39} />
-          <Fruit x={49} y={39} />
+          {ripe && (
+            <>
+              <Fruit x={15} y={39} />
+              <Fruit x={49} y={39} />
+            </>
+          )}
         </>
       )}
     </>

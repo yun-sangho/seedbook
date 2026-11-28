@@ -31,6 +31,8 @@ function portfolio(id: string, name: string, growthStage: PlantStage): Portfolio
     driftThresholdPercent: 5,
     ...INITIAL_PLANT_PROGRESS,
     growthStage,
+    // 단계 이름이 종류(나무·고사리)를 따르므로 나무로 고정한다.
+    plantKind: "tree",
     note: "",
     createdAt: "2026-11-01T00:00:00.000Z",
     updatedAt: "2026-11-01T00:00:00.000Z",

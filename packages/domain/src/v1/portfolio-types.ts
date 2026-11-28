@@ -13,10 +13,10 @@ type PortfolioValues = RecordValues<typeof portfolio>;
 export type PlantGoal = NonNullable<PortfolioValues["fruitGoal"]>;
 
 /**
- * 포트폴리오 식물의 진행 (`portfolio` 레코드의 식물 필드). 한 계절은 목표 다섯 개다 — 단계 목표
+ * 포트폴리오 식물의 진행 (`portfolio` 레코드의 식물 필드). 한 수확 주기는 목표 다섯 개다 — 단계 목표
  * (`goalAmount`) 를 이룰 때마다 한 단계 자라 `goalHistory` 에 남고, 4단계에서 이룬 다섯 번째(열매)
- * 목표는 `fruitGoal` 에 남는다 (수확할 수 있다). 수확하면 다음 계절이 씨앗부터 시작한다. 도달한
- * 단계는 계절 안에서 내려가지 않는다.
+ * 목표는 `fruitGoal` 에 남는다 (수확할 수 있다). 수확하면 `season`(수확 주기 번호, 화면에 보이지 않음)이 오르고 빈 화분부터 다시 시작한다. 도달한
+ * 단계는 한 수확 주기 안에서 내려가지 않는다.
  */
 export interface PlantProgress
   extends Pick<

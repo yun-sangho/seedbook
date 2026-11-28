@@ -38,6 +38,8 @@ const MOBILE_SUPPORTED_PATTERNS = [
   /^\/assets\/rebalancing$/,
   // 계좌 리밸런싱 계산(`/:accountId`) 과 새 리밸런싱(`/new`).
   /^\/assets\/rebalancing\/[^/]+$/,
+  // 리밸런싱 2단계 (거래 가능 금액·권장 매매).
+  /^\/assets\/rebalancing\/[^/]+\/plan$/,
   /^\/assets\/rebalancing\/sessions\/[^/]+$/,
   // 리밸런싱 매매 하나의 체결 수량·가격 입력.
   /^\/assets\/rebalancing\/sessions\/[^/]+\/trades\/[^/]+$/,

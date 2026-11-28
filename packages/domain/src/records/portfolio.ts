@@ -21,11 +21,11 @@ export const plantGoalShape = shape.object({
  * - `driftMode` 기본값은 방식이 생기기 전의 판정(%p 차이)인 `absolute` 다. 새 포트폴리오는 앱이
  *   `relative` 를 보낸다.
  * - 식물 (`season`·`plantKind`·`wish`·`goalAmount`·`growthStage`·`goalHistory`·`fruitGoal`) 은 모드 전환
- *   병합에서만 묶어서 고른다 (§5.5). 한 계절은 목표 다섯 개 — 넷은 `goalHistory` (단계 1~4), 다섯 번째
+ *   병합에서만 묶어서 고른다 (§5.5). 한 수확 주기는 목표 다섯 개 — 넷은 `goalHistory` (단계 1~4), 다섯 번째
  *   (열매) 는 `fruitGoal` 이다. 옛 앱이 자기 정의(`maxItems: 4`)로 받은 레코드를 격리하지 않도록
  *   `goalHistory` 를 늘리지 않는다.
  * - `plantKind` 가 null 이면 화면이 포트폴리오 id 해시로 종류를 정한다 (식물 종류가 생기기 전 모양).
- * - `driftSince` 는 비중 이탈을 처음 본 시각 (KST 날짜 시작). 계절과 무관하다.
+ * - `driftSince` 는 비중 이탈을 처음 본 시각 (KST 날짜 시작). 수확과 무관하다.
  */
 export const portfolio = defineRecord({
   type: "portfolio",

@@ -104,7 +104,8 @@ export function OnboardingFlow({
     const existing = store.portfolios.some((p) => p.id === portfolioId);
     const id = existing && portfolioId ? portfolioId : store.addPortfolio(name);
     if (existing) store.updatePortfolio(id, "name", name);
-    store.setPlantGoal(id, goalAmount);
+    // 온보딩에서 만든 씨앗은 아직 연결 계좌가 없다 (0원 — 첫 목표의 하한이 없다).
+    store.setPlantGoal(id, goalAmount, { value: 0, pricesComplete: true });
     setPortfolioId(id);
     setDraft((d) => ({ ...d, name }));
     return id;

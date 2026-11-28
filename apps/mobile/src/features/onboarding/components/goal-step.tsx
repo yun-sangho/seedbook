@@ -5,9 +5,9 @@ import { formatMoneyDraft } from "@mobile/components/mobile/input-format";
 import { MoneyField } from "@mobile/components/mobile/money-field";
 import { INITIAL_PLANT_PROGRESS } from "@mobile/features/portfolio/types/constants";
 import {
-  PLANT_GOAL_ERROR_MESSAGES,
-  plantGoalError,
-} from "@mobile/features/portfolio/utils/portfolio-plant";
+  NEXT_GOAL_ERROR_MESSAGES,
+  nextGoalError,
+} from "@mobile/features/portfolio/utils/plant-season";
 import { TextField, TextFieldInput } from "@mobile/seed-design/ui/text-field";
 import { parseNumericString } from "@mobile/utils/number-format";
 import { OnboardingStepLayout } from "./onboarding-step-layout";
@@ -20,12 +20,15 @@ export interface SeedBasics {
   goalAmount: number | null;
 }
 
+/** 새 씨앗의 평가 — 아직 연결 계좌가 없어 0원이다 (첫 목표의 하한이 없다). */
+const NEW_SEED_VALUATION = { value: 0, pricesComplete: true };
+
 /** 입력한 목표 → 금액. 비었으면 null, 규칙에 어긋나면 오류 문구. */
 function readGoal(draft: string): { amount: number | null } | { error: string } {
   if (draft.trim() === "") return { amount: null };
   const amount = parseNumericString(draft);
-  const invalid = plantGoalError(INITIAL_PLANT_PROGRESS, amount);
-  return invalid ? { error: PLANT_GOAL_ERROR_MESSAGES[invalid] } : { amount };
+  const invalid = nextGoalError(INITIAL_PLANT_PROGRESS, amount, NEW_SEED_VALUATION);
+  return invalid ? { error: NEXT_GOAL_ERROR_MESSAGES[invalid](null) } : { amount };
 }
 
 /** 이름(카드 이름으로 미리 채움) + 첫 목표 금액. */

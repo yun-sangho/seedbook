@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   IconArrowClockwiseCircularFill,
   IconCheckmarkCircleFill,
@@ -8,15 +8,21 @@ import {
 } from "@karrotmarket/react-monochrome-icon";
 import { switchTab } from "@mobile/app/_stack/stack-control";
 import { profitToneClass } from "@mobile/components/mobile/profit-tone";
+import { BasketSheet } from "@mobile/features/garden/components/basket-sheet";
 import { GoalBar } from "@mobile/features/garden/components/goal-bar";
 import { PlantAvatar } from "@mobile/features/garden/components/plant-avatar";
 import { RebalanceMark } from "@mobile/features/garden/components/rebalance-mark";
 import { PLANT_STAGES } from "@mobile/features/garden/plant-3d/plant-options";
-import { type GardenRow, gardenRows } from "@mobile/features/garden/utils/garden-home";
+import { useHarvestStore } from "@mobile/features/garden/stores/harvest-store";
+import {
+  type GardenRow,
+  gardenRows,
+  plantConditionLabel,
+  plantStageLabel,
+} from "@mobile/features/garden/utils/garden-home";
 import type { InvestmentItem } from "@mobile/features/investments/types/types";
 import { summarizeAccounts } from "@mobile/features/investments/utils/summarize-accounts";
 import { useLiveAccounts } from "@mobile/features/investments/utils/use-live-accounts";
-import { PLANT_STAGE_LABELS } from "@mobile/features/portfolio/types/constants";
 import type { PortfolioItem } from "@mobile/features/portfolio/types/types";
 import type { PortfolioPlantView } from "@mobile/features/portfolio/utils/portfolio-plant-view";
 import { useRebalancingHomeTab } from "@mobile/features/rebalancing/stores/rebalancing-home-tab-store";
@@ -30,10 +36,11 @@ import { formatProfitKorean } from "@mobile/utils/profit-color";
 import { Divider, Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 
-/** 이름 옆 단계 + 시듦. */
+/** 이름 옆 단계 + 상태 (시듦·바람·열매). */
 function stageLabel(row: GardenRow): string {
-  const stage = PLANT_STAGE_LABELS[row.stage];
-  return row.drooping ? `${stage} · 시들해요` : stage;
+  const stage = plantStageLabel(row.kind, row.stage, row.empty);
+  const condition = plantConditionLabel(row);
+  return condition ? `${stage} · ${condition}` : stage;
 }
 
 /**
@@ -62,7 +69,7 @@ export function GardenTotalHeader({ investments }: { investments: InvestmentItem
 
 /**
  * 정원 전체일 때의 목록: 총 평가금액·리밸런싱 이어하기, 그리고 포트폴리오 식물마다 한 행.
- * 행을 누르면 포트폴리오 상세로 간다. 포트폴리오가 없으면 첫 씨앗 심기.
+ * 행을 누르면 포트폴리오 상세로 간다. 포트폴리오가 없으면 포트폴리오 만들기.
  */
 export function GardenOverviewList({
   plants,
@@ -78,6 +85,8 @@ export function GardenOverviewList({
   onPlantFirstSeed: () => void;
 }) {
   const { push } = useFlow();
+  const harvestCount = useHarvestStore((s) => s.harvests.length);
+  const [basketOpen, setBasketOpen] = useState(false);
   // 저장된 평가금액이 아니라 지금 시세로 다시 계산한 금액 (계좌 상세와 같은 값).
   const liveInvestments = useLiveAccounts(investments);
   const rows = useMemo(
@@ -122,9 +131,9 @@ export function GardenOverviewList({
 
       {rows.length === 0 ? (
         <ResultSection
-          title="첫 씨앗을 심어 보세요"
-          description="포트폴리오를 만들면 정원에 씨앗이 심겨요. 목표 금액을 정하면 자라기 시작해요."
-          primaryActionProps={{ children: "첫 씨앗 심기", onClick: onPlantFirstSeed }}
+          title="첫 포트폴리오를 만들어 보세요"
+          description="포트폴리오를 만들면 정원에 빈 화분이 놓여요. 목표를 더하면 씨앗이 심기고 자라기 시작해요."
+          primaryActionProps={{ children: "포트폴리오 만들기", onClick: onPlantFirstSeed }}
         />
       ) : (
         <>
@@ -145,6 +154,8 @@ export function GardenOverviewList({
                     stage={PLANT_STAGES[row.stage]}
                     pot={row.pot}
                     kind={row.kind}
+                    ripe={row.ripe}
+                    empty={row.empty}
                     size={44}
                   />
                   {row.needsRebalance && (
@@ -157,7 +168,7 @@ export function GardenOverviewList({
                   <span className="flex min-w-0 items-baseline gap-x1_5">
                     <span className="t5-bold truncate">{row.name}</span>
                     <span
-                      className={`t3-regular shrink-0 ${row.drooping ? "text-fg-warning" : "text-fg-neutral-subtle"}`}
+                      className={`t3-regular shrink-0 ${row.wilt > 0 && !row.ripe ? "text-fg-warning" : "text-fg-neutral-subtle"}`}
                     >
                       {stageLabel(row)}
                     </span>
@@ -167,7 +178,8 @@ export function GardenOverviewList({
                     stage={row.stage}
                     goalState={row.goalState}
                     goalPercent={row.goalPercent}
-                    drooping={row.drooping}
+                    wilt={row.wilt}
+                    wind={row.wind}
                     ariaLabel={`${row.name} 목표 도달`}
                   />
                 </span>
@@ -193,12 +205,18 @@ export function GardenOverviewList({
             </div>
           ))}
           <Divider />
-          <div className="flex justify-center pt-x4">
+          <div className="flex flex-wrap justify-center gap-x2 pt-x4">
             <ActionButton variant="ghost" size="medium" onClick={onPlantFirstSeed}>
               <Icon svg={<IconPlusLine />} />
-              씨앗 심기 (포트폴리오 추가)
+              포트폴리오 추가
             </ActionButton>
+            {harvestCount > 0 && (
+              <ActionButton variant="ghost" size="medium" onClick={() => setBasketOpen(true)}>
+                🧺 바구니 {harvestCount}
+              </ActionButton>
+            )}
           </div>
+          <BasketSheet open={basketOpen} onOpenChange={setBasketOpen} />
         </>
       )}
     </div>

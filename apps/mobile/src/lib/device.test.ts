@@ -59,6 +59,7 @@ describe("decideMobileRoute", () => {
     "/assets/portfolio/abc-123",
     "/assets/rebalancing",
     "/assets/rebalancing/acc-1",
+    "/assets/rebalancing/acc-1/plan",
     "/assets/rebalancing/sessions/s-1",
     "/assets/rebalancing/sessions/s-1/trades/t-1",
     "/assets/settings",
@@ -114,6 +115,13 @@ describe("decideMobileRoute", () => {
     expect(decideMobileRoute("/assets/rebalancing/abc-123", "mobile")).toEqual({
       type: "rewrite",
       pathname: "/m/assets/rebalancing/abc-123",
+    });
+  });
+
+  it("rewrites a rebalancing plan (step 2) page into the mobile tree", () => {
+    expect(decideMobileRoute("/assets/rebalancing/abc-123/plan", "mobile")).toEqual({
+      type: "rewrite",
+      pathname: "/m/assets/rebalancing/abc-123/plan",
     });
   });
 

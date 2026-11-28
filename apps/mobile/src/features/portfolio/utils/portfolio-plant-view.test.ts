@@ -1,3 +1,4 @@
+import { kindForPortfolio } from "@mobile/features/garden/utils/garden-home";
 import type { InvestmentItem, StockHolding } from "@mobile/features/investments/types/types";
 import {
   type StockPricePoint,
@@ -94,32 +95,72 @@ describe("portfolioRebalancingState", () => {
 });
 
 describe("portfolioPlantView", () => {
-  it("combines the portfolio value, plant status and rebalancing state", () => {
-    const p = portfolio({ accountIds: ["balanced"], goalAmount: 150_000 });
+  const NOW = "2026-11-27T06:30:00.000Z";
 
-    expect(portfolioPlantView(p, [balanced], prices)).toEqual({
+  it("combines the portfolio value, plant status and rebalancing state", () => {
+    const p = portfolio({ accountIds: ["balanced"], goalAmount: 150_000, wish: "제주 여행" });
+
+    expect(portfolioPlantView(p, [balanced], prices, NOW)).toEqual({
       portfolioId: "p",
       name: "안정형",
       color: "#111",
+      kind: kindForPortfolio("p"),
+      season: 1,
+      wish: "제주 여행",
       value: 100_000,
       pricesComplete: true,
       stage: 0,
-      drooping: false,
       goalState: "set",
       goalAmount: 150_000,
       remainingToNextStage: 50_000,
-      grew: false,
+      drifting: false,
+      driftDays: 0,
+      wilt: 0,
+      wind: 0,
+      ripe: false,
+      empty: false,
+      changed: false,
       rebalancing: "ok",
     });
   });
 
   it("shows a seed for a portfolio without accounts or a goal", () => {
-    expect(portfolioPlantView(portfolio(), [], prices)).toMatchObject({
+    expect(portfolioPlantView(portfolio(), [], prices, NOW)).toMatchObject({
       value: 0,
       stage: 0,
       goalState: "needs-goal",
-      drooping: false,
+      drifting: false,
       rebalancing: "unknown",
     });
+  });
+
+  it("waits for the weights when a linked account drifts past the threshold", () => {
+    const p = portfolio({ accountIds: ["skewed"], goalAmount: 100_000 });
+
+    expect(portfolioPlantView(p, [skewed], prices, NOW)).toMatchObject({
+      stage: 0,
+      goalState: "blocked-by-drift",
+      drifting: true,
+      changed: true,
+    });
+  });
+
+  it("grows on the amount alone when the portfolio has no target weights", () => {
+    const p = portfolio({ accountIds: ["skewed"], allocations: [], goalAmount: 100_000 });
+
+    expect(portfolioPlantView(p, [skewed], prices, NOW)).toMatchObject({
+      stage: 1,
+      drifting: false,
+    });
+  });
+
+  it("has no wind without linked accounts (no market to drop)", () => {
+    const p = portfolio({ growthStage: 1, goalHistory: [{ amount: 100_000, reachedAt: "x" }] });
+
+    expect(portfolioPlantView(p, [], prices, NOW).wind).toBe(0);
+  });
+
+  it("uses the plant kind chosen at planting", () => {
+    expect(portfolioPlantView(portfolio({ plantKind: "fern" }), [], prices, NOW).kind).toBe("fern");
   });
 });

@@ -4,9 +4,11 @@ import { useMemo, useState } from "react";
 import { useInvestmentStore } from "@mobile/features/investments/stores/investment-store";
 import type { Stock } from "@mobile/features/investments/types/stock";
 import { useStockPrices } from "@mobile/features/investments/utils/use-stock-prices";
-import { PortfolioPlantAvatar } from "@mobile/features/portfolio/components/portfolio-plant-avatar";
+import {
+  PortfolioPlantAvatar,
+  type PortfolioPlantLook,
+} from "@mobile/features/portfolio/components/portfolio-plant-avatar";
 import { usePortfolioStore } from "@mobile/features/portfolio/stores/portfolio-store";
-import type { PlantStage } from "@mobile/features/portfolio/types/types";
 import {
   type AllocationImportCandidate,
   candidatesFromAccount,
@@ -29,7 +31,7 @@ interface SourceGroup {
   id: string;
   name: string;
   /** 계좌는 색 점, 포트폴리오는 정원과 같은 식물로 나타낸다. */
-  marker: { kind: "color"; color: string } | { kind: "plant"; stage: PlantStage };
+  marker: { kind: "color"; color: string } | { kind: "plant"; portfolio: PortfolioPlantLook };
   candidates: AllocationImportCandidate[];
 }
 
@@ -84,7 +86,7 @@ export function ImportAllocationsSheet({
         .map((p) => ({
           id: p.id,
           name: p.name,
-          marker: { kind: "plant" as const, stage: p.growthStage },
+          marker: { kind: "plant" as const, portfolio: p },
           candidates: candidatesFromPortfolio(p, existingKeys),
         }))
         .filter((g) => g.candidates.length > 0),
@@ -163,11 +165,7 @@ export function ImportAllocationsSheet({
                     <section key={group.id} className="pb-x2">
                       <div className="flex items-center gap-x2 pt-x3 pb-x1">
                         {group.marker.kind === "plant" ? (
-                          <PortfolioPlantAvatar
-                            portfolioId={group.id}
-                            stage={group.marker.stage}
-                            size={24}
-                          />
+                          <PortfolioPlantAvatar portfolio={group.marker.portfolio} size={24} />
                         ) : (
                           <span
                             className="size-x3 shrink-0 rounded-full"

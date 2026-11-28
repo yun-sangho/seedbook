@@ -1,4 +1,4 @@
-import type { DriftMode, PlantProgress, PlantStage } from "./types";
+import type { DriftMode, PlantProgress } from "./types";
 
 /**
  * 포트폴리오 합계 비중 상한 (단위: %).
@@ -40,15 +40,6 @@ export const DEFAULT_DRIFT_MODE: DriftMode = "relative";
 export const LEGACY_DRIFT_MODE: DriftMode = "absolute";
 
 export { MAX_PLANT_STAGE } from "@seedbook/domain/v1/portfolio-types";
-
-/** 식물 단계 표시 이름. */
-export const PLANT_STAGE_LABELS: Record<PlantStage, string> = {
-  0: "씨앗",
-  1: "새싹",
-  2: "묘목",
-  3: "나무",
-  4: "꽃·열매",
-};
 
 /** 목표를 정하기 전의 식물 — 씨앗. */
 export const INITIAL_PLANT_PROGRESS: PlantProgress = {
