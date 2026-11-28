@@ -8,16 +8,22 @@
    - 운영 모바일 웹: 웹 이미지가 `vite build` 결과(`dist/`)를 `apps/web/public/_app` 으로 복사해 Next 가
      앱 경로에 `index.html` 을 준다 (`apps/web/proxy.ts`).
    - 테스트: `pnpm --filter @seedbook/mobile test`.
-2. **네이티브 셸** — iOS·Android 앱은 아직 **운영 서버(`https://seedbook.boogie.ing`)를 WebView 로 띄운다**
-   (화면은 위 앱 화면을 서버에서 받는다). 앱 번들(`webDir = dist`)로 바꾸는 것은 다음 단계다.
-   웹을 배포하면 앱 화면도 바로 바뀌므로, 스토어 재심사는 네이티브 쪽(아이콘·권한·플러그인·설정)이 바뀔 때만 필요하다.
+2. **네이티브 앱** — iOS·Android 앱은 위 앱 화면의 빌드(`dist/`)를 **바이너리에 담아** 앱 origin
+   (iOS `capacitor://localhost`, Android `https://localhost`) 에서 띄우고, API 는 운영 서버
+   (`https://seedbook.boogie.ing`, CORS·bearer 토큰) 를 부른다 (`src/lib/native/bundled-app.ts`).
+   - 화면을 고치면 **앱을 다시 내야** 앱에 반영된다 (웹 배포는 모바일 웹만 바꾼다). 앱 버전은
+     `package.json` `version` = iOS `MARKETING_VERSION` = Android `versionName` (`src/lib/app-version.test.ts`).
+   - 서버에 닿지 않아도 화면은 뜨고, 마지막으로 확인한 로그인으로 기기 데이터를 연다 (`src/lib/offline-session.ts`).
+     서버가 세션이 없다고 답할 때만 로그인 화면으로 간다.
+   - 옛 앱이 더는 동작할 수 없으면 서버 `apps/web/lib/app-config.ts` 의 `minSupportedVersion` 을 올린다 —
+     그보다 낮은 앱은 업데이트 화면으로 막힌다 (`src/components/update-gate.tsx`).
+   - 카카오·Apple 로그인은 네이티브 SDK 로만 한다 (웹 OAuth 는 서버 주소로 돌아와 번들을 떠난다).
+     플러그인이 없는 수단(Android 의 Apple, 카카오 키 없는 빌드)은 로그인 화면에 안 보인다.
 
 ```
 src/                         앱 화면 (main.tsx 시작점, app/_stack 화면 스택, features·components·lib)
 index.html · vite.config.ts  앱 HTML(메타·CSP)·dev 서버(프록시)·빌드 설정
-capacitor.config.ts          서버 주소, UA 표시(SeedbookApp), 앱 안에서 열 외부 도메인
-www-src/                     서버에 못 닿을 때 보여줄 로컬 페이지 (error.html)
-scripts/build-www.mjs        www-src → www (서버 주소 치환). `pnpm sync` 가 실행
+capacitor.config.ts          webDir(dist), UA 표시(SeedbookApp), dev live-reload 주소
 ios/  android/               네이티브 프로젝트 (커밋 대상)
 ```
 
@@ -43,12 +49,18 @@ ios/  android/               네이티브 프로젝트 (커밋 대상)
 ## 실행
 
 ```bash
-pnpm --filter @seedbook/mobile sync        # www 생성 + 네이티브 프로젝트에 설정 반영
+pnpm --filter @seedbook/mobile sync        # vite build (dist) + 네이티브 프로젝트에 번들·설정 반영
 pnpm --filter @seedbook/mobile open:ios    # Xcode 로 열어 시뮬레이터/기기 실행
 pnpm --filter @seedbook/mobile open:android
 ```
 
-로컬 dev 서버로 띄우기 — 기기에서 본 호스트 주소를 쓴다 (4001 은 메인 체크아웃의 앱 dev 서버(Vite). 워크트리는
+번들이 로컬 API 서버를 부르게 하려면 빌드 값을 준다 (dev 빌드라 "개발용 빠른 로그인" 이 보인다):
+
+```bash
+SEEDBOOK_API_BASE_URL=http://<맥 LAN IP>:<API 포트> npx vite build --mode development && npx cap sync ios
+```
+
+화면을 다시 빌드하지 않고 고치려면 live-reload 로 로컬 앱 dev 서버를 띄운다 — 기기에서 본 호스트 주소를 쓴다 (4001 은 메인 체크아웃의 앱 dev 서버(Vite). 워크트리는
 `pnpm wt:info` 의 web 포트):
 
 ```bash
@@ -74,7 +86,7 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ./gradl
 
 Android Studio 에서는 Settings → Build Tools → Gradle → Gradle JDK 를 21 로 고른다.
 
-`capacitor.config.json` 은 sync 때 만들어져 커밋되지 않는다 — 운영 주소로 돌아가려면 env 없이 다시
+`capacitor.config.json` 은 sync 때 만들어져 커밋되지 않는다 — 번들로 돌아가려면 env 없이 다시
 `sync` 한다. 개발 로그인(`/api/auth/dev-login`)은 dev 서버에서만 동작한다.
 
 ## 기기 저장소
@@ -141,13 +153,8 @@ sqlite3 app.db "select id, accountName, portfolioId from investment_account;"
   - [ ] 상세 URL 에서 로그인이 풀렸을 때 로그인 뒤 같은 화면으로 돌아오는지
   - [ ] 로그인 직후 Android 뒤로가기가 카카오 화면으로 되돌아가지 않고 앱을 내리는지
   - [ ] 로그아웃 → 다른 계정 로그인 때 이전 계정의 탭·상세 화면이 남지 않는지
-- **카카오 로그인**: 앱 안 WebView 에서 카카오 계정(ID/비밀번호) 로그인은 같은 도메인 쿠키로 세션이
-  남는다. "카카오톡으로 로그인" 은 카카오톡 앱으로 넘어갔다가 **시스템 브라우저로 돌아올 수 있어**
-  세션이 앱에 안 남을 수 있다. 문제가 되면 카카오 네이티브 SDK 로 토큰을 받아 서버와 교환하는 연결이
-  필요하다.
 - **Apple 로그인**: 서버에 APPLE_* env 를 넣으면 로그인 화면에 버튼이 나온다 (`.env.example`).
-- 서비스 워커: iOS WKWebView 에서는 App-Bound Domains 없이는 등록되지 않는다. 온라인 전용 앱이라
-  기능에는 영향이 없다.
+- 서비스 워커: 번들 앱은 등록하지 않는다 (화면을 이미 기기에 갖고 있다). 모바일 웹만 쓴다.
 
 ## 릴리스 (TestFlight · Play)
 
