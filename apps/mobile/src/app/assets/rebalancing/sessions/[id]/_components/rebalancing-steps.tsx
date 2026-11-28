@@ -179,10 +179,18 @@ function CurrentStep({
     <>
       <section className="flex flex-col px-x4 pt-x2 pb-x3">
         <p className="t6-bold break-keep">{taskName(task)}</p>
-        <p className="t9-bold mt-x1 tabular-nums">
+        {/* 금액과 수량은 한 줄에 하나씩, 숫자(원·주)만 굵게 — "58,250원에 / 30주 사는 중". */}
+        {copy.price && (
+          <p className="t9-bold mt-x1 tabular-nums">
+            {copy.price}
+            <span className="font-normal">에</span>
+          </p>
+        )}
+        <p className={cn("t9-bold tabular-nums", !copy.price && "mt-x1")}>
           {copy.quantity && <>{copy.quantity} </>}
           <span
             className={cn(
+              "font-normal",
               status === "pending" && task.action === "매도" && "text-fg-critical",
               status === "pending" && task.action === "매수" && "text-fg-positive"
             )}
@@ -227,7 +235,13 @@ const taskName = (task: RebalancingTask) => task.name || task.ticker || "(미선
 function stepCopy(
   task: RebalancingTask,
   action: NextRebalancingAction | null
-): { quantity: string | null; verb: string; note: string | null; critical?: boolean } {
+): {
+  price?: string | null;
+  quantity: string | null;
+  verb: string;
+  note: string | null;
+  critical?: boolean;
+} {
   const sell = task.action === "매도";
   switch (rebalancingTaskStatus(task)) {
     case "filled": {
@@ -239,9 +253,10 @@ function stepCopy(
       };
     }
     case "ordered":
-      // 주문한 가격과 남은 수량이 가장 중요하다 — "21,990원에 111주 파는 중".
+      // 주문한 가격과 남은 수량이 가장 중요하다 — "21,990원에 / 111주 파는 중".
       return {
-        quantity: `${formatWithCommas(task.orderedPrice ?? 0)}원에 ${formatWithCommas(remainingOrderQuantity(task))}주`,
+        price: `${formatWithCommas(task.orderedPrice ?? 0)}원`,
+        quantity: `${formatWithCommas(remainingOrderQuantity(task))}주`,
         verb: sell ? "파는 중" : "사는 중",
         note: null,
       };
