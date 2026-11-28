@@ -33,23 +33,23 @@ export function createSessionTokenStore(
   loadPlugin: () => Promise<{ plugin: SecureStoragePlugin } | null>,
   isAvailable: () => boolean = () => true
 ): SessionTokenStore {
-  let pluginPromise: Promise<SecureStoragePlugin | null> | null = null;
+  // 플러그인 Proxy 를 promise 값으로 돌려주면 `.then` 을 찾다가 네이티브 호출이 되어 영원히 끝나지 않는다 —
+  // promise 에는 감싼 객체를 담고, 쓸 때 꺼낸다.
+  let pluginPromise: Promise<{ plugin: SecureStoragePlugin } | null> | null = null;
   let cached: Promise<string | null> | null = null;
 
-  const plugin = () => {
-    pluginPromise ??= loadPlugin()
-      .then((loaded) => loaded?.plugin ?? null)
-      .catch(() => null);
+  const loaded = () => {
+    pluginPromise ??= loadPlugin().catch(() => null);
     return pluginPromise;
   };
 
   return {
     enabled: isAvailable,
     read() {
-      cached ??= plugin().then(async (storage) => {
+      cached ??= loaded().then(async (storage) => {
         if (!storage) return null;
         try {
-          const { value } = await storage.get({ key: SESSION_TOKEN_KEY });
+          const { value } = await storage.plugin.get({ key: SESSION_TOKEN_KEY });
           return value || null;
         } catch {
           return null;
@@ -58,17 +58,17 @@ export function createSessionTokenStore(
       return cached;
     },
     async save(token) {
-      const storage = await plugin();
+      const storage = await loaded();
       if (!storage) return;
       cached = Promise.resolve(token);
       // 저장에 실패해도 이번 실행 동안은 메모리 값으로 동작한다. 다음 실행에서 다시 로그인한다.
-      await storage.set({ key: SESSION_TOKEN_KEY, value: token }).catch(() => {});
+      await storage.plugin.set({ key: SESSION_TOKEN_KEY, value: token }).catch(() => {});
     },
     async clear() {
-      const storage = await plugin();
+      const storage = await loaded();
       cached = Promise.resolve(null);
       if (!storage) return;
-      await storage.remove({ key: SESSION_TOKEN_KEY }).catch(() => {});
+      await storage.plugin.remove({ key: SESSION_TOKEN_KEY }).catch(() => {});
     },
   };
 }
