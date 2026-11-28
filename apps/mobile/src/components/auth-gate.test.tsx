@@ -223,7 +223,7 @@ describe("AuthGate", () => {
       </AuthGate>
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "카카오로 로그인" }));
+    fireEvent.click(screen.getByRole("button", { name: "카카오 로그인" }));
 
     expect(mockSignInSocial).toHaveBeenCalledTimes(1);
     expect(mockSignInSocial).toHaveBeenCalledWith({

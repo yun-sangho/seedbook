@@ -17,7 +17,12 @@
     </style>
 
 
+    <!-- 실행 스플래시 (Android 12 SplashScreen API, 11 이하는 core-splashscreen). 배경은 앱 배경과 같은 색
+         (values-night 은 다크)이라 첫 화면으로 넘어갈 때 바탕이 바뀌지 않는다. 아이콘은 런처 아이콘.
+         닫는 시점은 @capacitor/splash-screen (capacitor.config.ts SplashScreen, src/lib/native/splash.ts). -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <item name="windowSplashScreenBackground">@color/app_background</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>

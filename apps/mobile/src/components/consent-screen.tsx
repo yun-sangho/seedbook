@@ -7,6 +7,7 @@ import { declineConsent, submitConsent } from "@mobile/lib/consent-client";
 import { reloadApp } from "@mobile/lib/device-storage";
 import type { ConsentDocument } from "@mobile/lib/legal/catalog";
 import { koreanDate, type LegalDocumentId } from "@mobile/lib/legal-documents";
+import { useHideSplash } from "@mobile/lib/native/splash";
 import { signOutAndReload } from "@mobile/lib/sign-out";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
 import {
@@ -37,6 +38,7 @@ export function ConsentScreen({
   newSignUp: boolean;
   documents: readonly ConsentDocument[];
 }) {
+  useHideSplash();
   const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
   const [pending, setPending] = useState<"agree" | "decline" | null>(null);
   const [failed, setFailed] = useState(false);
