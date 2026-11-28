@@ -24,6 +24,9 @@ describe("PreferencesSync", () => {
     usePreferencesStore.setState({
       rebalancingTaskSort: "nameDesc",
       rebalancingCollapsedSections: [],
+      accountSortOption: "evalDesc",
+      portfolioStockSortOption: "driftDesc",
+      investmentTrendRange: "3months" as never,
     });
     mockUseSession.mockReturnValue({ data: { user: { id: "u1" } }, isPending: false });
   });
@@ -58,6 +61,30 @@ describe("PreferencesSync", () => {
 
     await waitFor(() =>
       expect(usePreferencesStore.getState().rebalancingCollapsedSections).toEqual(["filled"])
+    );
+  });
+
+  it("applies the account's list sorts and chart range on login", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            accountSortOption: "evalAsc",
+            portfolioStockSortOption: "nameAsc",
+            investmentTrendRange: "1year",
+          }),
+          { status: 200 }
+        )
+    );
+
+    render(<PreferencesSync />);
+
+    await waitFor(() =>
+      expect(usePreferencesStore.getState()).toMatchObject({
+        accountSortOption: "evalAsc",
+        portfolioStockSortOption: "nameAsc",
+        investmentTrendRange: "1year",
+      })
     );
   });
 

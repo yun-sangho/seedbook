@@ -166,6 +166,15 @@ export const DEVICE_MIGRATIONS: DeviceMigration[] = [
       )`,
     ],
   },
+  {
+    version: 6,
+    statements: [
+      // 계정에 저장하는 화면 설정: 계좌 목록 정렬, 포트폴리오 종목 정렬, 투자 추이 기간.
+      "ALTER TABLE user_preference ADD COLUMN accountSortOption TEXT NOT NULL DEFAULT 'evalDesc'",
+      "ALTER TABLE user_preference ADD COLUMN portfolioStockSortOption TEXT NOT NULL DEFAULT 'driftDesc'",
+      "ALTER TABLE user_preference ADD COLUMN investmentTrendRange TEXT NOT NULL DEFAULT '3months'",
+    ],
+  },
 ];
 
 const CREATE_MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS device_schema_migration (

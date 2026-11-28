@@ -7,6 +7,7 @@ import {
   isTableEnvelopeKey,
   readQuarantinedItems,
   readTableEnvelope,
+  removeTableEnvelope,
   writeTableEnvelope,
 } from "./table-envelopes";
 import { createNodeSqliteDriver } from "./testing/node-sqlite-driver";
@@ -95,7 +96,6 @@ describe("investment-storage", () => {
               cashItems: [{ id: CASH_A, label: "예수금", amount: 50_000 }],
             }),
           ],
-          holdingsSortOption: "evalDesc",
         },
         6
       )
@@ -137,16 +137,11 @@ describe("investment-storage", () => {
       }),
       account(ACCOUNT_A, "첫 번째"),
     ];
-    await writeTableEnvelope(
-      driver,
-      "investment-storage",
-      envelope({ investments, holdingsSortOption: "nameAsc" }, 6)
-    );
+    await writeTableEnvelope(driver, "investment-storage", envelope({ investments }, 6));
 
     const result = await read(driver, "investment-storage");
 
     expect(result?.version).toBe(4);
-    expect(result?.state.holdingsSortOption).toBe("nameAsc");
     expect(result?.state.investments).toEqual([
       {
         ...investments[0],
@@ -361,23 +356,52 @@ describe("rebalancing-storage", () => {
 });
 
 describe("seedbook.preferences", () => {
-  it("shares the user_preference row with the holdings sort option", async () => {
-    await writeTableEnvelope(
-      driver,
-      "investment-storage",
-      envelope({ investments: [], holdingsSortOption: "nameAsc" }, 6)
-    );
+  it("keeps the holdings sort apart from the accounts (writing accounts does not reset it)", async () => {
     await writeTableEnvelope(
       driver,
       "seedbook.preferences",
-      envelope({ rebalancingTaskSort: "evalAsc", rebalancingCollapsedSections: ["filled"] }, 1)
+      envelope({ holdingsSortOption: "nameAsc", rebalancingTaskSort: "evalAsc" }, 1)
+    );
+    await writeTableEnvelope(driver, "investment-storage", envelope({ investments: [] }, 6));
+
+    expect((await read(driver, "seedbook.preferences"))?.state).toMatchObject({
+      holdingsSortOption: "nameAsc",
+      rebalancingTaskSort: "evalAsc",
+    });
+    expect((await read(driver, "investment-storage"))?.state).not.toHaveProperty(
+      "holdingsSortOption"
+    );
+  });
+
+  it("keeps the list sorts and chart range", async () => {
+    const state = {
+      rebalancingTaskSort: "nameDesc",
+      rebalancingCollapsedSections: [],
+      accountSortOption: "evalAsc",
+      portfolioStockSortOption: "nameAsc",
+      investmentTrendRange: "1year",
+      holdingsSortOption: "priceDesc",
+    };
+
+    await writeTableEnvelope(driver, "seedbook.preferences", envelope(state, 1));
+
+    expect(await read(driver, "seedbook.preferences")).toEqual({ state, version: 1 });
+  });
+
+  it("resets every preference to its default when removed", async () => {
+    await writeTableEnvelope(
+      driver,
+      "seedbook.preferences",
+      envelope({ accountSortOption: "evalAsc", investmentTrendRange: "all" }, 1)
     );
 
-    expect(await read(driver, "seedbook.preferences")).toEqual({
-      state: { rebalancingTaskSort: "evalAsc", rebalancingCollapsedSections: ["filled"] },
-      version: 1,
+    await removeTableEnvelope(driver, "seedbook.preferences");
+
+    expect((await read(driver, "seedbook.preferences"))?.state).toMatchObject({
+      accountSortOption: "evalDesc",
+      portfolioStockSortOption: "driftDesc",
+      investmentTrendRange: "3months",
     });
-    expect((await read(driver, "investment-storage"))?.state.holdingsSortOption).toBe("nameAsc");
   });
 });
 
@@ -482,7 +506,7 @@ describe("clearDeviceTables", () => {
     await writeTableEnvelope(
       driver,
       "investment-storage",
-      envelope({ investments: [account(ACCOUNT_A, "계좌")], holdingsSortOption: "nameAsc" }, 6)
+      envelope({ investments: [account(ACCOUNT_A, "계좌")] }, 6)
     );
 
     await clearDeviceTables(driver);

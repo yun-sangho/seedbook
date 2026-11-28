@@ -1,82 +1,98 @@
+import { schema } from "@seedbook/database";
 import { openTestDb } from "@web/test/db/test-db";
 import { afterAll, describe, expect, it } from "vitest";
-import {
-  readRebalancingCollapsedSections,
-  readRebalancingTaskSort,
-  writeRebalancingCollapsedSections,
-  writeRebalancingTaskSort,
-} from "./preferences";
+import { readAccountPreferences, writeAccountPreferences } from "./preferences";
 
 const { db, createTestUser, close } = openTestDb();
 afterAll(close);
 
-describe("rebalancing trade sort preference (real Postgres)", () => {
-  it("is name descending when the user has never chosen one", async () => {
+describe("account preferences (real Postgres)", () => {
+  it("are each screen's default when the user has never chosen anything", async () => {
     const userId = await createTestUser();
 
-    expect(await readRebalancingTaskSort(db, userId)).toBe("nameDesc");
+    expect(await readAccountPreferences(db, userId)).toEqual({
+      rebalancingTaskSort: "nameDesc",
+      rebalancingCollapsedSections: [],
+      accountSortOption: "evalDesc",
+      portfolioStockSortOption: "driftDesc",
+      investmentTrendRange: "3months",
+      holdingsSortOption: "evalDesc",
+    });
   });
 
   it("reads back what was written", async () => {
     const userId = await createTestUser();
 
-    await writeRebalancingTaskSort(db, userId, "evalAsc");
+    await writeAccountPreferences(db, userId, {
+      rebalancingTaskSort: "evalAsc",
+      rebalancingCollapsedSections: ["filled", "ordered"],
+      accountSortOption: "evalAsc",
+      portfolioStockSortOption: "nameAsc",
+      investmentTrendRange: "1year" as never,
+      holdingsSortOption: "nameAsc",
+    });
 
-    expect(await readRebalancingTaskSort(db, userId)).toBe("evalAsc");
+    expect(await readAccountPreferences(db, userId)).toEqual({
+      rebalancingTaskSort: "evalAsc",
+      rebalancingCollapsedSections: ["filled", "ordered"],
+      accountSortOption: "evalAsc",
+      portfolioStockSortOption: "nameAsc",
+      investmentTrendRange: "1year",
+      holdingsSortOption: "nameAsc",
+    });
   });
 
-  it("keeps the user's other preferences when writing", async () => {
+  it("changes only the preferences it was given", async () => {
     const userId = await createTestUser();
-    const { schema } = await import("@seedbook/database");
+
+    await writeAccountPreferences(db, userId, { rebalancingTaskSort: "evalAsc" });
+    await writeAccountPreferences(db, userId, { rebalancingCollapsedSections: ["filled"] });
+    await writeAccountPreferences(db, userId, { portfolioStockSortOption: "evalDesc" });
+
+    expect(await readAccountPreferences(db, userId)).toMatchObject({
+      rebalancingTaskSort: "evalAsc",
+      rebalancingCollapsedSections: ["filled"],
+      portfolioStockSortOption: "evalDesc",
+      accountSortOption: "evalDesc",
+    });
+  });
+
+  it("keeps the user's storage mode when writing", async () => {
+    const userId = await createTestUser();
     await db
       .insert(schema.userPreference)
-      .values({ userId, storageMode: "cloud", holdingsSortOption: "value" });
+      .values({ userId, storageMode: "cloud", holdingsSortOption: "nameAsc" });
 
-    await writeRebalancingTaskSort(db, userId, "nameAsc");
+    await writeAccountPreferences(db, userId, { accountSortOption: "evalAsc" });
 
     const row = await db.query.userPreference.findFirst({
       where: (t, { eq }) => eq(t.userId, userId),
     });
     expect(row).toMatchObject({
       storageMode: "cloud",
-      holdingsSortOption: "value",
-      rebalancingTaskSort: "nameAsc",
+      holdingsSortOption: "nameAsc",
+      accountSortOption: "evalAsc",
     });
   });
 
-  it("does not leak another user's preference", async () => {
+  it("reads a stored option that no longer exists as the default", async () => {
+    const userId = await createTestUser();
+    await db
+      .insert(schema.userPreference)
+      .values({ userId, accountSortOption: "default", rebalancingTaskSort: "gone" });
+
+    expect(await readAccountPreferences(db, userId)).toMatchObject({
+      accountSortOption: "evalDesc",
+      rebalancingTaskSort: "nameDesc",
+    });
+  });
+
+  it("does not leak another user's preferences", async () => {
     const a = await createTestUser();
     const b = await createTestUser();
 
-    await writeRebalancingTaskSort(db, a, "evalDesc");
+    await writeAccountPreferences(db, a, { portfolioStockSortOption: "nameDesc" });
 
-    expect(await readRebalancingTaskSort(db, b)).toBe("nameDesc");
-  });
-});
-
-describe("rebalancing collapsed sections preference (real Postgres)", () => {
-  it("is nothing collapsed when the user has never folded a section", async () => {
-    const userId = await createTestUser();
-
-    expect(await readRebalancingCollapsedSections(db, userId)).toEqual([]);
-  });
-
-  it("reads back what was written", async () => {
-    const userId = await createTestUser();
-
-    await writeRebalancingCollapsedSections(db, userId, ["filled", "ordered"]);
-
-    expect(await readRebalancingCollapsedSections(db, userId)).toEqual(["filled", "ordered"]);
-  });
-
-  it("keeps the trade sort when writing, and the other way round", async () => {
-    const userId = await createTestUser();
-
-    await writeRebalancingTaskSort(db, userId, "evalAsc");
-    await writeRebalancingCollapsedSections(db, userId, ["filled"]);
-    await writeRebalancingTaskSort(db, userId, "nameAsc");
-
-    expect(await readRebalancingTaskSort(db, userId)).toBe("nameAsc");
-    expect(await readRebalancingCollapsedSections(db, userId)).toEqual(["filled"]);
+    expect((await readAccountPreferences(db, b)).portfolioStockSortOption).toBe("driftDesc");
   });
 });

@@ -58,8 +58,8 @@ function normalizeInvestment(item: InvestmentItem): InvestmentItem {
  * 투자 store (`investment-storage`) 의 엔티티 동기화 설정. store 를 import 하지 않는다 —
  * hybrid-storage 가 store 보다 먼저 이 설정을 읽는다.
  *
- * 보유 주식 정렬(`holdingsSortOption`)은 목록이 아니라 화면 설정이라 동기화하지 않고
- * 기기마다 로컬 캐시에 남는다.
+ * 보유 종목 정렬 같은 화면 설정은 여기서 다루지 않는다 — 저장소 모드와 상관없이 계정 설정
+ * (`/api/me/preferences`)으로 저장한다.
  */
 export const investmentsSyncConfig: ManagedStoreConfig<InvestmentItem> = {
   storageKey: "investment-storage",

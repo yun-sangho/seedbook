@@ -1,5 +1,4 @@
 import { formatDate } from "@web/app/api/storage/_translators/types";
-import { normalizeHoldingsSortOption } from "@web/features/investments/types/holdings-sort";
 import {
   ACCOUNT_SNAPSHOT_STORAGE_KEY,
   HOLDINGS_HISTORY_STORAGE_KEY,
@@ -203,8 +202,13 @@ async function readPreference(driver: SqlDriver) {
     holdingsSortOption: string;
     rebalancingTaskSort: string;
     rebalancingCollapsedSections: string;
+    accountSortOption: string;
+    portfolioStockSortOption: string;
+    investmentTrendRange: string;
   }>(
-    "SELECT holdingsSortOption, rebalancingTaskSort, rebalancingCollapsedSections FROM user_preference WHERE id = 1"
+    `SELECT holdingsSortOption, rebalancingTaskSort, rebalancingCollapsedSections,
+            accountSortOption, portfolioStockSortOption, investmentTrendRange
+       FROM user_preference WHERE id = 1`
   );
   return row ?? null;
 }
@@ -253,15 +257,14 @@ type HoldingRow = {
 type CashRow = { id: string; accountId: string; label: string; amount: number };
 
 async function readInvestments(driver: SqlDriver): Promise<string | null> {
-  const [accounts, records, holdings, cashItems, preference, order] = await Promise.all([
+  const [accounts, records, holdings, cashItems, order] = await Promise.all([
     driver.query<AccountRow>("SELECT * FROM investment_account"),
     driver.query<RecordRow>("SELECT * FROM investment_record"),
     driver.query<HoldingRow>("SELECT * FROM stock_holding ORDER BY rowid"),
     driver.query<CashRow>("SELECT * FROM cash_item ORDER BY rowid"),
-    readPreference(driver),
     readListOrder(driver, INVESTMENT_LIST),
   ]);
-  if (accounts.length === 0 && !preference && !order) return null;
+  if (accounts.length === 0 && !order) return null;
 
   // 서버 행 모양(bigint · Date)으로 맞춰 서버와 같은 변환 함수를 쓴다.
   const investments = sortByOrder(accounts, order).map((a) => ({
@@ -290,21 +293,13 @@ async function readInvestments(driver: SqlDriver): Promise<string | null> {
     ),
   }));
 
-  return serialize(
-    {
-      investments,
-      holdingsSortOption: normalizeHoldingsSortOption(preference?.holdingsSortOption),
-    },
-    INVESTMENT_VERSION
-  );
+  // 보유 종목 정렬은 화면 설정이라 `seedbook.preferences` 가 읽는다.
+  return serialize({ investments }, INVESTMENT_VERSION);
 }
 
 async function investmentStatements(driver: SqlDriver, state: State): Promise<SqlStatement[]> {
-  const sortStatement = preferenceStatement({
-    holdingsSortOption: normalizeHoldingsSortOption(state.holdingsSortOption),
-  });
   // 목록이 없는 envelope 로 계좌를 지우지 않는다.
-  if (!Array.isArray(state.investments)) return [sortStatement];
+  if (!Array.isArray(state.investments)) return [];
   const {
     ids,
     valid: accounts,
@@ -389,7 +384,6 @@ async function investmentStatements(driver: SqlDriver, state: State): Promise<Sq
     }
   }
   statements.push(listOrderStatement(INVESTMENT_LIST, ids));
-  statements.push(sortStatement);
   return statements;
 }
 
@@ -682,16 +676,30 @@ async function readPreferences(driver: SqlDriver): Promise<string | null> {
     {
       rebalancingTaskSort: row.rebalancingTaskSort,
       rebalancingCollapsedSections: parseJsonArray(row.rebalancingCollapsedSections),
+      accountSortOption: row.accountSortOption,
+      portfolioStockSortOption: row.portfolioStockSortOption,
+      investmentTrendRange: row.investmentTrendRange,
+      holdingsSortOption: row.holdingsSortOption,
     },
     PREFERENCES_VERSION
   );
 }
 
+/** `seedbook.preferences` 의 글자 값 항목 — 이름이 그대로 `user_preference` 컬럼이다. */
+const PREFERENCE_TEXT_COLUMNS = [
+  "rebalancingTaskSort",
+  "accountSortOption",
+  "portfolioStockSortOption",
+  "investmentTrendRange",
+  "holdingsSortOption",
+] as const;
+
 function preferencesStatements(state: State): SqlStatement[] {
   // 값 검증은 preferences store 의 merge 가 읽을 때 한다 (서버 /api/me/preferences 와 같은 규칙).
   const columns: Record<string, SqlValue> = {};
-  if (typeof state.rebalancingTaskSort === "string") {
-    columns.rebalancingTaskSort = state.rebalancingTaskSort;
+  for (const name of PREFERENCE_TEXT_COLUMNS) {
+    const value = state[name];
+    if (typeof value === "string") columns[name] = value;
   }
   if (Array.isArray(state.rebalancingCollapsedSections)) {
     columns.rebalancingCollapsedSections = JSON.stringify(state.rebalancingCollapsedSections);
@@ -851,7 +859,9 @@ export async function removeTableEnvelope(driver: SqlDriver, key: string): Promi
     await driver.batch([
       {
         sql: `UPDATE user_preference SET holdingsSortOption = 'evalDesc',
-              rebalancingTaskSort = 'nameDesc', rebalancingCollapsedSections = '[]'`,
+              rebalancingTaskSort = 'nameDesc', rebalancingCollapsedSections = '[]',
+              accountSortOption = 'evalDesc', portfolioStockSortOption = 'driftDesc',
+              investmentTrendRange = '3months'`,
       },
     ]);
   } else if (key === ACCOUNT_SNAPSHOT_STORAGE_KEY) {
