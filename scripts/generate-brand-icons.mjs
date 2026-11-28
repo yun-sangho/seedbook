@@ -16,7 +16,13 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { BRAND_BACKGROUND, composeSvg, encodeIco, withDevBadge } from "./brand-icons-lib.mjs";
+import {
+  BRAND_BACKGROUND,
+  composeSplashSvg,
+  composeSvg,
+  encodeIco,
+  withDevBadge,
+} from "./brand-icons-lib.mjs";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const webDir = path.join(rootDir, "apps/web");
@@ -34,9 +40,9 @@ const FAVICON_SCALE = 1.3;
 const TILE_RADIUS = 22;
 /** Android 적응형 전경: 108dp 중 가운데 72dp 가 보인다 → 타일과 같은 크기가 되도록 줄인다. */
 const ADAPTIVE_SCALE = (TILE_SCALE * 72) / 108;
-/** 스플래시 배경. 다크는 iOS AppBackground.colorset 다크와 같다. */
-const SPLASH_LIGHT = "#ffffff";
-const SPLASH_DARK = "#16171b";
+/** 스플래시 배경·글자색 (SEED bg.layerDefault·fg.neutral). 다크 배경은 iOS AppBackground.colorset 다크와 같다. */
+const SPLASH_LIGHT = { background: "#ffffff", wordmarkColor: "#1a1c20" };
+const SPLASH_DARK = { background: "#16171b", wordmarkColor: "#f3f4f5" };
 
 function write(dest, data) {
   mkdirSync(path.dirname(dest), { recursive: true });
@@ -51,14 +57,14 @@ async function rasterize(svg, size, { opaque = false } = {}) {
   return image.png({ compressionLevel: 9 }).toBuffer();
 }
 
-/** width×height 단색 화면 가운데에 마크를 (짧은 변 × ratio) 크기로 얹는다. */
-async function splash(width, height, ratio, background) {
-  const box = Math.round(Math.min(width, height) * ratio);
-  const mark = await rasterize(composeSvg(MARK, { scale: 1 }), box);
-  return sharp({ create: { width, height, channels: 3, background } })
-    .composite([
-      { input: mark, left: Math.round((width - box) / 2), top: Math.round((height - box) / 2) },
-    ])
+/**
+ * width×height 스플래시 PNG: 단색 배경 가운데에 마크와 "Seedbook" (`composeSplashSvg`). unit 은 그 화면에서
+ * 보이는 짧은 변(px) — 기본은 이미지의 짧은 변.
+ */
+async function splash(width, height, theme, unit = Math.min(width, height)) {
+  const svg = composeSplashSvg(MARK, { width, height, unit, ...theme });
+  return sharp(Buffer.from(svg))
+    .flatten({ background: theme.background })
     .png({ compressionLevel: 9 })
     .toBuffer();
 }
@@ -107,7 +113,7 @@ for (const size of [192, 512]) {
 }
 // 사이트 헤더 로고: 투명 배경, 그림에 바짝 맞춘 viewBox.
 write(path.join(webDir, "public/logo.svg"), composeSvg(MARK, { scale: 1, viewBox: "18 18 64 64" }));
-// iOS PWA 스플래시: 짧은 변의 48% 상자 (그림은 그 ~2/3).
+// iOS PWA 스플래시: 라이트·다크 (`-dark`, src/lib/ios-splash.ts 가 prefers-color-scheme 로 고른다).
 const screens = JSON.parse(
   readFileSync(path.join(rootDir, "apps/mobile/src/lib/ios-splash-screens.json"), "utf8")
 );
@@ -116,7 +122,11 @@ for (const { width, height, ratio } of screens) {
   const h = height * ratio;
   write(
     path.join(webDir, `public/splash/apple-splash-${w}x${h}.png`),
-    await splash(w, h, 0.48, SPLASH_LIGHT)
+    await splash(w, h, SPLASH_LIGHT)
+  );
+  write(
+    path.join(webDir, `public/splash/apple-splash-${w}x${h}-dark.png`),
+    await splash(w, h, SPLASH_DARK)
   );
 }
 
@@ -135,15 +145,17 @@ write(
   path.join(IOS_ASSETS, "AppIconDev.appiconset/Contents.json"),
   readFileSync(path.join(IOS_ASSETS, "AppIcon.appiconset/Contents.json"))
 );
-// LaunchScreen: 정사각 2732 를 화면 높이에 맞춰 자르므로 30% 상자 (폰에서 그림 ~170pt).
+// LaunchScreen: 정사각 2732 를 화면 높이에 맞춰 가운데를 자른다 (scaleAspectFill). 폰(390×844pt)에서 보이는
+// 폭은 2732 × 390/844 — 그 폭을 기준으로 마크·글자 크기를 정한다.
+const IOS_LAUNCH_VISIBLE_WIDTH = Math.round((2732 * 390) / 844);
 for (const name of ["splash-2732x2732", "splash-2732x2732-1", "splash-2732x2732-2"]) {
   write(
     path.join(IOS_ASSETS, `Splash.imageset/${name}.png`),
-    await splash(2732, 2732, 0.3, SPLASH_LIGHT)
+    await splash(2732, 2732, SPLASH_LIGHT, IOS_LAUNCH_VISIBLE_WIDTH)
   );
   write(
     path.join(IOS_ASSETS, `Splash.imageset/${name}-dark.png`),
-    await splash(2732, 2732, 0.3, SPLASH_DARK)
+    await splash(2732, 2732, SPLASH_DARK, IOS_LAUNCH_VISIBLE_WIDTH)
   );
 }
 
@@ -211,5 +223,5 @@ const ANDROID_SPLASHES = [
   ["drawable-port-xxxhdpi", 1280, 1920],
 ];
 for (const [dir, width, height] of ANDROID_SPLASHES) {
-  write(path.join(RES, `${dir}/splash.png`), await splash(width, height, 0.48, SPLASH_LIGHT));
+  write(path.join(RES, `${dir}/splash.png`), await splash(width, height, SPLASH_LIGHT));
 }

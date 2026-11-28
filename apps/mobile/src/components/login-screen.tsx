@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { AppleSignInActionButton } from "@mobile/components/apple-sign-in-action-button";
 import { BiometricSignInButton } from "@mobile/components/biometric-sign-in-button";
+import { BrandMark } from "@mobile/components/brand-mark";
+import { KakaoSignInButton } from "@mobile/components/kakao-sign-in-button";
+import { LegalDocumentViewer } from "@mobile/components/legal-document-viewer";
 import { useSocialSignIn } from "@mobile/hooks/use-social-sign-in";
 import { apiFetch } from "@mobile/lib/api-client";
 import { getDeviceStorage } from "@mobile/lib/device-storage";
@@ -11,7 +14,7 @@ import {
   readLastLoginMethod,
   type SocialProvider,
 } from "@mobile/lib/last-login-method";
-import { LEGAL_DOCUMENTS } from "@mobile/lib/legal-documents";
+import { LEGAL_DOCUMENTS, type LegalDocumentId } from "@mobile/lib/legal-documents";
 import {
   LOGIN_ERROR_PARAM,
   LOGIN_FAILED_MESSAGE,
@@ -20,10 +23,10 @@ import {
 } from "@mobile/lib/login-flow";
 import { noteSignedInForAppLock } from "@mobile/lib/native/app-lock";
 import { canSignInWith } from "@mobile/lib/native/social-login";
+import { useHideSplash } from "@mobile/lib/native/splash";
+import { pendingSignOut } from "@mobile/lib/pending-sign-out";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
 import { Callout } from "@mobile/seed-design/ui/callout";
-import { Icon } from "@seed-design/react";
-import { Sprout } from "lucide-react";
 
 // 앱 번들 빌드(vite.config.ts `define`)가 치환한다.
 const isDevEnv = process.env.NODE_ENV === "development";
@@ -41,6 +44,7 @@ function LastLoginHint({ provider }: { provider: SocialProvider }) {
  * 로그인 화면. 브라우저에서만 그려진다 (`HydrationGate` 아래) — 첫 렌더에서 주소를 읽어도 된다.
  */
 export function LoginScreen() {
+  useHideSplash();
   const [returnPath] = useState(() => resolveReturnPath(window.location.pathname));
   const [callbackError] = useState(() =>
     loginErrorMessage(new URLSearchParams(window.location.search).get(LOGIN_ERROR_PARAM))
@@ -50,6 +54,7 @@ export function LoginScreen() {
   const [lastLoginMethod] = useState(() => readLastLoginMethod(getDeviceStorage()));
   const [devPending, setDevPending] = useState(false);
   const [devFailed, setDevFailed] = useState(false);
+  const [viewing, setViewing] = useState<LegalDocumentId | null>(null);
 
   // 새로고침해도 지난 오류가 다시 나오지 않게 주소에서 지운다. history state 는
   // 그대로 둔다 (`app/_stack/address-bar-history.ts`).
@@ -61,6 +66,7 @@ export function LoginScreen() {
   const signInWithDevBypass = async () => {
     setDevPending(true);
     setDevFailed(false);
+    void pendingSignOut.clear().catch(() => undefined);
     const response = await apiFetch("/api/auth/dev-login", { method: "POST" }).catch(() => null);
     if (response?.ok) {
       noteSignedInForAppLock();
@@ -76,74 +82,78 @@ export function LoginScreen() {
   const message = failed || devFailed ? LOGIN_FAILED_MESSAGE : busy ? null : callbackError;
 
   return (
-    <main className="bg-bg-layer-default text-fg-neutral flex h-dvh w-full flex-col overflow-y-auto px-x6 pt-[env(safe-area-inset-top)] pb-[calc(env(safe-area-inset-bottom)+24px)]">
-      <div className="mx-auto my-auto flex w-full max-w-sm flex-col gap-x8 py-x8">
-        <div className="flex flex-col items-center gap-x3 text-center">
-          <Icon svg={<Sprout aria-hidden />} size="x10" />
-          <h1 className="t8-bold">Seedbook 로그인</h1>
-          <p className="t5-regular text-fg-neutral-muted break-keep">
-            투자 계좌와 목표 비중, 리밸런싱을
-            <br />
-            한곳에서 관리해요
-          </p>
-        </div>
+    <main className="bg-bg-layer-default text-fg-neutral flex h-dvh w-full flex-col overflow-y-auto px-x6 pt-[env(safe-area-inset-top)] pb-[calc(env(safe-area-inset-bottom)+20px)]">
+      {/* 스플래시와 같은 마크·같은 자리 — 스플래시가 걷히면 마크는 그대로 있고 버튼이 아래에 나타난다. */}
+      <div className="mx-auto flex w-full max-w-sm flex-1 flex-col items-center justify-center gap-x3 py-x8 text-center">
+        {/* 그림 폭 ~110pt — 스플래시 마크와 같은 크기 (scripts/brand-icons-lib.mjs SPLASH_MARK_BOX). */}
+        <BrandMark size={180} />
+        {/* 화면에는 이름만, 스크린리더는 무슨 화면인지 함께 읽는다. */}
+        <h1 className="t9-bold" aria-label="Seedbook 로그인">
+          Seedbook
+        </h1>
+        <p className="t5-regular text-fg-neutral-muted break-keep">
+          목표를 세우고 달성하며
+          <br />
+          자산을 키워봐요
+        </p>
+      </div>
 
-        <div className="flex flex-col gap-x2">
-          {message && (
-            <div role="alert" className="pb-x2">
-              <Callout tone="neutral" description={message} />
-            </div>
-          )}
-          {/* 네이티브 앱에서 생체 인증 로그인을 켜 둔 기기에서만 보인다. */}
-          <BiometricSignInButton callbackURL={returnPath} />
-          {canSignInWith("kakao") && (
-            <>
-              <ActionButton
-                variant="neutralSolid"
-                size="large"
-                loading={pendingProvider === "kakao"}
-                disabled={busy && pendingProvider !== "kakao"}
-                onClick={() => signIn("kakao")}
-              >
-                카카오로 로그인
-              </ActionButton>
-              {lastLoginMethod === "kakao" && <LastLoginHint provider="kakao" />}
-            </>
-          )}
-          <AppleSignInActionButton
-            size="large"
-            hint={lastLoginMethod === "apple" && <LastLoginHint provider="apple" />}
-            loading={pendingProvider === "apple"}
-            disabled={busy && pendingProvider !== "apple"}
-            onClick={() => signIn("apple")}
-          />
-          {isDevEnv && (
-            <ActionButton
-              variant="neutralOutline"
+      <div className="mx-auto flex w-full max-w-sm flex-col gap-x2">
+        {message && (
+          <div role="alert" className="pb-x2">
+            <Callout tone="neutral" description={message} />
+          </div>
+        )}
+        {/* 네이티브 앱에서 생체 인증 로그인을 켜 둔 기기에서만 보인다. */}
+        <BiometricSignInButton callbackURL={returnPath} />
+        {canSignInWith("kakao") && (
+          <>
+            <KakaoSignInButton
               size="large"
-              loading={devPending}
-              disabled={busy && !devPending}
-              onClick={signInWithDevBypass}
+              loading={pendingProvider === "kakao"}
+              disabled={busy && pendingProvider !== "kakao"}
+              onClick={() => signIn("kakao")}
+            />
+            {lastLoginMethod === "kakao" && <LastLoginHint provider="kakao" />}
+          </>
+        )}
+        <AppleSignInActionButton
+          size="large"
+          hint={lastLoginMethod === "apple" && <LastLoginHint provider="apple" />}
+          loading={pendingProvider === "apple"}
+          disabled={busy && pendingProvider !== "apple"}
+          onClick={() => signIn("apple")}
+        />
+        {isDevEnv && (
+          <ActionButton
+            variant="neutralOutline"
+            size="large"
+            loading={devPending}
+            disabled={busy && !devPending}
+            onClick={signInWithDevBypass}
+          >
+            개발용 빠른 로그인 (카카오 우회)
+          </ActionButton>
+        )}
+        {/* 로그인에서 신상 정보를 받지 않는다 (`lib/auth-privacy.ts`). */}
+        <p className="t3-regular text-fg-neutral-subtle pt-x3 text-center break-keep">
+          이름·이메일·아이디 등 타 서비스의 정보는 활용하지 않아요.
+        </p>
+        {/* 사이트 페이지로 나가지 않고 이 화면 위에 문서를 띄운다 — 닫으면 로그인 화면 그대로. */}
+        <div className="t3-regular text-fg-neutral-subtle flex justify-center gap-x4 pt-x1">
+          {LEGAL_DOCUMENTS.map(({ id, title }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setViewing(id)}
+              className="underline underline-offset-4"
             >
-              개발용 빠른 로그인 (카카오 우회)
-            </ActionButton>
-          )}
-          {/* 로그인에서 신상 정보를 받지 않는다 (`lib/auth-privacy.ts`). */}
-          <p className="t3-regular text-fg-neutral-subtle pt-x2 text-center break-keep">
-            로그인할 때 이름·이메일·프로필 사진은 받지 않아요.
-            <br />
-            로그인을 확인하는 번호만 저장해요.
-          </p>
+              {title}
+            </button>
+          ))}
         </div>
       </div>
-
-      <div className="t3-regular text-fg-neutral-subtle flex justify-center gap-x4">
-        {LEGAL_DOCUMENTS.map(({ id, title, href }) => (
-          <a key={id} href={href} className="underline underline-offset-4">
-            {title}
-          </a>
-        ))}
-      </div>
+      {viewing && <LegalDocumentViewer document={viewing} onClose={() => setViewing(null)} />}
     </main>
   );
 }

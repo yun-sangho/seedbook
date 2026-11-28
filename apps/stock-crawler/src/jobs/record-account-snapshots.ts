@@ -1,7 +1,6 @@
 import {
   closeDb,
   db,
-  growPortfolioPlants,
   kstDateString,
   kstDayOfWeek,
   recordAccountSnapshots,
@@ -9,8 +8,8 @@ import {
 import { logger } from "../logger.js";
 
 /**
- * 계좌별 하루 평가 기록. 기록한 평가로 목표를 달성한 포트폴리오 식물도 키운다 (`growPortfolioPlants`). 오후 시세 수집 뒤 부른다 (`scheduler.ts`). 날짜를 주지 않으면 오늘 (KST)
- * 이고 주말이면 건너뛴다. 실패는 로그만 남기고 던지지 않는다 — 시세 수집 결과에 영향을 주지 않는다.
+ * 계좌별 하루 평가 기록. 오후 시세 수집 뒤 부른다 (`scheduler.ts`). 날짜를 주지 않으면 오늘 (KST) 이고
+ * 주말이면 건너뛴다. 실패는 로그만 남기고 던지지 않는다 — 시세 수집 결과에 영향을 주지 않는다.
  *
  * @param date KST 날짜 (YYYY-MM-DD). 지난 날을 다시 기록할 때.
  */
@@ -28,10 +27,8 @@ export async function snapshotAccounts(date?: string): Promise<boolean> {
   try {
     const start = Date.now();
     const result = await recordAccountSnapshots(db, target);
-    const plants = await growPortfolioPlants(db, target);
     logger.info(`계좌 평가 기록 완료: ${target} KST`, {
       ...result,
-      grownPlants: plants.grown,
       seconds: ((Date.now() - start) / 1000).toFixed(1),
     });
     return true;

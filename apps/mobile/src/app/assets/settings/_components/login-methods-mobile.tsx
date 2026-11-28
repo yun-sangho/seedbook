@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAppleSignInEnabled } from "@mobile/components/apple-sign-in-button";
 import { authClient } from "@mobile/lib/auth-client";
-import { getDeviceStorage, reloadApp } from "@mobile/lib/device-storage";
+import { getDeviceStorage } from "@mobile/lib/device-storage";
 import { forgetLastLoginMethod, type SocialProvider } from "@mobile/lib/last-login-method";
 import {
   type LinkedAccount,
@@ -16,13 +16,13 @@ import {
   loginMethodRows,
   unlinkErrorMessage,
 } from "@mobile/lib/login-methods";
-import { markSignedOut } from "@mobile/lib/native/biometric-login";
 import {
   canSignInWith,
   hasNativeLoginPlugin,
   type NativeSignInResult,
   signInNatively,
 } from "@mobile/lib/native/social-login";
+import { signOutAndReload } from "@mobile/lib/sign-out";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
 import {
   AlertDialogAction,
@@ -171,12 +171,7 @@ export function LoginMethodsMobile({
     setDialog({ kind: "failed", code });
   };
 
-  const signInAgain = async () => {
-    // 로그인 화면이 생체 인증 프롬프트를 곧바로 다시 띄우지 않게 한다 (설정 → 로그아웃과 같다).
-    markSignedOut(window.sessionStorage);
-    await authClient.signOut();
-    await reloadApp();
-  };
+  const signInAgain = signOutAndReload;
 
   const rows = accounts
     ? loginMethodRows(accounts, { appleEnabled, available: canSignInWith })

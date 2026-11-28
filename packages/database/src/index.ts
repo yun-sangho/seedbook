@@ -3,7 +3,6 @@ export * from "./account-snapshots";
 export * from "./client";
 export * from "./dev-auth";
 export * from "./ensure-dev-auth";
-export * from "./portfolio-plants";
 export * from "./schema";
 export * from "./scrub-personal-info";
 export * from "./sync-state";

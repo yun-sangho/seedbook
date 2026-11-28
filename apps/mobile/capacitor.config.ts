@@ -27,6 +27,13 @@ const devApp = process.env.SEEDBOOK_DEV_APP === "1";
  */
 const otaPublicKey = process.env.SEEDBOOK_OTA_PUBLIC_KEY?.trim();
 const otaChannel = process.env.SEEDBOOK_OTA_CHANNEL === "beta" ? "beta" : "production";
+/**
+ * 네이티브 스플래시 (`@capacitor/splash-screen`). 앱이 첫 화면을 그리면 닫는다 (`src/lib/native/splash.ts`) —
+ * 스플래시와 첫 화면 사이에 빈 화면·스피너가 끼지 않게. 앱이 닫지 못해도(옛 OTA 번들·오류) 이 시간 뒤에
+ * 스스로 닫힌다. 그림은 iOS `Splash` 이미지 세트·Android 12+ SplashScreen 테마 (`pnpm brand:icons`).
+ */
+const SPLASH_MAX_MS = 3000;
+
 /** 새 번들이 `ready()` 를 부르기까지 기다리는 시간. 못 부르면 내장 번들로 되돌린다. */
 const OTA_READY_TIMEOUT_MS = 15_000;
 
@@ -53,6 +60,13 @@ const config: CapacitorConfig = {
   plugins: {
     // Android 뒤로가기는 웹이 리스너를 건 뒤에 켠다 (src/lib/native/system-back.ts).
     App: { disableBackButtonHandler: true },
+    // backgroundColor 는 두지 않는다 — 고정색이라 다크 모드에서 흰색이 비친다. 그림이 배경까지 담는다.
+    SplashScreen: {
+      launchAutoHide: true,
+      launchShowDuration: SPLASH_MAX_MS,
+      launchFadeOutDuration: 200,
+      showSpinner: false,
+    },
     LiveUpdate: otaPublicKey
       ? {
           publicKey: otaPublicKey,

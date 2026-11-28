@@ -14,7 +14,7 @@ function openAt(url: string) {
   render(<LoginScreen />);
 }
 
-const kakao = () => screen.getByRole("button", { name: /카카오로 로그인/ });
+const kakao = () => screen.getByRole("button", { name: /카카오 로그인/ });
 
 describe("LoginScreen", () => {
   beforeEach(() => {
@@ -30,6 +30,12 @@ describe("LoginScreen", () => {
     const { callbackURL, errorCallbackURL } = mockSignInSocial.mock.calls[0]?.[0] ?? {};
     expect(callbackURL).toContain("signedInWith=kakao");
     expect(errorCallbackURL).not.toContain("signedInWith");
+  });
+
+  it("follows Kakao's login button guide: the official label with the speech-bubble symbol", () => {
+    openAt("/assets");
+    expect(kakao()).toHaveTextContent(/^카카오 로그인$/);
+    expect(kakao().querySelector("svg")).not.toBeNull();
   });
 
   it("points at the provider this device last signed in with", () => {
@@ -92,16 +98,20 @@ describe("LoginScreen", () => {
     expect(kakao()).not.toHaveAttribute("data-loading");
   });
 
-  it("tells the user that no name, email or photo is collected", () => {
+  it("tells the user that nothing from the login provider (name, email, ID) is used", () => {
     openAt("/assets");
-    expect(screen.getByText(/이름·이메일·프로필 사진은 받지 않아요/)).toBeInTheDocument();
+    expect(
+      screen.getByText("이름·이메일·아이디 등 타 서비스의 정보는 활용하지 않아요.")
+    ).toBeInTheDocument();
   });
 
-  it("links to the privacy policy", () => {
+  it("opens the privacy policy inside the app, without leaving the login screen", async () => {
     openAt("/assets");
-    expect(screen.getByRole("link", { name: "개인정보처리방침" })).toHaveAttribute(
-      "href",
-      "/privacy"
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: "개인정보처리방침" }))
     );
+    expect(screen.getByRole("dialog", { name: "개인정보처리방침" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Seedbook 로그인" })).toBeInTheDocument();
+    expect(window.location.pathname).toBe("/assets");
   });
 });
