@@ -31,8 +31,10 @@ export function SessionUserAvatar({ size }: { size: number }) {
   return <ProfileAvatarImage avatar={resolveProfileAvatar(image, plants)} size={size} />;
 }
 
-/** 앱바 오른쪽의 계정 버튼 → 프로필 편집 화면. 하단 탭의 최상위 화면에서만 보인다 (상세 화면은 같은
- * 자리에 "수정" 버튼). */
+/**
+ * 앱바 오른쪽의 계정 버튼 → 설정 메뉴 (프로필 편집은 맨 위 프로필 카드에서). 하단 탭의 최상위
+ * 화면에서만 보인다 (상세 화면은 같은 자리에 "수정" 버튼).
+ */
 export function ProfileButton({ onClick }: { onClick: () => void }) {
   return (
     <button

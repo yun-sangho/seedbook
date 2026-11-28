@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { sessionStorageOrNull } from "@web/components/biometric-sign-in-button";
+import { LegalDocumentViewer } from "@web/components/legal-document-viewer";
 import { DeleteAccountDialog } from "@web/components/mobile/delete-account-dialog";
 import { authClient } from "@web/lib/auth-client";
 import { declineConsent, submitConsent } from "@web/lib/consent-client";
 import { reloadApp } from "@web/lib/device-storage";
 import type { ConsentDocument } from "@web/lib/legal/catalog";
-import { koreanDate, legalDocumentHref } from "@web/lib/legal-documents";
+import { koreanDate, type LegalDocumentId } from "@web/lib/legal-documents";
 import { markSignedOut } from "@web/lib/native/biometric-login";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
@@ -43,6 +44,8 @@ export function ConsentScreen({
   const [failed, setFailed] = useState(false);
   const [declineOpen, setDeclineOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  // 사이트 페이지로 나가지 않고 이 화면 위에서 문서를 본다 (닫으면 체크 상태·스크롤이 그대로다).
+  const [viewing, setViewing] = useState<LegalDocumentId | null>(null);
 
   const allChecked = documents.every(({ document }) => checked.has(document));
   const revised = documents.some(({ change }) => change !== null);
@@ -115,13 +118,14 @@ export function ConsentScreen({
                   checked={checked.has(document)}
                   onCheckedChange={(next) => toggle(document, next)}
                 />
-                <a
-                  href={legalDocumentHref(document)}
+                <button
+                  type="button"
                   aria-label={`${title} 보기`}
+                  onClick={() => setViewing(document)}
                   className="t4-regular text-fg-neutral-subtle shrink-0 underline underline-offset-4"
                 >
                   보기
-                </a>
+                </button>
               </div>
               {change && (
                 <p className="t4-regular text-fg-neutral-muted break-keep pl-x8">
@@ -211,6 +215,7 @@ export function ConsentScreen({
         </AlertDialogContent>
       </AlertDialogRoot>
       <DeleteAccountDialog open={deleteOpen} onOpenChange={setDeleteOpen} />
+      {viewing && <LegalDocumentViewer document={viewing} onClose={() => setViewing(null)} />}
     </main>
   );
 }

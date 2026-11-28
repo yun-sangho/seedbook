@@ -7,7 +7,7 @@ const SCREEN_HEIGHT = 1560;
 export type AppScreenName = "garden-home";
 
 /**
- * 소개 페이지에 넣는 실제 앱 화면 캡처 (설정 화면의 데모 데이터). 이 페이지의 색 모드는 시스템
+ * 소개 페이지에 넣는 실제 앱 화면 캡처 (dev 사용자 테스트 시나리오). 이 페이지의 색 모드는 시스템
  * 설정을 따르므로 이미지도 같은 media 조건으로 고른다.
  */
 export function AppScreen({

@@ -19,6 +19,12 @@ export type ManagedStoreConfig<T extends { id: string }> = {
   persistVersion: number;
   /** persist state 안에서 목록이 들어 있는 필드 이름. */
   itemsField: string;
+  /**
+   * 저장 전 값 정리 (`normalize-values.ts` 규칙). NaN·범위 밖 값을 서버 검증이 받는 값으로 바꾸고,
+   * 모르는 필드는 그대로 둔다. 모든 저장소 모드에서 persist 저장 앞에 돈다 (`hybrid-storage.ts`).
+   */
+  normalizeItem: (item: T) => T;
+  /** 전송 형식. `normalizeItem` 과 같은 규칙으로 정리한 값을 보낸다. */
   toData: (item: T) => EntityData;
   fromData: (id: string, data: EntityData) => T;
 };

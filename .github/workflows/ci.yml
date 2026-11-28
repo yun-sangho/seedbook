@@ -2,7 +2,7 @@ name: CI
 
 # 깨끗한 checkout 에서 포맷 · lint · 타입 · 테스트 · 빌드를 확인한다. 로컬 작업 트리에만 있고
 # 커밋되지 않은 파일에 기대는 커밋도 여기서 걸린다.
-#   - PR 마다 실행
+#   - PR 마다 실행 (DB 통합 테스트는 DB 관련 경로가 바뀐 PR 에서만 — "DB 테스트 대상 판단")
 #   - main push 때는 deploy-web.yml · deploy-crawler.yml 이 이 워크플로를 먼저 불러, 통과해야 이미지 빌드/배포로 간다.
 on:
   pull_request:
@@ -39,7 +39,47 @@ jobs:
       # Next.js 빌드 중 익명 통계 전송 끄기.
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
+      # PR 은 GitHub 이 만든 머지 커밋을 받는다. 부모(베이스)까지 받아 두면 `HEAD^1..HEAD` 가
+      # 이 PR 이 바꾼 파일이다 (아래 "DB 테스트 대상 판단").
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
+
+      # DB 통합 테스트는 PR 에서는 DB 를 쓰는 코드가 바뀌었을 때만 돌린다. main push (deploy.yml
+      # 이 workflow_call 로 부름) · 수동 실행에서는 항상 돌린다 — 아래 목록이 놓친 간접 의존도
+      # 배포 전에는 잡힌다. 건너뛰어도 job (`checks`) 은 성공으로 끝난다.
+      # 목록: *.db.test.ts 가 부르는 코드 (server · storage 번역기 · auth · sync) 와 그 코드가
+      # 가져오는 features·lib 모듈, database 패키지, 테스트 설정, 의존성, 이 워크플로.
+      - name: DB 테스트 대상 판단
+        id: db
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != pull_request ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          pattern='\.db\.test\.ts$'
+          pattern+='|^packages/database/'
+          pattern+='|^apps/web/(server|test/db|app/api)/'
+          pattern+='|^apps/web/lib/(auth|apple-auth|storage-|account-header|login-flow)'
+          pattern+='|^apps/web/lib/(sync|legal|seed-identity|stock-quotes)/'
+          pattern+='|^apps/web/features/[^/]+/(types|sync)/'
+          pattern+='|^apps/web/features/settings/utils/(data-backup|backup-ids|reassign-ids)'
+          pattern+='|^apps/web/features/portfolio/utils/portfolio-links'
+          pattern+='|^apps/web/features/rebalancing/utils/(collapsed-sections|sort-rebalancing-tasks)'
+          pattern+='|^apps/web/(vitest\.db\.config\.ts|package\.json|tsconfig\.json)$'
+          pattern+='|^scripts/worktree'
+          pattern+='|^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|\.nvmrc)$'
+          pattern+='|^\.github/workflows/ci\.yml$'
+          matched=$(git diff --name-only HEAD^1 HEAD | grep -E "$pattern" || true)
+          if [ -n "$matched" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            { echo "DB 통합 테스트: 실행 — DB 관련 파일이 바뀜"; echo '```'; echo "$matched"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "DB 통합 테스트: 건너뜀 — DB 관련 경로 변경 없음" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       # 버전은 package.json 의 packageManager (pnpm@8.15.6) 를 따른다.
       - uses: pnpm/action-setup@v4
@@ -72,6 +112,7 @@ jobs:
         run: pnpm --filter @seedbook/stock-crawler test
 
       - name: DB integration tests
+        if: steps.db.outputs.run == 'true'
         run: pnpm --filter @seedbook/web test:db
 
       - name: Build web

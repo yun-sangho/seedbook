@@ -3,13 +3,16 @@ import type { DriftMode } from "../types/types";
 import { driftPercent } from "./drift-percent";
 import type { PortfolioStockRow } from "./portfolio-stock-rows";
 
-/** 포트폴리오 현황 "종목별" 정렬. 이 화면에서만 쓰고 저장하지 않는다. */
-export type PortfolioStockSortOption =
-  | "driftDesc"
-  | "evalDesc"
-  | "evalAsc"
-  | "nameAsc"
-  | "nameDesc";
+/** 포트폴리오 현황 "종목별" 정렬. 계정 설정(`user_preference.portfolioStockSortOption`)에 저장한다. */
+export const PORTFOLIO_STOCK_SORT_OPTION_VALUES = [
+  "driftDesc",
+  "evalDesc",
+  "evalAsc",
+  "nameAsc",
+  "nameDesc",
+] as const;
+
+export type PortfolioStockSortOption = (typeof PORTFOLIO_STOCK_SORT_OPTION_VALUES)[number];
 
 export const DEFAULT_PORTFOLIO_STOCK_SORT_OPTION: PortfolioStockSortOption = "driftDesc";
 

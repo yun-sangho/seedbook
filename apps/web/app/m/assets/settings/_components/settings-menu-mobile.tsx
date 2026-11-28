@@ -36,7 +36,7 @@ const STORAGE_MODE_LABEL: Record<StorageMode, string> = {
 };
 
 /**
- * 설정 메뉴 (하단 탭 "더보기"). 회색 바탕에 프로필 카드 → 앱 · 데이터 · 계정 · 정보 카드.
+ * 설정 메뉴 (앱바 프로필 버튼). 회색 바탕에 프로필 카드 → 앱 · 데이터 · 계정 · 정보 카드.
  * 하위 설정은 화면을 push 하고(꺾쇠), 바로 실행되는 항목(로그아웃·앱 잠금 등)은 꺾쇠가 없다.
  */
 export function SettingsMenuMobile() {
@@ -106,8 +106,8 @@ export function SettingsMenuMobile() {
         />
         <ListButtonItem
           prefix={<Icon svg={<IconDocumentTrayLine />} />}
-          title="백업·데모 데이터"
-          detail="내보내기, 가져오기, 데모 데이터 불러오기"
+          title="백업"
+          detail="내보내기, 가져오기"
           suffix={chevron}
           onClick={() => push("DataBackup", {})}
         />
@@ -141,7 +141,7 @@ export function SettingsMenuMobile() {
       </MenuCard>
 
       <MenuCard title="정보">
-        {LEGAL_DOCUMENTS.map(({ id, title, href }) => {
+        {LEGAL_DOCUMENTS.map(({ id, title }) => {
           // 시행일 전 개정이 있으면 함께 알린다 (홈 배너를 닫아도 여기엔 남는다).
           const notice = legalNotices.find((n) => n.document === id);
           return (
@@ -151,9 +151,7 @@ export function SettingsMenuMobile() {
               title={title}
               detail={notice ? `${koreanDate(notice.effectiveDate)}부터 바뀌어요` : undefined}
               suffix={chevron}
-              onClick={() => {
-                window.location.href = href;
-              }}
+              onClick={() => push(id === "terms" ? "Terms" : "Privacy", {})}
             />
           );
         })}

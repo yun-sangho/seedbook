@@ -1,15 +1,16 @@
 import type { ManagedStoreConfig } from "@web/lib/sync/managed-store-config";
+import {
+  listOf,
+  finiteNumberOrNull as nullableNum,
+  finiteNumber as num,
+  text,
+} from "@web/lib/sync/normalize-values";
 import type {
   RebalancingResult,
   RebalancingResultHolding,
   RebalancingSession,
   RebalancingTask,
 } from "../types/types";
-
-const num = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : 0);
-const nullableNum = (value: unknown) =>
-  typeof value === "number" && Number.isFinite(value) ? value : null;
-const text = (value: unknown) => (typeof value === "string" ? value : "");
 
 function toTask(value: unknown): RebalancingTask {
   const v = (value ?? {}) as Record<string, unknown>;
@@ -60,6 +61,28 @@ function toResult(value: unknown): RebalancingResult | null {
   };
 }
 
+/** 저장 전 값 정리 — 서버 검증(parseRebalancingFields)이 받는 값으로. 모르는 필드는 남긴다. */
+function normalizeSession(item: RebalancingSession): RebalancingSession {
+  const result = toResult(item.result);
+  return {
+    ...item,
+    accountId: text(item.accountId),
+    accountName: text(item.accountName),
+    portfolioId: text(item.portfolioId),
+    portfolioName: text(item.portfolioName),
+    cashDelta: num(item.cashDelta),
+    tasks: listOf(item.tasks).map((task) => ({ ...task, ...toTask(task) })),
+    result:
+      result && item.result
+        ? {
+            ...item.result,
+            ...result,
+            holdings: item.result.holdings.map((h) => ({ ...h, ...toResultHolding(h) })),
+          }
+        : result,
+  };
+}
+
 /**
  * 리밸런싱 store (`rebalancing-storage`) 의 엔티티 동기화 설정. store 를 import 하지
  * 않는다 — hybrid-storage 가 store 보다 먼저 이 설정을 읽는다.
@@ -71,17 +94,21 @@ export const rebalancingSyncConfig: ManagedStoreConfig<RebalancingSession> = {
   metaKey: "seedbook.sync.rebalancing",
   persistVersion: 1,
   itemsField: "sessions",
-  toData: (item) => ({
-    accountId: text(item.accountId),
-    accountName: text(item.accountName),
-    portfolioId: text(item.portfolioId),
-    portfolioName: text(item.portfolioName),
-    cashDelta: num(item.cashDelta),
-    tasks: item.tasks.map(toTask),
-    startedAt: item.startedAt,
-    completedAt: item.completedAt,
-    result: toResult(item.result),
-  }),
+  normalizeItem: normalizeSession,
+  toData: (raw) => {
+    const item = normalizeSession(raw);
+    return {
+      accountId: item.accountId,
+      accountName: item.accountName,
+      portfolioId: item.portfolioId,
+      portfolioName: item.portfolioName,
+      cashDelta: item.cashDelta,
+      tasks: item.tasks.map(toTask),
+      startedAt: item.startedAt,
+      completedAt: item.completedAt,
+      result: toResult(item.result),
+    };
+  },
   fromData: (id, data) => ({
     id,
     accountId: text(data.accountId),

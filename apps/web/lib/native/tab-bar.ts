@@ -22,7 +22,7 @@ export interface TabBarItem {
   key: string;
   label: string;
   icon: TabIcon;
-  /** 탭을 바꾸지 않고 동작만 하는 항목 (더보기). 눌러도 선택 표시가 옮겨가지 않는다. */
+  /** 탭을 바꾸지 않고 동작만 하는 항목 (예: 화면을 push 하는 메뉴). 눌러도 선택 표시가 옮겨가지 않는다. */
   action?: boolean;
 }
 

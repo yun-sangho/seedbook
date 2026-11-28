@@ -1,5 +1,4 @@
 import { type Database, schema } from "@seedbook/database";
-import { normalizeHoldingsSortOption } from "@web/features/investments/types/holdings-sort";
 import {
   investmentRowToFields,
   parseInvestmentFields,
@@ -12,8 +11,8 @@ import type { DomainTranslator, Envelope } from "./types";
 /**
  * `investment-storage` 번역기. cloud 모드의 일상 저장은 엔티티 동기화(`/api/sync`)가 맡고,
  * 이 envelope 경로는 저장소 모드 전환(업로드/다운로드)에서 쓴다. 계좌 저장 규칙은 동기화와
- * 같은 저장소(`investmentRepo`)를 쓴다. 보유 주식 정렬 설정(`holdingsSortOption`)은 계좌
- * 목록이 아니라 사용자 설정이라 여기서만 다룬다.
+ * 같은 저장소(`investmentRepo`)를 쓴다. 보유 종목 정렬 같은 화면 설정은 저장소 모드와
+ * 상관없이 `/api/me/preferences` 가 다룬다.
  */
 
 const DOMAIN = "investment-accounts";
@@ -21,20 +20,17 @@ const VERSION = 4;
 
 export const investmentTranslator: DomainTranslator = {
   async read(db, userId) {
-    const [accounts, preference, listOrder] = await Promise.all([
+    const [accounts, listOrder] = await Promise.all([
       db.query.investmentAccount.findMany({
         where: (t, { and, eq, isNull }) => and(eq(t.userId, userId), isNull(t.deletedAt)),
         with: { records: true, holdings: true, cashItems: true },
-      }),
-      db.query.userPreference.findFirst({
-        where: (t, { eq }) => eq(t.userId, userId),
       }),
       db.query.userListOrder.findFirst({
         where: (t, { and, eq }) => and(eq(t.userId, userId), eq(t.domain, DOMAIN)),
       }),
     ]);
 
-    if (accounts.length === 0 && !preference && !listOrder) {
+    if (accounts.length === 0 && !listOrder) {
       return null;
     }
 
@@ -52,10 +48,7 @@ export const investmentTranslator: DomainTranslator = {
     }));
 
     const envelope: Envelope = {
-      state: {
-        investments,
-        holdingsSortOption: normalizeHoldingsSortOption(preference?.holdingsSortOption),
-      },
+      state: { investments },
       version: VERSION,
     };
     return envelope;
@@ -79,15 +72,6 @@ export const investmentTranslator: DomainTranslator = {
         investments.map((inv) => inv.id),
         userId
       );
-
-      const holdingsSortOption = normalizeHoldingsSortOption(state.holdingsSortOption);
-      await tx
-        .insert(schema.userPreference)
-        .values({ userId, holdingsSortOption })
-        .onConflictDoUpdate({
-          target: schema.userPreference.userId,
-          set: { holdingsSortOption },
-        });
 
       const now = new Date();
       const order = investments.map((inv) => inv.id);

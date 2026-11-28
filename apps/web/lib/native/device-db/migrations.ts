@@ -152,6 +152,29 @@ export const DEVICE_MIGRATIONS: DeviceMigration[] = [
       "ALTER TABLE portfolio ADD COLUMN goalHistory TEXT NOT NULL DEFAULT '[]'",
     ],
   },
+  {
+    version: 5,
+    statements: [
+      // 기기에만 있는 표: 검증에 실패해 자산 테이블에 쓰지 못한 항목의 원본 (store key 별 항목마다
+      // 마지막 하나). local 모드에서 기기는 유일한 사본이라 지우지 않고 여기에 남긴다.
+      `CREATE TABLE device_quarantine (
+        storageKey TEXT NOT NULL,
+        itemId TEXT NOT NULL,
+        item TEXT NOT NULL,
+        quarantinedAt TEXT NOT NULL,
+        PRIMARY KEY (storageKey, itemId)
+      )`,
+    ],
+  },
+  {
+    version: 6,
+    statements: [
+      // 계정에 저장하는 화면 설정: 계좌 목록 정렬, 포트폴리오 종목 정렬, 투자 추이 기간.
+      "ALTER TABLE user_preference ADD COLUMN accountSortOption TEXT NOT NULL DEFAULT 'evalDesc'",
+      "ALTER TABLE user_preference ADD COLUMN portfolioStockSortOption TEXT NOT NULL DEFAULT 'driftDesc'",
+      "ALTER TABLE user_preference ADD COLUMN investmentTrendRange TEXT NOT NULL DEFAULT '3months'",
+    ],
+  },
 ];
 
 const CREATE_MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS device_schema_migration (

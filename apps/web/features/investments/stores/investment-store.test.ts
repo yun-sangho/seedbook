@@ -30,64 +30,28 @@ describe("Investment Store", () => {
       const state = useInvestmentStore.getState();
       expect(state.investments).toEqual([]);
     });
-
-    it("holdingsSortOption defaults to the highest evaluated value first", () => {
-      const state = useInvestmentStore.getState();
-      expect(state.holdingsSortOption).toBe("evalDesc");
-    });
   });
 
-  describe("Holdings Sort Option", () => {
-    it("setHoldingsSortOption updates the global sort option", () => {
-      const { setHoldingsSortOption } = useInvestmentStore.getState();
+  describe("Holdings sort (moved to the account preferences)", () => {
+    it("is not saved with the accounts", () => {
+      // biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
+      const persistApi = (useInvestmentStore as any).persist;
+      const partialize = persistApi.getOptions().partialize;
 
-      setHoldingsSortOption("priceDesc");
-
-      expect(useInvestmentStore.getState().holdingsSortOption).toBe("priceDesc");
+      expect(partialize(useInvestmentStore.getState())).toEqual({ investments: [] });
     });
 
-    it("setHoldingsSortOption can cycle through all valid options", () => {
-      const { setHoldingsSortOption } = useInvestmentStore.getState();
-
-      setHoldingsSortOption("priceAsc");
-      expect(useInvestmentStore.getState().holdingsSortOption).toBe("priceAsc");
-
-      setHoldingsSortOption("evalDesc");
-      expect(useInvestmentStore.getState().holdingsSortOption).toBe("evalDesc");
-
-      setHoldingsSortOption("evalAsc");
-      expect(useInvestmentStore.getState().holdingsSortOption).toBe("evalAsc");
-
-      setHoldingsSortOption("nameAsc");
-      expect(useInvestmentStore.getState().holdingsSortOption).toBe("nameAsc");
-
-      setHoldingsSortOption("nameDesc");
-      expect(useInvestmentStore.getState().holdingsSortOption).toBe("nameDesc");
-    });
-
-    it("replaces a saved 'default' sort, which no longer exists, when loading", () => {
+    it("drops the sort an older version saved with the accounts when loading", () => {
       // biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
       const persistApi = (useInvestmentStore as any).persist;
       const merge = persistApi.getOptions().merge;
 
       const merged = merge(
-        { investments: [], holdingsSortOption: "default" },
+        { investments: [], holdingsSortOption: "nameAsc" },
         useInvestmentStore.getState()
       );
 
-      expect(merged.holdingsSortOption).toBe("evalDesc");
-    });
-
-    it("holdingsSortOption is included in persisted state via partialize", () => {
-      const { setHoldingsSortOption } = useInvestmentStore.getState();
-      setHoldingsSortOption("evalDesc");
-
-      // biome-ignore lint/suspicious/noExplicitAny: 테스트 대역 — 전역·store 내부 API 에 접근한다.
-      const persistApi = (useInvestmentStore as any).persist;
-      const partialize = persistApi.getOptions().partialize;
-      const snapshot = partialize(useInvestmentStore.getState());
-
-      expect(snapshot.holdingsSortOption).toBe("evalDesc");
+      expect(merged).not.toHaveProperty("holdingsSortOption");
     });
   });
 

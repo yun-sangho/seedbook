@@ -1,5 +1,4 @@
 import { formatDate } from "@web/app/api/storage/_translators/types";
-import { normalizeHoldingsSortOption } from "@web/features/investments/types/holdings-sort";
 import {
   ACCOUNT_SNAPSHOT_STORAGE_KEY,
   HOLDINGS_HISTORY_STORAGE_KEY,
@@ -38,7 +37,11 @@ import type { SqlDriver, SqlStatement, SqlValue } from "./sql-driver";
  * 서버 envelope 번역기 (`app/api/storage/_translators`) 의 기기판이다. 검증·행 변환은 서버와
  * 같은 함수(`server/<domain>/*-record.ts`)를 쓰고, 목록 순서는 서버처럼 `user_list_order` 에
  * 둔다. 읽을 때 돌려주는 `version` 도 서버 번역기와 같아 store 의 `migrate` 가 같은 경로로
- * 정리한다. 서버가 거부할 항목(모양이 틀린 계좌 등)은 서버처럼 저장하지 않는다.
+ * 정리한다.
+ *
+ * local 모드에서 기기는 유일한 사본이다. 서버가 거부할 항목(모양이 틀린 계좌 등)은 테이블에 쓰지
+ * 않지만 **지우지도 않는다** — 테이블의 마지막 저장본을 그대로 두고, store 가 넘긴 원본은
+ * `device_quarantine` 에 격리한다. 테이블에서 지우는 것은 목록에서 빠진 항목(사용자의 삭제)뿐이다.
  */
 
 const INVESTMENT_KEY = "investment-storage";
@@ -109,13 +112,69 @@ function preferenceStatement(columns: Record<string, SqlValue>): SqlStatement {
   };
 }
 
-/** `id NOT IN (...)` — 목록이 비면 전부. */
-function deleteMissing(table: string, ids: string[]): SqlStatement {
+/** `<column> NOT IN (...)` — 목록이 비면 전부. */
+function deleteMissing(table: string, ids: string[], column = "id"): SqlStatement {
   if (ids.length === 0) return { sql: `DELETE FROM ${table}` };
   return {
-    sql: `DELETE FROM ${table} WHERE id NOT IN (${ids.map(() => "?").join(", ")})`,
+    sql: `DELETE FROM ${table} WHERE ${column} NOT IN (${ids.map(() => "?").join(", ")})`,
     params: ids,
   };
+}
+
+/**
+ * envelope 목록을 검증을 통과한 항목과 통과하지 못한 항목으로 나눈다. `ids` 는 id 가 있는 모든
+ * 항목의 순서 — 목록 순서와 "남길 행" 의 기준이다 (검증 실패 항목도 지우지 않는다).
+ */
+function partitionItems<T, F>(
+  raw: T[],
+  parse: (item: T, id: string) => F | null
+): {
+  ids: string[];
+  valid: Array<{ id: string; fields: F; item: T }>;
+  invalid: Array<{ id: string; item: T }>;
+} {
+  const ids: string[] = [];
+  const valid: Array<{ id: string; fields: F; item: T }> = [];
+  const invalid: Array<{ id: string; item: T }> = [];
+  for (const item of raw) {
+    const id = (item as { id?: unknown } | null)?.id;
+    // id 가 없으면 행과 짝지을 수 없다 — store 가 만든 항목에는 늘 id 가 있다.
+    if (typeof id !== "string") continue;
+    ids.push(id);
+    const fields = parse(item, id);
+    if (fields) valid.push({ id, fields, item });
+    else invalid.push({ id, item });
+  }
+  return { ids, valid, invalid };
+}
+
+/**
+ * 검증 실패 항목을 격리한다 (항목마다 마지막 원본 하나). 목록에서 빠진 항목(사용자가 지움)의
+ * 격리본은 함께 지운다.
+ */
+function quarantineStatements(
+  storageKey: string,
+  ids: string[],
+  invalid: Array<{ id: string; item: unknown }>
+): SqlStatement[] {
+  const now = nowIso();
+  const statements: SqlStatement[] = [
+    ids.length === 0
+      ? { sql: "DELETE FROM device_quarantine WHERE storageKey = ?", params: [storageKey] }
+      : {
+          sql: `DELETE FROM device_quarantine WHERE storageKey = ? AND itemId NOT IN (${ids.map(() => "?").join(", ")})`,
+          params: [storageKey, ...ids],
+        },
+  ];
+  for (const { id, item } of invalid) {
+    console.warn(`[device-db] ${storageKey}: 검증에 실패한 항목을 저장하지 않고 격리했다`, id);
+    statements.push({
+      sql: `INSERT OR REPLACE INTO device_quarantine (storageKey, itemId, item, quarantinedAt)
+            VALUES (?, ?, ?, ?)`,
+      params: [storageKey, id, JSON.stringify(item), now],
+    });
+  }
+  return statements;
 }
 
 async function readListOrder(driver: SqlDriver, domain: string): Promise<string[] | null> {
@@ -143,8 +202,13 @@ async function readPreference(driver: SqlDriver) {
     holdingsSortOption: string;
     rebalancingTaskSort: string;
     rebalancingCollapsedSections: string;
+    accountSortOption: string;
+    portfolioStockSortOption: string;
+    investmentTrendRange: string;
   }>(
-    "SELECT holdingsSortOption, rebalancingTaskSort, rebalancingCollapsedSections FROM user_preference WHERE id = 1"
+    `SELECT holdingsSortOption, rebalancingTaskSort, rebalancingCollapsedSections,
+            accountSortOption, portfolioStockSortOption, investmentTrendRange
+       FROM user_preference WHERE id = 1`
   );
   return row ?? null;
 }
@@ -193,15 +257,14 @@ type HoldingRow = {
 type CashRow = { id: string; accountId: string; label: string; amount: number };
 
 async function readInvestments(driver: SqlDriver): Promise<string | null> {
-  const [accounts, records, holdings, cashItems, preference, order] = await Promise.all([
+  const [accounts, records, holdings, cashItems, order] = await Promise.all([
     driver.query<AccountRow>("SELECT * FROM investment_account"),
     driver.query<RecordRow>("SELECT * FROM investment_record"),
     driver.query<HoldingRow>("SELECT * FROM stock_holding ORDER BY rowid"),
     driver.query<CashRow>("SELECT * FROM cash_item ORDER BY rowid"),
-    readPreference(driver),
     readListOrder(driver, INVESTMENT_LIST),
   ]);
-  if (accounts.length === 0 && !preference && !order) return null;
+  if (accounts.length === 0 && !order) return null;
 
   // 서버 행 모양(bigint · Date)으로 맞춰 서버와 같은 변환 함수를 쓴다.
   const investments = sortByOrder(accounts, order).map((a) => ({
@@ -230,23 +293,18 @@ async function readInvestments(driver: SqlDriver): Promise<string | null> {
     ),
   }));
 
-  return serialize(
-    {
-      investments,
-      holdingsSortOption: normalizeHoldingsSortOption(preference?.holdingsSortOption),
-    },
-    INVESTMENT_VERSION
-  );
+  // 보유 종목 정렬은 화면 설정이라 `seedbook.preferences` 가 읽는다.
+  return serialize({ investments }, INVESTMENT_VERSION);
 }
 
 async function investmentStatements(driver: SqlDriver, state: State): Promise<SqlStatement[]> {
-  const raw = Array.isArray(state.investments)
-    ? (state.investments as Array<{ id?: unknown } & State>)
-    : [];
-  const accounts = raw.flatMap((item) => {
-    const fields = parseInvestmentFields(item);
-    return typeof item.id === "string" && fields ? [{ id: item.id, fields }] : [];
-  });
+  // 목록이 없는 envelope 로 계좌를 지우지 않는다.
+  if (!Array.isArray(state.investments)) return [];
+  const {
+    ids,
+    valid: accounts,
+    invalid,
+  } = partitionItems(state.investments, (item) => parseInvestmentFields(item));
 
   // 계좌 행을 다시 써도 생성 시각과 포트폴리오 연결은 유지한다.
   const [existing, portfolios] = await Promise.all([
@@ -262,14 +320,20 @@ async function investmentStatements(driver: SqlDriver, state: State): Promise<Sq
   }
 
   const now = nowIso();
-  const ids = accounts.map((a) => a.id);
+  // 하위 행은 지운 계좌와 다시 쓰는 계좌의 것만 지운다 — 격리한 계좌는 마지막 저장본을 남긴다.
   const statements: SqlStatement[] = [
-    { sql: "DELETE FROM investment_record" },
-    { sql: "DELETE FROM stock_holding" },
-    { sql: "DELETE FROM cash_item" },
+    deleteMissing("investment_record", ids, "accountId"),
+    deleteMissing("stock_holding", ids, "accountId"),
+    deleteMissing("cash_item", ids, "accountId"),
     deleteMissing("investment_account", ids),
+    ...quarantineStatements(INVESTMENT_KEY, ids, invalid),
   ];
   for (const { id, fields } of accounts) {
+    statements.push(
+      { sql: "DELETE FROM investment_record WHERE accountId = ?", params: [id] },
+      { sql: "DELETE FROM stock_holding WHERE accountId = ?", params: [id] },
+      { sql: "DELETE FROM cash_item WHERE accountId = ?", params: [id] }
+    );
     const columns = investmentFieldsToColumns(fields);
     statements.push({
       sql: `INSERT INTO investment_account (id, accountName, accountType, currency, initialInvestment,
@@ -320,11 +384,6 @@ async function investmentStatements(driver: SqlDriver, state: State): Promise<Sq
     }
   }
   statements.push(listOrderStatement(INVESTMENT_LIST, ids));
-  statements.push(
-    preferenceStatement({
-      holdingsSortOption: normalizeHoldingsSortOption(state.holdingsSortOption),
-    })
-  );
   return statements;
 }
 
@@ -398,11 +457,11 @@ function timestampOr(value: unknown, fallback: string): string {
     : fallback;
 }
 
-function portfolioStatements(state: State): SqlStatement[] {
-  const raw = Array.isArray(state.portfolios)
-    ? (state.portfolios as Array<{ id?: unknown; accountIds?: unknown } & State>)
-    : [];
-  const portfolios = dedupePortfolioLinks(
+async function portfolioStatements(driver: SqlDriver, state: State): Promise<SqlStatement[]> {
+  // 목록이 없는 envelope 로 포트폴리오를 지우지 않는다.
+  if (!Array.isArray(state.portfolios)) return [];
+  const raw = state.portfolios as Array<{ id?: unknown; accountIds?: unknown } & State>;
+  const deduped = dedupePortfolioLinks(
     raw.flatMap((p): EnvelopePortfolio[] =>
       typeof p.id === "string"
         ? [
@@ -417,20 +476,47 @@ function portfolioStatements(state: State): SqlStatement[] {
           ]
         : []
     )
-  ).flatMap((p) => {
-    const fields = parsePortfolioFields(p);
-    return fields ? [{ id: p.id, fields, createdAt: p.createdAt, updatedAt: p.updatedAt }] : [];
-  });
+  );
+  // 격리 원본은 정리(dedupe) 전 store 가 넘긴 그대로 남긴다.
+  const original = new Map(raw.map((p) => [p.id, p]));
+  const {
+    ids,
+    valid: portfolios,
+    invalid,
+  } = partitionItems(deduped, (p) => parsePortfolioFields(p));
+
+  // 격리한 포트폴리오는 마지막 저장본의 계좌 연결을 그대로 둔다.
+  const invalidIds = new Set(invalid.map((p) => p.id));
+  const keptLinks = (
+    await driver.query<{ id: string; accountIds: string }>("SELECT id, accountIds FROM portfolio")
+  ).filter((p) => invalidIds.has(p.id));
 
   const now = nowIso();
-  const ids = portfolios.map((p) => p.id);
   const statements: SqlStatement[] = [
-    { sql: "DELETE FROM portfolio_allocation" },
+    deleteMissing("portfolio_allocation", ids, "portfolioId"),
     deleteMissing("portfolio", ids),
+    ...quarantineStatements(
+      PORTFOLIO_KEY,
+      ids,
+      invalid.map(({ id }) => ({ id, item: original.get(id) }))
+    ),
     // 서버의 investment_account.portfolioId 처럼 연결을 계좌 쪽에도 적어 둔다.
     { sql: "UPDATE investment_account SET portfolioId = NULL" },
   ];
-  for (const { id, fields, createdAt, updatedAt } of portfolios) {
+  for (const p of keptLinks) {
+    for (const accountId of parseJsonArray(p.accountIds)) {
+      if (typeof accountId !== "string") continue;
+      statements.push({
+        sql: "UPDATE investment_account SET portfolioId = ? WHERE id = ?",
+        params: [p.id, accountId],
+      });
+    }
+  }
+  for (const { id, fields, item } of portfolios) {
+    statements.push({
+      sql: "DELETE FROM portfolio_allocation WHERE portfolioId = ?",
+      params: [id],
+    });
     const columns = portfolioFieldsToColumns(fields);
     statements.push({
       sql: `INSERT INTO portfolio (id, name, color, note, accountIds, driftMode, driftThresholdPercent,
@@ -454,8 +540,8 @@ function portfolioStatements(state: State): SqlStatement[] {
         fields.plant?.goalAmount ?? INITIAL_PLANT_PROGRESS.goalAmount,
         fields.plant?.growthStage ?? INITIAL_PLANT_PROGRESS.growthStage,
         JSON.stringify(fields.plant?.goalHistory ?? INITIAL_PLANT_PROGRESS.goalHistory),
-        timestampOr(createdAt, now),
-        timestampOr(updatedAt, now),
+        timestampOr(item.createdAt, now),
+        timestampOr(item.updatedAt, now),
       ],
     });
     for (const a of portfolioAllocationRows(id, fields)) {
@@ -530,20 +616,25 @@ async function readRebalancings(driver: SqlDriver): Promise<string | null> {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function rebalancingStatements(driver: SqlDriver, state: State): Promise<SqlStatement[]> {
-  const raw = Array.isArray(state.sessions) ? (state.sessions as unknown[]) : [];
-  const sessions = raw.flatMap((item) => {
-    const id = (item as { id?: unknown } | null)?.id;
-    const fields = parseRebalancingFields(item);
-    return typeof id === "string" && UUID_RE.test(id) && fields ? [{ id, fields }] : [];
-  });
+  // 목록이 없는 envelope 로 기록을 지우지 않는다.
+  if (!Array.isArray(state.sessions)) return [];
+  const {
+    ids,
+    valid: sessions,
+    invalid,
+  } = partitionItems(state.sessions, (item, id) =>
+    UUID_RE.test(id) ? parseRebalancingFields(item) : null
+  );
 
   const existing = await driver.query<{ id: string; createdAt: string }>(
     "SELECT id, createdAt FROM rebalancing"
   );
   const createdAt = new Map(existing.map((row) => [row.id, row.createdAt]));
   const now = nowIso();
-  const ids = sessions.map((s) => s.id);
-  const statements: SqlStatement[] = [deleteMissing("rebalancing", ids)];
+  const statements: SqlStatement[] = [
+    deleteMissing("rebalancing", ids),
+    ...quarantineStatements(REBALANCING_KEY, ids, invalid),
+  ];
   for (const { id, fields } of sessions) {
     const columns = rebalancingPayloadToColumns(fields);
     statements.push({
@@ -585,16 +676,30 @@ async function readPreferences(driver: SqlDriver): Promise<string | null> {
     {
       rebalancingTaskSort: row.rebalancingTaskSort,
       rebalancingCollapsedSections: parseJsonArray(row.rebalancingCollapsedSections),
+      accountSortOption: row.accountSortOption,
+      portfolioStockSortOption: row.portfolioStockSortOption,
+      investmentTrendRange: row.investmentTrendRange,
+      holdingsSortOption: row.holdingsSortOption,
     },
     PREFERENCES_VERSION
   );
 }
 
+/** `seedbook.preferences` 의 글자 값 항목 — 이름이 그대로 `user_preference` 컬럼이다. */
+const PREFERENCE_TEXT_COLUMNS = [
+  "rebalancingTaskSort",
+  "accountSortOption",
+  "portfolioStockSortOption",
+  "investmentTrendRange",
+  "holdingsSortOption",
+] as const;
+
 function preferencesStatements(state: State): SqlStatement[] {
   // 값 검증은 preferences store 의 merge 가 읽을 때 한다 (서버 /api/me/preferences 와 같은 규칙).
   const columns: Record<string, SqlValue> = {};
-  if (typeof state.rebalancingTaskSort === "string") {
-    columns.rebalancingTaskSort = state.rebalancingTaskSort;
+  for (const name of PREFERENCE_TEXT_COLUMNS) {
+    const value = state[name];
+    if (typeof value === "string") columns[name] = value;
   }
   if (Array.isArray(state.rebalancingCollapsedSections)) {
     columns.rebalancingCollapsedSections = JSON.stringify(state.rebalancingCollapsedSections);
@@ -672,6 +777,29 @@ function holdingsHistoryStatements(state: State): SqlStatement[] {
   return statements;
 }
 
+// ─── device_quarantine ──────────────────────────────────────────────────────
+
+export type QuarantinedItem = {
+  storageKey: string;
+  itemId: string;
+  /** store 가 저장하려던 원본 그대로. */
+  item: unknown;
+  quarantinedAt: string;
+};
+
+/** 검증에 실패해 테이블에 쓰지 못한 항목들 (오래된 것부터). */
+export async function readQuarantinedItems(driver: SqlDriver): Promise<QuarantinedItem[]> {
+  const rows = await driver.query<{
+    storageKey: string;
+    itemId: string;
+    item: string;
+    quarantinedAt: string;
+  }>(
+    "SELECT storageKey, itemId, item, quarantinedAt FROM device_quarantine ORDER BY quarantinedAt, rowid"
+  );
+  return rows.map((row) => ({ ...row, item: parseJson(row.item) }));
+}
+
 // ─── public API ─────────────────────────────────────────────────────────────
 
 /** 테이블에서 envelope 를 조립한다. 저장된 것이 없으면 null. */
@@ -695,7 +823,7 @@ export async function writeTableEnvelope(
   if (!state) return;
   let statements: SqlStatement[] = [];
   if (key === INVESTMENT_KEY) statements = await investmentStatements(driver, state);
-  else if (key === PORTFOLIO_KEY) statements = portfolioStatements(state);
+  else if (key === PORTFOLIO_KEY) statements = await portfolioStatements(driver, state);
   else if (key === REBALANCING_KEY) statements = await rebalancingStatements(driver, state);
   else if (key === PREFERENCES_KEY) statements = preferencesStatements(state);
   else if (key === ACCOUNT_SNAPSHOT_STORAGE_KEY) {
@@ -731,7 +859,9 @@ export async function removeTableEnvelope(driver: SqlDriver, key: string): Promi
     await driver.batch([
       {
         sql: `UPDATE user_preference SET holdingsSortOption = 'evalDesc',
-              rebalancingTaskSort = 'nameDesc', rebalancingCollapsedSections = '[]'`,
+              rebalancingTaskSort = 'nameDesc', rebalancingCollapsedSections = '[]',
+              accountSortOption = 'evalDesc', portfolioStockSortOption = 'driftDesc',
+              investmentTrendRange = '3months'`,
       },
     ]);
   } else if (key === ACCOUNT_SNAPSHOT_STORAGE_KEY) {
@@ -756,6 +886,7 @@ export async function clearDeviceTables(driver: SqlDriver): Promise<void> {
       "rebalancing",
       "user_preference",
       "user_list_order",
+      "device_quarantine",
       "device_kv",
     ].map((table) => ({ sql: `DELETE FROM ${table}` }))
   );

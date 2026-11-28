@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useInvestmentStore } from "../stores/investment-store";
+import { usePreferencesStore } from "@web/lib/preferences-store";
 import type { InvestmentItem } from "../types/types";
 import { computeAccountValuation } from "./compute-account-valuation";
 import { sortHoldings } from "./sort-holdings";
@@ -21,7 +21,7 @@ export function useAccountValuation(
   { onSyncCurrentValue }: { onSyncCurrentValue: (totalValue: number) => void }
 ) {
   const [pendingHistorySync, setPendingHistorySync] = useState(false);
-  const holdingsSortOption = useInvestmentStore((state) => state.holdingsSortOption);
+  const holdingsSortOption = usePreferencesStore((state) => state.holdingsSortOption);
 
   const holdings = useMemo(() => item.holdings ?? [], [item.holdings]);
   const cashItems = useMemo(() => item.cashItems ?? [], [item.cashItems]);

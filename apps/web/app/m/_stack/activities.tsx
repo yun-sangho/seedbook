@@ -2,11 +2,13 @@
 
 import { type ReactNode, useCallback } from "react";
 import { type StaticActivityComponentType, useFlow, useStepFlow } from "@stackflow/react";
+import { LegalDocumentView } from "@web/components/legal-document-view";
 import { LegalNoticeBanner } from "@web/components/mobile/legal-notice-banner";
 import { ProfileEditor } from "@web/components/mobile/profile-menu";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
+import { LEGAL_DOCUMENTS, type LegalDocumentId } from "@web/lib/legal-documents";
 import { HomeMobile } from "../assets/_components/home-mobile";
 import { InvestmentMobile } from "../assets/investments/_components/investment-mobile";
 import { AccountDetailMobile } from "../assets/investments/[id]/_components/account-detail-mobile";
@@ -22,6 +24,7 @@ import { DeleteAccountMobile } from "../assets/settings/_components/delete-accou
 import { LoginMethodsMobile } from "../assets/settings/_components/login-methods-mobile";
 import { SettingsMenuMobile } from "../assets/settings/_components/settings-menu-mobile";
 import { StorageModeMobile } from "../assets/settings/_components/storage-mode-mobile";
+import { legalActivityOf } from "./legal-activity";
 import { DetailScreen, TabsScreen } from "./screens";
 import { type TabKey, type TabsParams, tabOf } from "./tabs";
 
@@ -132,7 +135,7 @@ export function PortfolioDetailActivity({ params }: DetailActivityProps) {
   );
 }
 
-/** 하단 탭 "더보기" → 설정 메뉴 (프로필 카드 + 앱·데이터·계정·정보). */
+/** 앱바 프로필 버튼 → 설정 메뉴 (프로필 카드 + 앱·데이터·계정·정보). */
 export function SettingsActivity() {
   return (
     <DetailScreen title="설정" basement>
@@ -141,7 +144,7 @@ export function SettingsActivity() {
   );
 }
 
-/** 앱바 프로필 버튼 · 설정 → 프로필 카드: 아바타·닉네임 편집. 저장하면 닫는다. */
+/** 설정 → 프로필 카드: 아바타·닉네임 편집. 저장하면 닫는다. */
 export function ProfileActivity() {
   const { pop } = useFlow();
   return (
@@ -149,6 +152,41 @@ export function ProfileActivity() {
       <ProfileEditor onSaved={() => pop()} />
     </DetailScreen>
   );
+}
+
+/**
+ * 설정 → 이용약관 · 개인정보처리방침 (홈의 개정 안내 "자세히 보기" 도 여기로 push). 사이트 페이지
+ * (`/terms`) 로 나가지 않고 스택 화면으로 열어 다른 설정 화면처럼 뒤로가기·스와이프로 돌아온다.
+ * 다른 버전·본문 안 약관 링크는 그 문서 화면을 push.
+ */
+function LegalDocumentScreen({
+  document,
+  version,
+}: {
+  document: LegalDocumentId;
+  version?: string;
+}) {
+  const { push } = useFlow();
+  const title = LEGAL_DOCUMENTS.find((d) => d.id === document)?.title ?? "";
+  return (
+    <DetailScreen title={title}>
+      <LegalDocumentView
+        document={document}
+        version={version}
+        onOpen={(target) =>
+          push(legalActivityOf(target.document), target.version ? { version: target.version } : {})
+        }
+      />
+    </DetailScreen>
+  );
+}
+
+export function TermsActivity({ params }: { params: { version?: string } }) {
+  return <LegalDocumentScreen document="terms" version={params.version} />;
+}
+
+export function PrivacyActivity({ params }: { params: { version?: string } }) {
+  return <LegalDocumentScreen document="privacy" version={params.version} />;
 }
 
 /** 설정 → 저장 위치 (이 기기 / 클라우드). */
@@ -160,10 +198,10 @@ export function StorageModeActivity() {
   );
 }
 
-/** 설정 → 백업·데모 데이터. */
+/** 설정 → 백업. */
 export function DataBackupActivity() {
   return (
-    <DetailScreen title="백업·데모 데이터">
+    <DetailScreen title="백업">
       <DataBackupMobile />
     </DetailScreen>
   );

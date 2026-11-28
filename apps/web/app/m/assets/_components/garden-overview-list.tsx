@@ -184,14 +184,6 @@ export function GardenOverviewList({
           title="첫 씨앗을 심어 보세요"
           description="포트폴리오를 만들면 정원에 씨앗이 심겨요. 목표 금액을 정하면 자라기 시작해요."
           primaryActionProps={{ children: "첫 씨앗 심기", onClick: onPlantFirstSeed }}
-          secondaryActionProps={
-            investments.length === 0
-              ? {
-                  children: "설정에서 데모 데이터 불러오기",
-                  onClick: () => push("Settings", {}),
-                }
-              : undefined
-          }
         />
       ) : (
         <>
@@ -208,7 +200,12 @@ export function GardenOverviewList({
                 className="active:bg-bg-layer-default-pressed flex w-full items-center gap-x3 px-x4 py-x3 text-left"
               >
                 <span className="relative shrink-0">
-                  <PlantAvatar stage={PLANT_STAGES[row.stage]} pot={row.pot} size={44} />
+                  <PlantAvatar
+                    stage={PLANT_STAGES[row.stage]}
+                    pot={row.pot}
+                    kind={row.kind}
+                    size={44}
+                  />
                   {row.needsRebalance && (
                     <span className="absolute -top-[2px] -right-[2px]">
                       <RebalanceMark size={16} />

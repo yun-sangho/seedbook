@@ -8,7 +8,7 @@ import type { PortfolioAllocation, PortfolioItem } from "@web/features/portfolio
 import { portfolioPlantView } from "@web/features/portfolio/utils/portfolio-plant-view";
 import type { RebalancingSession } from "@web/features/rebalancing/types/types";
 import { describe, expect, it } from "vitest";
-import { POT_COLOR_IDS } from "../plant-3d/plant-options";
+import { PLANT_KINDS, POT_COLOR_IDS } from "../plant-3d/plant-options";
 import {
   gardenFocusIndex,
   gardenFocusReducer,
@@ -16,6 +16,7 @@ import {
   gardenPlantOptions,
   gardenRows,
   grownSince,
+  kindForPortfolio,
   plantDroop,
   potForPortfolio,
 } from "./garden-home";
@@ -102,6 +103,21 @@ describe("potForPortfolio", () => {
   });
 });
 
+describe("kindForPortfolio", () => {
+  it("keeps the same kind for the same portfolio", () => {
+    expect(kindForPortfolio("abc")).toBe(kindForPortfolio("abc"));
+  });
+
+  it("gives both trees and ferns across random portfolio ids", () => {
+    const ids = Array.from(
+      { length: 40 },
+      (_, i) => `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`
+    );
+    const kinds = new Set(ids.map(kindForPortfolio));
+    expect([...kinds].sort()).toEqual([...PLANT_KINDS].sort());
+  });
+});
+
 describe("plantDroop", () => {
   it("is 0 without a reached goal", () => {
     expect(plantDroop(10, null, true)).toBe(0);
@@ -141,6 +157,7 @@ describe("gardenPlantOptions", () => {
       needsRebalance: true,
       pot: potForPortfolio("p"),
       seed: expect.any(Number),
+      kind: kindForPortfolio("p"),
     });
   });
 });
@@ -160,6 +177,7 @@ describe("gardenRows", () => {
         name: "안정형",
         stage: 0,
         pot: potForPortfolio("p"),
+        kind: kindForPortfolio("p"),
         value: 100_000,
         needsRebalance: true,
         drooping: false,

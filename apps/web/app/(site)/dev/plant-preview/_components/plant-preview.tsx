@@ -6,6 +6,9 @@ import { PlantAvatar } from "@web/features/garden/components/plant-avatar";
 import { gardenLayout } from "@web/features/garden/plant-3d/garden-layout";
 import {
   DEFAULT_PLANT_OPTIONS,
+  FERN_STAGE_LABELS,
+  PLANT_KIND_LABELS,
+  PLANT_KINDS,
   PLANT_STAGE_LABELS,
   PLANT_STAGES,
   type PlantOptions,
@@ -14,21 +17,23 @@ import {
   type PotColor,
 } from "@web/features/garden/plant-3d/plant-options";
 import type { PlantSceneMetrics, PlantSlot } from "@web/features/garden/plant-3d/plant-renderer";
+import { FernCompare } from "./fern-compare";
 
 /**
  * 식물 렌더링 컴포넌트 미리보기 (dev 전용). 데이터 없이 props 만 바꿔 본다.
  * 측정값은 화면 왼쪽 위와 `window.__plantMetrics` 로 읽는다.
  */
 
-type Tab = "plant" | "stages" | "garden" | "avatar";
+type Tab = "plant" | "stages" | "garden" | "avatar" | "fern";
 const TABS: { id: Tab; label: string }[] = [
   { id: "plant", label: "식물 하나" },
   { id: "stages", label: "5단계" },
   { id: "garden", label: "정원" },
   { id: "avatar", label: "2D 아바타" },
+  { id: "fern", label: "고사리 시안" },
 ];
 
-function useMetrics() {
+export function useMetrics() {
   const [metrics, setMetrics] = useState<PlantSceneMetrics | null>(null);
   const onMetrics = useCallback((next: PlantSceneMetrics) => {
     setMetrics(next);
@@ -37,7 +42,7 @@ function useMetrics() {
   return { metrics, onMetrics };
 }
 
-function MetricsBadge({ metrics }: { metrics: PlantSceneMetrics | null }) {
+export function MetricsBadge({ metrics }: { metrics: PlantSceneMetrics | null }) {
   if (!metrics) return null;
   return (
     <div className="pointer-events-none absolute top-2 left-2 rounded-lg bg-black/55 px-2 py-1 font-mono text-[10px] leading-4 text-white">
@@ -57,7 +62,7 @@ function MetricsBadge({ metrics }: { metrics: PlantSceneMetrics | null }) {
   );
 }
 
-function Segmented<T extends string>({
+export function Segmented<T extends string>({
   label,
   value,
   options,
@@ -91,9 +96,15 @@ function Segmented<T extends string>({
   );
 }
 
-const ON_OFF = { off: "아니요", on: "필요" } as const;
+export const ON_OFF = { off: "아니요", on: "필요" } as const;
 
-function DroopSlider({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+export function DroopSlider({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+}) {
   return (
     <div className="flex flex-col gap-1">
       <span className="text-xs font-semibold text-neutral-500">
@@ -112,7 +123,13 @@ function DroopSlider({ value, onChange }: { value: number; onChange: (value: num
   );
 }
 
-function PotPicker({ value, onChange }: { value: PotColor; onChange: (pot: PotColor) => void }) {
+export function PotPicker({
+  value,
+  onChange,
+}: {
+  value: PotColor;
+  onChange: (pot: PotColor) => void;
+}) {
   return (
     <div className="flex flex-col gap-1">
       <span className="text-xs font-semibold text-neutral-500">화분 색</span>
@@ -152,10 +169,17 @@ function SinglePlant() {
         <MetricsBadge metrics={metrics} />
       </div>
       <Segmented
+        label="종류"
+        value={options.kind ?? "tree"}
+        options={PLANT_KINDS}
+        labels={PLANT_KIND_LABELS}
+        onChange={(v) => set("kind", v)}
+      />
+      <Segmented
         label="성장 단계"
         value={options.stage}
         options={PLANT_STAGES}
-        labels={PLANT_STAGE_LABELS}
+        labels={options.kind === "fern" ? FERN_STAGE_LABELS : PLANT_STAGE_LABELS}
         onChange={(v) => set("stage", v)}
       />
       <DroopSlider value={options.droop} onChange={(v) => set("droop", v)} />
@@ -349,6 +373,7 @@ export function PlantPreview() {
       {tab === "stages" && <Stages />}
       {tab === "garden" && <Garden />}
       {tab === "avatar" && <Avatars />}
+      {tab === "fern" && <FernCompare />}
     </div>
   );
 }

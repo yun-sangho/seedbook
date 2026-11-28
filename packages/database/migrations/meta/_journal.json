@@ -162,6 +162,13 @@
       "when": 1795780659439,
       "tag": "0022_hesitant_christian_walker",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1795824920388,
+      "tag": "0023_gorgeous_gamora",
+      "breakpoints": true
     }
   ]
 }

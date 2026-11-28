@@ -6,11 +6,13 @@ import { Icon } from "@seed-design/react";
 import { TabToolbar } from "@web/components/mobile/detail-layout";
 import { profitToneClass } from "@web/components/mobile/profit-tone";
 import { InvestmentStackedAreaChart } from "@web/features/investments/components/investment-stacked-area-chart";
-import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
+import type { HoldingsSortOption } from "@web/features/investments/types/holdings-sort";
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import { aggregateHoldings } from "@web/features/investments/utils/aggregate-holdings";
 import { sortByHoldingsOption } from "@web/features/investments/utils/sort-holdings";
 import { useStockPrices } from "@web/features/investments/utils/use-stock-prices";
+import { savePreferences } from "@web/lib/preferences";
+import { usePreferencesStore } from "@web/lib/preferences-store";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { List, ListItem } from "@web/seed-design/ui/list";
 import { prepareMonthlyInvestmentSummary } from "@web/utils/monthly-summary-utils";
@@ -71,8 +73,9 @@ export function MonthlySummaryList({ investments }: { investments: InvestmentIte
 export function HoldingsSummaryList({ investments }: { investments: InvestmentItem[] }) {
   const holdings = useMemo(() => investments.flatMap((inv) => inv.holdings ?? []), [investments]);
   const { prices, isLoading } = useStockPrices(holdings);
-  const sortOption = useInvestmentStore((s) => s.holdingsSortOption);
-  const setSortOption = useInvestmentStore((s) => s.setHoldingsSortOption);
+  const sortOption = usePreferencesStore((s) => s.holdingsSortOption);
+  const setSortOption = (option: HoldingsSortOption) =>
+    void savePreferences({ holdingsSortOption: option });
   const [sortOpen, setSortOpen] = useState(false);
   const rows = useMemo(
     () => sortByHoldingsOption(aggregateHoldings(investments, prices), sortOption, (row) => row),

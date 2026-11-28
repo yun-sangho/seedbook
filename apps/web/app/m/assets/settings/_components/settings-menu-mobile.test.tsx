@@ -62,9 +62,7 @@ describe("SettingsMenuMobile", () => {
     renderMenu();
 
     expect(within(section("데이터")).getByRole("button", { name: /저장 위치/ })).toBeVisible();
-    expect(
-      within(section("데이터")).getByRole("button", { name: /백업·데모 데이터/ })
-    ).toBeVisible();
+    expect(within(section("데이터")).getByRole("button", { name: /백업/ })).toBeVisible();
     for (const name of ["로그인 수단", "로그아웃", "탈퇴하기"]) {
       expect(within(section("계정")).getByRole("button", { name: new RegExp(name) })).toBeVisible();
     }
@@ -76,9 +74,11 @@ describe("SettingsMenuMobile", () => {
   it.each([
     [/푸른 새싹/, "Profile"],
     [/저장 위치/, "StorageMode"],
-    [/백업·데모 데이터/, "DataBackup"],
+    [/백업/, "DataBackup"],
     [/로그인 수단/, "LoginMethods"],
     [/탈퇴하기/, "DeleteAccount"],
+    [/이용약관/, "Terms"],
+    [/개인정보처리방침/, "Privacy"],
   ])("opens the %s screen", (name, activity) => {
     renderMenu();
 

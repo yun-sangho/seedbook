@@ -21,11 +21,14 @@ import {
   DEFAULT_CASH_LABEL,
   useInvestmentStore,
 } from "@web/features/investments/stores/investment-store";
+import type { HoldingsSortOption } from "@web/features/investments/types/holdings-sort";
 import type { Stock } from "@web/features/investments/types/stock";
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import { useAccountValuation } from "@web/features/investments/utils/use-account-valuation";
 import { stockPriceKey } from "@web/features/investments/utils/use-stock-prices";
 import { useLinkedPortfolioStatus } from "@web/features/portfolio/utils/use-linked-portfolio-status";
+import { savePreferences } from "@web/lib/preferences";
+import { usePreferencesStore } from "@web/lib/preferences-store";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
   ChipTabsContent,
@@ -119,8 +122,9 @@ function AccountDetailBody({ item }: { item: InvestmentItem }) {
   const addCashItem = useInvestmentStore((s) => s.addCashItem);
   const updateCashItem = useInvestmentStore((s) => s.updateCashItem);
   const removeCashItem = useInvestmentStore((s) => s.removeCashItem);
-  const holdingsSortOption = useInvestmentStore((s) => s.holdingsSortOption);
-  const setHoldingsSortOption = useInvestmentStore((s) => s.setHoldingsSortOption);
+  const holdingsSortOption = usePreferencesStore((s) => s.holdingsSortOption);
+  const setHoldingsSortOption = (option: HoldingsSortOption) =>
+    void savePreferences({ holdingsSortOption: option });
 
   const linkedPortfolio = useLinkedPortfolioStatus()(item.id);
 

@@ -9,6 +9,7 @@ import { getStorageMode, type StorageMode } from "./storage-mode";
 import { loadManagedStoreFromServer } from "./sync/initial-load";
 import { recordPersistedChange } from "./sync/local-change-recorder";
 import { getManagedStoreConfig } from "./sync/managed-stores";
+import { normalizePersistedEnvelope } from "./sync/normalize-envelope";
 
 /**
  * 하이브리드 저장소 어댑터 — Zustand persist 미들웨어의 `StateStorage`.
@@ -23,6 +24,9 @@ import { getManagedStoreConfig } from "./sync/managed-stores";
  *         엔진이 돌고 있지 않아도(로그인 확인 전, 세션 조회 실패) 수정이 사라지지 않는다.
  *         전송은 `EntitySyncRunner` 가 맡는다.
  *
+ * 두 모드 모두 저장 전과 읽은 뒤에 목록 항목의 값을 정리한다 (`normalizePersistedEnvelope` —
+ * NaN·범위 밖 값). 읽을 때도 정리해 이 규칙이 생기기 전에 저장된 값도 화면에 들어가기 전에 고친다.
+ *
  * 모드는 **처음 쓸 때 한 번만** 읽고 고정한다. 런타임 전환은 페이지 리로드로 강제한다.
  * 로그인 사용자가 정해진 뒤에야 그 계정의 모드를 알 수 있어 모듈 초기화 시점에는 읽지 않는다
  * (`account-storage.ts`, 로그아웃 상태면 읽기는 비어 있고 쓰기는 버린다).
@@ -35,14 +39,23 @@ function currentMode(): StorageMode {
   return mode;
 }
 
+function normalizeRead(key: string, value: string | null): string | null {
+  return value === null ? null : normalizePersistedEnvelope(key, value);
+}
+
 function createModeStorage(key: string): StateStorage {
   const store = accountStorage;
   const managed = currentMode() === "cloud" ? getManagedStoreConfig(key) : null;
   // local 모드 — 또는 동기화 설정이 없는 store 는 이 기기에만 저장한다.
   if (!managed) {
     return {
-      getItem: (name) => store.readEnvelope(name),
-      setItem: (name, value) => store.writeEnvelope(name, value),
+      getItem: (name) => {
+        const value = store.readEnvelope(name);
+        return value instanceof Promise
+          ? value.then((v) => normalizeRead(key, v))
+          : normalizeRead(key, value);
+      },
+      setItem: (name, value) => store.writeEnvelope(name, normalizePersistedEnvelope(key, value)),
       removeItem: (name) => store.removeEnvelope(name),
     };
   }
@@ -50,13 +63,14 @@ function createModeStorage(key: string): StateStorage {
   let lastPersisted: string | null = null;
   return {
     getItem: async (name) => {
-      const cached = await store.readEnvelope(name || key);
+      const cached = normalizeRead(key, await store.readEnvelope(name || key));
       const fromServer = await loadManagedStoreFromServer(managed, cached);
       lastPersisted = fromServer ?? cached;
       if (fromServer !== null) await store.writeEnvelope(name || key, fromServer);
       return lastPersisted;
     },
-    setItem: (name, value) => {
+    setItem: (name, raw) => {
+      const value = normalizePersistedEnvelope(key, raw);
       const previous = lastPersisted ?? store.readEnvelope(name || key);
       lastPersisted = value;
       // 브라우저는 동기로 끝난다. 네이티브 앱(SQLite)에서 직전 저장본을 아직 모를 때만 기다린다.
