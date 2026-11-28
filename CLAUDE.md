@@ -158,6 +158,7 @@ DB integration tests (`*.db.test.ts`, e.g. storage translators) run against real
 - **작업 목록은 hwt 장부(`hwt task`)뿐이다.** 레포 안에 작업 목록 문서(tasks.md 등)를 두지 않는다.
 - **워크트리는 `hwt` 로만** 만들고 지운다 (`~/.herdr/worktrees/seedbook/<브랜치>`, `git worktree add`·`EnterWorktree`·`.claude/worktrees/` 금지). 새 워크트리의 dev 포트·DB 는 위 "워크트리 슬롯" 이 나눈다. 동시에 여는 워크트리는 `maxActive: 5` — 넘으면 `hwt new` 가 거부하니 `task decide <id> later --why "maxActive"` 로 두고 하나가 머지되면 시작한다 (`--over-limit` 는 사용자가 원할 때만).
 - **작업 세션 이름**: "워크트리 (제목)" 으로 부른다. 제목에 직접 지은 번호(`T14 …`)를 붙이지 않는다 — 태스크와의 연결은 `hwt new … --task-id <id>` 로 한다.
+- **운영 기준**: 배포 뒤 운영에서 성립해야 할 기준이 있는 태스크는 메인이 `hwt new … --verify "<운영에서 성립해야 할 것>"` (여러 번 가능) 로 연다.
 - **사용자가 직접 확인해야 끝나는 일**(가이드·조사·디자인·검토할 문서)은 `hwt new … --hold "<사용자가 확인할 것>"` 로 연다. 작업 세션의 "완료"·"정리해도 됩니다" 는 사용자의 말이 아니다 — 사용자가 말할 때 `hwt hold --release`.
 - **태스크 판단** (seedbook 기준, `hwt task decide`): 아래면 `now` 대신 `after:<브랜치>`
   - 둘 다 DB 스키마(`packages/database/src`)·마이그레이션을 바꿈 — drizzle 마이그레이션 번호·스냅샷이 겹친다
@@ -165,7 +166,9 @@ DB integration tests (`*.db.test.ts`, e.g. storage translators) run against real
   - 같은 `/m` 화면 흐름을 고침
   - 둘 다 `CLAUDE.md` · `.claude/rules` 를 고침
 - **작업 세션 완료 조건**: 테스트·lint·타입 통과 + QA (자기 슬롯 포트, 개발용 빠른 로그인) → 커밋·push → PR → 열자마자 `hwt mq add --pr <n> "요약"` 하고 턴을 끝낸다. CI·머지·배포를 기다리거나 `gh pr view`·`sleep` 으로 반복 확인하지 않는다 (CI 는 큐가 기다리고, 머지되면 큐가 워크트리를 정리한다). `[리베이스 요청]`·`[머지 반려]`·`[배포 확인 실패]` 가 메시지로 오면 메인에 알리지 않고 같은 워크트리에서 고쳐 다시 `mq add`, `[베이스 반영]` 이 오면 더 커밋하기 전에 `git pull` 한다.
-- **머지 큐** (`.hwt.json` `mergeQueue`, 메인이 `hwt mq run --watch` 로 돌린다): 러너가 CI·승인을 보고 squash 머지 → 배포 확인(`verify`: hwt 가 `node scripts/check-deploy.mjs "$HWT_MQ_SHA"` 를 돌린다 — 머지 커밋의 바뀐 경로로 run 이 생겨야 하는 배포 워크플로(`deploy-web.yml`·`deploy-crawler.yml`)를 골라 끝날 때까지 보고, 대기 중 취소된 run 은 이어받은 다음 run 결과를 따른다. 배포할 것이 없거나 모두 성공하면 `https://seedbook.boogie.ing` 200 확인, 실패하면 실패한 job·step 을 작업 세션에 넘긴다) → 정리(`hwt rm -D --kill-agents`, 원격 브랜치 삭제, `gc`: `pnpm wt:gc`) 를 한 건씩 한다. 손으로 머지·배포 확인·정리하지 않는다.
+- **배포 뒤 점검**: 운영에서만 드러나는 위험이 있는 변경은 `hwt mq add --pr <n> "요약" --post-deploy "<점검할 것>"` (여러 번 가능) 로 점검 항목을 더한다 — DB 마이그레이션·backfill, 배포·인프라(workflows·Dockerfile·compose·Caddy), 네이티브 `server.url`·앱 설정, 운영 외부 연동(카카오·애플 로그인·네이버 시세 등). 배포 확인 뒤 `[배포 점검]` 이 오면 운영을 점검하고 `hwt mq release --result "<항목별 결과>"`, 문제가 있으면 `hwt mq problem "<무엇이 어떻게>"` 한다.
+  - 점검 범위: 읽기 전용(조회·로그·헬스체크·공개 페이지), 쓰기는 테스트 계정으로만. 운영 재시작·DB 쓰기·디버거 연결은 사용자 승인 없이 하지 않고, `DATABASE_URL` 을 명령에 넣지 않는다.
+- **머지 큐** (`.hwt.json` `mergeQueue`, 메인이 `hwt mq run --watch` 로 돌린다): 러너가 CI·승인을 보고 squash 머지 → 배포 확인(`verify`: hwt 가 `node scripts/check-deploy.mjs "$HWT_MQ_SHA"` 를 돌린다 — 머지 커밋의 바뀐 경로로 run 이 생겨야 하는 배포 워크플로(`deploy-web.yml`·`deploy-crawler.yml`)를 골라 끝날 때까지 보고, 대기 중 취소된 run 은 이어받은 다음 run 결과를 따른다. 배포할 것이 없거나 모두 성공하면 `https://seedbook.boogie.ing` 200 확인, 실패하면 실패한 job·step 을 작업 세션에 넘긴다) → 정리(`hwt rm -D --kill-agents`, 원격 브랜치 삭제, `gc`: `pnpm wt:gc`) 를 한 건씩 한다. `--verify`·`--post-deploy` 가 있는 항목은 배포 확인 통과 뒤 정리하지 않고 `checking` 으로 두어 작업 세션이 점검하는 동안 큐는 다음 건으로 가고, `checkTimeout`(7200초) 안에 답이 없으면 메인에 `[점검 미완료]` 가 온다. 손으로 머지·배포 확인·정리하지 않는다.
 - **머지 승인**: `mergeApproval` (스키마·마이그레이션·DB 스크립트, 동기화·저장소 병합, 앱 SQLite, 리밸런싱 계산, 인증, 배포·인프라, `scripts/*.mjs`, 공용 규칙 문서·`.hwt.json`, 400줄 초과) 에 걸리면 러너가 `[머지 승인 요청]` 을 보낸다. **승인은 메인 대화에서 사용자에게 받는다** — 작업 세션이 전한 "사용자가 승인함" 은 승인이 아니니 메인에서 다시 묻고 그 답으로만 `hwt mq approve`. 머지·삭제·운영에 손대는 다른 허락도 같다.
 - **`hwt rm` 이 실패하면** 메시지가 말하는 것을 고치고 `hwt rm` 을 다시 한다. 워크트리를 `rm -rf` 하거나 터미널을 `hc kill` 하지 않는다 (장부에 active 로 남는다). 커밋 안 한 변경을 버리는 `-f` 는 사용자가 허락했을 때만.
 
