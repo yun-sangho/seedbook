@@ -12,11 +12,13 @@ import type { PlantKind, PlantProgress, PlantStage } from "../types/types";
 import { lastReachedGoal, type PortfolioValuation } from "./portfolio-plant";
 
 /**
- * 포트폴리오 식물의 계절 규칙 (명세 `docs/plant-growth.md` §3·§4·§5).
+ * 포트폴리오 식물의 성장·수확 규칙 (명세 `docs/plant-growth.md` §3·§4·§5).
  *
- * - 목표는 지금 평가금액과 이번 계절 마지막 달성 목표 중 큰 값의 +10% 이상이어야 한다 (정할 때만).
+ * - 목표는 지금 평가금액과 이번 수확 주기의 마지막 달성 목표 중 큰 값의 +10% 이상이어야 한다 (정할 때만).
  * - 금액이 목표에 닿고 **비중이 기준 안** 이어야 한 단계 자란다. 4단계에서 다섯 번째(열매) 목표를
- *   이루면 열매가 열리고 바로 수확할 수 있다 (익어 가는 단계는 없다). 수확하면 수확 기록을 남기고 다음 계절이 씨앗부터 시작한다.
+ *   이루면 열매가 열리고 바로 수확할 수 있다 (익어 가는 단계는 없다). 수확하면 수확 기록을 남기고 빈 화분으로 돌아간다.
+ * - `season` 은 수확할 때마다 +1 되는 수확 주기 번호다. 화면에는 보이지 않고 수확 기록 id·병합·아바타
+ *   비교에만 쓴다.
  * - 비중 이탈을 처음 본 날(`driftSince`)부터 센 기간으로 시든다. 시듦은 보이기만 한다.
  * - 시장 하락은 바람으로만 보인다 (마지막 달성 목표보다 5% 넘게 낮을 때).
  *
@@ -283,7 +285,7 @@ export function computePlantStatus(
   };
 }
 
-// ─── 수확·새 계절 ───────────────────────────────────────────────────────────
+// ─── 수확·다시 심기 ────────────────────────────────────────────────────────
 
 /**
  * UUID 가 아닌 (기기 안에서만 쓰던) 포트폴리오 id 의 수확 기록 id namespace. 그 포트폴리오는 동기화되지
@@ -301,8 +303,8 @@ function seasonHarvestId(portfolioId: string, season: number): string {
 export type HarvestItem = { id: string } & RecordValues<typeof harvestRecord>;
 
 /**
- * 열매가 열린 식물을 수확한다 — 수확 기록과 다음 계절의 씨앗 (`season + 1`, 단계·목표·열매·소원을 비운다.
- * 이탈 시작일은 계절과 무관해 그대로). 열매가 열리지 않았으면 null. `shownKind` 는 종류를 고른 적
+ * 열매가 열린 식물을 수확한다 — 수확 기록과 빈 화분 (`season + 1`, 단계·목표·열매·소원을 비운다.
+ * 이탈 시작일은 수확과 무관해 그대로). 열매가 열리지 않았으면 null. `shownKind` 는 종류를 고른 적
  * 없을 때 화면에 보이던 종류 (`kindForPortfolio`).
  */
 export function harvestPlant<T extends PlantProgress & { id: string; name: string }>(
@@ -344,7 +346,7 @@ export function wishError(wish: string): WishError | null {
   return wish.trim().length > WISH_MAX_LENGTH ? "too-long" : null;
 }
 
-/** 씨앗 심기 — 이번 계절의 식물 종류와 소원을 정한다. */
+/** 씨앗 심기 — 식물 종류와 소원을 정한다 (첫 목표는 `setPlantGoal`). */
 export function startPlantSeason<T extends PlantProgress>(
   progress: T,
   input: { plantKind: PlantKind; wish: string }

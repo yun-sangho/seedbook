@@ -57,7 +57,7 @@ export const PLANT_FIELDS = [
   "fruitGoal",
 ] as const satisfies ReadonlyArray<keyof PlantProgress>;
 
-/** 더 자란 정도 비교 — (계절, 단계, 열매가 열림) 사전순. 양수면 `a` 가 더 자랐다. */
+/** 더 자란 정도 비교 — (수확 주기 번호, 단계, 열매가 열림) 사전순. 양수면 `a` 가 더 자랐다. */
 export function comparePlantGrowth(
   a: Pick<PlantProgress, "season" | "growthStage" | "fruitGoal">,
   b: Pick<PlantProgress, "season" | "growthStage" | "fruitGoal">
@@ -100,11 +100,11 @@ function readGoal(g: unknown): PlantGoal | null {
 }
 
 /**
- * 저장·동기화된 값을 식물 진행으로 읽는다. 없거나 깨진 값은 첫 계절 씨앗 기본값으로 채운다 — 식물이
+ * 저장·동기화된 값을 식물 진행으로 읽는다. 없거나 깨진 값은 첫 수확 주기의 빈 화분 기본값으로 채운다 — 식물이
  * 생기기 전에 저장된 포트폴리오도 그대로 읽힌다.
  *
- * 두 기기가 다른 계절을 패치하면 필드가 섞일 수 있다. 불변식(달성 이력 수 = 단계, 열매는 4단계에서만,
- * 열린 열매 옆에는 목표 없음)에 어긋난 목표·열매는 비운다. 단계·계절은 건드리지 않는다.
+ * 두 기기가 다른 수확 주기를 패치하면 (한쪽은 이미 수확) 필드가 섞일 수 있다. 불변식(달성 이력 수 = 단계, 열매는 4단계에서만,
+ * 열린 열매 옆에는 목표 없음)에 어긋난 목표·열매는 비운다. 단계·수확 주기 번호는 건드리지 않는다.
  * 식물 종류는 모르는 값(새 앱이 더한 종류)도 그대로 둔다 — 지우면 그 값을 덮어쓰게 된다.
  */
 export function readPlantProgress(value: {

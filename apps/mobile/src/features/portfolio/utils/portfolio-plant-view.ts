@@ -33,9 +33,9 @@ export interface PortfolioPlantView extends PlantStatus {
   color: string;
   /** 식물 종류 (고른 종류, 없으면 `kindForPortfolio`). */
   kind: PlantKind;
-  /** 계절 번호 (1부터). */
+  /** 수확 주기 번호 (1부터, 수확할 때마다 +1). 화면에 보이지 않는 내부 번호. */
   season: number;
-  /** 이번 계절 하고 싶은 일 (비어 있을 수 있다). */
+  /** 목표를 이루면 하고 싶은 일 (비어 있을 수 있다). */
   wish: string;
   /** 포트폴리오 평가 금액 (원). */
   value: number;

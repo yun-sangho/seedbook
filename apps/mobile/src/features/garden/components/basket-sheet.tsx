@@ -12,7 +12,7 @@ import { type BasketCard, basketCards } from "../utils/basket";
 import { PlantAvatar } from "./plant-avatar";
 
 /**
- * 바구니 — 수확한 계절마다 카드 하나: 식물(꽃·열매), 하고 싶은 일, 걸린 기간, 이룬 목표 다섯 개.
+ * 바구니 — 수확마다 카드 하나: 식물(꽃·열매), 하고 싶은 일, 걸린 기간, 이룬 목표 다섯 개.
  * 하고 싶은 일을 해냈으면 "했어요" 로 날짜를 남긴다 (다시 누르면 취소).
  */
 export function BasketSheet({

@@ -80,12 +80,12 @@ interface PortfolioState {
    * 이탈 시작일을 기록·해제한다). 바뀐 것이 없으면 상태를 바꾸지 않는다 (동기화 대기열에도 남지 않는다).
    */
   evaluatePlants: (evaluations: ReadonlyMap<string, PlantEvaluation>, now?: string) => void;
-  /** 씨앗 심기 — 이번 계절의 식물 종류와 소원. 소원이 규칙(`wishError`)에 어긋나면 false. */
+  /** 씨앗 심기 — 식물 종류와 소원. 소원이 규칙(`wishError`)에 어긋나면 false. */
   startPlantSeason: (portfolioId: string, input: { plantKind: PlantKind; wish: string }) => boolean;
-  /** 이번 계절의 소원을 고친다. 규칙에 어긋나면 false. */
+  /** 소원을 고친다 (언제든). 규칙에 어긋나면 false. */
   setPlantWish: (portfolioId: string, wish: string) => boolean;
   /**
-   * 열매가 열린 식물을 수확한다 — 수확 기록을 바구니(`useHarvestStore`)에 남기고 다음 계절 씨앗으로
+   * 열매가 열린 식물을 수확한다 — 수확 기록을 바구니(`useHarvestStore`)에 남기고 빈 화분으로
    * 되돌린다. 수확 기록 id 를 돌려주고, 익지 않았으면 아무것도 바꾸지 않고 null.
    */
   harvestPlant: (portfolioId: string) => string | null;

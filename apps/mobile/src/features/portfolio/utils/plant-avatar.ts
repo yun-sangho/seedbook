@@ -29,13 +29,13 @@ export type ProfileAvatar =
       variant: SeedAvatarVariant | null;
     };
 
-/** 더 자란 정도 — (계절, 단계, 금액) 사전순. 양수면 `a` 가 앞선다. */
+/** 더 자란 정도 — (수확 주기 번호, 단계, 금액) 사전순. 양수면 `a` 가 앞선다. */
 function compareAvatarPlants(a: AvatarPlant, b: AvatarPlant): number {
   return a.season - b.season || a.stage - b.stage || a.value - b.value;
 }
 
 /**
- * 기본 아바타 식물: 가장 크게 자란 식물 (뒤 계절이 앞, 같은 계절이면 단계), 같으면 금액이 큰
+ * 기본 아바타 식물: 가장 크게 자란 식물 (다시 심은 화분이 앞, 같으면 단계), 같으면 금액이 큰
  * 포트폴리오. 없으면 null.
  */
 export function defaultAvatarPlant<T extends AvatarPlant>(plants: readonly T[]): T | null {

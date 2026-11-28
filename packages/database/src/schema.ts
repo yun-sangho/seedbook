@@ -562,13 +562,13 @@ export const portfolio = seedbook.table(
       .$type<Array<{ amount: number; reachedAt: string }>>()
       .notNull()
       .default([]),
-    // 계절 번호 (1부터). 열매 목표까지 이뤄 수확하면 다음 계절이 씨앗부터 다시 시작한다.
+    // 수확 주기 번호 (1부터, 화면에 보이지 않음). 열매를 수확하면 +1 되고 빈 화분부터 다시 시작한다.
     season: integer("season").notNull().default(1),
     // 고른 식물 종류 ("tree" | "fern", 값이 늘 수 있다). null 이면 포트폴리오 id 해시로 정한다.
     plantKind: text("plantKind"),
-    // 이번 계절에 목표를 이루면 하고 싶은 일.
+    // 목표를 이루면 하고 싶은 일.
     wish: text("wish").notNull().default(""),
-    // 이룬 열매 목표 { amount, reachedAt } (계절의 다섯 번째 목표). 있으면 열매가 열려 바로 수확할 수 있다.
+    // 이룬 열매 목표 { amount, reachedAt } (수확 주기의 다섯 번째 목표). 있으면 열매가 열려 바로 수확할 수 있다.
     fruitGoal: jsonb("fruitGoal").$type<{ amount: number; reachedAt: string }>(),
     // 비중 이탈을 처음 본 시각 (KST 날짜 시작). 기준 안으로 돌아오면 null.
     driftSince: timestamp("driftSince", { precision: 3, mode: "date" }),
@@ -612,7 +612,7 @@ export const portfolioAllocation = seedbook.table(
 
 /**
  * 수확 기록 (동기화 v2 `harvest` 레코드). 식물(지금은 포트폴리오, `sourceType`)이 열매 목표까지 이룬
- * 계절 하나. 주인이 지워져도 남도록 FK 대신 id 와 이름을 함께 보관한다.
+ * 수확 주기 하나. 주인이 지워져도 남도록 FK 대신 id 와 이름을 함께 보관한다.
  * id = uuidv5(sourceId, `season:<season>`) (클라이언트가 만든다).
  */
 export const plantHarvest = seedbook.table(

@@ -53,7 +53,7 @@ function rowButton(plant: PortfolioPlantView): { label: string; action: PlantRow
 
 /**
  * 포트폴리오 상세 상단 요약의 식물 줄: 단계 이름 + 상태(시듦·바람·열매) + 목표 도달 막대(정원 목록과 같은
- * 모양) + 목표 상태에 맞는 버튼, 그 아래 이번 계절 하고 싶은 일. 식물 그림은 상단 금액 옆 아바타가 보여준다.
+ * 모양) + 목표 상태에 맞는 버튼, 그 아래 하고 싶은 일. 식물 그림은 상단 금액 옆 아바타가 보여준다.
  */
 export function PortfolioPlantRow({
   plant,
@@ -64,7 +64,7 @@ export function PortfolioPlantRow({
 }) {
   const condition = plantConditionLabel(plant);
   const button = rowButton(plant);
-  // 수확할 수 있으면 그것만 — 단계·막대·소원은 수확 뒤 새 계절에서 다시 보인다.
+  // 수확할 수 있으면 그것만 — 단계·막대·소원은 수확 뒤 다시 심으면 보인다.
   if (plant.ripe) {
     return (
       <div className="flex min-h-x12 items-center gap-x3 py-x2">
@@ -208,7 +208,7 @@ export function EditPlantGoalSheet({
 
 /**
  * 씨앗 심기 시트의 제목·설명. 방금 수확했으면(`harvestedWish` 가 있으면) 다시 심기. 화면 문구는 수확
- * 중심이다 — 계절·회차를 세지 않는다 (`season` 은 데이터에만 있다).
+ * 중심이다 — 몇 번째인지 세지 않는다 (`season` 은 화면에 보이지 않는 수확 주기 번호).
  */
 export function plantSeasonSheetText(harvestedWish: string | undefined): {
   title: string;
@@ -228,7 +228,7 @@ export function plantSeasonSheetText(harvestedWish: string | undefined): {
 
 /**
  * 씨앗 심기 시트 — 식물 종류, 첫 목표(필수, 하한 `nextGoalError`), 목표를 이루면 하고 싶은
- * 일(선택). 목표 없는 씨앗일 때만 연다 (새 포트폴리오, 수확 뒤 새 계절).
+ * 일(선택). 목표 없는 씨앗일 때만 연다 (빈 화분, 수확 뒤 다시 심기).
  */
 export function PlantSeasonSheet({
   open,
