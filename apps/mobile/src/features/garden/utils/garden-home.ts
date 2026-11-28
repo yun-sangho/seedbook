@@ -1,10 +1,11 @@
 import type { InvestmentItem } from "@mobile/features/investments/types/types";
 import type { PortfolioItem } from "@mobile/features/portfolio/types/types";
-import { lastReachedGoal } from "@mobile/features/portfolio/utils/portfolio-plant";
 import type { PortfolioPlantView } from "@mobile/features/portfolio/utils/portfolio-plant-view";
 import { calculateReturnRate } from "@mobile/utils/number-format";
 import {
+  FERN_STAGE_LABELS,
   PLANT_KINDS,
+  PLANT_STAGE_LABELS,
   PLANT_STAGES,
   type PlantKind,
   type PlantOptions,
@@ -15,9 +16,6 @@ import {
 /**
  * 정원 홈의 순수 계산: 포트폴리오 식물 → 3D 옵션·목록 행, 포커스 상태 전환, 성장 감지.
  */
-
-/** 마지막으로 달성한 목표보다 이만큼(비율) 내려가면 바람이 가장 세다. */
-export const FULL_DROOP_DROP = 0.2;
 
 /** 문자열 → 32비트 해시 (FNV-1a). 포트폴리오마다 화분 색·잎 배치를 고정하는 데 쓴다. */
 export function hashString(text: string): number {
@@ -43,59 +41,60 @@ export function kindForPortfolio(portfolioId: string): PlantKind {
   return PLANT_KINDS[hashString(`kind:${portfolioId}`) % PLANT_KINDS.length] ?? "tree";
 }
 
-/** 마지막으로 달성한 목표보다 이만큼(비율) 아래까지는 바람이 없다. */
-export const WIND_CALM_DROP = 0.05;
-/** 바람 세기 상한 (예전 처짐의 절반). */
-export const WIND_MAX = 0.5;
-
-/**
- * 바람 세기 (0~`WIND_MAX`). 시장 하락을 뜻한다 — 사용자가 할 일은 기다리는 것이라 잎 색은 바꾸지 않는다.
- * 마지막으로 달성한 목표보다 `WIND_CALM_DROP` 넘게 내려가면 불기 시작해 `FULL_DROOP_DROP` 에서 가장 세다.
- * 시세가 다 오기 전이나 달성한 목표가 없으면 0.
- */
-export function plantWind(
-  value: number,
-  lastGoalAmount: number | null,
-  pricesComplete: boolean
-): number {
-  if (!pricesComplete || lastGoalAmount === null || lastGoalAmount <= 0) return 0;
-  const drop = (lastGoalAmount - value) / lastGoalAmount;
-  const strength = (drop - WIND_CALM_DROP) / (FULL_DROOP_DROP - WIND_CALM_DROP);
-  return Math.min(1, Math.max(0, strength)) * WIND_MAX;
-}
-
-/** 비중 이탈 기간(일)별 시듦. 앞에서부터 처음으로 `days` 이상인 단계. 첫 주는 기울기·배지만. */
-const WILT_STEPS: readonly { days: number; wilt: number }[] = [
-  { days: 28, wilt: 1 },
-  { days: 14, wilt: 0.7 },
-  { days: 7, wilt: 0.35 },
-];
-
-/**
- * 시듦 (0·0.35·0.7·1). 비중 이탈 기간으로만 정한다 — 평가금액 하락은 시들게 하지 않는다.
- * `driftDays` 는 이탈을 처음 본 날부터 지난 일수, 이탈이 아니면 null. 단계(크기)는 내려가지 않는다.
- */
-export function plantWilt(driftDays: number | null): number {
-  if (driftDays === null) return 0;
-  return WILT_STEPS.find((step) => driftDays >= step.days)?.wilt ?? 0;
+/** 포트폴리오 식물의 종류 — 씨앗을 심을 때 고른 종류, 고르지 않았으면 `kindForPortfolio`. */
+export function plantKindOf(portfolio: Pick<PortfolioItem, "id" | "plantKind">): PlantKind {
+  return portfolio.plantKind ?? kindForPortfolio(portfolio.id);
 }
 
 /** 3D 식물 옵션. */
-export function gardenPlantOptions(
-  plant: PortfolioPlantView,
-  portfolio: Pick<PortfolioItem, "goalAmount" | "growthStage" | "goalHistory">
-): PlantOptions {
+export function gardenPlantOptions(plant: PortfolioPlantView): PlantOptions {
   return {
     stage: PLANT_STAGES[plant.stage],
-    wind: plantWind(plant.value, lastReachedGoal(portfolio)?.amount ?? null, plant.pricesComplete),
-    // 이탈 기간(`driftSince`)·열매 목표(`fruitGoal`)는 식물 규칙·레코드 태스크가 넣는다.
-    wilt: 0,
-    ripe: false,
+    wind: plant.wind,
+    wilt: plant.wilt,
+    ripe: plant.ripe,
+    empty: plant.empty,
     needsRebalance: plant.rebalancing === "needs-rebalancing",
     pot: potForPortfolio(plant.portfolioId),
     seed: hashString(plant.portfolioId) % 1000,
-    kind: kindForPortfolio(plant.portfolioId),
+    kind: plant.kind,
   };
+}
+
+/**
+ * 단계 이름 — 나무는 씨앗·새싹·묘목·나무, 고사리는 씨앗·새순·어린 잎·고사리, 4단계는 둘 다 꽃·열매.
+ * 목표가 없는 포트폴리오(`empty`)는 빈 화분.
+ */
+export function plantStageLabel(
+  kind: PlantKind,
+  stage: PortfolioPlantView["stage"],
+  empty = false
+): string {
+  if (empty) return "빈 화분";
+  const labels = kind === "fern" ? FERN_STAGE_LABELS : PLANT_STAGE_LABELS;
+  return labels[PLANT_STAGES[stage]];
+}
+
+/** 시듦 정도(`plantWilt`) → 문구. 큰 것부터. */
+const WILT_LABELS: readonly { wilt: number; label: string }[] = [
+  { wilt: 1, label: "많이 시들었어요" },
+  { wilt: 0.7, label: "시들해요" },
+  { wilt: 0.35, label: "시들기 시작했어요" },
+];
+
+/**
+ * 식물 상태 문구 — 시듦(비중 이탈 기간)과 바람(시장 하락). 아무 일 없으면 null. 열매가 열렸으면 null —
+ * 이룬 것은 시듦·바람과 상관없이 그대로이고, 목표 막대가 "열매가 열렸어요" 라고 말한다.
+ */
+export function plantConditionLabel(
+  plant: Pick<PortfolioPlantView, "wilt" | "wind" | "ripe">
+): string | null {
+  if (plant.ripe) return null;
+  const parts: string[] = [];
+  const wilt = WILT_LABELS.find((step) => plant.wilt >= step.wilt);
+  if (wilt) parts.push(wilt.label);
+  if (plant.wind > 0) parts.push("바람이 불어요");
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 /** 정원 목록(포커스 풀림)의 행 하나. */
@@ -108,8 +107,15 @@ export interface GardenRow {
   /** 평가 금액 (원). 연결 계좌가 없으면 null — "연결 계좌 없음" 으로 보인다. */
   value: number | null;
   needsRebalance: boolean;
-  drooping: boolean;
-  /** `set` 목표를 향해 자라는 중, `needs-goal` 목표를 정해야 함(씨앗이거나 방금 달성), `complete` 다 자람. */
+  /** 시듦 (비중 이탈 기간, `plantWilt`). */
+  wilt: number;
+  /** 바람 (시장 하락, `plantWind`). */
+  wind: number;
+  /** 열매가 열렸다 (수확할 수 있다). */
+  ripe: boolean;
+  /** 빈 화분 (목표 없는 포트폴리오). */
+  empty: boolean;
+  /** 목표 상태 (`seasonGoalState`). */
   goalState: PortfolioPlantView["goalState"];
   /** 지금 목표 금액 (원). 목표가 없으면 null. */
   goalAmount: number | null;
@@ -135,10 +141,13 @@ function gardenRow(plant: PortfolioPlantView, accounts: readonly RowAccount[]): 
     name: plant.name || "이름 없는 포트폴리오",
     stage: plant.stage,
     pot: potForPortfolio(plant.portfolioId),
-    kind: kindForPortfolio(plant.portfolioId),
+    kind: plant.kind,
     value: accounts.length > 0 ? plant.value : null,
     needsRebalance: plant.rebalancing === "needs-rebalancing",
-    drooping: plant.drooping,
+    wilt: plant.wilt,
+    wind: plant.wind,
+    ripe: plant.ripe,
+    empty: plant.empty,
     goalState: plant.goalState,
     goalAmount: plant.goalAmount,
     goalPercent:
@@ -212,6 +221,7 @@ export function gardenFocusIndex(
 export interface GrownPlant {
   portfolioId: string;
   name: string;
+  kind: PlantKind;
   stage: PortfolioPlantView["stage"];
 }
 
@@ -221,13 +231,13 @@ export interface GrownPlant {
  */
 export function grownSince(
   previous: ReadonlyMap<string, number> | null,
-  plants: readonly Pick<PortfolioPlantView, "portfolioId" | "name" | "stage">[]
+  plants: readonly Pick<PortfolioPlantView, "portfolioId" | "name" | "kind" | "stage">[]
 ): GrownPlant[] {
   if (previous === null) return [];
   return plants.flatMap((plant) => {
     const before = previous.get(plant.portfolioId);
     return before !== undefined && plant.stage > before
-      ? [{ portfolioId: plant.portfolioId, name: plant.name, stage: plant.stage }]
+      ? [{ portfolioId: plant.portfolioId, name: plant.name, kind: plant.kind, stage: plant.stage }]
       : [];
   });
 }

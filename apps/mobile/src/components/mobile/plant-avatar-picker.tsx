@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { ProfileAvatarImage } from "@mobile/components/profile-avatar";
 import type { ProfileDraft } from "@mobile/components/profile-editor";
-import { PLANT_STAGE_LABELS, PLANT_STAGES } from "@mobile/features/garden/plant-3d/plant-options";
+import { plantStageLabel } from "@mobile/features/garden/utils/garden-home";
 import {
   defaultAvatarPlant,
   pickedAvatarPlant,
@@ -57,7 +57,7 @@ export function PlantAvatarPicker({
             <PickerOption
               key={plant.portfolioId}
               label={plant.name}
-              detail={PLANT_STAGE_LABELS[PLANT_STAGES[plant.stage]]}
+              detail={plantStageLabel(plant.kind, plant.stage, plant.empty)}
               checked={picked?.portfolioId === plant.portfolioId}
               onSelect={() => draft.choosePlant(plant.portfolioId)}
               avatar={<PlantOptionAvatar plant={plant} />}
@@ -77,7 +77,9 @@ function PlantOptionAvatar({ plant }: { plant: PortfolioPlantView }) {
         portfolioId: plant.portfolioId,
         color: plant.color,
         stage: plant.stage,
-        drooping: plant.drooping,
+        plantKind: plant.kind,
+        ripe: plant.ripe,
+        empty: plant.empty,
         chosen: false,
       }}
       size={OPTION_AVATAR_SIZE}

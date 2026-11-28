@@ -538,9 +538,11 @@ export function buildPlant(options: PlantOptions): BuiltPlant {
   const body = new THREE.Group();
   body.position.y = SOIL_Y - 0.03;
   root.add(body);
-  const fern = options.kind === "fern" ? buildFernBody(ctx, body) : null;
+  // 빈 화분은 흙만 — 씨앗을 심으면(목표를 더하면) 그린다.
+  const empty = options.empty === true && options.stage === "seed";
+  const fern = !empty && options.kind === "fern" ? buildFernBody(ctx, body) : null;
   if (fern) disposers.push(fern.dispose);
-  else STAGE_BUILDERS[options.stage](ctx, body);
+  else if (!empty) STAGE_BUILDERS[options.stage](ctx, body);
   shedLeaves(ctx, root);
 
   const badgeHeight = fern?.badgeHeight ?? BADGE_HEIGHT[options.stage];

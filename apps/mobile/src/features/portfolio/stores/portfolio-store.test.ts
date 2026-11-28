@@ -154,48 +154,84 @@ describe("Portfolio Store", () => {
       });
     });
 
+    const NOW = "2026-11-27T06:30:00.000Z";
+    const complete = (value: number) => ({ value, pricesComplete: true });
+    const evaluation = (value: number, drifting = false) => ({
+      value,
+      drifting,
+      pricesComplete: true,
+    });
+
     it("sets and clears the goal", () => {
       const id = usePortfolioStore.getState().addPortfolio();
 
-      expect(usePortfolioStore.getState().setPlantGoal(id, 1_000_000)).toBe(true);
+      expect(usePortfolioStore.getState().setPlantGoal(id, 1_000_000, complete(0))).toBe(true);
       expect(usePortfolioStore.getState().portfolios[0]!.goalAmount).toBe(1_000_000);
 
-      usePortfolioStore.getState().setPlantGoal(id, null);
+      usePortfolioStore.getState().setPlantGoal(id, null, complete(0));
       expect(usePortfolioStore.getState().portfolios[0]!.goalAmount).toBeNull();
     });
 
     it("refuses a goal that breaks the goal rules", () => {
       const id = usePortfolioStore.getState().addPortfolio();
 
-      expect(usePortfolioStore.getState().setPlantGoal(id, 0)).toBe(false);
+      expect(usePortfolioStore.getState().setPlantGoal(id, 0, complete(0))).toBe(false);
       expect(usePortfolioStore.getState().portfolios[0]!.goalAmount).toBeNull();
     });
 
-    it("grows the plants whose goal is reached", () => {
+    it("refuses a goal less than 10% above the value", () => {
+      const id = usePortfolioStore.getState().addPortfolio();
+
+      expect(usePortfolioStore.getState().setPlantGoal(id, 1_090_000, complete(1_000_000))).toBe(
+        false
+      );
+      expect(usePortfolioStore.getState().setPlantGoal(id, 1_100_000, complete(1_000_000))).toBe(
+        true
+      );
+    });
+
+    it("refuses a goal while prices are loading", () => {
+      const id = usePortfolioStore.getState().addPortfolio();
+
+      expect(
+        usePortfolioStore.getState().setPlantGoal(id, 1000, { value: 0, pricesComplete: false })
+      ).toBe(false);
+    });
+
+    it("grows the plants whose goal is reached with the weights on target", () => {
       const reachedId = usePortfolioStore.getState().addPortfolio("reached");
       const shortId = usePortfolioStore.getState().addPortfolio("short");
-      usePortfolioStore.getState().setPlantGoal(reachedId, 1000);
-      usePortfolioStore.getState().setPlantGoal(shortId, 1000);
+      const driftingId = usePortfolioStore.getState().addPortfolio("drifting");
+      for (const id of [reachedId, shortId, driftingId]) {
+        usePortfolioStore.getState().setPlantGoal(id, 1000, complete(0));
+      }
 
-      usePortfolioStore.getState().growPlants(
+      usePortfolioStore.getState().evaluatePlants(
         new Map([
-          [reachedId, 1500],
-          [shortId, 500],
-        ])
+          [reachedId, evaluation(1500)],
+          [shortId, evaluation(500)],
+          [driftingId, evaluation(1500, true)],
+        ]),
+        NOW
       );
 
       const byId = new Map(usePortfolioStore.getState().portfolios.map((p) => [p.id, p]));
       expect(byId.get(reachedId)).toMatchObject({ growthStage: 1, goalAmount: null });
       expect(byId.get(reachedId)!.goalHistory.map((g) => g.amount)).toEqual([1000]);
       expect(byId.get(shortId)).toMatchObject({ growthStage: 0, goalAmount: 1000 });
+      expect(byId.get(driftingId)).toMatchObject({
+        growthStage: 0,
+        goalAmount: 1000,
+        driftSince: "2026-11-26T15:00:00.000Z",
+      });
     });
 
-    it("leaves the state untouched when nothing grows", () => {
+    it("leaves the state untouched when nothing changes", () => {
       const id = usePortfolioStore.getState().addPortfolio();
-      usePortfolioStore.getState().setPlantGoal(id, 1000);
+      usePortfolioStore.getState().setPlantGoal(id, 1000, complete(0));
       const before = usePortfolioStore.getState().portfolios;
 
-      usePortfolioStore.getState().growPlants(new Map([[id, 10]]));
+      usePortfolioStore.getState().evaluatePlants(new Map([[id, evaluation(10)]]), NOW);
 
       expect(usePortfolioStore.getState().portfolios).toBe(before);
     });
