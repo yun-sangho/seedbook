@@ -23,7 +23,7 @@ export function LandingMobileOnly({ host }: { host: string }) {
         }
       />
       <ActionButton
-        variant="brandSolid"
+        variant="neutralSolid"
         size="large"
         onClick={() => {
           setViewOverride("mobile");

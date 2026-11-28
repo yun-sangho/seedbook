@@ -8,7 +8,7 @@ import { DEFAULT_RETURN_PATH, LOGIN_FAILED_MESSAGE } from "@mobile/lib/login-flo
 import { ActionButton, type ActionButtonProps } from "@mobile/seed-design/ui/action-button";
 import { SuffixIcon } from "@seed-design/react";
 
-/** 놓이는 자리별 로그인 버튼 모양. 로그인 뒤의 "내 자산 보기" 는 어디서나 brand 로 강조한다. */
+/** 놓이는 자리별 로그인 버튼 모양. 로그인 뒤의 "내 자산 보기" 는 어디서나 neutralSolid 로 강조한다. */
 const PLACEMENT_PROPS = {
   header: { variant: "neutralWeak", size: "small" },
   hero: { variant: "neutralSolid", size: "large" },
@@ -33,7 +33,7 @@ export function LandingCta({ placement }: { placement: keyof typeof PLACEMENT_PR
 
   if (session?.user) {
     return (
-      <ActionButton {...buttonProps} variant="brandSolid" asChild>
+      <ActionButton {...buttonProps} variant="neutralSolid" asChild>
         <a href={DEFAULT_RETURN_PATH}>
           내 자산 보기
           <SuffixIcon svg={<IconArrowRightLine />} />

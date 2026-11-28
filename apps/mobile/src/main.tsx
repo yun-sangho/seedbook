@@ -1,5 +1,7 @@
 import "./globals.css";
 import "@seed-design/css/base.css";
+// SEED 브랜드 토큰을 Seedbook 잎 초록으로 (base.css 바로 뒤, 소개 사이트도 같은 파일).
+import "./seed-brand.css";
 import { StrictMode, Suspense } from "react";
 import { MobileStack } from "@mobile/app/_stack/mobile-stack";
 import { AuthGate } from "@mobile/components/auth-gate";
