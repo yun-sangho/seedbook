@@ -17,7 +17,7 @@ import {
 import { cn } from "@mobile/lib/utils";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
 import { formatWithCommas, numberToKorean } from "@mobile/utils/number-format";
-import { Icon } from "@seed-design/react";
+import { Icon, SuffixIcon } from "@seed-design/react";
 import { SnapshotPriceBanner } from "./snapshot-price-banner";
 import { TradeEntryForm } from "./trade-entry-mobile";
 
@@ -35,6 +35,7 @@ export function RebalancingSteps({
   selectedId,
   onSelect,
   footerTop,
+  onShowList,
 }: {
   session: RebalancingSession;
   tasks: RebalancingTask[];
@@ -44,6 +45,8 @@ export function RebalancingSteps({
   onSelect: (taskId: string | null) => void;
   /** 내비게이션 위에 함께 고정할 버튼 (다 끝냈을 때 "리밸런싱 완료하기"). */
   footerTop?: ReactNode;
+  /** 전체 목록으로. */
+  onShowList: () => void;
 }) {
   const recommended = nextRebalancingAction(tasks, available);
   const recommendedId = recommended.kind === "done" ? null : recommended.task.id;
@@ -85,6 +88,16 @@ export function RebalancingSteps({
           onClick={() => onSelect(tasks[index + 1]?.id ?? null)}
         >
           <Icon svg={<IconChevronRightLine />} />
+        </ActionButton>
+      </div>
+      {/* 목록이 있다는 걸 알 수 있게 진행 칸 바로 아래에 — 지금 위치와 전체 보기. */}
+      <div className="flex items-center justify-between px-x4">
+        <span className="t3-regular text-fg-neutral-subtle tabular-nums">
+          {current === null ? tasks.length : index + 1}/{tasks.length}
+        </span>
+        <ActionButton variant="ghost" size="small" bleedX="asPadding" onClick={onShowList}>
+          전체 {tasks.length}건 보기
+          <SuffixIcon svg={<IconChevronRightLine />} />
         </ActionButton>
       </div>
       {current === null ? (

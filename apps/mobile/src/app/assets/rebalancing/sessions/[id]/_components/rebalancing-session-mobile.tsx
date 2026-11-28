@@ -158,6 +158,10 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
           selectedId={selectedId}
           onSelect={setSelectedId}
           footerTop={readyToComplete && completeButton}
+          onShowList={() => {
+            setView("list");
+            topRef.current?.scrollIntoView();
+          }}
         />
       )}
       {completed &&
@@ -280,9 +284,25 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
         </>
       )}
 
-      {/* 목록에서도 다 끝냈으면 완료 버튼을 하단에 고정한다. */}
-      {!completed && view === "list" && readyToComplete && (
-        <BottomAction>{completeButton}</BottomAction>
+      {/* 목록에서는 하단 고정 바로 단계 화면에 돌아간다. 다 끝냈으면 완료가 주 버튼이다. */}
+      {!completed && view === "list" && (
+        <BottomAction>
+          {readyToComplete ? (
+            completeButton
+          ) : (
+            <ActionButton
+              variant="neutralSolid"
+              size="large"
+              className="w-full"
+              onClick={() => {
+                setView("steps");
+                topRef.current?.scrollIntoView();
+              }}
+            >
+              하나씩 기록하기
+            </ActionButton>
+          )}
+        </BottomAction>
       )}
       {canComplete && remaining > 0 && view === "list" && (
         <div className="px-x4 pt-x2">
@@ -313,19 +333,6 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
       />
 
       <HeaderAction>
-        {/* 단계 ↔ 목록을 오가는 토글 하나. */}
-        {!completed && (
-          <ActionButton
-            variant="ghost"
-            size="small"
-            onClick={() => {
-              setView(view === "steps" ? "list" : "steps");
-              topRef.current?.scrollIntoView();
-            }}
-          >
-            {view === "steps" ? "목록" : "단계로"}
-          </ActionButton>
-        )}
         <ActionButton
           variant="ghost"
           size="small"

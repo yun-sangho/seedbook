@@ -262,7 +262,8 @@ export function TradeEntryForm({
   );
   const primary = (label: string, onClick: () => void, grow?: number) => (
     <ActionButton
-      variant="neutralSolid"
+      // 하단에 "리밸런싱 완료하기" 가 있으면 그게 화면의 단 하나의 Solid 다 (SEED: CTA 하나).
+      variant={embedded && footerTop ? "neutralWeak" : "neutralSolid"}
       size="large"
       flexGrow={grow}
       className={grow ? "basis-0" : undefined}
@@ -436,14 +437,9 @@ export function TradeEntryForm({
         )}
 
         {/* 단계 화면은 이 단계의 행동(CTA)을 하단 고정 바에 둔다 — SEED: Solid CTA 하나 + Weak 보조. */}
-        {embedded ? (
-          <BottomAction>
-            {footerTop}
-            {actions}
-          </BottomAction>
-        ) : (
-          actions
-        )}
+        {/* 완료 버튼이 하단에 있으면 이 단계의 버튼은 본문에 둔다 — 하단 바에는 굵은 버튼 하나만. */}
+        {embedded && !footerTop ? <BottomAction>{actions}</BottomAction> : actions}
+        {embedded && footerTop && <BottomAction>{footerTop}</BottomAction>}
       </div>
     </>
   );
