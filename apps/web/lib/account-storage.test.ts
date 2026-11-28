@@ -11,6 +11,7 @@ async function launch(userId: string | null, platform: "web" | "native") {
   vi.doMock("./device", () => ({ isNativeAppUserAgent: () => platform === "native" }));
   vi.doMock("./native/device-db/capacitor-driver", () => ({
     openCapacitorSqlDriver: async () => driver,
+    openCapacitorSnapshotStore: async () => null,
   }));
   const mod = await import("./account-storage");
   const { getDeviceStorage } = await import("./device-storage");
@@ -225,7 +226,7 @@ describe.each(["web", "native"] as const)("account storage (%s)", (platform) => 
 });
 
 describe("account storage on the native app", () => {
-  it("keeps the second account out of the asset tables", async () => {
+  it("keeps the second account out of the asset records", async () => {
     await migrateDeviceDatabase(driver);
     const a = await launch("user-a", "native");
     await a.accountStorage.writeEnvelope("investment-storage", envelope("A의 계좌"));
@@ -233,9 +234,11 @@ describe("account storage on the native app", () => {
     await b.accountStorage.writeEnvelope("investment-storage", envelope("B의 계좌"));
     await b.device.flush();
 
-    expect(await driver.query("SELECT accountName FROM investment_account")).toEqual([
-      { accountName: "A의 계좌" },
-    ]);
+    expect(
+      await driver.query(
+        "SELECT json_extract(data, '$.accountName') AS accountName FROM records WHERE type = 'account'"
+      )
+    ).toEqual([{ accountName: "A의 계좌" }]);
   });
 });
 

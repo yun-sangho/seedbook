@@ -1,14 +1,15 @@
 import type { SqlDriver } from "./sql-driver";
 
 /**
- * 기기 SQLite 스키마. 자산 테이블은 서버 Postgres (`packages/database/src/schema.ts`) 와
- * 테이블·컬럼 이름이 같다. 기기에는 한 사람의 데이터만 있어 `userId` 와 동기화 컬럼
- * (`version`, `deletedAt`) 은 두지 않는다 — `migrations.test.ts` 가 서버 스키마와 비교한다.
+ * 기기 SQLite 스키마. 이미 나간 버전은 고치지 않고 새 버전을 **추가**한다.
  *
- * 타입 대응: uuid/text → TEXT, bigint/integer → INTEGER, double → REAL,
- * date → TEXT (YYYY-MM-DD), timestamp → TEXT (ISO 8601), jsonb·배열 → TEXT (JSON).
- *
- * 서버 스키마가 바뀌면 여기에 새 버전을 **추가**한다 (이미 나간 버전은 고치지 않는다).
+ * - **버전 7 부터 자산은 `records` 레코드 JSON 테이블 하나**에 둔다 (설계 §2.5, `record-store.ts`).
+ *   레코드 필드가 늘어도 기기 마이그레이션은 없다 — 여기에 새 버전을 더하는 것은 `records`·이력·
+ *   outbox 같은 저장 틀이 바뀔 때뿐이다.
+ * - 버전 1~6 의 자산 테이블(서버 Postgres 와 같은 모양)은 `records` 로 옮긴 뒤(`records-migration.ts`)
+ *   읽지 않는 옛 사본이다. 옮기기가 실패한 기기만 계속 쓰고, v2-5 에서 지운다. 서버 컬럼이 바뀌어도
+ *   더는 따라 고치지 않는다. 계좌 총액 기록(`investment_account_snapshot`·`investment_holding_history`),
+ *   저장소 모드(`user_preference.storageMode`), `device_kv` 는 계속 쓴다 (레코드가 아닌 기기 상태).
  */
 export interface DeviceMigration {
   version: number;
@@ -175,17 +176,108 @@ export const DEVICE_MIGRATIONS: DeviceMigration[] = [
       "ALTER TABLE user_preference ADD COLUMN investmentTrendRange TEXT NOT NULL DEFAULT '3months'",
     ],
   },
+  {
+    version: 7,
+    statements: [
+      // 동기화 레코드 (설계 §2.5 · §5.7). data 는 정규 JSON (`canonicalStringify`), checksum 은 그
+      // 문자열의 SHA-256. JS 가 실수해도 깨진 JSON·빈 체크섬은 SQLite 가 거부한다.
+      // 삭제는 행을 지우지 않고 deletedAt 을 찍는다 (톰스톤).
+      `CREATE TABLE records (
+        type TEXT NOT NULL,
+        id TEXT NOT NULL,
+        parentId TEXT,
+        data TEXT NOT NULL CHECK (json_valid(data)),
+        checksum TEXT NOT NULL CHECK (length(checksum) = 64 AND checksum NOT GLOB '*[^0-9a-f]*'),
+        schemaVersion INTEGER NOT NULL,
+        writtenBy TEXT NOT NULL,
+        version INTEGER NOT NULL DEFAULT 0,
+        changeSeq INTEGER,
+        deletedAt TEXT,
+        sortKey TEXT,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL,
+        PRIMARY KEY (type, id)
+      )`,
+      "CREATE INDEX records_parent_idx ON records (type, parentId)",
+      // 덮어쓰기 직전 값. 레코드마다 최근 3개 (읽기에서 손상을 만나면 여기서 복구한다).
+      `CREATE TABLE records_history (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT NOT NULL,
+        id TEXT NOT NULL,
+        parentId TEXT,
+        data TEXT NOT NULL CHECK (json_valid(data)),
+        checksum TEXT NOT NULL CHECK (length(checksum) = 64),
+        schemaVersion INTEGER NOT NULL,
+        writtenBy TEXT NOT NULL,
+        deletedAt TEXT,
+        sortKey TEXT,
+        savedAt TEXT NOT NULL
+      )`,
+      "CREATE INDEX records_history_record_idx ON records_history (type, id, seq)",
+      // 쓰지 못한 값(필드 검증 실패·직렬화 실패)과 읽지 못한 행(체크섬·검증 실패)의 원본.
+      // value 는 깨진 값일 수 있어 JSON 제약을 두지 않는다. 같은 자리는 마지막 것 하나.
+      // device_quarantine (버전 5) 의 항목은 옮겨 오고(source = 'legacy') 그 표는 더 쓰지 않는다.
+      `CREATE TABLE records_quarantine (
+        type TEXT NOT NULL,
+        id TEXT NOT NULL,
+        field TEXT NOT NULL,
+        source TEXT NOT NULL,
+        code TEXT NOT NULL,
+        value TEXT,
+        checksum TEXT,
+        at TEXT NOT NULL,
+        PRIMARY KEY (type, id, field, source)
+      )`,
+      // v2-4b 동기화 엔진의 자리 (설계 §5.1~5.2). 이 버전에서는 만들기만 한다.
+      `CREATE TABLE sync_outbox (
+        type TEXT NOT NULL,
+        id TEXT NOT NULL,
+        op TEXT NOT NULL,
+        fields TEXT NOT NULL CHECK (json_valid(fields)),
+        seq INTEGER NOT NULL,
+        updatedAt TEXT NOT NULL,
+        PRIMARY KEY (type, id)
+      )`,
+      `CREATE TABLE sync_shadow (
+        type TEXT NOT NULL,
+        id TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        changeSeq INTEGER,
+        fields TEXT NOT NULL CHECK (json_valid(fields)),
+        sortKey TEXT,
+        PRIMARY KEY (type, id)
+      )`,
+      // 저장소 자체의 상태 (레코드 이전 여부, 마지막 스냅샷 시각, 마지막 무결성 검사).
+      `CREATE TABLE device_meta (
+        key TEXT PRIMARY KEY NOT NULL,
+        value TEXT NOT NULL,
+        updatedAt TEXT NOT NULL
+      )`,
+    ],
+  },
 ];
+
+/** 이 버전 이상이면 `records` 테이블이 있다. */
+export const RECORDS_SCHEMA_VERSION = 7;
 
 const CREATE_MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS device_schema_migration (
   version INTEGER PRIMARY KEY NOT NULL,
   appliedAt TEXT NOT NULL
 )`;
 
+export interface MigrateOptions {
+  /**
+   * 적용할 버전이 있고 이미 쓰던 데이터베이스일 때(처음 만드는 것이 아닐 때) 적용 직전에 부른다.
+   * 저장 틀을 바꾸기 전 스냅샷을 남기는 자리다 (설계 §5.7.4). 실패하면 마이그레이션도 하지 않는다.
+   */
+  beforeMigrate?: (pending: number[]) => Promise<void>;
+}
+
 /** 아직 적용하지 않은 버전을 순서대로 적용한다. 버전마다 한 트랜잭션. */
 export async function migrateDeviceDatabase(
   driver: SqlDriver,
-  migrations: DeviceMigration[] = DEVICE_MIGRATIONS
+  migrations: DeviceMigration[] = DEVICE_MIGRATIONS,
+  options: MigrateOptions = {}
 ): Promise<void> {
   await driver.batch([{ sql: CREATE_MIGRATIONS_TABLE }]);
   const applied = await driver.query<{ version: number }>(
@@ -195,6 +287,9 @@ export async function migrateDeviceDatabase(
   const pending = migrations
     .filter((m) => !done.has(m.version))
     .sort((a, b) => a.version - b.version);
+  if (pending.length > 0 && done.size > 0 && options.beforeMigrate) {
+    await options.beforeMigrate(pending.map((m) => m.version));
+  }
   for (const migration of pending) {
     await driver.batch([
       ...migration.statements.map((sql) => ({ sql })),
