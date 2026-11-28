@@ -1,5 +1,5 @@
-import { gardenLayout } from "@mobile/features/garden/plant-3d/garden-layout";
-import type { PlantOptions } from "@mobile/features/garden/plant-3d/plant-options";
+import { GARDEN_SPACING_X, gardenLayout } from "@mobile/features/garden/plant-3d/garden-layout";
+import { PLANT_STAGES, type PlantOptions } from "@mobile/features/garden/plant-3d/plant-options";
 import type { PlantSlot } from "@mobile/features/garden/plant-3d/plant-renderer";
 
 /**
@@ -34,20 +34,51 @@ export const LANDING_GARDEN_PLANTS = {
     },
     { stage: "tree", wind: 0, wilt: 0, ripe: false, needsRebalance: true, pot: "cream", seed: 5 },
   ],
+  /** 목표에 가까워질수록 자라는 모습: 같은 식물의 다섯 모습을 한 줄로 (마지막은 열매). */
+  growth: PLANT_STAGES.map((stage) => ({
+    stage,
+    wind: 0,
+    wilt: 0,
+    ripe: stage === "bloom",
+    needsRebalance: false,
+    pot: "terracotta",
+    seed: 5,
+  })),
 } as const satisfies Record<string, readonly PlantOptions[]>;
 
 export type LandingGardenScene = keyof typeof LANDING_GARDEN_PLANTS;
 
+/** 한 줄로 세우는 장면 (정원 배치는 4개부터 두 줄이라, 자라는 순서를 보이려면 따로 놓는다). */
+const SINGLE_ROW_SCENES: ReadonlySet<LandingGardenScene> = new Set(["growth"]);
+
+/** 장면별 정지 이미지 크기 (`public/landing/<scene>-{light,dark}.webp`). 한 줄 장면은 가로로 넓다. */
+export const LANDING_STILL_SIZE: Record<LandingGardenScene, { width: number; height: number }> = {
+  garden: { width: 1000, height: 770 },
+  rebalance: { width: 1000, height: 770 },
+  growth: { width: 1000, height: 460 },
+};
+
 /** 받침 판 양 끝과 기운 나무의 잎이 잘리지 않게 카메라를 조금 물린다 (정원 폭에 더하는 값). */
 const LAYOUT_MARGIN = 1.2;
+
+/** 식물 `count` 개를 한 줄로 놓는 자리. */
+function singleRow(count: number): { spots: { x: number; z: number }[]; width: number } {
+  const spots = Array.from({ length: count }, (_, index) => ({
+    x: (index - (count - 1) / 2) * GARDEN_SPACING_X,
+    z: 0,
+  }));
+  return { spots, width: (count - 1) * GARDEN_SPACING_X };
+}
 
 /** 장면의 식물을 정원 자리에 놓는다. `width` 는 `GardenCanvas` 의 `layoutWidth`. */
 export function landingGardenSlots(scene: LandingGardenScene): {
   slots: PlantSlot[];
   width: number;
 } {
-  const plants = LANDING_GARDEN_PLANTS[scene];
-  const layout = gardenLayout(plants.length);
+  const plants: readonly PlantOptions[] = LANDING_GARDEN_PLANTS[scene];
+  const layout = SINGLE_ROW_SCENES.has(scene)
+    ? singleRow(plants.length)
+    : gardenLayout(plants.length);
   return {
     slots: plants.map((options, index) => {
       const spot = layout.spots[index] ?? { x: 0, z: 0 };
