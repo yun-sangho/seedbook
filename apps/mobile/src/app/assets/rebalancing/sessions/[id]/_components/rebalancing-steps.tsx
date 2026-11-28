@@ -15,7 +15,7 @@ import {
 import { cn } from "@mobile/lib/utils";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
 import { formatWithCommas, numberToKorean } from "@mobile/utils/number-format";
-import { Divider, PrefixIcon, SuffixIcon } from "@seed-design/react";
+import { Icon } from "@seed-design/react";
 import { SnapshotPriceBanner } from "./snapshot-price-banner";
 import { TradeEntryForm } from "./trade-entry-mobile";
 
@@ -48,9 +48,42 @@ export function RebalancingSteps({
     tasks.find((t) => t.id === selectedId) ?? tasks.find((t) => t.id === recommendedId) ?? null;
   const index = current ? tasks.indexOf(current) : -1;
 
+  // 가격 기준 시각 배너는 항상 맨 위 — 지금 단계의 매매 기준이다 (다 끝났으면 첫 매매).
+  const bannerTask = current ?? tasks[0] ?? null;
+  const priceAsOf = bannerTask ? summarizeRebalancingPriceAsOf([bannerTask]) : null;
+
   return (
     <div>
-      <StepProgress tasks={tasks} currentId={current?.id ?? null} onSelect={(id) => onSelect(id)} />
+      {priceAsOf && <SnapshotPriceBanner summary={priceAsOf} live={current !== null} />}
+      {/* 이전·다음은 진행 칸 양 끝에 — 단계가 한 화면에 다 들어가도록 아래 줄을 따로 두지 않는다. */}
+      <div className="flex items-center gap-x1 px-x2 pt-x1">
+        <ActionButton
+          variant="ghost"
+          size="small"
+          layout="iconOnly"
+          aria-label="이전 거래"
+          // 다 끝낸 화면에서는 마지막 거래로 돌아가 기록을 볼 수 있다.
+          disabled={index === 0 || tasks.length === 0}
+          onClick={() => onSelect(tasks[(index < 0 ? tasks.length : index) - 1]?.id ?? null)}
+        >
+          <Icon svg={<IconChevronLeftLine />} />
+        </ActionButton>
+        <StepProgress
+          tasks={tasks}
+          currentId={current?.id ?? null}
+          onSelect={(id) => onSelect(id)}
+        />
+        <ActionButton
+          variant="ghost"
+          size="small"
+          layout="iconOnly"
+          aria-label="다음 거래"
+          disabled={index < 0 || index >= tasks.length - 1}
+          onClick={() => onSelect(tasks[index + 1]?.id ?? null)}
+        >
+          <Icon svg={<IconChevronRightLine />} />
+        </ActionButton>
+      </div>
       {current === null ? (
         <section className="flex flex-col gap-x2 px-x4 py-x6">
           <p className="t9-bold">모든 거래를 마쳤어요</p>
@@ -69,28 +102,6 @@ export function RebalancingSteps({
           onDone={() => onSelect(null)}
         />
       )}
-      <Divider />
-      <div className="flex items-center justify-between px-x2 py-x2">
-        <ActionButton
-          variant="ghost"
-          size="medium"
-          // 다 끝낸 화면에서는 마지막 거래로 돌아가 기록을 볼 수 있다.
-          disabled={index === 0 || tasks.length === 0}
-          onClick={() => onSelect(tasks[(index < 0 ? tasks.length : index) - 1]?.id ?? null)}
-        >
-          <PrefixIcon svg={<IconChevronLeftLine />} />
-          이전
-        </ActionButton>
-        <ActionButton
-          variant="ghost"
-          size="medium"
-          disabled={index < 0 || index >= tasks.length - 1}
-          onClick={() => onSelect(tasks[index + 1]?.id ?? null)}
-        >
-          다음
-          <SuffixIcon svg={<IconChevronRightLine />} />
-        </ActionButton>
-      </div>
     </div>
   );
 }
@@ -115,7 +126,7 @@ function StepProgress({
       aria-valuemin={0}
       aria-valuemax={tasks.length}
       aria-valuenow={doneCount}
-      className="flex items-center gap-x1 px-x4 pt-x4"
+      className="flex flex-1 items-center gap-x1"
     >
       {tasks.map((task, i) => {
         const status = rebalancingTaskStatus(task);
@@ -164,10 +175,9 @@ function CurrentStep({
 }) {
   const status = rebalancingTaskStatus(task);
   const copy = stepCopy(task, action);
-  const priceAsOf = summarizeRebalancingPriceAsOf([task]);
   return (
     <>
-      <section className="flex flex-col px-x4 pt-x4 pb-x5">
+      <section className="flex flex-col px-x4 pt-x2 pb-x3">
         <p className="t3-regular text-fg-neutral-muted tabular-nums">
           {position} · {task.action === "매도" ? "팔기" : "사기"}
           {action && " · 지금 할 일"}
@@ -194,23 +204,27 @@ function CurrentStep({
             {copy.note}
           </p>
         )}
-        {onShowCash && (
-          <div className="pt-x2">
-            <ActionButton variant="neutralWeak" size="small" onClick={onShowCash}>
-              금액 보기
-            </ActionButton>
-          </div>
-        )}
       </section>
-      {/* 주문을 넣을 때 보는 가격이 시작 시점 기준이라는 것과, 오래됐으면 그 경고. */}
-      {priceAsOf && status !== "filled" && <SnapshotPriceBanner summary={priceAsOf} live />}
-      <div className="pt-x4">
+      <div>
         <TradeEntryForm
           // 상태가 바뀌면 (주문 → 거래 끝) 입력을 새로 채운다.
           key={`${task.id}:${status}`}
           sessionId={session.id}
           task={task}
           embedded
+          // 리밸런싱 전체 금액은 펼쳤을 때만.
+          extraDetails={
+            onShowCash && (
+              <ActionButton
+                variant="neutralWeak"
+                size="small"
+                className="self-start"
+                onClick={onShowCash}
+              >
+                리밸런싱 전체 금액 보기
+              </ActionButton>
+            )
+          }
           onDone={onDone}
         />
       </div>
@@ -245,10 +259,11 @@ function stepCopy(
       return {
         quantity: `${formatWithCommas(remainingOrderQuantity(task))}주`,
         verb: sell ? "파는 중" : "사는 중",
+        // 주문 내용은 아래 주문 카드가 보여 준다 — 돈을 기다리는 이유만 알린다.
         note:
           action?.kind === "wait" && action.reason === "proceeds"
-            ? "팔린 돈이 들어와야 다음 종목을 살 수 있어요. 증권사 앱에서 거래가 끝나면 기록하세요."
-            : "증권사 앱에서 거래가 끝나면 기록하세요.",
+            ? "팔린 돈이 들어와야 다음 종목을 살 수 있어요."
+            : null,
       };
     case "pending": {
       const quantity = task.quantity === null ? null : `${formatWithCommas(task.quantity)}주`;

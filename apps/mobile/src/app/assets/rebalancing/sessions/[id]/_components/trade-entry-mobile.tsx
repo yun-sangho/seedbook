@@ -1,7 +1,12 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
-import { IconMinusLine, IconPlusLine } from "@karrotmarket/react-monochrome-icon";
+import {
+  IconChevronDownSmallLine,
+  IconChevronUpSmallLine,
+  IconMinusLine,
+  IconPlusLine,
+} from "@karrotmarket/react-monochrome-icon";
 import { formatMoneyDraft } from "@mobile/components/mobile/input-format";
 import { useInvestmentStore } from "@mobile/features/investments/stores/investment-store";
 import { snapToTick, stepByTick, tickSize } from "@mobile/features/investments/utils/krx-tick-size";
@@ -104,11 +109,14 @@ export function TradeEntryForm({
   sessionId,
   task,
   embedded = false,
+  extraDetails,
   onDone,
 }: {
   sessionId: string;
   task: RebalancingTask;
   embedded?: boolean;
+  /** `embedded` 에서 "금액 자세히" 를 펼치면 금액 요약 아래에 붙는 내용. */
+  extraDetails?: ReactNode;
   onDone?: () => void;
 }) {
   const session = useRebalancingStore((s) => s.sessions.find((x) => x.id === sessionId))!;
@@ -124,6 +132,8 @@ export function TradeEntryForm({
   );
   const { pop } = useFlow();
   const done = onDone ?? (() => pop());
+  // 단계 화면은 한 화면에 다 들어와야 해서 금액 요약은 펼칠 때만 보인다 (모자랄 때는 아래 경고가 따로 뜬다).
+  const [showDetails, setShowDetails] = useState(!embedded);
 
   const partial = isPartiallyFilled(task);
   const filled = filledQuantityOf(task);
@@ -241,12 +251,14 @@ export function TradeEntryForm({
       {!embedded && priceAsOf && status !== "filled" && (
         <SnapshotPriceBanner summary={priceAsOf} live />
       )}
-      <div className={cn("flex flex-col gap-x6 px-x4", embedded ? "pb-x4" : "pt-x4 pb-x6")}>
+      <div className={cn("flex flex-col px-x4", embedded ? "gap-x3 pb-x2" : "gap-x6 pt-x4 pb-x6")}>
         {!embedded && (
           <p className="t4-regular text-fg-neutral-muted tabular-nums">{headline(task)}</p>
         )}
 
-        {status === "ordered" && !amending && <OrderCard task={task} onAmend={startAmend} />}
+        {status === "ordered" && !amending && (
+          <OrderCard task={task} compact={embedded} onAmend={startAmend} />
+        )}
 
         <StepperField
           label={quantityLabel(task.action, isOrderInput, fillingOrder && partial)}
@@ -262,7 +274,10 @@ export function TradeEntryForm({
           autoFocus={!embedded}
           hint={
             fillingOrder ? (
-              fillHint(remaining, quantityOk ? quantity : null)
+              // 단계 화면에서는 다 거래됐으면 위 주문 카드와 같은 말이라 일부만 거래될 때만 알린다.
+              embedded && !partialFill ? null : (
+                fillHint(remaining, quantityOk ? quantity : null)
+              )
             ) : amending && partial ? (
               <span className={cn(amendTooSmall && "text-fg-critical")}>
                 이미 거래된 {formatWithCommas(filled)}주보다 많아야 해요
@@ -273,7 +288,8 @@ export function TradeEntryForm({
                 추천 {formatWithCommas(task.quantity)}주와 달라요 · 쓸 수 있는 돈이 남거나 모자랄 수
                 있어요
               </span>
-            ) : (
+            ) : embedded ? null : (
+              // 단계 화면은 위에 추천 수량을 크게 보여 준다.
               `추천 ${formatWithCommas(task.quantity)}주`
             )
           }
@@ -289,24 +305,42 @@ export function TradeEntryForm({
           stepLabel="한 칸"
           // 직접 입력한 값은 입력을 마치면 가장 가까운 호가로 맞춘다.
           onBlur={() => priceOk && setPrice(snapToTick(price, securityType))}
-          hint={priceHint(task, tick, priceOk ? price : null, isOrderInput)}
+          hint={
+            embedded && priceOk ? null : priceHint(task, tick, priceOk ? price : null, isOrderInput)
+          }
         />
 
-        <dl className="bg-bg-neutral-weak rounded-r3 flex flex-col gap-y-x2 px-x4 py-x3">
-          <SummaryRow label={task.action === "매도" ? "파는 금액" : "사는 금액"}>
-            {amount !== null ? `${formatWithCommas(amount)}원` : "-"}
-          </SummaryRow>
-          {cash && (
-            <SummaryRow label="쓸 수 있는 돈">
-              <span className="text-fg-neutral-muted font-normal">
-                {formatSignedWon(cash.before)} →{" "}
-              </span>
-              <span className={cn(cash.after < 0 && "text-fg-critical")}>
-                {formatSignedWon(cash.after)}
-              </span>
+        {embedded && (
+          <ActionButton
+            variant="ghost"
+            size="small"
+            bleedX="asPadding"
+            className="self-start"
+            aria-expanded={showDetails}
+            onClick={() => setShowDetails((v) => !v)}
+          >
+            {showDetails ? "금액 접기" : "금액 자세히"}
+            <Icon svg={showDetails ? <IconChevronUpSmallLine /> : <IconChevronDownSmallLine />} />
+          </ActionButton>
+        )}
+        {showDetails && (
+          <dl className="bg-bg-neutral-weak rounded-r3 flex flex-col gap-y-x2 px-x4 py-x3">
+            <SummaryRow label={task.action === "매도" ? "파는 금액" : "사는 금액"}>
+              {amount !== null ? `${formatWithCommas(amount)}원` : "-"}
             </SummaryRow>
-          )}
-        </dl>
+            {cash && (
+              <SummaryRow label="쓸 수 있는 돈">
+                <span className="text-fg-neutral-muted font-normal">
+                  {formatSignedWon(cash.before)} →{" "}
+                </span>
+                <span className={cn(cash.after < 0 && "text-fg-critical")}>
+                  {formatSignedWon(cash.after)}
+                </span>
+              </SummaryRow>
+            )}
+          </dl>
+        )}
+        {showDetails && extraDetails}
 
         {oversold && (
           <Callout
@@ -387,7 +421,16 @@ export function TradeEntryForm({
  * 증권사에 넣어 둔 주문: "주문 32주 · 주당 11,800원 / 총 377,600원" 과 [정정].
  * 아래 입력 칸은 체결 값이라, 주문 값은 여기서 따로 보여 정정할 수 있게 한다.
  */
-function OrderCard({ task, onAmend }: { task: RebalancingTask; onAmend: () => void }) {
+/** `compact` 는 단계 화면 — 한 화면에 들어가도록 총 금액 줄을 뺀다 ("금액 자세히" 에 있다). */
+function OrderCard({
+  task,
+  compact = false,
+  onAmend,
+}: {
+  task: RebalancingTask;
+  compact?: boolean;
+  onAmend: () => void;
+}) {
   const quantity = task.orderedQuantity ?? 0;
   const price = task.orderedPrice ?? 0;
   const filled = filledQuantityOf(task);
@@ -398,9 +441,11 @@ function OrderCard({ task, onAmend }: { task: RebalancingTask; onAmend: () => vo
           {task.action === "매도" ? "팔기" : "사기"} 주문 {formatWithCommas(quantity)}주 · 1주{" "}
           {formatWithCommas(price)}원
         </p>
-        <p className="t3-regular text-fg-neutral-muted mt-[2px] tabular-nums">
-          총 {formatWithCommas(Math.round(quantity * price))}원
-        </p>
+        {!compact && (
+          <p className="t3-regular text-fg-neutral-muted mt-[2px] tabular-nums">
+            총 {formatWithCommas(Math.round(quantity * price))}원
+          </p>
+        )}
         {isPartiallyFilled(task) && (
           // 부분 체결: 체결된 수량·평균가와 아직 주문 중인 잔량.
           <p className="t3-regular text-fg-informative mt-[2px] tabular-nums">
