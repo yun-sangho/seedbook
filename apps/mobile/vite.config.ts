@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import { buildAppContentSecurityPolicy } from "./src/lib/csp.ts";
+import { devProxyRoutes, isVitePath } from "./src/lib/dev-proxy.ts";
 import { decideMobileRoute } from "./src/lib/device.ts";
 import { iosStartupImages } from "./src/lib/ios-splash.ts";
 
@@ -21,9 +22,6 @@ const ROOT = import.meta.dirname;
 const DOMAIN_SRC = resolve(ROOT, "../../packages/domain/src");
 const APP_DIR = "_app";
 
-/** Vite 가 직접 답하는 경로. 나머지(앱 경로 제외)는 Next 로 넘긴다. */
-const VITE_PATH = /^\/(@|src\/|node_modules\/|_app\/|index\.html$|__)/;
-
 /**
  * 앱 경로를 운영과 같은 규칙(`decideMobileRoute`, 웹 서버 proxy 와 같은 함수)으로 가른다. 개발에서는
  * 어떤 브라우저든 모바일로 본다 — 데스크탑 브라우저에서도 `seedbook.view` 쿠키 없이 앱 화면이 열린다.
@@ -35,7 +33,7 @@ function appRoutes(): Plugin {
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = new URL(req.url ?? "/", "http://localhost");
-        if (VITE_PATH.test(url.pathname) || (req.method !== "GET" && req.method !== "HEAD")) {
+        if (isVitePath(url.pathname) || (req.method !== "GET" && req.method !== "HEAD")) {
           return next();
         }
         const redirect = (status: number, pathname: string) => {
@@ -110,11 +108,8 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       // 네이티브 셸(에뮬레이터 10.0.2.2·실기기 LAN IP)이 붙을 수 있게 모든 주소에서 듣는다 (Next dev 와 같다).
       host: true,
-      proxy: {
-        // Next dev 의 HMR (소개 페이지를 이 포트로 볼 때).
-        "/_next/webpack-hmr": { target: apiTarget, ws: true },
-        [`^(?!${VITE_PATH.source.slice(1)}).*`]: { target: apiTarget },
-      },
+      // 앱 경로 밖(소개·약관·`/dev/*`·`/_next/*`·`/api` 등)과 Next dev HMR websocket 을 Next 로.
+      proxy: devProxyRoutes(apiTarget),
     },
     build: {
       outDir: "dist",
