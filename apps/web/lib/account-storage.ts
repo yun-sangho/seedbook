@@ -14,12 +14,15 @@ import {
   afterDeviceStorageReady,
   type DeviceStorage,
   getDeviceStorage,
+  RECORD_DOCUMENT_KEY,
   reloadApp,
 } from "./device-storage";
 import {
   BIOMETRIC_LOGIN_STORAGE_KEY,
   readBiometricLoginEnrollment,
 } from "./native/biometric-login";
+import type { DeviceRecordStore } from "./sync/v2/device-record-store";
+import { QUARANTINE_KEY, SYNC_STATE_KEY } from "./sync/v2/record-layer";
 
 /**
  * 계정별 기기 데이터. 한 기기에서 여러 계정이 로그인해도 자산·동기화 대기열·저장소 모드·개인
@@ -52,7 +55,13 @@ const ACCOUNT_ENVELOPE_KEYS = [
   ACCOUNT_SNAPSHOT_STORAGE_KEY,
   HOLDINGS_HISTORY_STORAGE_KEY,
 ];
-const ACCOUNT_ITEM_KEYS = [...SYNC_META_KEYS, "seedbook.storageMode"];
+const ACCOUNT_ITEM_KEYS = [
+  ...SYNC_META_KEYS,
+  "seedbook.storageMode",
+  RECORD_DOCUMENT_KEY,
+  SYNC_STATE_KEY,
+  QUARANTINE_KEY,
+];
 
 type Slot = { userId: string; prefix: string };
 
@@ -179,6 +188,8 @@ export const accountStorage = {
     withSlot<void | Promise<void>>((d, p) => d.writeEnvelope(p + key, value), undefined),
   removeEnvelope: (key: string) =>
     withSlot<void | Promise<void>>((d, p) => d.removeEnvelope(p + key), undefined),
+  /** 이 계정의 자산 레코드 저장소. 계정이 정해지기 전이면 null. */
+  recordStore: () => withSlot<DeviceRecordStore | null>((d, p) => d.recordStore(p), null),
   clear: clearAccountData,
 };
 
@@ -199,7 +210,7 @@ async function hasOtherAccounts(device: DeviceStorage, mine: Slot): Promise<bool
   for (const key of ASSET_ENVELOPE_KEYS) {
     if ((await device.readEnvelope(key)) !== null) return true;
   }
-  return false;
+  return device.getItem(RECORD_DOCUMENT_KEY) !== null;
 }
 
 /**

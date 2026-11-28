@@ -5,65 +5,31 @@ import {
   fillMissingSnapshots,
   uploadAccountSnapshots,
 } from "@web/features/investments/utils/account-value-history-storage";
-import { accountFetch, accountStorage } from "@web/lib/account-storage";
-import { CLOUD_STORE_KEYS, type CloudStoreKey } from "@web/lib/storage-mode";
-import { itemIds, mergeEnvelopes, type PersistEnvelope } from "./storage-merge";
 import { clearEntitySyncState } from "./sync/managed-stores";
+import { ensureRecordsImported, getRecordLayer, getSyncEngine } from "./sync/record-sync";
+import { finishCloudForLocal, mergeLocalIntoCloud } from "./sync/v2/mode-switch";
 
 /**
- * 저장소 모드 전환 시 사용하는 일괄 업로드 / 다운로드 헬퍼.
+ * 저장소 모드 전환 (설계 §5.5). 레코드를 push/pull 로 옮긴다 (`lib/sync/v2/mode-switch.ts`).
  *
  * 원칙:
- *   - **전환으로 데이터를 잃지 않는다.** 덮어쓰지 않고 로컬과 클라우드를 합친다
- *     (`mergeEnvelopes`: 합집합, 같은 항목은 로컬 우선).
- *   - 모든 key 를 **순차적**으로 처리 (병렬 실패 복구가 복잡해지므로).
- *   - 각 단계 진행 상황을 `onProgress` 콜백으로 노출.
- *   - 계좌 총액 일별 기록(local 은 기기, cloud 는 서버가 기록)도 같은 규칙으로 합친다 — 자산을
- *     옮긴 뒤(서버에 계좌가 생긴 뒤) 마지막에 한다.
- *   - 실패 시 에러를 throw — 호출자는 모드를 바꾸지 않고 재시도하게 한다
- *     (합치기는 몇 번을 다시 해도 결과가 같다).
+ *   - **전환으로 데이터를 잃지 않는다.** 덮어쓰지 않고 로컬과 클라우드를 합친다 (같은 항목은 로컬 우선,
+ *     포트폴리오 식물은 더 자란 쪽). 다른 기기에서 지운 항목은 되살리지 않는다 (삭제가 이긴다).
+ *   - 계좌 총액 일별 기록(local 은 기기, cloud 는 서버가 기록)도 합친다 — 자산을 옮긴 뒤(서버에 계좌가
+ *     생긴 뒤) 마지막에 한다.
+ *   - 실패하면 에러를 던진다 — 호출자는 모드를 바꾸지 않고 다시 시도하게 한다 (몇 번을 해도 결과가 같다).
  */
 
-export type MigrationProgress = {
-  index: number; // 0-based
-  total: number;
-  key: CloudStoreKey;
-  phase: "uploading" | "downloading" | "skipped" | "done";
-};
+export type MigrationStep = "records" | "history";
 
-/**
- * 로컬 → 클라우드: 로컬 envelope 를 클라우드 envelope 와 합쳐 `PUT` 한다.
- * 로컬에 없거나 항목이 하나도 없는 key 는 건드리지 않는다 — 올릴 것이 없는데 클라우드 목록을 다시
- * 쓰면 그 사이 다른 기기에서 더한 항목이나 보유 종목 정렬 설정을 덮을 수 있다.
- */
+export type MigrationProgress = { step: MigrationStep };
+
+/** 로컬 → 클라우드: 기기 레코드를 서버와 합친다. */
 export async function uploadAllToCloud(onProgress?: (p: MigrationProgress) => void): Promise<void> {
-  for (let i = 0; i < CLOUD_STORE_KEYS.length; i += 1) {
-    const key = CLOUD_STORE_KEYS[i]!;
-    const local = parseEnvelope(await readLocalEnvelope(key));
-    if (local === null) {
-      onProgress?.({ index: i, total: CLOUD_STORE_KEYS.length, key, phase: "skipped" });
-      continue;
-    }
-    onProgress?.({ index: i, total: CLOUD_STORE_KEYS.length, key, phase: "uploading" });
-
-    const cloud = await fetchCloudEnvelope(key, "업로드");
-    if (cloud !== null && itemIds(key, local).length === 0) {
-      onProgress?.({ index: i, total: CLOUD_STORE_KEYS.length, key, phase: "skipped" });
-      continue;
-    }
-    const merged = mergeEnvelopes(key, local, cloud);
-
-    const res = await accountFetch(`/api/storage/${encodeURIComponent(key)}`, {
-      method: "PUT",
-      credentials: "include",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ data: merged }),
-    });
-    if (!res.ok) {
-      throw new Error(`업로드 실패 (${key}): ${res.status}`);
-    }
-    onProgress?.({ index: i, total: CLOUD_STORE_KEYS.length, key, phase: "done" });
-  }
+  onProgress?.({ step: "records" });
+  await ensureRecordsImported();
+  await mergeLocalIntoCloud(getSyncEngine(), getRecordLayer());
+  onProgress?.({ step: "history" });
   // 올리기 전에 빠진 날을 채운다. 종가를 못 받아도 전환은 막지 않는다 (있는 기록만 올린다).
   await fillMissingSnapshots().catch(() => 0);
   await uploadAccountSnapshots();
@@ -71,96 +37,31 @@ export async function uploadAllToCloud(onProgress?: (p: MigrationProgress) => vo
 }
 
 /**
- * 클라우드 → 로컬: 클라우드 envelope 를 로컬 envelope 와 합쳐 이 기기 저장소에 쓴다
- * (브라우저 localStorage, 네이티브 앱 SQLite).
- * 로컬 캐시에만 있는 항목 (아직 서버로 못 보낸 변경 포함) 도 남는다.
+ * 클라우드 → 로컬: 보내지 못한 변경을 보내고 최신까지 받는다. 기기 레코드가 그대로 이 기기의 데이터가
+ * 된다 (브라우저 localStorage, 네이티브 앱 SQLite). 보내지 못한 변경이 남으면 막는다.
  */
 export async function downloadAllFromCloud(
   onProgress?: (p: MigrationProgress) => void
 ): Promise<void> {
-  for (let i = 0; i < CLOUD_STORE_KEYS.length; i += 1) {
-    const key = CLOUD_STORE_KEYS[i]!;
-    onProgress?.({ index: i, total: CLOUD_STORE_KEYS.length, key, phase: "downloading" });
-
-    const cloud = await fetchCloudEnvelope(key, "다운로드");
-    const merged = mergeEnvelopes(key, parseEnvelope(await readLocalEnvelope(key)), cloud);
-    if (merged !== null) await writeLocalEnvelope(key, JSON.stringify(merged));
-    onProgress?.({ index: i, total: CLOUD_STORE_KEYS.length, key, phase: "done" });
-  }
+  onProgress?.({ step: "records" });
+  await ensureRecordsImported();
+  await finishCloudForLocal(getSyncEngine(), getRecordLayer());
+  onProgress?.({ step: "history" });
   await downloadAccountSnapshots();
   clearEntitySyncState();
 }
 
 /** 서버에 이 계정의 것으로 있는 항목(계좌·포트폴리오·리밸런싱)의 id. 저장소 모드와 상관없다. */
 export async function fetchCloudItemIds(): Promise<Set<string>> {
-  const ids = await Promise.all(
-    CLOUD_STORE_KEYS.map(async (key) => itemIds(key, await fetchCloudEnvelope(key, "확인")))
-  );
-  return new Set(ids.flat());
-}
-
-async function fetchCloudEnvelope(
-  key: CloudStoreKey,
-  action: "업로드" | "다운로드" | "확인"
-): Promise<PersistEnvelope | null> {
-  const res = await accountFetch(`/api/storage/${encodeURIComponent(key)}`, {
-    method: "GET",
-    credentials: "include",
-  });
-  if (!res.ok) {
-    throw new Error(`${action} 실패 (${key}): ${res.status}`);
-  }
-  const body = (await res.json()) as { data?: unknown };
-  return isEnvelope(body.data) ? body.data : null;
-}
-
-function parseEnvelope(raw: string | null): PersistEnvelope | null {
-  if (raw === null) return null;
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    return isEnvelope(parsed) ? parsed : null;
-  } catch {
-    // 손상된 blob — 없는 것으로 본다.
-    return null;
-  }
-}
-
-function isEnvelope(value: unknown): value is PersistEnvelope {
-  return (
-    !!value &&
-    typeof value === "object" &&
-    typeof (value as PersistEnvelope).state === "object" &&
-    (value as PersistEnvelope).state !== null &&
-    typeof (value as PersistEnvelope).version === "number"
-  );
+  const records = await getSyncEngine().fetchServerRecords();
+  if (!Array.isArray(records)) throw new Error("서버 데이터를 확인하지 못했어요");
+  return new Set(records.filter((r) => r.parentId === null).map((r) => r.id));
 }
 
 /**
- * 로컬에 아무 envelope 도 없는지 — 업로드를 아예 건너뛰어야 할지 판단할 때 사용.
- * (빈 스토어로 기존 클라우드 데이터를 덮어쓰는 사고를 방지.)
+ * 이 기기에 자산 데이터가 있는지 — 없으면 클라우드로 바꿀 때 확인을 건너뛴다.
  */
 export async function hasAnyLocalData(): Promise<boolean> {
-  for (const key of CLOUD_STORE_KEYS) {
-    if ((await readLocalEnvelope(key)) !== null) return true;
-  }
-  return false;
+  await ensureRecordsImported();
+  return (await getRecordLayer().loadRecords()).size > 0;
 }
-
-async function readLocalEnvelope(key: CloudStoreKey): Promise<string | null> {
-  return accountStorage.readEnvelope(key);
-}
-
-async function writeLocalEnvelope(key: CloudStoreKey, value: string): Promise<void> {
-  // 쓰기 실패는 저장소가 삼킨다 — 전환 자체는 계속 진행.
-  await accountStorage.writeEnvelope(key, value);
-}
-
-/**
- * 사람이 읽을 수 있는 store 이름. 진행 모달에서 "투자 데이터 업로드 중..." 같은
- * 메시지에 사용.
- */
-export const CLOUD_STORE_LABELS: Record<CloudStoreKey, string> = {
-  "investment-storage": "투자",
-  "portfolio-storage": "포트폴리오",
-  "rebalancing-storage": "리밸런싱",
-};

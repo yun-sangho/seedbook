@@ -4,6 +4,7 @@ import {
   parseInvestmentFields,
 } from "@seedbook/domain/v1/investment-record";
 import { investmentRepo } from "@web/server/investments/investment-sync";
+import { bySortKey, numberV1Writes } from "@web/server/sync/v1-changeseq";
 import { and, eq, isNull, notInArray, sql } from "drizzle-orm";
 import { assertNoForeignRows } from "./ownership";
 import type { DomainTranslator, Envelope } from "./types";
@@ -23,7 +24,18 @@ export const investmentTranslator: DomainTranslator = {
     const [accounts, listOrder] = await Promise.all([
       db.query.investmentAccount.findMany({
         where: (t, { and, eq, isNull }) => and(eq(t.userId, userId), isNull(t.deletedAt)),
-        with: { records: true, holdings: true, cashItems: true },
+        // 지운 하위 행은 톰스톤으로 남는다 (동기화 v2). 순서는 sortKey (금액 기록은 날짜 순으로 다시 정렬한다).
+        with: {
+          records: { where: (r, { isNull }) => isNull(r.deletedAt) },
+          holdings: {
+            where: (h, { isNull }) => isNull(h.deletedAt),
+            orderBy: (h) => [bySortKey(h.sortKey)],
+          },
+          cashItems: {
+            where: (c, { isNull }) => isNull(c.deletedAt),
+            orderBy: (c) => [bySortKey(c.sortKey)],
+          },
+        },
       }),
       db.query.userListOrder.findFirst({
         where: (t, { and, eq }) => and(eq(t.userId, userId), eq(t.domain, DOMAIN)),
@@ -90,6 +102,7 @@ export const investmentTranslator: DomainTranslator = {
           deletedAt: now,
           updatedAt: now,
           version: sql`${schema.investmentAccount.version} + 1`,
+          changeSeq: 0,
         })
         .where(
           and(
@@ -104,6 +117,8 @@ export const investmentTranslator: DomainTranslator = {
         if (!fields) continue; // 깨진 항목은 건너뛴다 (톰스톤으로 만들지도 않는다).
         await investmentRepo.upsert(tx as unknown as Database, userId, inv.id, fields);
       }
+      // 동기화 v2 가 보게 번호를 매긴다 (목록에서 빠져 톰스톤이 된 행 포함).
+      await numberV1Writes(tx, userId);
     });
   },
 };

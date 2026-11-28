@@ -9,17 +9,18 @@ import { Icon } from "@seed-design/react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
 import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
-import { backupAccountTag, resolveBackupIds } from "@web/features/settings/utils/backup-ids";
+import { backupAccountTag } from "@web/features/settings/utils/backup-ids";
+import { backupFileName } from "@web/features/settings/utils/data-backup";
 import {
-  type BackupSections,
-  backupFileName,
-  buildBackup,
-  parseBackup,
-} from "@web/features/settings/utils/data-backup";
-import { restoreBackupSections } from "@web/features/settings/utils/restore-backup";
+  type BackupImport,
+  planBackupImport,
+  prepareBackupImport,
+} from "@web/features/settings/utils/restore-backup";
 import { getActiveAccount } from "@web/lib/account-storage";
 import { flushDeviceStorage } from "@web/lib/device-storage";
 import { fetchCloudItemIds } from "@web/lib/storage-migration";
+import { ensureRecordsImported, getRecordLayer } from "@web/lib/sync/record-sync";
+import { buildRecordBackup } from "@web/lib/sync/v2/backup";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
   AlertDialogAction,
@@ -35,11 +36,7 @@ import { List, ListButtonItem } from "@web/seed-design/ui/list";
 /** 데이터 가져오기의 확인과 결과 안내. */
 type DataDialog =
   | { kind: "closed" }
-  | {
-      kind: "confirm-restore";
-      data: Partial<BackupSections>;
-      newIds?: ReadonlyMap<string, string>;
-    }
+  | { kind: "confirm-restore"; plan: BackupImport }
   | { kind: "message"; title: string; description: string; reloadOnClose?: boolean };
 
 /** 설정 → 백업. 내보내기·가져오기. */
@@ -55,18 +52,24 @@ export function DataBackupMobile() {
     setDataDialog({ kind: "message", title: "불러오지 못했어요", description });
 
   const askFileRestore = async (raw: unknown) => {
-    const parsed = parseBackup(raw);
-    if (!parsed.ok) {
-      showError("Seedbook 에서 내보낸 데이터 파일이 아니에요.");
-      return;
-    }
     try {
       const userId = getActiveAccount();
       if (!userId) throw new Error("no active account");
-      const { data, newIds } = await resolveBackupIds(parsed, userId, {
+      await ensureRecordsImported();
+      const prepared = await prepareBackupImport(raw, {
+        userId,
+        current: await getRecordLayer().loadRecords(),
         fetchOwnIds: fetchCloudItemIds,
       });
-      setDataDialog({ kind: "confirm-restore", data, newIds });
+      if (!prepared.ok) {
+        showError(
+          prepared.reason === "too_new"
+            ? "더 새 버전의 앱에서 내보낸 파일이에요. 앱을 업데이트한 뒤 불러오세요."
+            : "Seedbook 에서 내보낸 데이터 파일이 아니에요."
+        );
+        return;
+      }
+      setDataDialog({ kind: "confirm-restore", plan: prepared.plan });
     } catch (error) {
       console.error(error);
       showError("파일을 확인하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.");
@@ -76,8 +79,9 @@ export function DataBackupMobile() {
   const exportData = async () => {
     const userId = getActiveAccount();
     if (!userId) return;
-    const backup = buildBackup(
-      { investments, portfolios, rebalancingSessions },
+    await ensureRecordsImported();
+    const backup = buildRecordBackup(
+      await getRecordLayer().loadRecords(),
       await backupAccountTag(userId)
     );
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
@@ -105,8 +109,14 @@ export function DataBackupMobile() {
       });
   };
 
-  const confirmRestore = (data: Partial<BackupSections>, newIds?: ReadonlyMap<string, string>) => {
-    restoreBackupSections(data, newIds);
+  const confirmRestore = async (plan: BackupImport) => {
+    try {
+      await getRecordLayer().commit((current) => planBackupImport(plan, current));
+    } catch (error) {
+      console.error(error);
+      showError("데이터를 저장하지 못했어요. 다시 시도해 주세요.");
+      return;
+    }
     setDataDialog({
       kind: "message",
       title: "데이터를 불러왔어요",
@@ -177,7 +187,7 @@ export function DataBackupMobile() {
                     variant="neutralSolid"
                     size="large"
                     flexGrow
-                    onClick={() => confirmRestore(dataDialog.data, dataDialog.newIds)}
+                    onClick={() => confirmRestore(dataDialog.plan)}
                   >
                     덮어쓰기
                   </ActionButton>

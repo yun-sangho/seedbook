@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { IconCheckmarkLine } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
 import {
@@ -7,8 +8,11 @@ import {
   type SwitchDirection,
   useStorageModeSwitch,
 } from "@web/features/settings/hooks/use-storage-mode-switch";
+import { useSyncStatusStore } from "@web/features/settings/stores/sync-status-store";
 import { separateStorageNotice } from "@web/features/settings/utils/storage-notice";
+import { describeSyncStop, formatSyncTime } from "@web/features/settings/utils/sync-problem";
 import { usePwaInstallState } from "@web/hooks/use-pwa-install";
+import { getRecordLayer, getSyncEngine } from "@web/lib/sync/record-sync";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
   AlertDialogAction,
@@ -79,7 +83,30 @@ export function StorageModeMobile() {
           onClick={() => storage.request("cloud")}
         />
       </List>
+      {storage.mode === "cloud" && <CloudSyncState />}
       <StorageSwitchDialog state={storage.state} onCancel={storage.cancel} onRun={storage.run} />
+    </div>
+  );
+}
+
+/**
+ * 클라우드 항목 아래 마지막 동기화 시각과 멈춘 이유 한 줄 (설계 §5.8). 이 화면을 보고 나가면 홈의
+ * 격리 표시를 끈다.
+ */
+function CloudSyncState() {
+  const status = useSyncStatusStore((s) => s.sync);
+  useEffect(() => {
+    getSyncEngine().emitStatus();
+    return () => getRecordLayer().markQuarantineSeen();
+  }, []);
+  if (!status) return null;
+  const stop = describeSyncStop(status);
+  return (
+    <div className="px-x4 pt-x2 t3-regular text-fg-neutral-muted">
+      <p>
+        마지막 동기화: {status.lastSuccessAt ? formatSyncTime(status.lastSuccessAt) : "아직 없어요"}
+      </p>
+      {stop && <p className="text-fg-critical">{stop}</p>}
     </div>
   );
 }

@@ -6,26 +6,24 @@ import "./local-id-upgrade";
 import type { StateStorage } from "zustand/middleware";
 import { accountStorage, afterAccountReady } from "./account-storage";
 import { getStorageMode, type StorageMode } from "./storage-mode";
-import { loadManagedStoreFromServer } from "./sync/initial-load";
-import { recordPersistedChange } from "./sync/local-change-recorder";
-import { getManagedStoreConfig } from "./sync/managed-stores";
 import { normalizePersistedEnvelope } from "./sync/normalize-envelope";
+import { getRecordLayer, initialCloudSync } from "./sync/record-sync";
+import { isRecordStoreKey, STORE_SHAPES } from "./sync/v2/store-records";
 
 /**
  * 하이브리드 저장소 어댑터 — Zustand persist 미들웨어의 `StateStorage`.
  *
- *   - `local` 모드: 이 기기 저장소(`device-storage.ts` — 브라우저는 localStorage, 네이티브 앱은
- *     서버와 같은 모양의 SQLite 테이블)에 읽고 쓴다.
+ * 자산 store (투자·포트폴리오·리밸런싱) 는 저장소 모드와 상관없이 **기기 레코드**에 둔다
+ * (`lib/sync/v2`, 브라우저는 계정 자리의 키 하나에 JSON, 앱은 SQLite `records`):
+ *   - `getItem` → 레코드를 store 모양으로 묶는다 (compose). 처음이면 옛 envelope 를 레코드로 옮긴다.
+ *     cloud 모드면 처음 읽기 전에 한 번 동기화한다 (`initialCloudSync`).
+ *   - `setItem` → 레코드로 나눠(decompose) 바뀐 레코드만 패치로 저장한다. cloud 모드면 실제로 바뀐
+ *     필드를 outbox 에 기록한다 — 엔진이 돌고 있지 않아도(로그인 확인 전, 오프라인) 수정이 남는다.
+ *     전송은 `RecordSyncRunner` 가 맡는다.
+ * 그 밖의 store 는 이 기기 저장소의 envelope 그대로다.
  *
- *   - `cloud` 모드: persist storage 는 로컬 캐시만 맡고, 서버와는 엔티티 동기화로 주고받는다
- *     (`lib/sync/managed-stores.ts` 에 등록된 store).
- *       · `getItem` → 서버 전체 pull 로 상태를 만든다 (실패하면 로컬 캐시).
- *       · `setItem` → 캐시에 쓰고, 직전 저장본과 비교해 바뀐 항목을 동기화 대기열에 기록한다.
- *         엔진이 돌고 있지 않아도(로그인 확인 전, 세션 조회 실패) 수정이 사라지지 않는다.
- *         전송은 `EntitySyncRunner` 가 맡는다.
- *
- * 두 모드 모두 저장 전과 읽은 뒤에 목록 항목의 값을 정리한다 (`normalizePersistedEnvelope` —
- * NaN·범위 밖 값). 읽을 때도 정리해 이 규칙이 생기기 전에 저장된 값도 화면에 들어가기 전에 고친다.
+ * 두 경우 모두 저장 전과 읽은 뒤에 목록 항목의 값을 정리한다 (`normalizePersistedEnvelope` —
+ * NaN·범위 밖 값).
  *
  * 모드는 **처음 쓸 때 한 번만** 읽고 고정한다. 런타임 전환은 페이지 리로드로 강제한다.
  * 로그인 사용자가 정해진 뒤에야 그 계정의 모드를 알 수 있어 모듈 초기화 시점에는 읽지 않는다
@@ -45,9 +43,7 @@ function normalizeRead(key: string, value: string | null): string | null {
 
 function createModeStorage(key: string): StateStorage {
   const store = accountStorage;
-  const managed = currentMode() === "cloud" ? getManagedStoreConfig(key) : null;
-  // local 모드 — 또는 동기화 설정이 없는 store 는 이 기기에만 저장한다.
-  if (!managed) {
+  if (!isRecordStoreKey(key)) {
     return {
       getItem: (name) => {
         const value = store.readEnvelope(name);
@@ -60,30 +56,19 @@ function createModeStorage(key: string): StateStorage {
     };
   }
 
-  let lastPersisted: string | null = null;
+  const records = getRecordLayer();
   return {
-    getItem: async (name) => {
-      const cached = normalizeRead(key, await store.readEnvelope(name || key));
-      const fromServer = await loadManagedStoreFromServer(managed, cached);
-      lastPersisted = fromServer ?? cached;
-      if (fromServer !== null) await store.writeEnvelope(name || key, fromServer);
-      return lastPersisted;
+    getItem: async () => {
+      if (currentMode() === "cloud") await initialCloudSync();
+      return normalizeRead(key, await records.readStore(key));
     },
-    setItem: (name, raw) => {
-      const value = normalizePersistedEnvelope(key, raw);
-      const previous = lastPersisted ?? store.readEnvelope(name || key);
-      lastPersisted = value;
-      // 브라우저는 동기로 끝난다. 네이티브 앱(SQLite)에서 직전 저장본을 아직 모를 때만 기다린다.
-      if (!(previous instanceof Promise)) {
-        recordPersistedChange(managed, previous, value);
-        return store.writeEnvelope(name || key, value);
-      }
-      return previous.then((cached) => {
-        recordPersistedChange(managed, cached, value);
-        return store.writeEnvelope(name || key, value);
-      });
-    },
-    removeItem: (name) => store.removeEnvelope(name || key),
+    setItem: (_name, raw) => records.saveStore(key, normalizePersistedEnvelope(key, raw)),
+    // 목록을 비운 것과 같다 (사용자가 모두 지움).
+    removeItem: () =>
+      records.saveStore(
+        key,
+        JSON.stringify({ state: { [STORE_SHAPES[key].listField]: [] }, version: 0 })
+      ),
   };
 }
 

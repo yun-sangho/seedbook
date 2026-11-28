@@ -6,6 +6,7 @@ import {
   SYNC_PROTOCOL,
   type SyncOpResult,
 } from "@seedbook/domain";
+import type { Tx } from "../entity-repo";
 import { checkSyncHeaders, hashUserId, type SyncDeps, writeLog } from "./http";
 import { type AppliedOp, applyOp } from "./record-repo";
 
@@ -44,7 +45,7 @@ export async function handlePush(request: Request, deps: SyncDeps): Promise<Resp
   if (ops.length > 0) {
     await deps.db.transaction(async (tx) => {
       await lockChangeSeqs(tx, userId);
-      for (const op of ops) applied.push(await applyOp(tx, userId, op));
+      for (const op of ops) applied.push(await applyOpInSavepoint(tx, userId, op));
     });
   }
 
@@ -59,6 +60,24 @@ export async function handlePush(request: Request, deps: SyncDeps): Promise<Resp
     ms: Date.now() - started,
   });
   return Response.json({ results } satisfies PushResponse);
+}
+
+/**
+ * op 하나를 savepoint 안에서 적용한다. DB 가 거절한 op (가리키는 포트폴리오가 없는 연결 같은 외래 키
+ * 위반) 는 그 op 만 되돌리고 `invalid` 로 답한다 — 한 op 때문에 요청 전체가 실패하면 기기의 outbox 가
+ * 같은 묶음을 끝없이 다시 보낸다.
+ */
+async function applyOpInSavepoint(tx: Tx, userId: string, op: unknown): Promise<AppliedOp> {
+  try {
+    return await tx.transaction((savepoint) => applyOp(savepoint as Tx, userId, op));
+  } catch (error) {
+    const type = (op as { type?: unknown } | null)?.type;
+    console.warn("[sync] push op refused by the database", (error as { code?: string }).code);
+    return {
+      type: typeof type === "string" ? type : null,
+      result: { status: "rejected", code: "invalid" },
+    };
+  }
 }
 
 /** 로그용 요약 — 건수와 거부 코드만, 값은 담지 않는다 (개인정보). */

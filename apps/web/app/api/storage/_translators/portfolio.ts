@@ -2,6 +2,7 @@ import { type Database, schema } from "@seedbook/database";
 import { parsePortfolioFields, portfolioRowToData } from "@seedbook/domain/v1/portfolio-record";
 import { dedupePortfolioLinks } from "@web/features/portfolio/utils/portfolio-links";
 import { portfolioRepo } from "@web/server/portfolio/portfolio-sync";
+import { bySortKey, linkPortfolioAccounts, numberV1Writes } from "@web/server/sync/v1-changeseq";
 import { and, eq, isNull, notInArray, sql } from "drizzle-orm";
 import { assertNoForeignRows } from "./ownership";
 import type { DomainTranslator, Envelope } from "./types";
@@ -26,7 +27,13 @@ export const portfolioTranslator: DomainTranslator = {
     const [portfolios, listOrder] = await Promise.all([
       db.query.portfolio.findMany({
         where: (t, { and, eq, isNull }) => and(eq(t.userId, userId), isNull(t.deletedAt)),
-        with: { allocations: true },
+        // 지운 배분은 톰스톤으로 남는다 (동기화 v2). 순서는 sortKey.
+        with: {
+          allocations: {
+            where: (a, { isNull }) => isNull(a.deletedAt),
+            orderBy: (a) => [bySortKey(a.sortKey)],
+          },
+        },
       }),
       db.query.userListOrder.findFirst({
         where: (t, { and, eq }) => and(eq(t.userId, userId), eq(t.domain, DOMAIN)),
@@ -95,22 +102,31 @@ export const portfolioTranslator: DomainTranslator = {
         });
 
       // 목록에서 빠진 포트폴리오 → 톰스톤. 이미 삭제된 행은 건드리지 않는다.
-      await tx
+      const dropped = await tx
         .update(schema.portfolio)
-        .set({ deletedAt: now, updatedAt: now, version: sql`${schema.portfolio.version} + 1` })
+        .set({
+          deletedAt: now,
+          updatedAt: now,
+          version: sql`${schema.portfolio.version} + 1`,
+          changeSeq: 0,
+        })
         .where(
           and(
             eq(schema.portfolio.userId, userId),
             isNull(schema.portfolio.deletedAt),
             order.length > 0 ? notInArray(schema.portfolio.id, order) : undefined
           )
-        );
+        )
+        .returning({ id: schema.portfolio.id });
+      for (const { id } of dropped) await linkPortfolioAccounts(tx, userId, id, []);
 
       for (const p of portfolios) {
         const fields = parsePortfolioFields(p);
         if (!fields) continue; // 깨진 항목은 건너뛴다 (톰스톤으로 만들지도 않는다).
         await portfolioRepo.upsert(tx as unknown as Database, userId, p.id, fields);
       }
+      // 동기화 v2 가 보게 번호를 매긴다 (목록에서 빠져 톰스톤이 된 행 포함).
+      await numberV1Writes(tx, userId);
     });
   },
 };

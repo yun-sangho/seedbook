@@ -35,6 +35,11 @@ import {
   removeTableEnvelope,
   writeTableEnvelope,
 } from "./native/device-db/table-envelopes";
+import {
+  createKvRecordStore,
+  createSqlRecordStore,
+  type DeviceRecordStore,
+} from "./sync/v2/device-record-store";
 
 /**
  * 이 기기의 저장소. 브라우저는 localStorage, **네이티브 앱은 SQLite** 를 쓴다 — 앱에서는
@@ -72,6 +77,21 @@ export interface DeviceStorage {
   whenReady: () => Promise<void>;
   /** 대기 중인 SQLite 쓰기가 끝날 때까지 기다린다. 모두 저장했으면 true, 남았으면 false. */
   flush: () => Promise<boolean>;
+  /**
+   * 자산 레코드 저장소 (동기화 v2, `lib/sync/v2`). `prefix` 는 계정 자리 (`account-storage.ts`).
+   * 앱의 기본 자리는 SQLite `records`, 그 밖(브라우저·앱의 다른 계정 자리)은 키 하나에 JSON.
+   */
+  recordStore: (prefix: string) => DeviceRecordStore;
+}
+
+/** 키 하나에 JSON 으로 두는 레코드 저장소의 키 (계정 자리 접두사 뒤). */
+export const RECORD_DOCUMENT_KEY = "seedbook.records";
+
+function kvRecordStore(storage: Pick<DeviceStorage, "getItem" | "setItem">, prefix: string) {
+  return createKvRecordStore(
+    { getItem: storage.getItem, setItem: storage.setItem },
+    `${prefix}${RECORD_DOCUMENT_KEY}`
+  );
 }
 
 type LegacyStorage = Pick<
@@ -112,6 +132,7 @@ function createBrowserStorage(storage: LegacyStorage): DeviceStorage {
     isReady: () => true,
     whenReady: () => Promise.resolve(),
     flush: () => Promise.resolve(true),
+    recordStore: (prefix) => kvRecordStore({ getItem, setItem }, prefix),
   };
 }
 
@@ -266,6 +287,7 @@ export function createNativeDeviceStorage(
   const fallback = createBrowserStorage(legacy);
   let driver: SqlDriver | null = null;
   let tables = envelopeTables(false);
+  let usesRecords = false;
   let usingFallback = false;
   let ready = false;
 
@@ -276,7 +298,7 @@ export function createNativeDeviceStorage(
         usingFallback = true;
         return;
       }
-      const { usesRecords } = await prepareDatabase(opened, options);
+      ({ usesRecords } = await prepareDatabase(opened, options));
       tables = envelopeTables(usesRecords);
       const saved = await loadDeviceState(opened);
       // 준비 전에 쓴 값이 이긴다 (그 쓰기는 대기열에서 곧 저장된다).
@@ -414,10 +436,26 @@ export function createNativeDeviceStorage(
       await drain();
       return pending.size === 0;
     },
+    recordStore: (prefix) => {
+      if (usingFallback) return fallback.recordStore(prefix);
+      // 기본 자리는 레코드 테이블 (옛 표에서 옮기지 못한 기기는 레코드를 쓰지 않는다).
+      if (driver && usesRecords && prefix === "") return createSqlRecordStore(driver, APP_BUILD);
+      return kvRecordStore(
+        {
+          getItem: (key) => memory.get(key) ?? null,
+          setItem: (key, value) => {
+            memory.set(key, value);
+            void enqueue(key, value);
+          },
+        },
+        prefix
+      );
+    },
   };
 }
 
 const serverStorage: DeviceStorage = {
+  recordStore: () => kvRecordStore({ getItem: () => null, setItem: () => undefined }, ""),
   getItem: () => null,
   setItem: () => undefined,
   removeItem: () => undefined,
@@ -467,14 +505,29 @@ export function getDeviceStorage(): DeviceStorage {
 /** 네이티브 쪽이 답하지 않아도 화면이 멈추지 않게, 저장을 기다리는 최대 시간. */
 const FLUSH_TIMEOUT_MS = 10_000;
 
+const beforeFlush = new Set<() => Promise<unknown>>();
+
+/**
+ * 저장을 기다리기 전에 끝나야 하는 일 (기기 레코드 계층의 대기 중인 저장 — `lib/sync/record-sync.ts`).
+ * 그 일이 쓴 값까지 저장된 뒤 새로고침하게 한다.
+ */
+export function onBeforeFlush(hook: () => Promise<unknown>): () => void {
+  beforeFlush.add(hook);
+  return () => beforeFlush.delete(hook);
+}
+
 /** 대기 중인 쓰기를 모두 저장했으면 true. 실패했거나 너무 오래 걸리면 false. */
 export async function flushDeviceStorage(): Promise<boolean> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<boolean>((resolve) => {
     timer = setTimeout(() => resolve(false), FLUSH_TIMEOUT_MS);
   });
+  const flush = async () => {
+    await Promise.all([...beforeFlush].map((hook) => hook().catch(() => undefined)));
+    return getDeviceStorage().flush();
+  };
   try {
-    return await Promise.race([getDeviceStorage().flush(), timeout]);
+    return await Promise.race([flush(), timeout]);
   } finally {
     clearTimeout(timer);
   }

@@ -1,54 +1,134 @@
-import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
-import type { InvestmentItem } from "@web/features/investments/types/types";
-import { usePortfolioStore } from "@web/features/portfolio/stores/portfolio-store";
-import type { PortfolioItem } from "@web/features/portfolio/types/types";
-import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancing-store";
-import type { RebalancingSession } from "@web/features/rebalancing/types/types";
-import { beforeEach, describe, expect, it } from "vitest";
-import { restoreBackupSections } from "./restore-backup";
+import { SCHEMA_VERSION } from "@seedbook/domain";
+import {
+  ACCOUNT_A,
+  envelope,
+  investmentState,
+  PORTFOLIO,
+  portfolioState,
+} from "@web/lib/native/device-db/testing/envelope-fixtures";
+import { buildRecordBackup } from "@web/lib/sync/v2/backup";
+import { applyChangesToMap } from "@web/lib/sync/v2/changes";
+import type { RecordMap } from "@web/lib/sync/v2/records";
+import { composeStore, INVESTMENT_STORE, PORTFOLIO_STORE } from "@web/lib/sync/v2/store-records";
+import { memoryDevice } from "@web/lib/sync/v2/testing";
+import { describe, expect, it } from "vitest";
+import { backupAccountTag } from "./backup-ids";
+import { planBackupImport, prepareBackupImport } from "./restore-backup";
 
-const account = (id: string) => ({ id, accountName: id }) as InvestmentItem;
-const portfolio = (id: string) =>
-  ({ id, name: id, accountIds: [], allocations: [] }) as unknown as PortfolioItem;
-const session = (id: string) =>
-  ({ id, accountId: "acc-1", tasks: [] }) as unknown as RebalancingSession;
+const USER = "user-1";
+const noOwnIds = async () => new Set<string>();
 
-describe("restoreBackupSections", () => {
-  beforeEach(() => {
-    useInvestmentStore.setState({ investments: [account("current-acc")] });
-    usePortfolioStore.setState({ portfolios: [portfolio("current-portfolio")] });
-    useRebalancingStore.setState({ sessions: [session("current-session")] });
+async function deviceWithData(): Promise<RecordMap> {
+  const { layer } = memoryDevice({ cloud: false });
+  await layer.saveStore(INVESTMENT_STORE, envelope(investmentState(), 6));
+  await layer.saveStore(PORTFOLIO_STORE, envelope(portfolioState(), 3));
+  return layer.loadRecords();
+}
+
+async function restore(raw: unknown, current: RecordMap = new Map()) {
+  const prepared = await prepareBackupImport(raw, {
+    userId: USER,
+    current,
+    fetchOwnIds: noOwnIds,
   });
+  if (!prepared.ok) throw new Error(prepared.reason);
+  return applyChangesToMap(current, planBackupImport(prepared.plan, current));
+}
 
-  it("replaces every section the backup contains", () => {
-    restoreBackupSections({
-      investments: [account("backup-acc")],
-      portfolios: [portfolio("backup-portfolio")],
-      rebalancingSessions: [session("backup-session")],
+describe("backup import", () => {
+  it("restores this account's record backup with ids and unknown fields as they were", async () => {
+    const records = await deviceWithData();
+    const key = `account:${ACCOUNT_A}`;
+    const withUnknown = new Map(records);
+    withUnknown.set(key, {
+      ...(records.get(key) as NonNullable<ReturnType<typeof records.get>>),
+      fields: { ...records.get(key)?.fields, futureField: "x" },
     });
+    const file = JSON.parse(
+      JSON.stringify(buildRecordBackup(withUnknown, await backupAccountTag(USER)))
+    );
 
-    expect(useInvestmentStore.getState().investments).toEqual([account("backup-acc")]);
-    expect(usePortfolioStore.getState().portfolios).toEqual([portfolio("backup-portfolio")]);
-    expect(useRebalancingStore.getState().sessions).toEqual([session("backup-session")]);
+    const restored = await restore(file);
+
+    expect(restored.get(key)?.fields.futureField).toBe("x");
+    expect(composeStore(PORTFOLIO_STORE, restored).portfolios).toMatchObject([
+      { id: PORTFOLIO, accountIds: [ACCOUNT_A] },
+    ]);
   });
 
-  it("leaves sections missing from an older backup untouched", () => {
-    restoreBackupSections({ investments: [account("backup-acc")] });
+  it("refuses a backup from a newer app", async () => {
+    const prepared = await prepareBackupImport(
+      {
+        format: "seedbook-backup",
+        schemaVersion: SCHEMA_VERSION + 1,
+        exportedAt: "2026-11-28T00:00:00.000Z",
+        records: [],
+      },
+      { userId: USER, current: new Map(), fetchOwnIds: noOwnIds }
+    );
 
-    expect(useInvestmentStore.getState().investments).toEqual([account("backup-acc")]);
-    expect(usePortfolioStore.getState().portfolios).toEqual([portfolio("current-portfolio")]);
-    expect(useRebalancingStore.getState().sessions).toEqual([session("current-session")]);
+    expect(prepared).toEqual({ ok: false, reason: "too_new" });
   });
 
-  it("relinks current data to restored accounts whose ids changed", () => {
-    usePortfolioStore.setState({
-      portfolios: [{ ...portfolio("current-portfolio"), accountIds: ["acc-1", "other"] }],
-    });
+  it("gives another account's backup new ids and keeps its links", async () => {
+    const file = JSON.parse(
+      JSON.stringify(buildRecordBackup(await deviceWithData(), "someone-else"))
+    );
 
-    restoreBackupSections({ investments: [account("new-acc")] }, new Map([["acc-1", "new-acc"]]));
+    const restored = await restore(file);
 
-    expect(usePortfolioStore.getState().portfolios[0]!.accountIds).toEqual(["new-acc", "other"]);
-    expect(useRebalancingStore.getState().sessions[0]!.accountId).toBe("new-acc");
-    expect(useRebalancingStore.getState().sessions[0]!.id).toBe("current-session");
+    const investments = composeStore(INVESTMENT_STORE, restored).investments as Array<{
+      id: string;
+    }>;
+    expect(investments).toHaveLength(2);
+    expect(investments.map((i) => i.id)).not.toContain(ACCOUNT_A);
+    const [portfolio] = composeStore(PORTFOLIO_STORE, restored).portfolios as Array<{
+      id: string;
+      accountIds: string[];
+    }>;
+    expect(portfolio?.accountIds).toHaveLength(1);
+    expect(investments.map((i) => i.id)).toContain(portfolio?.accountIds[0]);
+  });
+
+  it("turns a 2.0 backup into records through the store shape", async () => {
+    const file = {
+      version: "2.0",
+      exportedAt: "2026-11-01T00:00:00.000Z",
+      accountTag: await backupAccountTag(USER),
+      ...{ investments: investmentState().investments },
+      portfolios: portfolioState().portfolios,
+      rebalancingSessions: [],
+    };
+
+    const restored = await restore(file);
+
+    expect(composeStore(INVESTMENT_STORE, restored)).toEqual(investmentState());
+    expect(composeStore(PORTFOLIO_STORE, restored).portfolios).toMatchObject([
+      { id: PORTFOLIO, accountIds: [ACCOUNT_A] },
+    ]);
+  });
+
+  it("leaves sections missing from an older backup untouched", async () => {
+    const current = await deviceWithData();
+    const file = {
+      version: "1.0",
+      exportedAt: "2026-01-01T00:00:00.000Z",
+      accountTag: await backupAccountTag(USER),
+      investments: [],
+    };
+
+    const restored = await restore(file, current);
+
+    expect(composeStore(INVESTMENT_STORE, restored).investments).toEqual([]);
+    expect(composeStore(PORTFOLIO_STORE, restored).portfolios).toHaveLength(1);
+  });
+
+  it("rejects a file that is not a Seedbook backup", async () => {
+    const prepared = await prepareBackupImport(
+      { hello: "world" },
+      { userId: USER, current: new Map(), fetchOwnIds: noOwnIds }
+    );
+
+    expect(prepared).toEqual({ ok: false, reason: "invalid" });
   });
 });

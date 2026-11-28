@@ -139,6 +139,37 @@ describe("recordAccountSnapshots", () => {
     });
   });
 
+  it("leaves out holdings and cash the user deleted (sync v2 tombstones them)", async () => {
+    await addPrice("T1", DAY, 1_000);
+    await addPrice("T2", DAY, 1_000);
+    const userId = await createUser("cloud");
+    const accountId = await createAccount(userId, {
+      holdings: [
+        ["T1", 3],
+        ["T2", 5],
+      ],
+      cash: [500],
+    });
+    await db
+      .update(schema.stockHolding)
+      .set({ deletedAt: new Date() })
+      .where(
+        and(eq(schema.stockHolding.accountId, accountId), eq(schema.stockHolding.ticker, "T2"))
+      );
+    await db
+      .update(schema.cashItem)
+      .set({ deletedAt: new Date() })
+      .where(eq(schema.cashItem.accountId, accountId));
+
+    await recordAccountSnapshots(db, DAY);
+
+    expect(await snapshotOf(accountId)).toMatchObject({
+      stockValue: 3_000n,
+      cashValue: 0n,
+      holdingCount: 1,
+    });
+  });
+
   it("records an empty account at 0", async () => {
     const userId = await createUser("cloud");
     const accountId = await createAccount(userId, {});

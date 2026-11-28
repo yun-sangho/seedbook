@@ -249,6 +249,23 @@ describe("push: create and patch", () => {
 
     expect(results.map((r) => r.status)).toEqual(["rejected", "rejected", "rejected", "ok"]);
   });
+
+  it("rejects an op the database refuses without failing the rest of the push", async () => {
+    const userId = await createTestUser();
+    const linked = randomUUID();
+
+    // 아직 없는 포트폴리오를 가리키는 연결 (외래 키 위반).
+    const results = await push(userId, [
+      createAccount(linked, accountFields({ portfolioId: randomUUID() })),
+      createAccount(randomUUID()),
+    ]);
+
+    expect(results).toEqual([
+      { status: "rejected", code: "invalid" },
+      expect.objectContaining({ status: "ok" }),
+    ]);
+    expect(await pullAll(userId).then((p) => p.records.map((r) => r.id))).not.toContain(linked);
+  });
 });
 
 describe("push: replay", () => {

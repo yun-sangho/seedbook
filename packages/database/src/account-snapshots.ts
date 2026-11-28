@@ -55,11 +55,14 @@ export async function recordAccountSnapshots(
         quantity: schema.stockHolding.quantity,
       })
       .from(schema.stockHolding)
-      .where(inArray(schema.stockHolding.accountId, ids));
+      // 지운 보유 종목·현금은 톰스톤으로 남는다 (동기화 v2).
+      .where(
+        and(inArray(schema.stockHolding.accountId, ids), isNull(schema.stockHolding.deletedAt))
+      );
     const cashItems = await db
       .select({ accountId: schema.cashItem.accountId, amount: schema.cashItem.amount })
       .from(schema.cashItem)
-      .where(inArray(schema.cashItem.accountId, ids));
+      .where(and(inArray(schema.cashItem.accountId, ids), isNull(schema.cashItem.deletedAt)));
 
     await loadPrices(db, date, holdings, priceCache);
     const prices = new Map<string, SnapshotPrice>();
