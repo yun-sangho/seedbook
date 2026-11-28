@@ -6,6 +6,7 @@ import { MoneyField } from "@mobile/components/mobile/money-field";
 import { GoalBar, goalPercentOf } from "@mobile/features/garden/components/goal-bar";
 import { PlantAvatar } from "@mobile/features/garden/components/plant-avatar";
 import { PLANT_KIND_LABELS, PLANT_KINDS } from "@mobile/features/garden/plant-3d/plant-options";
+import { kstDay } from "@mobile/features/garden/utils/basket";
 import { plantConditionLabel, plantStageLabel } from "@mobile/features/garden/utils/garden-home";
 import { MAX_PLANT_STAGE } from "@mobile/features/portfolio/types/constants";
 import type { PlantKind, PlantProgress } from "@mobile/features/portfolio/types/types";
@@ -13,8 +14,11 @@ import {
   NEXT_GOAL_ERROR_MESSAGES,
   nextGoalError,
   nextGoalFloor,
+  PLANT_NAME_MAX_LENGTH,
+  plantNameError,
   WISH_MAX_LENGTH,
   wishError,
+  wishHistoryNewestFirst,
 } from "@mobile/features/portfolio/utils/plant-season";
 import type { PortfolioValuation } from "@mobile/features/portfolio/utils/portfolio-plant";
 import type { PortfolioPlantView } from "@mobile/features/portfolio/utils/portfolio-plant-view";
@@ -29,8 +33,11 @@ import { SegmentedControl, SegmentedControlItem } from "@mobile/seed-design/ui/s
 import { TextField, TextFieldInput } from "@mobile/seed-design/ui/text-field";
 import { numberToKorean, parseNumericString } from "@mobile/utils/number-format";
 
-/** 식물 줄에서 누를 수 있는 것 — 목표(열매 목표) 정하기, 리밸런싱 보기, 수확, 씨앗 심기(종류·소원). */
-export type PlantRowAction = "goal" | "rebalance" | "harvest" | "season";
+/**
+ * 식물 줄에서 누를 수 있는 것 — 목표(열매 목표) 정하기, 리밸런싱 보기, 수확, 씨앗 심기(종류·이름·소원),
+ * 소원 고치기(이력 보기).
+ */
+export type PlantRowAction = "goal" | "rebalance" | "harvest" | "season" | "wish";
 
 /** 목표 상태별 버튼 문구와 할 일. */
 function rowButton(plant: PortfolioPlantView): { label: string; action: PlantRowAction } {
@@ -53,7 +60,8 @@ function rowButton(plant: PortfolioPlantView): { label: string; action: PlantRow
 
 /**
  * 포트폴리오 상세 상단 요약의 식물 줄: 단계 이름 + 상태(시듦·바람·열매) + 목표 도달 막대(정원 목록과 같은
- * 모양) + 목표 상태에 맞는 버튼, 그 아래 하고 싶은 일. 식물 그림은 상단 금액 옆 아바타가 보여준다.
+ * 모양) + 목표 상태에 맞는 버튼, 그 아래 하고 싶은 일 (누르면 고치기·이력). 식물 이름이 있으면 단계 앞에
+ * 둔다. 식물 그림은 상단 금액 옆 아바타가 보여준다.
  */
 export function PortfolioPlantRow({
   plant,
@@ -83,7 +91,8 @@ export function PortfolioPlantRow({
   return (
     <div className="py-x2">
       <div className="flex min-h-x10 items-center gap-x3">
-        <span className="t4-bold shrink-0">
+        <span className="t4-bold min-w-0 shrink truncate">
+          {plant.plantName && `${plant.plantName} · `}
           {plantStageLabel(plant.kind, plant.stage, plant.empty)}
           {condition && (
             <span
@@ -112,9 +121,20 @@ export function PortfolioPlantRow({
           {button.label}
         </ActionButton>
       </div>
-      {/* 하고 싶은 일은 씨앗을 심을 때만 적는다 — 여기서는 보여 주기만. */}
-      {plant.wish && (
-        <p className="t3-regular text-fg-neutral-subtle truncate">🌱 이루면: {plant.wish}</p>
+      {/* 빈 화분은 씨앗 심기에서 소원을 적는다. 심은 뒤에는 언제든 고친다 (이력이 남는다). */}
+      {!plant.empty && (
+        <button
+          type="button"
+          className="t3-regular text-fg-neutral-subtle flex w-full min-w-0 items-center gap-x1 py-x1 text-left"
+          onClick={() => onAction("wish")}
+        >
+          <span className="min-w-0 truncate">
+            {plant.wish ? `🌱 이루면: ${plant.wish}` : "🌱 이루면 하고 싶은 일 적기"}
+          </span>
+          <span aria-hidden className="shrink-0">
+            ›
+          </span>
+        </button>
       )}
     </div>
   );
@@ -227,8 +247,8 @@ export function plantSeasonSheetText(harvestedWish: string | undefined): {
 }
 
 /**
- * 씨앗 심기 시트 — 식물 종류, 첫 목표(필수, 하한 `nextGoalError`), 목표를 이루면 하고 싶은
- * 일(선택). 목표 없는 씨앗일 때만 연다 (빈 화분, 수확 뒤 다시 심기).
+ * 씨앗 심기 시트 — 식물 종류, 식물 이름(선택), 첫 목표(필수, 하한 `nextGoalError`), 목표를 이루면 하고
+ * 싶은 일(선택). 목표 없는 씨앗일 때만 연다 (빈 화분, 수확 뒤 다시 심기 — 새 식물이라 이름은 비어 있다).
  */
 export function PlantSeasonSheet({
   open,
@@ -249,13 +269,19 @@ export function PlantSeasonSheet({
   initialWish: string;
   progress: Pick<PlantProgress, "goalHistory" | "fruitGoal">;
   valuation: Pick<PortfolioValuation, "value" | "pricesComplete">;
-  onSave: (input: { plantKind: PlantKind; wish: string; goalAmount: number }) => void;
+  onSave: (input: {
+    plantKind: PlantKind;
+    plantName: string;
+    wish: string;
+    goalAmount: number;
+  }) => void;
 }) {
   const [kind, setKind] = useState<PlantKind>(initialKind);
+  const [plantName, setPlantName] = useState("");
   const [wish, setWish] = useState(initialWish);
   const [goalDraft, setGoalDraft] = useState("");
   const [goalError, setGoalError] = useState<string | undefined>();
-  const invalid = wishError(wish) !== null;
+  const invalid = wishError(wish) !== null || plantNameError(plantName) !== null;
   const floor = nextGoalFloor(progress, valuation);
 
   const plant = () => {
@@ -265,7 +291,7 @@ export function PlantSeasonSheet({
       setGoalError(NEXT_GOAL_ERROR_MESSAGES[error](floor));
       return;
     }
-    onSave({ plantKind: kind, wish: wish.trim(), goalAmount });
+    onSave({ plantKind: kind, plantName: plantName.trim(), wish: wish.trim(), goalAmount });
     onOpenChange(false);
   };
 
@@ -292,6 +318,18 @@ export function PlantSeasonSheet({
             </SegmentedControl>
           </div>
           <div className="pb-x3">
+            <TextField
+              label="식물 이름"
+              value={plantName}
+              onValueChange={({ value }) => setPlantName(value)}
+              description="비워 둬도 돼요"
+              maxGraphemeCount={PLANT_NAME_MAX_LENGTH}
+              invalid={plantNameError(plantName) !== null}
+            >
+              <TextFieldInput placeholder="예: 몽글이" maxLength={PLANT_NAME_MAX_LENGTH} />
+            </TextField>
+          </div>
+          <div className="pb-x3">
             <MoneyField
               label="첫 목표 금액"
               ariaLabel="첫 목표 금액"
@@ -314,9 +352,9 @@ export function PlantSeasonSheet({
             label="이루면 하고 싶은 일"
             value={wish}
             onValueChange={({ value }) => setWish(value)}
-            description="비워 둬도 돼요"
+            description="비워 둬도 돼요. 나중에 고칠 수 있어요"
             maxGraphemeCount={WISH_MAX_LENGTH}
-            invalid={invalid}
+            invalid={wishError(wish) !== null}
           >
             <TextFieldInput placeholder="예: 부모님과 제주 여행" maxLength={WISH_MAX_LENGTH} />
           </TextField>
@@ -324,6 +362,83 @@ export function PlantSeasonSheet({
         <BottomSheetFooter>
           <ActionButton size="large" className="w-full" disabled={invalid} onClick={plant}>
             심기
+          </ActionButton>
+        </BottomSheetFooter>
+      </BottomSheetContent>
+    </BottomSheetRoot>
+  );
+}
+
+/**
+ * 소원 고치기 시트 — 지금 소원을 고치고(비우면 지운 것), 그 아래 고친 이력을 최근이 앞으로 보여 준다.
+ * 이력이 생기기 전에 정한 소원은 날짜 대신 "처음".
+ */
+export function EditPlantWishSheet({
+  open,
+  onOpenChange,
+  progress,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  progress: Pick<PlantProgress, "wish" | "wishHistory">;
+  onSave: (wish: string) => void;
+}) {
+  const [wish, setWish] = useState(progress.wish);
+  const invalid = wishError(wish) !== null;
+  const history = wishHistoryNewestFirst(progress);
+
+  const save = () => {
+    onSave(wish.trim());
+    onOpenChange(false);
+  };
+
+  return (
+    <BottomSheetRoot open={open} onOpenChange={onOpenChange}>
+      <BottomSheetContent title="이루면 하고 싶은 일" showHandle>
+        <BottomSheetBody>
+          <TextField
+            value={wish}
+            onValueChange={({ value }) => setWish(value)}
+            description="고치면 이력에 남아요"
+            maxGraphemeCount={WISH_MAX_LENGTH}
+            invalid={invalid}
+          >
+            <TextFieldInput
+              aria-label="이루면 하고 싶은 일"
+              placeholder="예: 부모님과 제주 여행"
+              maxLength={WISH_MAX_LENGTH}
+              autoFocus
+            />
+          </TextField>
+          {history.length > 0 && (
+            <section className="pt-x5 pb-x2">
+              <h3 className="t4-bold pb-x2">고친 이력</h3>
+              <ul className="flex flex-col gap-x2">
+                {history.map((entry, i) => (
+                  <li
+                    // 같은 소원·날짜가 겹칠 수 있어 순서로 구분한다 (목록은 바뀌지 않는다).
+                    // biome-ignore lint/suspicious/noArrayIndexKey: 이력은 읽기 전용 목록
+                    key={i}
+                    className="t3-regular flex gap-x3"
+                  >
+                    <span className="text-fg-neutral-subtle shrink-0 tabular-nums">
+                      {entry.at === null ? "처음" : kstDay(entry.at)}
+                    </span>
+                    <span
+                      className={`min-w-0 break-words ${entry.wish ? "" : "text-fg-neutral-subtle"}`}
+                    >
+                      {entry.wish || "지웠어요"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </BottomSheetBody>
+        <BottomSheetFooter>
+          <ActionButton size="large" className="w-full" disabled={invalid} onClick={save}>
+            저장
           </ActionButton>
         </BottomSheetFooter>
       </BottomSheetContent>

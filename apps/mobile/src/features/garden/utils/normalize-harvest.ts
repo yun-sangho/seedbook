@@ -1,4 +1,5 @@
 import type { HarvestItem } from "@mobile/features/portfolio/utils/plant-season";
+import { readWishHistory } from "@mobile/features/portfolio/utils/portfolio-plant";
 import { listOf, text } from "@mobile/lib/sync/normalize-values";
 
 /** 저장 전 값 정리 — 레코드 정의가 받는 값으로. 모르는 필드는 남긴다. */
@@ -10,6 +11,8 @@ export function normalizeHarvest(item: HarvestItem): HarvestItem {
     sourceId: text(item.sourceId),
     sourceName: text(item.sourceName),
     wish: text(item.wish),
+    plantName: text(item.plantName),
+    wishHistory: readWishHistory(item.wishHistory),
     goals: listOf(item.goals),
     doneAt: typeof item.doneAt === "string" ? item.doneAt : null,
   };

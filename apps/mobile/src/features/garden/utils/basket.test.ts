@@ -11,6 +11,8 @@ function harvest(partial: Partial<HarvestItem> = {}): HarvestItem {
     season: 1,
     plantKind: "tree",
     wish: "부모님과 제주 여행",
+    plantName: "",
+    wishHistory: [],
     goals: [
       { amount: 10_000_000, reachedAt: "2026-01-05T03:00:00.000Z" },
       { amount: 11_000_000, reachedAt: "2026-03-05T03:00:00.000Z" },
@@ -45,6 +47,10 @@ describe("basketCards", () => {
 
   it("names the portfolio only, without counting harvests", () => {
     expect(basketCards([harvest({ season: 3 })])[0]?.source).toBe("안정형");
+  });
+
+  it("names the plant before the portfolio", () => {
+    expect(basketCards([harvest({ plantName: "몽글이" })])[0]?.source).toBe("몽글이 · 안정형");
   });
 
   it("names a harvest without a wish", () => {

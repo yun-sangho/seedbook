@@ -8,7 +8,10 @@ import { validateDefinitions } from "../validate-definitions";
 import { SCHEMA_VERSION } from "../version";
 import {
   accountRecord,
+  harvest,
   harvestId,
+  PLANT_WISH_HISTORY_MAX,
+  portfolio,
   RECORDS,
   rebalancingTask,
   recordTypesAt,
@@ -87,6 +90,47 @@ describe("record definitions", () => {
       settings: [],
     });
   });
+});
+
+describe("plant name and wish history", () => {
+  const wishes = (count: number) =>
+    Array.from({ length: count }, (_, i) => ({
+      wish: `소원 ${i}`,
+      at: "2026-11-28T00:00:00.000Z",
+    }));
+
+  it.each([portfolio, harvest])("keeps up to the cap of wishes on a %s", (definition) => {
+    const result = parsePatch(
+      definition,
+      { wishHistory: wishes(PLANT_WISH_HISTORY_MAX) },
+      { op: "patch" }
+    );
+
+    expect(result.rejected).toEqual([]);
+  });
+
+  it.each([portfolio, harvest])("rejects more wishes than the cap on a %s", (definition) => {
+    const result = parsePatch(
+      definition,
+      { wishHistory: wishes(PLANT_WISH_HISTORY_MAX + 1) },
+      {
+        op: "patch",
+      }
+    );
+
+    expect(result.rejected.map((r) => r.field)).toEqual(["wishHistory"]);
+  });
+
+  it.each([portfolio, harvest])(
+    "creates a %s without a plant name or wish history",
+    (definition) => {
+      const { plantName: _name, wishHistory: _history, ...fields } = sampleRecord(definition);
+
+      const result = parsePatch(definition, fields, { op: "create" });
+
+      expect(result.patch).toMatchObject({ plantName: "", wishHistory: [] });
+    }
+  );
 });
 
 describe("recordTypesAt", () => {

@@ -2,13 +2,14 @@ import { numberToKorean } from "@mobile/utils/number-format";
 import {
   harvestId,
   type harvest as harvestRecord,
+  PLANT_WISH_HISTORY_MAX,
   type RecordValues,
   UUID_PATTERN,
   uuidv5,
 } from "@seedbook/domain";
 import { kstMidnight } from "@seedbook/domain/kst";
 import { MAX_PLANT_STAGE } from "../types/constants";
-import type { PlantKind, PlantProgress, PlantStage } from "../types/types";
+import type { PlantKind, PlantProgress, PlantStage, PlantWish } from "../types/types";
 import { lastReachedGoal, type PortfolioValuation } from "./portfolio-plant";
 
 /**
@@ -32,6 +33,8 @@ const GOAL_FLOOR_PERCENT = 110;
 const GOAL_FLOOR_UNIT = 10_000;
 /** 소원 최대 길이 (클라이언트 검사, 레코드 정의는 제한하지 않는다). */
 export const WISH_MAX_LENGTH = 100;
+/** 식물 이름 최대 글자 수. */
+export const PLANT_NAME_MAX_LENGTH = 20;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -303,7 +306,8 @@ function seasonHarvestId(portfolioId: string, season: number): string {
 export type HarvestItem = { id: string } & RecordValues<typeof harvestRecord>;
 
 /**
- * 열매가 열린 식물을 수확한다 — 수확 기록과 빈 화분 (`season + 1`, 단계·목표·열매·소원을 비운다.
+ * 열매가 열린 식물을 수확한다 — 수확 기록(식물 이름·소원 이력 포함)과 빈 화분 (`season + 1`, 단계·목표·
+ * 열매·소원·식물 이름·소원 이력을 비운다.
  * 이탈 시작일은 수확과 무관해 그대로). 열매가 열리지 않았으면 null. `shownKind` 는 종류를 고른 적
  * 없을 때 화면에 보이던 종류 (`kindForPortfolio`).
  */
@@ -323,6 +327,8 @@ export function harvestPlant<T extends PlantProgress & { id: string; name: strin
       season: portfolio.season,
       plantKind: portfolio.plantKind ?? shownKind,
       wish: portfolio.wish,
+      plantName: portfolio.plantName,
+      wishHistory: portfolio.wishHistory,
       goals: [...portfolio.goalHistory, fruitGoal],
       harvestedAt: now,
       doneAt: null,
@@ -335,6 +341,8 @@ export function harvestPlant<T extends PlantProgress & { id: string; name: strin
       goalHistory: [],
       fruitGoal: null,
       wish: "",
+      plantName: "",
+      wishHistory: [],
     },
   };
 }
@@ -346,10 +354,61 @@ export function wishError(wish: string): WishError | null {
   return wish.trim().length > WISH_MAX_LENGTH ? "too-long" : null;
 }
 
-/** 씨앗 심기 — 식물 종류와 소원을 정한다 (첫 목표는 `setPlantGoal`). */
+export type PlantNameError = "too-long";
+
+/** 식물 이름 검사 — 비워 둘 수 있고 최대 20자. */
+export function plantNameError(name: string): PlantNameError | null {
+  return name.trim().length > PLANT_NAME_MAX_LENGTH ? "too-long" : null;
+}
+
+/** 소원 이력에 하나를 더한다 — 최근 `PLANT_WISH_HISTORY_MAX` 개만. */
+function appendWish(history: readonly PlantWish[], entry: PlantWish): PlantWish[] {
+  return [...history, entry].slice(-PLANT_WISH_HISTORY_MAX);
+}
+
+/**
+ * 씨앗 심기 — 식물 종류·이름·소원을 정한다 (첫 목표는 `setPlantGoal`). 새 식물이라 소원 이력은 첫 소원부터
+ * 다시 시작한다 (소원을 비워 두면 빈 이력).
+ */
 export function startPlantSeason<T extends PlantProgress>(
   progress: T,
-  input: { plantKind: PlantKind; wish: string }
+  input: { plantKind: PlantKind; plantName: string; wish: string },
+  now: string
 ): T {
-  return { ...progress, plantKind: input.plantKind, wish: input.wish.trim() };
+  const wish = input.wish.trim();
+  return {
+    ...progress,
+    plantKind: input.plantKind,
+    plantName: input.plantName.trim(),
+    wish,
+    wishHistory: wish ? [{ wish, at: now }] : [],
+  };
+}
+
+/**
+ * 소원을 고친다 (언제든) — 이력 끝에 남긴다. 그대로면 같은 참조를 돌려준다 (저장·동기화할 것이 없다).
+ * 이력이 생기기 전에 정한 소원은 정한 때를 모르는 항목(`at: null`)으로 먼저 남긴다.
+ */
+export function changePlantWish<T extends PlantProgress>(
+  progress: T,
+  wish: string,
+  now: string
+): T {
+  const next = wish.trim();
+  if (next === progress.wish) return progress;
+  const history =
+    progress.wishHistory.length === 0 && progress.wish
+      ? [{ wish: progress.wish, at: null }]
+      : progress.wishHistory;
+  return { ...progress, wish: next, wishHistory: appendWish(history, { wish: next, at: now }) };
+}
+
+/** 화면의 소원 이력 — 최근이 앞. 이력이 생기기 전에 정한 소원만 있으면 그 하나 (`at: null`). */
+export function wishHistoryNewestFirst(
+  progress: Pick<PlantProgress, "wish" | "wishHistory">
+): PlantWish[] {
+  if (progress.wishHistory.length === 0) {
+    return progress.wish ? [{ wish: progress.wish, at: null }] : [];
+  }
+  return [...progress.wishHistory].reverse();
 }

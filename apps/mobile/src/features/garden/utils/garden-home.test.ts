@@ -19,6 +19,7 @@ import {
   kindForPortfolio,
   plantConditionLabel,
   plantStageLabel,
+  plantTitle,
   potForPortfolio,
 } from "./garden-home";
 
@@ -232,6 +233,7 @@ describe("gardenRows", () => {
       {
         portfolioId: "p",
         name: "안정형",
+        plantName: "",
         stage: 0,
         pot: potForPortfolio("p"),
         kind: kindForPortfolio("p"),
@@ -299,6 +301,23 @@ describe("gardenRows", () => {
     const plant = portfolioPlantView(p, [], prices, NOW);
 
     expect(gardenRows([plant], [p], [])[0]?.name).toBe("이름 없는 포트폴리오");
+  });
+
+  it("carries the plant name", () => {
+    const p = portfolio({ plantName: "몽글이" });
+    const plant = portfolioPlantView(p, [], prices, NOW);
+
+    expect(gardenRows([plant], [p], [])[0]?.plantName).toBe("몽글이");
+  });
+});
+
+describe("plantTitle", () => {
+  it("puts the plant name before the portfolio name", () => {
+    expect(plantTitle("몽글이", "연금")).toBe("몽글이 · 연금");
+  });
+
+  it("is the portfolio name for a plant without a name", () => {
+    expect(plantTitle("", "연금")).toBe("연금");
   });
 });
 

@@ -97,10 +97,17 @@ export function plantConditionLabel(
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
+/** 식물 이름이 있으면 포트폴리오 이름 앞에 — "몽글이 · 연금". 없으면 포트폴리오 이름. */
+export function plantTitle(plantName: string, sourceName: string): string {
+  return plantName ? `${plantName} · ${sourceName}` : sourceName;
+}
+
 /** 정원 목록(포커스 풀림)의 행 하나. */
 export interface GardenRow {
   portfolioId: string;
   name: string;
+  /** 씨앗을 심을 때 정한 식물 이름 (없으면 빈 문자열). */
+  plantName: string;
   stage: PortfolioPlantView["stage"];
   pot: PotColor;
   kind: PlantKind;
@@ -139,6 +146,7 @@ function gardenRow(plant: PortfolioPlantView, accounts: readonly RowAccount[]): 
   return {
     portfolioId: plant.portfolioId,
     name: plant.name || "이름 없는 포트폴리오",
+    plantName: plant.plantName,
     stage: plant.stage,
     pot: potForPortfolio(plant.portfolioId),
     kind: plant.kind,

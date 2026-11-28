@@ -5,6 +5,7 @@ export type {
   PlantKind,
   PlantProgress,
   PlantStage,
+  PlantWish,
 } from "@seedbook/domain/v1/portfolio-types";
 
 /**

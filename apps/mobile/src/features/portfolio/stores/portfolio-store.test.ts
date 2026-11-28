@@ -267,18 +267,31 @@ describe("Portfolio Store", () => {
       });
     });
 
-    it("plants a seed with a kind and a wish", () => {
+    it("plants a seed with a kind, a name and a wish", () => {
       const id = usePortfolioStore.getState().addPortfolio();
 
       const ok = usePortfolioStore
         .getState()
-        .startPlantSeason(id, { plantKind: "fern", wish: "제주 여행" });
+        .startPlantSeason(id, { plantKind: "fern", plantName: "몽글이", wish: "제주 여행" });
 
       expect(ok).toBe(true);
       expect(usePortfolioStore.getState().portfolios[0]).toMatchObject({
         plantKind: "fern",
+        plantName: "몽글이",
         wish: "제주 여행",
+        wishHistory: [{ wish: "제주 여행", at: expect.any(String) }],
       });
+    });
+
+    it("refuses a plant name over the limit", () => {
+      const id = usePortfolioStore.getState().addPortfolio();
+
+      const ok = usePortfolioStore
+        .getState()
+        .startPlantSeason(id, { plantKind: "fern", plantName: "가".repeat(21), wish: "" });
+
+      expect(ok).toBe(false);
+      expect(usePortfolioStore.getState().portfolios[0]!.plantKind).toBeNull();
     });
 
     it("refuses a wish over 100 characters", () => {
@@ -287,6 +300,19 @@ describe("Portfolio Store", () => {
       expect(usePortfolioStore.getState().setPlantWish(id, "가".repeat(101))).toBe(false);
       expect(usePortfolioStore.getState().setPlantWish(id, "  여행  ")).toBe(true);
       expect(usePortfolioStore.getState().portfolios[0]!.wish).toBe("여행");
+    });
+
+    it("keeps each changed wish in the history", () => {
+      const id = usePortfolioStore.getState().addPortfolio();
+      usePortfolioStore
+        .getState()
+        .startPlantSeason(id, { plantKind: "tree", plantName: "", wish: "제주 여행" });
+
+      usePortfolioStore.getState().setPlantWish(id, "가족 여행");
+
+      expect(
+        usePortfolioStore.getState().portfolios[0]!.wishHistory.map((entry) => entry.wish)
+      ).toEqual(["제주 여행", "가족 여행"]);
     });
 
     it("harvests a ripe plant into the basket and starts the next season", () => {

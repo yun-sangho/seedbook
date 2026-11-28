@@ -1,0 +1,751 @@
+{
+  "format": "seedbook-domain-schema",
+  "minSchema": 1,
+  "records": {
+    "account": {
+      "fields": {
+        "accountName": {
+          "kind": "text",
+          "nullable": false
+        },
+        "accountType": {
+          "kind": "text",
+          "nullable": false
+        },
+        "color": {
+          "kind": "text",
+          "nullable": false
+        },
+        "currency": {
+          "kind": "text",
+          "nullable": false
+        },
+        "currentValue": {
+          "kind": "money",
+          "normalize": ["finiteOrZero", "trunc"],
+          "nullable": false
+        },
+        "initialInvestment": {
+          "kind": "money",
+          "normalize": ["finiteOrZero", "trunc"],
+          "nullable": false
+        },
+        "note": {
+          "default": {
+            "value": ""
+          },
+          "kind": "text",
+          "nullable": false
+        },
+        "portfolioId": {
+          "default": {
+            "value": null
+          },
+          "kind": "uuidRef",
+          "nullable": true
+        }
+      },
+      "key": {
+        "kind": "uuid"
+      },
+      "parent": null,
+      "sortable": true,
+      "table": "investment_account"
+    },
+    "accountRecord": {
+      "fields": {
+        "currentValue": {
+          "kind": "money",
+          "normalize": ["finiteOrZero", "trunc"],
+          "nullable": false
+        },
+        "date": {
+          "kind": "date",
+          "nullable": false
+        },
+        "initialInvestment": {
+          "kind": "money",
+          "normalize": ["finiteOrZero", "trunc"],
+          "nullable": false
+        }
+      },
+      "key": {
+        "kind": "derived",
+        "name": "date",
+        "namespace": "parent"
+      },
+      "parent": {
+        "column": "accountId",
+        "onParentDelete": "tombstone",
+        "type": "account"
+      },
+      "sortable": false,
+      "table": "investment_record"
+    },
+    "allocation": {
+      "fields": {
+        "currency": {
+          "kind": "text",
+          "nullable": false
+        },
+        "market": {
+          "kind": "text",
+          "nullable": false
+        },
+        "name": {
+          "kind": "text",
+          "nullable": false
+        },
+        "targetPercent": {
+          "kind": "decimal",
+          "normalize": ["finiteOrZero"],
+          "nullable": false
+        },
+        "ticker": {
+          "kind": "text",
+          "nullable": false
+        }
+      },
+      "key": {
+        "kind": "uuid"
+      },
+      "parent": {
+        "column": "portfolioId",
+        "onParentDelete": "tombstone",
+        "type": "portfolio"
+      },
+      "sortable": true,
+      "table": "portfolio_allocation"
+    },
+    "cash": {
+      "fields": {
+        "amount": {
+          "kind": "money",
+          "normalize": ["finiteOrZero", "trunc"],
+          "nullable": false
+        },
+        "label": {
+          "kind": "text",
+          "nullable": false
+        }
+      },
+      "key": {
+        "kind": "uuid"
+      },
+      "parent": {
+        "column": "accountId",
+        "onParentDelete": "tombstone",
+        "type": "account"
+      },
+      "sortable": true,
+      "table": "cash_item"
+    },
+    "harvest": {
+      "fields": {
+        "doneAt": {
+          "default": {
+            "value": null
+          },
+          "kind": "timestamp",
+          "nullable": true
+        },
+        "goals": {
+          "kind": "json",
+          "nullable": false,
+          "shape": {
+            "item": {
+              "fields": {
+                "amount": {
+                  "kind": "money",
+                  "min": 1,
+                  "nullable": false
+                },
+                "reachedAt": {
+                  "kind": "timestamp",
+                  "nullable": false
+                }
+              },
+              "kind": "object"
+            },
+            "kind": "list",
+            "maxItems": 5
+          }
+        },
+        "harvestedAt": {
+          "kind": "timestamp",
+          "nullable": false
+        },
+        "plantKind": {
+          "kind": "enum",
+          "nullable": false,
+          "open": true,
+          "values": ["tree", "fern"]
+        },
+        "plantName": {
+          "default": {
+            "value": ""
+          },
+          "kind": "text",
+          "nullable": false
+        },
+        "season": {
+          "kind": "int",
+          "min": 1,
+          "nullable": false
+        },
+        "sourceId": {
+          "kind": "text",
+          "nullable": false
+        },
+        "sourceName": {
+          "kind": "text",
+          "nullable": false
+        },
+        "sourceType": {
+          "default": {
+            "value": "portfolio"
+          },
+          "kind": "enum",
+          "nullable": false,
+          "open": true,
+          "values": ["portfolio"]
+        },
+        "wish": {
+          "default": {
+            "value": ""
+          },
+          "kind": "text",
+          "nullable": false
+        },
+        "wishHistory": {
+          "default": {
+            "value": []
+          },
+          "kind": "json",
+          "nullable": false,
+          "shape": {
+            "item": {
+              "fields": {
+                "at": {
+                  "kind": "timestamp",
+                  "nullable": true
+                },
+                "wish": {
+                  "kind": "text",
+                  "nullable": false
+                }
+              },
+              "kind": "object"
+            },
+            "kind": "list",
+            "maxItems": 20
+          }
+        }
+      },
+      "key": {
+        "kind": "uuid"
+      },
+      "parent": null,
+      "sortable": true,
+      "table": "plant_harvest"
+    },
+    "holding": {
+      "fields": {
+        "currency": {
+          "kind": "text",
+          "nullable": false
+        },
+        "market": {
+          "kind": "text",
+          "nullable": false
+        },
+        "memo": {
+          "default": {
+            "value": ""
+          },
+          "kind": "text",
+          "nullable": false
+        },
+        "name": {
+          "kind": "text",
+          "nullable": false
+        },
+        "quantity": {
+          "kind": "decimal",
+          "normalize": ["finiteOrZero"],
+          "nullable": false
+        },
+        "ticker": {
+          "kind": "text",
+          "nullable": false
+        }
+      },
+      "key": {
+        "kind": "uuid"
+      },
+      "parent": {
+        "column": "accountId",
+        "onParentDelete": "tombstone",
+        "type": "account"
+      },
+      "sortable": true,
+      "table": "stock_holding"
+    },
+    "portfolio": {
+      "fields": {
+        "color": {
+          "kind": "text",
+          "nullable": false
+        },
+        "driftMode": {
+          "default": {
+            "value": "absolute"
+          },
+          "kind": "enum",
+          "nullable": false,
+          "open": true,
+          "values": ["relative", "absolute"]
+        },
+        "driftSince": {
+          "default": {
+            "value": null
+          },
+          "kind": "timestamp",
+          "nullable": true
+        },
+        "driftThresholdPercent": {
+          "default": {
+            "value": 5
+          },
+          "kind": "decimal",
+          "min": 0,
+          "normalize": ["finiteOrZero", "clamp"],
+          "nullable": false
+        },
+        "fruitGoal": {
+          "default": {
+            "value": null
+          },
+          "kind": "json",
+          "nullable": true,
+          "shape": {
+            "fields": {
+              "amount": {
+                "kind": "money",
+                "min": 1,
+                "nullable": false
+              },
+              "reachedAt": {
+                "kind": "timestamp",
+                "nullable": false
+              }
+            },
+            "kind": "object"
+          }
+        },
+        "goalAmount": {
+          "default": {
+            "value": null
+          },
+          "kind": "money",
+          "min": 1,
+          "nullable": true
+        },
+        "goalHistory": {
+          "default": {
+            "value": []
+          },
+          "kind": "json",
+          "nullable": false,
+          "shape": {
+            "item": {
+              "fields": {
+                "amount": {
+                  "kind": "money",
+                  "min": 1,
+                  "nullable": false
+                },
+                "reachedAt": {
+                  "kind": "timestamp",
+                  "nullable": false
+                }
+              },
+              "kind": "object"
+            },
+            "kind": "list",
+            "maxItems": 4
+          }
+        },
+        "growthStage": {
+          "default": {
+            "value": 0
+          },
+          "kind": "int",
+          "max": 4,
+          "min": 0,
+          "nullable": false
+        },
+        "name": {
+          "kind": "text",
+          "nullable": false
+        },
+        "note": {
+          "default": {
+            "value": ""
+          },
+          "kind": "text",
+          "nullable": false
+        },
+        "plantKind": {
+          "default": {
+            "value": null
+          },
+          "kind": "enum",
+          "nullable": true,
+          "open": true,
+          "values": ["tree", "fern"]
+        },
+        "plantName": {
+          "default": {
+            "value": ""
+          },
+          "kind": "text",
+          "nullable": false
+        },
+        "season": {
+          "default": {
+            "value": 1
+          },
+          "kind": "int",
+          "min": 1,
+          "nullable": false
+        },
+        "wish": {
+          "default": {
+            "value": ""
+          },
+          "kind": "text",
+          "nullable": false
+        },
+        "wishHistory": {
+          "default": {
+            "value": []
+          },
+          "kind": "json",
+          "nullable": false,
+          "shape": {
+            "item": {
+              "fields": {
+                "at": {
+                  "kind": "timestamp",
+                  "nullable": true
+                },
+                "wish": {
+                  "kind": "text",
+                  "nullable": false
+                }
+              },
+              "kind": "object"
+            },
+            "kind": "list",
+            "maxItems": 20
+          }
+        }
+      },
+      "key": {
+        "kind": "uuid"
+      },
+      "parent": null,
+      "sortable": true,
+      "table": "portfolio"
+    },
+    "rebalancing": {
+      "fields": {
+        "accountId": {
+          "kind": "text",
+          "nullable": false
+        },
+        "accountName": {
+          "kind": "text",
+          "nullable": false
+        },
+        "cashDelta": {
+          "kind": "money",
+          "normalize": ["finiteOrZero", "round"],
+          "nullable": false
+        },
+        "completedAt": {
+          "default": {
+            "value": null
+          },
+          "kind": "timestamp",
+          "nullable": true
+        },
+        "portfolioId": {
+          "kind": "text",
+          "nullable": false
+        },
+        "portfolioName": {
+          "kind": "text",
+          "nullable": false
+        },
+        "result": {
+          "default": {
+            "value": null
+          },
+          "kind": "json",
+          "nullable": true,
+          "shape": {
+            "fields": {
+              "cash": {
+                "kind": "decimal",
+                "nullable": false
+              },
+              "cashBefore": {
+                "default": {
+                  "value": null
+                },
+                "kind": "decimal",
+                "nullable": true
+              },
+              "cashPercent": {
+                "kind": "decimal",
+                "nullable": true
+              },
+              "holdings": {
+                "kind": "json",
+                "nullable": false,
+                "shape": {
+                  "item": {
+                    "fields": {
+                      "change": {
+                        "kind": "decimal",
+                        "nullable": false
+                      },
+                      "market": {
+                        "kind": "text",
+                        "nullable": false
+                      },
+                      "name": {
+                        "kind": "text",
+                        "nullable": false
+                      },
+                      "percent": {
+                        "kind": "decimal",
+                        "nullable": true
+                      },
+                      "quantity": {
+                        "kind": "decimal",
+                        "nullable": false
+                      },
+                      "targetPercent": {
+                        "kind": "decimal",
+                        "nullable": false
+                      },
+                      "ticker": {
+                        "kind": "text",
+                        "nullable": false
+                      }
+                    },
+                    "kind": "object"
+                  },
+                  "kind": "list",
+                  "maxItems": 200
+                }
+              }
+            },
+            "kind": "object"
+          }
+        },
+        "startedAt": {
+          "kind": "timestamp",
+          "nullable": false
+        }
+      },
+      "key": {
+        "kind": "uuid"
+      },
+      "parent": null,
+      "sortable": true,
+      "table": "rebalancing"
+    },
+    "rebalancingTask": {
+      "fields": {
+        "action": {
+          "kind": "enum",
+          "nullable": false,
+          "open": true,
+          "values": ["매수", "매도"]
+        },
+        "allocationId": {
+          "kind": "text",
+          "nullable": false
+        },
+        "amount": {
+          "kind": "decimal",
+          "normalize": ["finiteOrZero"],
+          "nullable": false
+        },
+        "done": {
+          "kind": "bool",
+          "nullable": false
+        },
+        "executedPrice": {
+          "default": {
+            "value": null
+          },
+          "kind": "decimal",
+          "normalize": ["finiteOrNull"],
+          "nullable": true
+        },
+        "executedQuantity": {
+          "default": {
+            "value": null
+          },
+          "kind": "decimal",
+          "normalize": ["finiteOrNull"],
+          "nullable": true
+        },
+        "filledAmount": {
+          "default": {
+            "value": null
+          },
+          "kind": "decimal",
+          "normalize": ["finiteOrNull"],
+          "nullable": true
+        },
+        "filledQuantity": {
+          "default": {
+            "value": null
+          },
+          "kind": "decimal",
+          "normalize": ["finiteOrNull"],
+          "nullable": true
+        },
+        "market": {
+          "kind": "text",
+          "nullable": false
+        },
+        "name": {
+          "kind": "text",
+          "nullable": false
+        },
+        "orderedPrice": {
+          "default": {
+            "value": null
+          },
+          "kind": "decimal",
+          "normalize": ["finiteOrNull"],
+          "nullable": true
+        },
+        "orderedQuantity": {
+          "default": {
+            "value": null
+          },
+          "kind": "decimal",
+          "normalize": ["finiteOrNull"],
+          "nullable": true
+        },
+        "price": {
+          "kind": "decimal",
+          "normalize": ["finiteOrNull"],
+          "nullable": true
+        },
+        "priceAsOf": {
+          "default": {
+            "value": null
+          },
+          "kind": "timestamp",
+          "nullable": true
+        },
+        "priceKind": {
+          "default": {
+            "value": null
+          },
+          "kind": "enum",
+          "nullable": true,
+          "open": true,
+          "values": ["realtime", "close"]
+        },
+        "quantity": {
+          "kind": "decimal",
+          "normalize": ["finiteOrNull"],
+          "nullable": true
+        },
+        "ticker": {
+          "kind": "text",
+          "nullable": false
+        }
+      },
+      "key": {
+        "kind": "derived",
+        "name": "allocationId",
+        "namespace": "parent"
+      },
+      "parent": {
+        "column": "rebalancingId",
+        "onParentDelete": "tombstone",
+        "type": "rebalancing"
+      },
+      "sortable": true,
+      "table": "rebalancing_task"
+    },
+    "settings": {
+      "fields": {
+        "accountSortOption": {
+          "default": {
+            "value": "evalDesc"
+          },
+          "kind": "enum",
+          "nullable": false,
+          "open": true,
+          "values": ["evalDesc", "evalAsc"]
+        },
+        "holdingsSortOption": {
+          "default": {
+            "value": "evalDesc"
+          },
+          "kind": "enum",
+          "nullable": false,
+          "open": true,
+          "values": ["evalDesc", "evalAsc", "priceDesc", "priceAsc", "nameAsc", "nameDesc"]
+        },
+        "portfolioStockSortOption": {
+          "default": {
+            "value": "driftDesc"
+          },
+          "kind": "enum",
+          "nullable": false,
+          "open": true,
+          "values": ["driftDesc", "evalDesc", "evalAsc", "nameAsc", "nameDesc"]
+        },
+        "rebalancingCollapsedSections": {
+          "default": {
+            "value": []
+          },
+          "kind": "enum",
+          "list": true,
+          "nullable": false,
+          "open": true,
+          "values": ["pending", "ordered", "filled"]
+        },
+        "rebalancingTaskSort": {
+          "default": {
+            "value": "nameDesc"
+          },
+          "kind": "enum",
+          "nullable": false,
+          "open": true,
+          "values": ["nameDesc", "nameAsc", "evalDesc", "evalAsc"]
+        }
+      },
+      "key": {
+        "kind": "singleton"
+      },
+      "parent": null,
+      "sortable": false,
+      "table": "user_preference"
+    }
+  },
+  "schemaVersion": 3
+}
