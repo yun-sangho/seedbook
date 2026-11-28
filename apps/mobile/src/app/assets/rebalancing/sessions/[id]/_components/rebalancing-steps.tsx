@@ -15,7 +15,7 @@ import {
 import { cn } from "@mobile/lib/utils";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
 import { formatWithCommas, numberToKorean } from "@mobile/utils/number-format";
-import { Icon } from "@seed-design/react";
+import { PrefixIcon, SuffixIcon } from "@seed-design/react";
 import { SnapshotPriceBanner } from "./snapshot-price-banner";
 import { TradeEntryForm } from "./trade-entry-mobile";
 
@@ -33,6 +33,7 @@ export function RebalancingSteps({
   selectedId,
   onSelect,
   onShowCash,
+  onShowList,
 }: {
   session: RebalancingSession;
   tasks: RebalancingTask[];
@@ -41,6 +42,8 @@ export function RebalancingSteps({
   selectedId: string | null;
   onSelect: (taskId: string | null) => void;
   onShowCash: (() => void) | null;
+  /** 팔기·사기 전체 목록으로. */
+  onShowList: () => void;
 }) {
   const recommended = nextRebalancingAction(tasks, available);
   const recommendedId = recommended.kind === "done" ? null : recommended.task.id;
@@ -54,36 +57,8 @@ export function RebalancingSteps({
 
   return (
     <div>
-      {priceAsOf && <SnapshotPriceBanner summary={priceAsOf} live={current !== null} />}
-      {/* 이전·다음은 진행 칸 양 끝에 — 단계가 한 화면에 다 들어가도록 아래 줄을 따로 두지 않는다. */}
-      <div className="flex items-center gap-x1 px-x2 pt-x1">
-        <ActionButton
-          variant="ghost"
-          size="small"
-          layout="iconOnly"
-          aria-label="이전 거래"
-          // 다 끝낸 화면에서는 마지막 거래로 돌아가 기록을 볼 수 있다.
-          disabled={index === 0 || tasks.length === 0}
-          onClick={() => onSelect(tasks[(index < 0 ? tasks.length : index) - 1]?.id ?? null)}
-        >
-          <Icon svg={<IconChevronLeftLine />} />
-        </ActionButton>
-        <StepProgress
-          tasks={tasks}
-          currentId={current?.id ?? null}
-          onSelect={(id) => onSelect(id)}
-        />
-        <ActionButton
-          variant="ghost"
-          size="small"
-          layout="iconOnly"
-          aria-label="다음 거래"
-          disabled={index < 0 || index >= tasks.length - 1}
-          onClick={() => onSelect(tasks[index + 1]?.id ?? null)}
-        >
-          <Icon svg={<IconChevronRightLine />} />
-        </ActionButton>
-      </div>
+      {priceAsOf && <SnapshotPriceBanner summary={priceAsOf} live={current !== null} compact />}
+      <StepProgress tasks={tasks} currentId={current?.id ?? null} onSelect={(id) => onSelect(id)} />
       {current === null ? (
         <section className="flex flex-col gap-x2 px-x4 py-x6">
           <p className="t9-bold">모든 거래를 마쳤어요</p>
@@ -102,6 +77,31 @@ export function RebalancingSteps({
           onDone={() => onSelect(null)}
         />
       )}
+      {/* 이전 · 목록 · 다음 — 단계를 옮기거나 전체 목록을 연다. */}
+      <div className="flex items-center justify-between px-x2 pb-x1">
+        <ActionButton
+          variant="ghost"
+          size="medium"
+          // 다 끝낸 화면에서는 마지막 거래로 돌아가 기록을 볼 수 있다.
+          disabled={index === 0 || tasks.length === 0}
+          onClick={() => onSelect(tasks[(index < 0 ? tasks.length : index) - 1]?.id ?? null)}
+        >
+          <PrefixIcon svg={<IconChevronLeftLine />} />
+          이전
+        </ActionButton>
+        <ActionButton variant="ghost" size="medium" onClick={onShowList}>
+          목록
+        </ActionButton>
+        <ActionButton
+          variant="ghost"
+          size="medium"
+          disabled={index < 0 || index >= tasks.length - 1}
+          onClick={() => onSelect(tasks[index + 1]?.id ?? null)}
+        >
+          다음
+          <SuffixIcon svg={<IconChevronRightLine />} />
+        </ActionButton>
+      </div>
     </div>
   );
 }
@@ -126,7 +126,7 @@ function StepProgress({
       aria-valuemin={0}
       aria-valuemax={tasks.length}
       aria-valuenow={doneCount}
-      className="flex flex-1 items-center gap-x1"
+      className="flex items-center gap-x1 px-x4 pt-x1"
     >
       {tasks.map((task, i) => {
         const status = rebalancingTaskStatus(task);

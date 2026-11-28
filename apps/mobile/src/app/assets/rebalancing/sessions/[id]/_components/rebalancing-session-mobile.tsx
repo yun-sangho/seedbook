@@ -157,6 +157,10 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
           selectedId={selectedId}
           onSelect={setSelectedId}
           onShowCash={cash ? () => setCashOpen(true) : null}
+          onShowList={() => {
+            setView("list");
+            topRef.current?.scrollIntoView();
+          }}
         />
       )}
       {completed &&
@@ -323,16 +327,17 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
       />
 
       <HeaderAction>
-        {!completed && (
+        {/* 목록에서 단계로 돌아가는 버튼. 단계 화면에서는 아래 "목록" 으로 연다. */}
+        {!completed && view === "list" && (
           <ActionButton
             variant="ghost"
             size="small"
             onClick={() => {
-              setView(view === "steps" ? "list" : "steps");
+              setView("steps");
               topRef.current?.scrollIntoView();
             }}
           >
-            {view === "steps" ? "목록" : "하나씩"}
+            하나씩 보기
           </ActionButton>
         )}
         <ActionButton
