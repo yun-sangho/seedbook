@@ -2,7 +2,7 @@
   "mainSession": true,
   "lang": "ko",
   "setup": "pnpm install",
-  "maxActive": 3,
+  "maxActive": 5,
   "mergeApproval": {
     "maxLines": 400,
     "paths": [
