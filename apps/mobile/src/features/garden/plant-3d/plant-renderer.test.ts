@@ -18,8 +18,8 @@ describe("grewAtSlot", () => {
     expect(grewAtSlot(slot("a", "sprout"), slot("a", "sapling"))).toBe(true);
   });
 
-  it("is false when only droop or rebalancing changed", () => {
-    const after = slot("a", "tree", { droop: 0.5, needsRebalance: true });
+  it("is false when only wind, wilt, ripeness or rebalancing changed", () => {
+    const after = slot("a", "tree", { wind: 0.5, wilt: 0.7, ripe: true, needsRebalance: true });
 
     expect(grewAtSlot(slot("a", "tree"), after)).toBe(false);
   });

@@ -1,4 +1,5 @@
 import type { PlantStage } from "../plant-3d/plant-options";
+import { Flower, Fruit } from "./blossom-art";
 
 /**
  * 보스턴고사리 2D 그림 (시안). `PlantAvatar` 의 64×64 좌표에 그린다 — 화분 테두리 윗면이 y=46, 가운데 x=32.
@@ -16,8 +17,6 @@ const FIDDLEHEAD = "#7CC05F";
 const FIDDLEHEAD_LIGHT = "#A8DB7E";
 const SEED = "#9BD38A";
 const SEED_HIGHLIGHT = "#DDF4D2";
-const DEW = "#A9DDFB";
-const SPARKLE = "#F6C343";
 
 const BASE = { x: 32, y: 45.5 };
 
@@ -173,29 +172,6 @@ function Fiddlehead({ x, top, coil }: { x: number; top: number; coil: number }) 
   );
 }
 
-/** 풍성 단계 이슬 (x, y, 반지름). 잎줄기 끝 쪽과 아치 위에 고루. */
-const DEW_DROPS: [number, number, number][] = [
-  [12.5, 45, 1.8],
-  [51.5, 45, 1.8],
-  [22, 24, 1.5],
-  [42, 23, 1.5],
-  [47, 52, 1.4],
-];
-
-function Sparkle({ x, y, r }: { x: number; y: number; r: number }) {
-  const k = r * 0.24;
-  return (
-    <>
-      <circle cx={x} cy={y} r={r * 0.55} fill={SPARKLE} opacity={0.35} />
-      <path
-        d={`M${x} ${y - r} Q${x + k} ${y - k} ${x + r} ${y} Q${x + k} ${y + k} ${x} ${y + r} Q${x - k} ${y + k} ${x - r} ${y} Q${x - k} ${y - k} ${x} ${y - r}Z`}
-        fill={SPARKLE}
-      />
-      <circle cx={x} cy={y} r={r * 0.2} fill="#FFFFFF" />
-    </>
-  );
-}
-
 const STAGE_FRONDS: Record<Exclude<PlantStage, "seed" | "sprout">, FrondSpec[]> = {
   sapling: [
     { angle: -48, length: 18, rise: 0.7, hang: 0.18, layer: "back" },
@@ -264,16 +240,12 @@ export function FernArt({ stage, layer }: { stage: PlantStage; layer: "back" | "
       {layer === "back" && stage === "sapling" && <Fiddlehead x={31} top={33} coil={3.2} />}
       {layer === "front" && stage === "bloom" && (
         <>
-          {DEW_DROPS.map(([x, y, r]) => (
-            <g key={`${x},${y}`}>
-              <ellipse cx={x} cy={y} rx={r} ry={r * 1.15} fill={DEW} />
-              <circle cx={x - r * 0.35} cy={y - r * 0.45} r={r * 0.35} fill="#FFFFFF" />
-            </g>
-          ))}
-          <Sparkle x={46} y={13} r={5} />
-          <Sparkle x={15} y={21} r={4} />
-          <Sparkle x={33} y={8} r={3.2} />
-          <Sparkle x={54} y={30} r={3} />
+          {/* 나무 아바타와 같은 꽃·열매: 꽃은 아치 위에, 열매는 늘어진 잎줄기 아래에. */}
+          <Flower x={21} y={22} />
+          <Flower x={43} y={21} />
+          <Flower x={32} y={14} />
+          <Fruit x={15} y={39} />
+          <Fruit x={49} y={39} />
         </>
       )}
     </>
