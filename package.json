@@ -6,6 +6,7 @@
     "dev": "turbo run dev",
     "lint": "biome lint --error-on-warnings",
     "check-types": "turbo run check-types",
+    "schema:check": "pnpm --filter @seedbook/domain schema:check",
     "format": "biome check --write --linter-enabled=false",
     "format:check": "biome check --linter-enabled=false",
     "crawler:start": "pnpm --filter @seedbook/stock-crawler start",

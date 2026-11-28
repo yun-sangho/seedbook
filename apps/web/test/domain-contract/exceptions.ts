@@ -1,0 +1,82 @@
+import type { RecordType } from "@seedbook/domain";
+
+/**
+ * 레코드 정의(`packages/domain`) 와 지금 코드의 대조에서 뺄 것. 이유 없이 넣지 않는다.
+ *
+ * - `PLANNED`: 정의(설계)에는 있지만 아직 코드에 없는 것. 그 단계 PR 이 코드를 추가하면 대조 테스트가
+ *   "이미 있다" 로 실패하니 여기서 지운다.
+ * - `LEGACY`: 코드에는 있지만 정의에 넣지 않는 것. v2-5 (contract) 에서 지운다.
+ */
+
+/** 아직 서버 테이블이 없는 레코드 → 만들 단계. */
+export const PLANNED_SERVER_TABLES: Partial<Record<RecordType, string>> = {
+  rebalancingTask: "v2-2: rebalancing.tasks jsonb 를 rebalancing_task 테이블로 펼친다",
+};
+
+/** 아직 서버에 없는 컬럼 (레코드 → 컬럼 → 단계). */
+export const PLANNED_SERVER_COLUMNS: Partial<Record<RecordType, Record<string, string>>> = {
+  account: { changeSeq: "v2-2", sortKey: "v2-2" },
+  holding: childCommonColumns("v2-2", { sortKey: "v2-2" }),
+  cash: childCommonColumns("v2-2", { sortKey: "v2-2" }),
+  accountRecord: childCommonColumns("v2-2", { id: "v2-2: uuidv5(accountId, date) backfill" }),
+  portfolio: { changeSeq: "v2-2", sortKey: "v2-2" },
+  allocation: childCommonColumns("v2-2", { sortKey: "v2-2" }),
+  rebalancing: { changeSeq: "v2-2", sortKey: "v2-2" },
+  settings: {
+    version: "v2-2",
+    changeSeq: "v2-2",
+    deletedAt: "v2-2",
+    createdAt: "v2-2",
+    updatedAt: "v2-2",
+  },
+};
+
+function childCommonColumns(stage: string, extra: Record<string, string>): Record<string, string> {
+  return {
+    userId: stage,
+    version: stage,
+    changeSeq: stage,
+    deletedAt: stage,
+    createdAt: stage,
+    updatedAt: stage,
+    ...extra,
+  };
+}
+
+/** 서버에 있지만 정의에 넣지 않는 컬럼 (레코드 → 컬럼 → 이유). */
+export const LEGACY_SERVER_COLUMNS: Partial<Record<RecordType, Record<string, string>>> = {
+  account: {
+    sellCostPercent: "계산에 쓰지 않는 옛 매도 제비용률 — v2-5 에서 컬럼 제거 (사용자 결정)",
+  },
+  portfolio: {
+    accountIds: "연결의 원본은 account.portfolioId — v2-5 에서 제거 (설계 §2.4)",
+    description: "클라이언트에 없는 옛 컬럼 — v2-5 에서 제거",
+  },
+  rebalancing: { tasks: "rebalancingTask 레코드로 옮긴다 — v2-5 에서 제거 (설계 §2.4)" },
+  settings: {
+    storageMode: "저장 모드는 동기화 밖 계정 상태 (사용자 결정)",
+    storageModeChosenAt: "저장 모드는 동기화 밖 계정 상태 (사용자 결정)",
+  },
+};
+
+/**
+ * 기기 SQLite (`lib/native/device-db`). v2-4a 에서 레코드 JSON 테이블 하나(`records`)로 바뀌기 전까지
+ * 지금 표와 대조한다. 기기에는 동기화 열이 없다.
+ */
+export const DEVICE_COMMON_COLUMNS = ["id", "createdAt", "updatedAt"] as const;
+
+export const PLANNED_DEVICE_TABLES: Partial<Record<RecordType, string>> = {
+  rebalancingTask: "v2-4a: 기기는 records JSON 테이블로 바뀐다",
+};
+
+/** 기기 표의 옛 컬럼은 서버와 같다. */
+export const LEGACY_DEVICE_COLUMNS = LEGACY_SERVER_COLUMNS;
+
+/**
+ * 지금 클라이언트·서버 검증에 없는 필드 (레코드 → 필드 → 단계). 클라이언트 타입·동기화 설정·
+ * 서버 검증 대조에서 뺀다.
+ */
+export const PLANNED_CLIENT_FIELDS: Partial<Record<RecordType, Record<string, string>>> = {
+  account: { portfolioId: "v2-4b: 지금은 portfolio.accountIds 가 원본" },
+  rebalancingTask: { allocationId: "v2-4b: 지금은 task.id" },
+};
