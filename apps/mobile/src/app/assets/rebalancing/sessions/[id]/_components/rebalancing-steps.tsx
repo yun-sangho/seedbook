@@ -250,9 +250,9 @@ function stepCopy(
       const shortfall = action?.kind === "buy" ? action.shortfall : 0;
       return {
         quantity,
-        verb: sell ? "파세요" : "사세요",
-        note:
-          shortfall > 0 ? `돈이 ${wonLabel(shortfall)} 모자라요 · 살 수 있는 만큼만 사세요` : null,
+        // 명령·권유로 읽히지 않게 계획 항목처럼 적는다 ("111주 팔기").
+        verb: sell ? "팔기" : "사기",
+        note: shortfall > 0 ? `쓸 수 있는 돈보다 ${wonLabel(shortfall)} 많아요` : null,
         critical: shortfall > 0,
       };
     }

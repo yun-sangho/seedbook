@@ -279,12 +279,12 @@ export function TradeEntryForm({
                 ) : task.quantity === null ? null : differs ? (
                   // 권장 수량은 시작할 때 계산한 계획이라, 다르게 사고팔면 그 차이는 다른 매매에 반영되지 않는다.
                   <span className="text-fg-warning">
-                    추천 {formatWithCommas(task.quantity)}주와 달라요 · 쓸 수 있는 돈이 남거나
+                    계산 {formatWithCommas(task.quantity)}주와 달라요 · 쓸 수 있는 돈이 남거나
                     모자랄 수 있어요
                   </span>
                 ) : embedded ? null : (
                   // 단계 화면은 위에 추천 수량을 크게 보여 준다.
-                  `추천 ${formatWithCommas(task.quantity)}주`
+                  `계산 ${formatWithCommas(task.quantity)}주`
                 )
               }
             />
@@ -570,7 +570,7 @@ function fillHint(remaining: number, quantity: number | null): string {
   return `${base} 중 일부 · 나머지 ${formatWithCommas(remaining - quantity)}주는 주문한 채로 남아요`;
 }
 
-/** "매수 · 권장 40주 · 11,800원 기준" / 주문했으면 "매수 주문 중 · …", 체결했으면 "매수 체결 · …". */
+/** "사기 · 계산 40주 · 11,800원 기준" / 주문했으면 "매수 주문 중 · …", 체결했으면 "매수 체결 · …". */
 function headline(task: RebalancingTask): string {
   const suffix = isPartiallyFilled(task)
     ? " 일부 거래됨"
@@ -578,7 +578,7 @@ function headline(task: RebalancingTask): string {
   const action = `${task.action === "매도" ? "팔기" : "사기"}${suffix}`;
   if (task.quantity === null) return action;
   const basis = task.price !== null ? ` · ${formatWithCommas(task.price)}원 기준` : "";
-  return `${action} · 추천 ${formatWithCommas(task.quantity)}주${basis}`;
+  return `${action} · 계산 ${formatWithCommas(task.quantity)}주${basis}`;
 }
 
 /** 가격 칸 아래: "호가 5원 · 시작 시점 기준가 11,800원". 호가 단위를 모르면 그 부분은 뺀다. */

@@ -220,7 +220,7 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
             {/* 팔 것과 살 것이 다 있을 때만 순서를 안내한다. */}
             {bothSteps && (
               <p className="t3-regular text-fg-neutral-subtle px-x4 pt-x1">
-                판 돈으로 사니까 팔기부터 하면 좋아요.
+                판 금액은 쓸 수 있는 돈에 더해져요.
               </p>
             )}
 
@@ -646,7 +646,7 @@ function TaskDetail({ task }: { task: RebalancingTask }) {
     <span className="tabular-nums">
       {total !== null && <>총 {formatWithCommas(total)}원</>}
       {total !== null && differs && " · "}
-      {differs && <>추천 {formatWithCommas(task.quantity ?? 0)}주</>}
+      {differs && <>계산 {formatWithCommas(task.quantity ?? 0)}주</>}
     </span>
   );
 }

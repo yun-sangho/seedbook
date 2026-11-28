@@ -219,7 +219,7 @@ export function AccountRebalancingMobile({
 
           {!pricesKnown ? (
             <p className="t4-regular text-fg-neutral-subtle px-x4 py-x6 text-center">
-              종목 시세를 모두 알아야 권장 매매를 계산할 수 있어요.
+              종목 시세를 모두 알아야 계산할 수 있어요.
             </p>
           ) : isEmpty ? (
             <p className="t4-regular text-fg-neutral-subtle px-x4 py-x6 text-center">
@@ -229,7 +229,7 @@ export function AccountRebalancingMobile({
           ) : (
             <section className="py-x4">
               <div className="flex items-center gap-x2 px-x4 pb-x3">
-                <h2 className="t5-bold">권장 매매</h2>
+                <h2 className="t5-bold">계산 결과</h2>
               </div>
               <SummaryGrid
                 className="pt-0"
@@ -378,6 +378,9 @@ function StartRebalancingSection({
           <AlertDialogHeader>
             <AlertDialogTitle>리밸런싱을 시작할까요?</AlertDialogTitle>
             <AlertDialogDescription>
+              {/* 투자 권유가 아니라 사용자가 정한 목표 비중의 계산 결과라는 것을 시작할 때 한 번 알린다. */}
+              내가 정한 목표 비중으로 계산한 결과예요. 매매는 직접 판단해 주세요.
+              <br />
               수수료와 세금 때문에 실제 거래 가능 금액과 차이가 있을 수 있어요.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -535,7 +538,7 @@ function DriftRows({
             : `이격 기준을 넘은 종목 ${breached.length}개`}
         </h2>
         <p className="t4-regular text-fg-neutral-subtle">
-          목표 비중에서 {rule.driftThresholdPercent}% 넘게 벗어나면 리밸런싱할 때예요.
+          목표 비중에서 {rule.driftThresholdPercent}% 넘게 벗어난 종목이에요.
         </p>
       </div>
       {breached.length > 0 && <List>{breached.map(renderRow)}</List>}
@@ -629,7 +632,7 @@ function TradeRows({
             <div className="flex flex-col items-end gap-x1">
               {/* 진행 중 화면과 같은 표기·모양 */}
               <Badge tone={task.action === "매수" ? "positive" : "critical"} variant="outline">
-                {task.action} 권장
+                {task.action === "매수" ? "사기" : "팔기"}
               </Badge>
               <span className="t3-medium tabular-nums">
                 {formatWithCommas(values.byTaskId.get(task.id) ?? task.amount)}원
