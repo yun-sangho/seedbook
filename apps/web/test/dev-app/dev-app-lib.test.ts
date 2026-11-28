@@ -1,7 +1,17 @@
+import { createPublicKey } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
+  assertAppPublicKey,
+  signBundle,
+  verifyBundleSignature,
+} from "../../../../scripts/app-bundle-lib.mjs";
+import {
+  createLocalOtaKeys,
   devAppApiBaseUrl,
+  devAppOtaEnv,
   findSimulator,
+  localOtaPaths,
+  localPublishIds,
   parseWebPort,
   pickIosDevice,
   pickLanAddress,
@@ -178,5 +188,71 @@ describe("pickSimulatorTarget", () => {
 
   it("throws when no iOS runtime is installed", () => {
     expect(() => pickSimulatorTarget({ runtimes: [] })).toThrow(/런타임/);
+  });
+});
+
+describe("localOtaPaths", () => {
+  it("keeps the local OTA keys in ~/.seedbook/ota-dev, outside the repo", () => {
+    expect(localOtaPaths({}, "/Users/me/")).toEqual({
+      dir: "/Users/me/.seedbook/ota-dev",
+      signingKey: "/Users/me/.seedbook/ota-dev/signing.pem",
+      publicKey: "/Users/me/.seedbook/ota-dev/public.pem",
+      adminToken: "/Users/me/.seedbook/ota-dev/admin-token",
+    });
+  });
+
+  it("uses SEEDBOOK_OTA_DEV_DIR when given", () => {
+    expect(localOtaPaths({ SEEDBOOK_OTA_DEV_DIR: " /tmp/ota " }, "/Users/me").publicKey).toBe(
+      "/tmp/ota/public.pem"
+    );
+  });
+});
+
+describe("createLocalOtaKeys", () => {
+  const keys = createLocalOtaKeys();
+
+  it("makes a public key the app plugin can verify with (2048-bit RSA PEM)", () => {
+    expect(() => assertAppPublicKey(keys.publicKey)).not.toThrow();
+  });
+
+  it("makes a signing key that pairs with that public key", () => {
+    const zip = Buffer.from("bundle");
+    const { signature } = signBundle(zip, keys.signingKey);
+    expect(verifyBundleSignature(zip, signature, keys.publicKey)).toBe(true);
+  });
+
+  it("makes an admin token long enough for the dev server to enable the admin API", () => {
+    expect(keys.adminToken).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("makes a different key pair each time", () => {
+    expect(createLocalOtaKeys().publicKey).not.toBe(keys.publicKey);
+  });
+});
+
+describe("devAppOtaEnv", () => {
+  it("builds the Dev app on the beta channel with the given public key", () => {
+    const pem = createPublicKey(createLocalOtaKeys().signingKey).export({
+      type: "spki",
+      format: "pem",
+    }) as string;
+    expect(devAppOtaEnv(`${pem}\n`)).toEqual({
+      SEEDBOOK_OTA_CHANNEL: "beta",
+      SEEDBOOK_OTA_PUBLIC_KEY: pem.trim(),
+    });
+  });
+});
+
+describe("localPublishIds", () => {
+  const sha = "0123456789abcdef0123456789abcdef01234567";
+
+  it("uses the commit sha as the build and the time in seconds as the run number", () => {
+    expect(localPublishIds(sha, 1_764_300_000_999)).toEqual({ build: sha, run: "1764300000" });
+  });
+
+  it("gives a later publish of the same commit a larger run number", () => {
+    const first = Number(localPublishIds(sha, 1_764_300_000_000).run);
+    const second = Number(localPublishIds(sha, 1_764_300_001_000).run);
+    expect(second).toBeGreaterThan(first);
   });
 });

@@ -70,7 +70,7 @@ pnpm --filter @seedbook/mobile dev:android-device   # adb 로 연결된 Android 
 
 루트 `scripts/dev-app.mjs` 가 슬롯 web 포트(`pnpm wt:info`)와 주소(시뮬레이터는 맥과 네트워크를 같이 써서 `localhost`,
 기기는 맥 LAN IP(en0))를 정해 dev 서버가 응답하는지 보고, `vite build --mode development` (`SEEDBOOK_API_BASE_URL` = 그 주소,
-"개발용 빠른 로그인" 이 보인다) → `cap sync` (`SEEDBOOK_DEV_APP=1`) → fastlane lane 을 돌린다.
+"개발용 빠른 로그인" 이 보인다) → `cap sync` (`SEEDBOOK_DEV_APP=1`, OTA `beta` 채널 + 로컬 공개 키) → fastlane lane 을 돌린다.
 
 - 시뮬레이터 (`ios dev_sim`): 이름 `seedbook-<워크트리 폴더>` 하나를 세션이 쓴다 — 없으면 가장 새 런타임의 iPhone Pro 로
   만들고 켠 뒤 `-configuration Dev` 로 빌드해 `simctl install/launch` 한다. 다른 세션의 시뮬레이터는 건드리지 않는다.
@@ -104,6 +104,39 @@ dev 서버의 Vite 는 CORS 를 Next 에 맡긴다 (`vite.config.ts` `server.cor
   있다 — 카카오 계정(ID/비밀번호) 로그인으로 확인한다.
 - **Apple**: 로컬 `.env.local` 에 `APPLE_*` 네 값. 개발 서버는 Dev 번들 ID 토큰도 받는다 (`apps/web/lib/apple-auth.ts`).
   App ID 는 처음 빌드 때 Xcode 자동 서명이 만든다 (Sign in with Apple entitlement 포함).
+
+### Seedbook Dev 의 OTA (로컬 beta 채널)
+
+Dev 앱은 OTA 기본 채널이 `beta` 이고, 번들을 **이 체크아웃의 dev 서버**(`/api/app-bundle`, 슬롯 DB)에서 받는다. 그래서
+운영 키가 아니라 **로컬 키 짝**으로 서명·확인한다:
+
+| 키                                     | 어디에                                 | 누가 쓰나                                                         |
+| -------------------------------------- | -------------------------------------- | ----------------------------------------------------------------- |
+| 로컬 서명 개인 키 `signing.pem`        | `~/.seedbook/ota-dev/` (레포 밖, 0600) | `dev:ota-publish` 가 번들을 서명                                  |
+| 로컬 공개 키 `public.pem`              | 같은 폴더                              | Dev 앱 빌드에 들어간다 (`SEEDBOOK_OTA_PUBLIC_KEY`)                |
+| 로컬 운영자 토큰 `admin-token`         | 같은 폴더 (0600)                       | `pnpm dev` 가 Next 에 `APP_BUNDLE_ADMIN_TOKEN` 으로 넣는다        |
+| 운영 서명 키 / `APP_BUNDLE_PUBLIC_KEY` | 비밀번호 관리자·GitHub Secret/Variable | 운영 워크플로(`app-bundle.yml`)·출시 앱만. **로컬에 두지 않는다** |
+
+- 키 폴더는 `dev:ios-sim`·`dev:ios-device`·`dev:android-device`·`dev:ota-publish` 가 처음 돌 때 만들고, 모든 체크아웃이
+  같이 쓴다 (`SEEDBOOK_OTA_DEV_DIR` 로 바꿀 수 있다). 지우면 다시 만들고, 그 전에 깐 Dev 앱은 새 키의 번들을 받지 못하니
+  다시 깐다.
+- `pnpm dev` (`scripts/worktree.mjs env web`) 는 토큰 파일이 있으면 dev 서버의 운영자 API 를 켠다. 키 폴더를 만들기 전에
+  띄운 dev 서버는 `pnpm wt:stop` → `pnpm dev` 로 다시 띄운다.
+- 운영 번들(운영 키 서명)은 Dev 앱이, 로컬 번들(로컬 키 서명)은 출시 앱이 받지 못한다 — 서버가 다르고 키도 다르다.
+
+로컬에 번들을 올려 Dev 앱이 받는지 보기:
+
+```bash
+pnpm dev                                            # 토큰이 들어간 dev 서버
+pnpm --filter @seedbook/mobile dev:ios-sim          # Dev 앱 (beta 채널 + 로컬 공개 키)
+# 화면을 고친 뒤
+pnpm --filter @seedbook/mobile dev:ota-publish      # vite 개발 빌드 → 로컬 키로 서명 → dev 서버 beta 에 올린다
+```
+
+Dev 앱을 백그라운드로 보냈다가 다시 열면 번들을 받고, **다음 실행 때** 새 번들로 뜬다 (설정 > 정보의 "버전" 줄에 번들 id).
+번들은 앱 주소를 빌드에 담으므로 기본은 시뮬레이터용 `localhost` 다 — 아이폰·Android 기기에 보낼 번들은
+`SEEDBOOK_DEV_HOST=<맥 LAN IP> pnpm --filter @seedbook/mobile dev:ota-publish`. 올린 번들 목록·승격·내리기는
+`APP_BUNDLE_ADMIN_TOKEN="$(cat ~/.seedbook/ota-dev/admin-token)" node scripts/app-bundle.mjs list --server http://localhost:<web 포트>`.
 
 화면만 빨리 고칠 때는 아래 live-reload 도 쓸 수 있다.
 
@@ -303,9 +336,8 @@ openssl rand -hex 32 | gh secret set APP_BUNDLE_ADMIN_TOKEN   # 운영자 API �
 
 `APP_BUNDLE_ADMIN_TOKEN` 은 다음 웹 배포(`deploy-web.yml`) 때 서버에 들어간다. 그 전에는 운영자 API 가 404 다.
 
-**로컬 확인**: 공개 키를 넣어 빌드(`SEEDBOOK_OTA_PUBLIC_KEY="<PEM>" SEEDBOOK_OTA_CHANNEL=beta pnpm sync:ios`)하고,
-dev 서버를 `APP_BUNDLE_ADMIN_TOKEN` 과 함께 띄운 뒤 `node scripts/app-bundle.mjs publish --server http://localhost:<web 포트>
---build <sha> --run <n>` (env 에 `APP_BUNDLE_SIGNING_KEY`·`APP_BUNDLE_PUBLIC_KEY`·`APP_BUNDLE_ADMIN_TOKEN`) 로 올린다.
+**로컬 확인**: Seedbook Dev 와 로컬 키 짝으로 한다 — 위 "Seedbook Dev 의 OTA (로컬 beta 채널)". 운영 서명 키를 로컬에
+꺼내 쓰지 않는다.
 
 ## 스토어 제출 체크리스트
 
