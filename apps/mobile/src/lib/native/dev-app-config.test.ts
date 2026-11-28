@@ -27,7 +27,8 @@ function appTargetConfigurations(pbxproj: string): Map<string, string> {
     /buildSettings = \{([\s\S]*?)\n\t\t\t\};\n\t\t\tname = (\w+);/g
   )) {
     const [, settings, name] = match;
-    if (settings && name && settings.includes("PRODUCT_BUNDLE_IDENTIFIER")) configs.set(name, settings);
+    if (settings && name && settings.includes("PRODUCT_BUNDLE_IDENTIFIER"))
+      configs.set(name, settings);
   }
   return configs;
 }
