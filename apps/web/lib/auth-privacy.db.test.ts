@@ -15,6 +15,7 @@ import {
 } from "./auth-privacy";
 import { NATIVE_APP_ORIGINS } from "./cors";
 import { createKakaoIdTokenVerifier, KAKAO_ISSUER } from "./kakao-id-token";
+import { nativeAppAuthToken } from "./native-auth-token";
 
 const { db, close } = openTestDb();
 const BASE_URL = "http://localhost:3001";
@@ -58,7 +59,7 @@ const auth = betterAuth({
       verifyIdToken: async () => true,
     }),
   },
-  plugins: [bearer()],
+  plugins: [bearer(), nativeAppAuthToken()],
   trustedOrigins: [...NATIVE_APP_ORIGINS],
 });
 
@@ -126,6 +127,11 @@ async function signInWithKakao(kakaoId: number): Promise<string> {
 
 /** 카카오로 로그인한 세션 쿠키. */
 async function kakaoSessionCookie(kakaoId: number): Promise<string> {
+  return cookiesFrom(await kakaoCallbackResponse(kakaoId));
+}
+
+/** 웹 카카오 로그인 왕복의 콜백 응답 (세션 쿠키를 거는 리다이렉트). */
+async function kakaoCallbackResponse(kakaoId: number): Promise<Response> {
   createdEmails.push(`kakao-${kakaoId}@users.seedbook.invalid`);
   stubKakaoServers(kakaoId);
 
@@ -146,7 +152,7 @@ async function kakaoSessionCookie(kakaoId: number): Promise<string> {
     })
   );
   expect(callback.headers.get("location")).toBe("/m");
-  return cookiesFrom(callback);
+  return callback;
 }
 
 function unsignedJwt(payload: Record<string, unknown>): string {
@@ -658,11 +664,19 @@ describe("native app sign-in: kakao SDK id token + bearer session (better-auth +
   }
 
   /** 앱 번들이 보내는 모양: 앱 origin, 쿠키 없음. */
-  async function nativeKakaoSignIn(token: string, nonce = NONCE) {
+  async function nativeKakaoSignIn(
+    token: string,
+    nonce = NONCE,
+    origin: string | null = APP_ORIGIN
+  ) {
     return auth.handler(
       new Request(`${BASE_URL}/api/auth/sign-in/social`, {
         method: "POST",
-        headers: { "content-type": "application/json", origin: APP_ORIGIN, ...CLIENT_HEADERS },
+        headers: {
+          "content-type": "application/json",
+          ...(origin ? { origin } : {}),
+          ...CLIENT_HEADERS,
+        },
         body: JSON.stringify({ provider: "kakao", idToken: { token, nonce } }),
       })
     );
@@ -796,6 +810,99 @@ describe("native app sign-in: kakao SDK id token + bearer session (better-auth +
 
     expect(secondToken).not.toBe(firstToken);
     expect(await bearerUserId(secondToken)).not.toBe(await bearerUserId(firstToken));
+  });
+
+  it("hands the token to the Android app origin too", async () => {
+    const kakaoId = randomInt(1, 2 ** 40);
+    createdEmails.push(`kakao-${kakaoId}@users.seedbook.invalid`);
+
+    const response = await nativeKakaoSignIn(
+      await kakaoIdToken(kakaoId),
+      NONCE,
+      "https://localhost"
+    );
+
+    expect(response.headers.get("set-auth-token")).toBeTruthy();
+  });
+
+  it("does not hand the session token to the web kakao login (callback redirect)", async () => {
+    const callback = await kakaoCallbackResponse(randomInt(1, 2 ** 40));
+
+    expect(callback.headers.get("set-auth-token")).toBeNull();
+    expect(callback.headers.get("access-control-expose-headers") ?? "").not.toContain(
+      "set-auth-token"
+    );
+  });
+
+  it("does not hand the session token to a browser (same-origin) id token sign-in", async () => {
+    const kakaoId = randomInt(1, 2 ** 40);
+    createdEmails.push(`kakao-${kakaoId}@users.seedbook.invalid`);
+
+    const response = await nativeKakaoSignIn(await kakaoIdToken(kakaoId), NONCE, BASE_URL);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("set-auth-token")).toBeNull();
+    expect(response.headers.getSetCookie().join(";")).toContain("session_token=");
+  });
+
+  it("does not hand the session token to a request without an Origin", async () => {
+    const kakaoId = randomInt(1, 2 ** 40);
+    createdEmails.push(`kakao-${kakaoId}@users.seedbook.invalid`);
+
+    const response = await nativeKakaoSignIn(await kakaoIdToken(kakaoId), NONCE, null);
+
+    expect(response.headers.get("set-auth-token")).toBeNull();
+  });
+
+  it("does not hand the session token to a look-alike origin", async () => {
+    const kakaoId = randomInt(1, 2 ** 40);
+    createdEmails.push(`kakao-${kakaoId}@users.seedbook.invalid`);
+
+    const response = await nativeKakaoSignIn(
+      await kakaoIdToken(kakaoId),
+      NONCE,
+      "https://localhost.evil.example"
+    );
+
+    expect(response.headers.get("set-auth-token")).toBeNull();
+  });
+
+  it("hands the token to the app for an apple id token sign-in", async () => {
+    const sub = `001234.${randomUUID().replaceAll("-", "")}.0123`;
+    createdEmails.push(`apple-${sub}@users.seedbook.invalid`.toLowerCase());
+
+    const response = await auth.handler(
+      new Request(`${BASE_URL}/api/auth/sign-in/social`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: APP_ORIGIN },
+        body: JSON.stringify({
+          provider: "apple",
+          idToken: { token: unsignedJwt({ iss: "https://appleid.apple.com", sub }) },
+        }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("set-auth-token")).toBeTruthy();
+  });
+
+  it("does not hand the session token to the web apple id token sign-in", async () => {
+    const sub = `001234.${randomUUID().replaceAll("-", "")}.0123`;
+    createdEmails.push(`apple-${sub}@users.seedbook.invalid`.toLowerCase());
+
+    const response = await auth.handler(
+      new Request(`${BASE_URL}/api/auth/sign-in/social`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: BASE_URL },
+        body: JSON.stringify({
+          provider: "apple",
+          idToken: { token: unsignedJwt({ iss: "https://appleid.apple.com", sub }) },
+        }),
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("set-auth-token")).toBeNull();
   });
 
   it("keeps the web cookie session working next to bearer", async () => {

@@ -9,6 +9,7 @@ import {
 } from "@web/lib/auth-privacy";
 import { NATIVE_APP_ORIGINS } from "@web/lib/cors";
 import { createKakaoIdTokenVerifier, kakaoIdTokenAudiences } from "@web/lib/kakao-id-token";
+import { nativeAppAuthToken } from "@web/lib/native-auth-token";
 import { deviceCredentialPlugin } from "@web/server/device-credentials/device-credential-plugin";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -75,6 +76,8 @@ export const auth = betterAuth({
     // 네이티브 앱(앱 번들)은 쿠키 대신 `Authorization: Bearer <세션 토큰>` 으로 보낸다. 세션을 만드는
     // 응답(로그인·생체 인증 로그인)에 `set-auth-token` 헤더로 토큰을 준다. 브라우저는 지금처럼 쿠키.
     bearer(),
+    // 그 토큰은 앱 origin 요청의 응답에만 남긴다 — 브라우저 JS 는 세션 토큰을 읽지 못한다. bearer() 다음.
+    nativeAppAuthToken(),
   ],
   trustedOrigins: [
     // 앱 번들의 origin (iOS `capacitor://localhost`, Android `https://localhost`). CORS 는 `proxy.ts`.
