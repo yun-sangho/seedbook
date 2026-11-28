@@ -90,9 +90,9 @@ export function LoginScreen() {
           Seedbook
         </h1>
         <p className="t5-regular text-fg-neutral-muted break-keep">
-          내가 정한 목표를 내 기준대로
+          목표를 세우고 달성하며
           <br />
-          이뤄 갈수록 식물이 자라요
+          자산을 키워봐요
         </p>
       </div>
 
