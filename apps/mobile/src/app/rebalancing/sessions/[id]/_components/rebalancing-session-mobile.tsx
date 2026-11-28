@@ -6,7 +6,7 @@ import {
   type SortOptionList,
   SortSheet,
   sortOptionLabel,
-} from "@mobile/app/assets/investments/_components/investment-sheets";
+} from "@mobile/app/accounts/_components/investment-sheets";
 import { BottomAction } from "@mobile/components/mobile/bottom-action";
 import { ConfirmDialog } from "@mobile/components/mobile/confirm-dialog";
 import { HeaderAction } from "@mobile/components/mobile/header-action";

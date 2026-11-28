@@ -9,7 +9,7 @@ import {
   type SortOptionList,
   SortSheet,
   sortOptionLabel,
-} from "@mobile/app/assets/investments/_components/investment-sheets";
+} from "@mobile/app/accounts/_components/investment-sheets";
 import type { InvestmentItem } from "@mobile/features/investments/types/types";
 import type { StockPricePoint } from "@mobile/features/investments/utils/use-stock-prices";
 import type { PortfolioItem } from "@mobile/features/portfolio/types/types";

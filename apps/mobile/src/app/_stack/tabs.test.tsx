@@ -16,26 +16,26 @@ function FakeTab({ name }: { name: string }) {
   }, [name]);
   return <input aria-label={name} />;
 }
-vi.mock("../assets/_components/home-mobile", () => ({ HomeMobile: () => <FakeTab name="home" /> }));
-vi.mock("../assets/investments/_components/investment-mobile", () => ({
+vi.mock("../home/_components/home-mobile", () => ({ HomeMobile: () => <FakeTab name="home" /> }));
+vi.mock("../accounts/_components/investment-mobile", () => ({
   InvestmentMobile: () => <FakeTab name="investments" />,
 }));
-vi.mock("../assets/rebalancing/_components/rebalancing-home-mobile", () => ({
+vi.mock("../rebalancing/_components/rebalancing-home-mobile", () => ({
   RebalancingHomeMobile: () => <FakeTab name="rebalancing" />,
 }));
-vi.mock("../assets/portfolio/_components/portfolio-list-mobile", () => ({
+vi.mock("../portfolios/_components/portfolio-list-mobile", () => ({
   PortfolioListMobile: () => <FakeTab name="portfolio" />,
 }));
-vi.mock("../assets/settings/_components/settings-menu-mobile", () => ({
+vi.mock("../settings/_components/settings-menu-mobile", () => ({
   SettingsMenuMobile: () => <p>설정 화면</p>,
 }));
-vi.mock("../assets/settings/_components/storage-mode-mobile", () => ({
+vi.mock("../settings/_components/storage-mode-mobile", () => ({
   StorageModeMobile: () => <p>저장 위치 화면</p>,
 }));
-vi.mock("../assets/settings/_components/data-backup-mobile", () => ({
+vi.mock("../settings/_components/data-backup-mobile", () => ({
   DataBackupMobile: () => <p>백업 화면</p>,
 }));
-vi.mock("../assets/settings/_components/delete-account-mobile", () => ({
+vi.mock("../settings/_components/delete-account-mobile", () => ({
   DeleteAccountMobile: () => <p>탈퇴 화면</p>,
 }));
 vi.mock("@mobile/components/legal-document-view", () => ({
@@ -45,7 +45,7 @@ vi.mock("@mobile/components/legal-document-view", () => ({
     </p>
   ),
 }));
-vi.mock("../assets/investments/[id]/_components/account-detail-mobile", () => ({
+vi.mock("../accounts/[id]/_components/account-detail-mobile", () => ({
   AccountDetailMobile: ({ id }: { id: string }) => <p>계좌 {id}</p>,
 }));
 vi.mock("@mobile/components/mobile/profile-menu", () => ({
