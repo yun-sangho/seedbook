@@ -1,0 +1,53 @@
+name: Deploy stock-crawler
+
+# stock-crawler 이미지가 쓰는 경로가 바뀐 main push 에만 돈다. 다른 변경(문서·web 전용 등)은
+# run 이 생기지 않으니, 대기 중인 crawler 배포를 취소하지 않는다. crawler 배포끼리는 대기 중인
+# run 이 다음 push 로 취소되지만, 다음 run 이 최신 코드로 crawler 전체를 빌드하므로 빠지는
+# 변경이 없다. 수동 실행(workflow_dispatch) 은 고른 ref 로 crawler 를 재배포한다 (롤백).
+#
+# paths 는 scripts/check-deploy-lib.mjs 의 DEPLOY_WORKFLOWS 와 같아야 한다 (테스트가 확인).
+#   - DB 마이그레이션·backfill 은 프로덕션에서 crawler 가 돌리므로 crawler 만
+#   - 공통: DB 클라이언트·스키마, 의존성 설치에 영향을 주는 루트 파일, compose, 배포 워크플로
+#   - packages/database 의 seed-data · seed/capture/reset 스크립트는 dev 전용이라 넣지 않는다
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/stock-crawler/**
+      - packages/database/migrations/**
+      - packages/database/scripts/migrate.ts
+      - packages/database/scripts/backfill-*.ts
+      - packages/database/src/**
+      - packages/database/package.json
+      - packages/database/tsconfig.json
+      - packages/typescript-config/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .npmrc
+      - .dockerignore
+      - docker-compose.yml
+      - .github/workflows/deploy-crawler.yml
+      - .github/workflows/deploy-service.yml
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-stock-crawler
+  cancel-in-progress: false
+
+jobs:
+  # 깨끗한 checkout 에서 포맷 · lint · 타입 · 테스트 · 빌드 확인 (ci.yml). 통과해야 배포한다.
+  checks:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  deploy:
+    needs: checks
+    uses: ./.github/workflows/deploy-service.yml
+    with:
+      service: stock-crawler
+    secrets: inherit
+    permissions:
+      contents: read
+      packages: write

@@ -1,13 +1,14 @@
-name: Build & Deploy
+name: Deploy service
 
+# 서비스 하나의 이미지를 빌드·push 하고 서버에서 그 서비스만 새 태그로 바꾼다.
+# deploy-web.yml · deploy-crawler.yml 이 CI 통과 뒤 부른다 (workflow_call).
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:
-
-concurrency:
-  group: deploy-prod
-  cancel-in-progress: false
+  workflow_call:
+    inputs:
+      service:
+        description: "서비스 이름 = 이미지 이름 = apps/<service>/Dockerfile (web | stock-crawler)"
+        required: true
+        type: string
 
 env:
   REGISTRY: ghcr.io
@@ -18,56 +19,13 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
-  # 바뀐 경로를 보고 어떤 이미지를 빌드할지 정한다 (scripts/deploy-plan.mjs). push 는 마지막으로
-  # 성공한 배포 run 의 커밋과 비교한다 — 대기 중인 run 이 다음 push 로 취소돼도 그 변경을 이번
-  # run 이 함께 배포한다. 기준 커밋이 없거나 조회에 실패하거나 히스토리에 없으면 전체 배포.
-  # 수동 실행(workflow_dispatch) 은 롤백·재배포 용도라 항상 둘 다 빌드한다.
-  changes:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      actions: read
-    outputs:
-      services: ${{ steps.plan.outputs.services }}
-      deploy: ${{ steps.plan.outputs.deploy }}
-    steps:
-      # 기준 커밋..지금 커밋 diff 를 위해 전체 히스토리를 받는다.
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-
-      - id: plan
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node scripts/deploy-plan.mjs
-
-  # 깨끗한 checkout 에서 포맷 · lint · 타입 · 테스트 · 빌드 확인 (ci.yml). 통과해야 이미지를
-  # 빌드하고 배포한다. 빌드할 이미지가 없으면 (문서·compose 만 바뀐 경우) 건너뛴다.
-  checks:
-    needs: changes
-    if: needs.changes.outputs.services != '[]'
-    uses: ./.github/workflows/ci.yml
-    permissions:
-      contents: read
-
   build:
-    needs: [changes, checks]
-    if: needs.changes.outputs.services != '[]'
     # 서버가 ARM64 (OCI Ampere). public repo 는 ubuntu-*-arm runner 를 무료로
     # 쓸 수 있어 native arm64 빌드로 진행 — QEMU emulation 단계 불필요.
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
       packages: write
-    strategy:
-      fail-fast: true
-      matrix:
-        # 서비스 이름 = 이미지 이름 = apps/<name>/Dockerfile
-        name: ${{ fromJSON(needs.changes.outputs.services) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -82,7 +40,7 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.IMAGE_BASE }}/${{ matrix.name }}
+          images: ${{ env.IMAGE_BASE }}/${{ inputs.service }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=,format=long
@@ -90,24 +48,24 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          file: apps/${{ matrix.name }}/Dockerfile
+          file: apps/${{ inputs.service }}/Dockerfile
           target: production
           platforms: linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.name }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+          cache-from: type=gha,scope=${{ inputs.service }}
+          cache-to: type=gha,mode=max,scope=${{ inputs.service }}
 
   deploy:
-    needs: [changes, build]
-    # build 가 건너뛰어져도 (compose 만 바뀐 경우) 배포는 해야 하므로 기본 조건
-    # (success()) 대신 "앞 단계 실패·취소 없음" 으로 판단한다.
-    if: ${{ !cancelled() && !failure() && needs.changes.outputs.deploy == 'true' }}
+    needs: build
     # build 와 동일한 arm runner. SSH 액션들만 돌리는 단계라 arch 의존성은
     # 없지만 일관성 + 큐 분리 회피 차원에서 같이 맞춘다.
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 10
+    # 다른 서비스 배포가 서버 잠금을 쥐고 있으면 기다린다 (아래 flock).
+    timeout-minutes: 20
+    permissions:
+      contents: read
     env:
       # deployer 홈 디렉토리 아래에 둔다 — sudo 없이 mkdir 가능. 서버에 SSH 만
       # 되면 별도 디렉토리 사전 준비 없이 바로 배포된다.
@@ -116,10 +74,17 @@ jobs:
     steps:
       # 서버에는 git/소스 트리가 없다. runner 가 docker-compose.yml 만 sparse
       # checkout 해서 scp 로 올린다. 코드는 GHCR 이미지 안에만 존재.
+      # web·crawler 배포가 동시에 돌 수 있으니 서비스별 자리(.compose/<service>/)에 올리고,
+      # 서버의 배포 잠금 안에서 docker-compose.yml 로 옮긴다.
       - uses: actions/checkout@v4
         with:
           sparse-checkout: docker-compose.yml
           sparse-checkout-cone-mode: false
+
+      - name: Stage compose file
+        env:
+          SERVICE: ${{ inputs.service }}
+        run: mkdir -p ".compose/$SERVICE" && cp docker-compose.yml ".compose/$SERVICE/"
 
       - name: Upload compose file
         uses: appleboy/scp-action@v0.1.7
@@ -128,7 +93,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ env.DEPLOY_PORT }}
-          source: docker-compose.yml
+          source: .compose/${{ inputs.service }}/docker-compose.yml
           target: ${{ env.DEPLOY_PATH }}
 
       - name: Pull & restart
@@ -139,9 +104,10 @@ jobs:
         # (logs/ps/exec) 도 env 검증 없이 그대로 동작한다. .env 는 매 배포마다
         # 덮어쓰므로 GitHub Secrets 가 여전히 단일 소스.
         env:
-          # 이번에 빌드한 서비스만 새 sha, 나머지는 빈 값 → 서버의 기존 태그 유지.
-          WEB_IMAGE_TAG: ${{ contains(needs.changes.outputs.services, '"web"') && github.sha || '' }}
-          CRAWLER_IMAGE_TAG: ${{ contains(needs.changes.outputs.services, '"stock-crawler"') && github.sha || '' }}
+          SERVICE: ${{ inputs.service }}
+          # 이 서비스만 새 sha, 다른 서비스는 빈 값 → 서버 .env 의 기존 태그 유지.
+          WEB_IMAGE_TAG: ${{ inputs.service == 'web' && github.sha || '' }}
+          CRAWLER_IMAGE_TAG: ${{ inputs.service == 'stock-crawler' && github.sha || '' }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
           BETTER_AUTH_URL: ${{ vars.BETTER_AUTH_URL }}
@@ -160,8 +126,8 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ env.DEPLOY_PORT }}
-          envs: WEB_IMAGE_TAG,CRAWLER_IMAGE_TAG,DATABASE_URL,BETTER_AUTH_SECRET,BETTER_AUTH_URL,KAKAO_CLIENT_ID,KAKAO_CLIENT_SECRET,APPLE_CLIENT_ID,APPLE_TEAM_ID,APPLE_KEY_ID,APPLE_PRIVATE_KEY_BASE64,APPLE_APP_BUNDLE_ID,WEB_PORT,CRON_MORNING,CRON_AFTERNOON
-          command_timeout: 8m
+          envs: SERVICE,WEB_IMAGE_TAG,CRAWLER_IMAGE_TAG,DATABASE_URL,BETTER_AUTH_SECRET,BETTER_AUTH_URL,KAKAO_CLIENT_ID,KAKAO_CLIENT_SECRET,APPLE_CLIENT_ID,APPLE_TEAM_ID,APPLE_KEY_ID,APPLE_PRIVATE_KEY_BASE64,APPLE_APP_BUNDLE_ID,WEB_PORT,CRON_MORNING,CRON_AFTERNOON
+          command_timeout: 18m
           script_stop: true
           # ${{ env.DEPLOY_PATH }} 가 ~ 로 시작할 수 있으므로 따옴표를 두르지
           # 않는다 (bash 의 ~ 확장은 unquoted context 에서만 동작).
@@ -169,6 +135,14 @@ jobs:
             set -euo pipefail
             mkdir -p ${{ env.DEPLOY_PATH }}
             cd ${{ env.DEPLOY_PATH }}
+
+            # web·crawler 배포가 동시에 돌 수 있다. .env 를 읽고 다시 쓰는 동안 다른 배포가
+            # 끼어들면 그쪽의 새 태그를 옛 값으로 덮으므로, 서버에서 한 번에 하나만 진행한다.
+            # flock 은 프로세스가 끝나면(SSH 끊김 포함) 잠금을 자동으로 푼다.
+            exec 9>.deploy.lock
+            flock -w 600 9
+
+            cp ".compose/$SERVICE/docker-compose.yml" docker-compose.yml
 
             # GitHub Secret 입력칸에 줄바꿈/공백이 끝에 따라가는 사고를 막기 위해
             # 각 값에서 trailing CR/LF 와 공백을 stripping 한다. shell env 자체를
@@ -178,7 +152,8 @@ jobs:
             strip() {
               printf '%s' "$1" | sed -e 's/[[:space:]]*$//' -e 's/^[[:space:]]*//'
             }
-            # 이번에 빌드하지 않은 서비스는 지난 배포의 .env 에 적힌 태그를 그대로 쓴다.
+            # 이번에 배포하지 않는 서비스는 지난 배포의 .env 에 적힌 태그를 그대로 쓴다.
+            # 잠금 안에서 읽으므로 동시에 돈 다른 서비스 배포의 새 태그도 지켜진다.
             # (IMAGE_TAG 는 서비스별 태그로 나뉘기 전의 공용 키 — 전환 후 첫 배포 때만 쓰인다.)
             prev() {
               if [ -f .env ]; then sed -n "s/^$1=//p" .env | tail -n 1; fi
@@ -191,7 +166,7 @@ jobs:
             CRAWLER_IMAGE_TAG=${CRAWLER_IMAGE_TAG:-$(prev CRAWLER_IMAGE_TAG)}
             CRAWLER_IMAGE_TAG=${CRAWLER_IMAGE_TAG:-$(prev IMAGE_TAG)}
             CRAWLER_IMAGE_TAG=${CRAWLER_IMAGE_TAG:-latest}
-            echo "web: $WEB_IMAGE_TAG / stock-crawler: $CRAWLER_IMAGE_TAG"
+            echo "deploy $SERVICE — web: $WEB_IMAGE_TAG / stock-crawler: $CRAWLER_IMAGE_TAG"
             DATABASE_URL=$(strip "$DATABASE_URL")
             BETTER_AUTH_SECRET=$(strip "$BETTER_AUTH_SECRET")
             BETTER_AUTH_URL=$(strip "$BETTER_AUTH_URL")
@@ -231,7 +206,9 @@ jobs:
               printf 'CRON_AFTERNOON=%s\n' "$CRON_AFTERNOON"
             } > .env
 
-            docker compose pull
+            # 이 서비스 이미지만 받는다. up -d 는 전체를 맞추지만 태그·설정이 그대로인
+            # 다른 서비스는 재시작되지 않는다 (compose 파일이 바뀌었으면 함께 반영된다).
+            docker compose pull "$SERVICE"
             docker compose up -d --remove-orphans
             docker compose ps
             docker image prune -f
