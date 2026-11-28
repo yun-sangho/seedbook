@@ -41,6 +41,36 @@ function body(root: THREE.Group): THREE.Object3D {
   return group;
 }
 
+/** 반지름이 `radius` 인 구 (꽃잎 0.075, 열매 0.085). */
+function spheres(root: THREE.Object3D, radius: number): THREE.Mesh[] {
+  return meshes(root).filter(
+    (mesh) =>
+      mesh.geometry instanceof THREE.SphereGeometry && mesh.geometry.parameters.radius === radius
+  );
+}
+
+function hiddenCount(root: THREE.Object3D): number {
+  let count = 0;
+  root.traverse((node) => {
+    if (!node.visible) count++;
+  });
+  return count;
+}
+
+/** 보이는 잎줄기(정점 색) 의 빨강 평균 — 초록이 누렇게·금빛으로 바뀌면 커진다. */
+function meanVertexRed(root: THREE.Object3D): number {
+  let sum = 0;
+  let count = 0;
+  root.traverseVisible((node) => {
+    if (!(node instanceof THREE.Mesh)) return;
+    const color = node.geometry.getAttribute("color");
+    if (!color) return;
+    for (let i = 0; i < color.count; i++) sum += color.getX(i);
+    count += color.count;
+  });
+  return sum / count;
+}
+
 function bounds(root: THREE.Object3D) {
   root.updateMatrixWorld(true);
   return new THREE.Box3().setFromObject(root);
@@ -91,42 +121,65 @@ describe("buildPlant (fern)", () => {
     expect(meshes(fern({ stage: "bloom" }).root).length).toBeLessThan(tree);
   });
 
-  it("hangs dew drops on the fronds at the full stage", () => {
-    // 이슬은 잎줄기 지오메트리에 합쳐져 있다 (정점 색 = 이슬 색).
-    const dew = new THREE.Color("#E4F6FF");
-    const dewVertices = (stage: PlantStage) =>
-      meshes(fern({ stage }).root).reduce((sum, mesh) => {
-        const color = mesh.geometry.getAttribute("color");
-        if (!color) return sum;
-        let count = 0;
-        for (let i = 0; i < color.count; i++) {
-          if (Math.abs(color.getX(i) - dew.r) + Math.abs(color.getZ(i) - dew.b) < 1e-4) count++;
-        }
-        return sum + count;
-      }, 0);
-    expect(dewVertices("tree")).toBe(0);
-    expect(dewVertices("bloom")).toBeGreaterThan(0);
+  it("blooms with the tree's flowers at the full stage", () => {
+    const flowers = (stage: PlantStage) => spheres(fern({ stage }).root, 0.075).length;
+    expect(flowers("tree")).toBe(0);
+    expect(flowers("bloom")).toBeGreaterThan(0);
   });
 
-  it("twinkles sparkles around the full fern", () => {
-    const built = fern({ stage: "bloom" });
-    const sparkles: THREE.Sprite[] = [];
-    built.root.traverse((node) => {
-      if (node instanceof THREE.Sprite && !node.userData[REBALANCE_BADGE_KEY]) sparkles.push(node);
-    });
-    expect(sparkles.length).toBeGreaterThan(0);
-    const sizes = [0, 0.4, 0.8, 1.2, 1.6].map((time) => {
-      built.update(time, PX);
-      return sparkles.map((s) => s.scale.x).join(",");
-    });
-    expect(new Set(sizes).size).toBeGreaterThan(1);
+  it("bears fruit only when the fruit goal is reached", () => {
+    expect(spheres(fern({ stage: "bloom", ripe: false }).root, 0.085)).toHaveLength(0);
+    expect(spheres(fern({ stage: "bloom", ripe: true }).root, 0.085).length).toBeGreaterThan(0);
+    expect(spheres(fern({ stage: "tree", ripe: true }).root, 0.085)).toHaveLength(0);
   });
 
-  it("droops its fronds lower without shrinking the stage", () => {
-    const fresh = bounds(fern({ stage: "tree", droop: 0 }).root);
-    const drooped = bounds(fern({ stage: "tree", droop: 1 }).root);
-    expect(drooped.max.y).toBeLessThan(fresh.max.y);
-    expect(drooped.max.x - drooped.min.x).toBeGreaterThan((fresh.max.x - fresh.min.x) * 0.8);
+  it("keeps fruit within the reach of its fronds", () => {
+    const built = fern({ stage: "bloom", ripe: true });
+    const box = bounds(built.root);
+    for (const fruit of spheres(built.root, 0.085)) {
+      const at = fruit.getWorldPosition(new THREE.Vector3());
+      expect(box.containsPoint(at)).toBe(true);
+      expect(at.y).toBeGreaterThan(0);
+    }
+  });
+
+  it("hangs its fronds lower as it wilts without shrinking the stage", () => {
+    const fresh = bounds(fern({ stage: "tree", wilt: 0 }).root);
+    const wilted = bounds(fern({ stage: "tree", wilt: 0.7 }).root);
+    expect(wilted.max.y).toBeLessThan(fresh.max.y);
+    expect(wilted.max.x - wilted.min.x).toBeGreaterThan((fresh.max.x - fresh.min.x) * 0.8);
+  });
+
+  it("yellows its fronds as it wilts", () => {
+    expect(meanVertexRed(fern({ stage: "tree", wilt: 0.35 }).root)).toBeGreaterThan(
+      meanVertexRed(fern({ stage: "tree", wilt: 0 }).root)
+    );
+  });
+
+  it("sheds about 30% of the fronds only from the last wilt step", () => {
+    // 고사리 단계 잎줄기 11개 → 3개
+    expect(hiddenCount(fern({ stage: "tree", wilt: 0.7 }).root)).toBe(0);
+    expect(hiddenCount(fern({ stage: "tree", wilt: 1 }).root)).toBe(3);
+  });
+
+  it("keeps its colors in the wind", () => {
+    expect(meanVertexRed(fern({ stage: "tree", wind: 0.5 }).root)).toBe(
+      meanVertexRed(fern({ stage: "tree" }).root)
+    );
+  });
+
+  it("sways wider in the wind, like the tree", () => {
+    const range = (built: ReturnType<typeof fern>) => {
+      const samples: number[] = [];
+      for (let t = 0; t < 4; t += 0.02) {
+        built.update(t, PX);
+        samples.push(body(built.root).rotation.z);
+      }
+      return Math.max(...samples) - Math.min(...samples);
+    };
+    expect(range(fern({ stage: "tree", wind: 0.5 }))).toBeGreaterThan(
+      range(fern({ stage: "tree" })) * 2
+    );
   });
 
   it("tilts and shows the badge when rebalancing is needed, like the tree", () => {

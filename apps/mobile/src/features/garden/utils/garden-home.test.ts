@@ -17,8 +17,10 @@ import {
   gardenRows,
   grownSince,
   kindForPortfolio,
-  plantDroop,
+  plantWilt,
+  plantWind,
   potForPortfolio,
+  WIND_MAX,
 } from "./garden-home";
 
 function holding(ticker: string, quantity: number): StockHolding {
@@ -118,28 +120,60 @@ describe("kindForPortfolio", () => {
   });
 });
 
-describe("plantDroop", () => {
+describe("plantWind", () => {
   it("is 0 without a reached goal", () => {
-    expect(plantDroop(10, null, true)).toBe(0);
+    expect(plantWind(10, null, true)).toBe(0);
   });
 
   it("is 0 when the value is at or above the last reached goal", () => {
-    expect(plantDroop(1000, 1000, true)).toBe(0);
+    expect(plantWind(1000, 1000, true)).toBe(0);
+    expect(plantWind(1200, 1000, true)).toBe(0);
   });
 
-  it("scales the drop so that 20% below the last goal is full droop", () => {
-    expect(plantDroop(950, 1000, true)).toBeCloseTo(0.25);
-    expect(plantDroop(800, 1000, true)).toBe(1);
-    expect(plantDroop(100, 1000, true)).toBe(1);
+  it("ignores a drop of 5% or less", () => {
+    expect(plantWind(960, 1000, true)).toBe(0);
+    expect(plantWind(950, 1000, true)).toBe(0);
   });
 
-  it("does not droop before every price has arrived", () => {
-    expect(plantDroop(500, 1000, false)).toBe(0);
+  it("grows from 5% to 20% below the last goal, up to half of the old full droop", () => {
+    expect(plantWind(875, 1000, true)).toBeCloseTo(0.25);
+    expect(plantWind(800, 1000, true)).toBe(WIND_MAX);
+    expect(plantWind(100, 1000, true)).toBe(WIND_MAX);
+    expect(WIND_MAX).toBe(0.5);
+  });
+
+  it("is 0 before every price has arrived", () => {
+    expect(plantWind(500, 1000, false)).toBe(0);
+  });
+});
+
+describe("plantWilt", () => {
+  it("is 0 when the weights are on target", () => {
+    expect(plantWilt(null)).toBe(0);
+  });
+
+  it("does not wilt in the first week of drift (the plant only tilts)", () => {
+    expect(plantWilt(0)).toBe(0);
+    expect(plantWilt(6)).toBe(0);
+  });
+
+  it("wilts in steps at 7, 14 and 28 days of drift", () => {
+    expect(plantWilt(7)).toBe(0.35);
+    expect(plantWilt(13)).toBe(0.35);
+    expect(plantWilt(14)).toBe(0.7);
+    expect(plantWilt(27)).toBe(0.7);
+    expect(plantWilt(28)).toBe(1);
+    expect(plantWilt(400)).toBe(1);
+  });
+
+  it("treats a part day as the day it is in", () => {
+    expect(plantWilt(6.9)).toBe(0);
+    expect(plantWilt(13.5)).toBe(0.35);
   });
 });
 
 describe("gardenPlantOptions", () => {
-  it("maps stage, droop, rebalancing and a stable pot", () => {
+  it("maps stage, wind, rebalancing and a stable pot", () => {
     const p = portfolio({
       accountIds: ["skewed"],
       growthStage: 2,
@@ -153,7 +187,11 @@ describe("gardenPlantOptions", () => {
 
     expect(gardenPlantOptions(plant, p)).toEqual({
       stage: "sapling",
-      droop: (110_000 - 100_000) / 110_000 / 0.2,
+      // 마지막 목표보다 9.1% 아래 → (0.091 − 0.05) / 0.15 × 0.5
+      wind: expect.closeTo((10_000 / 110_000 - 0.05) / 0.15 / 2, 6),
+      // 이탈 기간·열매 목표는 아직 데이터가 없다 (규칙·레코드 태스크가 넣는다).
+      wilt: 0,
+      ripe: false,
       needsRebalance: true,
       pot: potForPortfolio("p"),
       seed: expect.any(Number),
