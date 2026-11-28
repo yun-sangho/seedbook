@@ -149,13 +149,74 @@ sqlite3 app.db "select id, accountName, portfolioId from investment_account;"
 - 서비스 워커: iOS WKWebView 에서는 App-Bound Domains 없이는 등록되지 않는다. 온라인 전용 앱이라
   기능에는 영향이 없다.
 
+## 릴리스 (TestFlight · Play)
+
+`.github/workflows/mobile-release.yml` 이 fastlane(`fastlane/Fastfile`, `Gemfile`)으로 빌드·서명·업로드한다. main push 때는
+돌지 않는다 (앱 화면 빌드·테스트는 `ci.yml`). macOS 러너는 비싸서 아래 두 경우에만 돈다.
+
+- **수동**: Actions → Mobile release → Run workflow (`platform`: ios / android / both, `upload` 를 끄면 iOS 는 서명 없이
+  빌드만). `gh workflow run mobile-release.yml -f platform=ios`
+- **태그**: `apps/mobile/package.json` 의 `version` 을 올려 머지한 뒤 그 커밋에 `mobile-v<version>` 태그를 push 한다
+  (`git tag mobile-v1.0.0 && git push origin mobile-v1.0.0`). 태그와 버전이 다르면 실패한다. 태그는 iOS·Android 둘 다.
+
+순서: `ci.yml` 전체 통과 → `vite build`(번들에 커밋 sha, `SEEDBOOK_APP_BUILD`) → `cap sync <플랫폼>` → fastlane.
+
+**버전**: marketing version = `package.json` `version` 하나. 빌드 번호 = 워크플로 run number (iOS `CFBundleVersion`,
+Android `versionCode`). 프로젝트 파일의 `1.0`/`1` 은 로컬 개발용 기본값이라 고치지 않는다. 워크플로 파일 이름을 바꾸면
+run number 가 1 부터 다시 시작하니 바꾸지 않는다.
+
+**iOS 서명** — match 를 쓰지 않는다 (인증서용 git 레포·스토리지가 없다):
+
+- 배포 인증서: Apple Distribution 인증서 하나를 `.p12` 로 Secret 에 둔다. 매 실행 같은 인증서를 임시 키체인에 넣어
+  인증서가 늘지 않는다. 만료(1년)되면 새로 만들어 Secret 만 바꾼다.
+- 프로필: App Store Connect API 키로 매 실행 받는다 (`get_provisioning_profile`, 유효한 것이 있으면 재사용, 레포에 두지 않음).
+- 쓰지 않은 방식: 자동 서명 archive 는 새 러너마다 Apple Development 인증서를 새로 만들어 한도에 걸린다. ad-hoc archive +
+  클라우드 관리 인증서 export 는 Xcode 27 SDK 가 SPM 타깃의 ad-hoc 서명을 거부하고, 서명 없는 archive 는 entitlements
+  (Sign in with Apple)가 빠진다.
+
+| 이름                                                                                  | 종류            | 용도                                                                         |
+| ------------------------------------------------------------------------------------- | --------------- | ---------------------------------------------------------------------------- |
+| `APP_STORE_CONNECT_API_KEY_BASE64` · `_KEY_ID` · `_ISSUER_ID`                         | Secret          | 프로필 발급, TestFlight 업로드. 키 역할은 App Manager 이상 (프로필을 만든다) |
+| `IOS_DIST_CERT_P12_BASE64` · `IOS_DIST_CERT_PASSWORD`                                 | Secret          | Apple Distribution 인증서 (`.p12` base64, 내보낼 때 정한 암호)               |
+| `APPLE_TEAM_ID`, `KAKAO_NATIVE_APP_KEY`                                               | Variable        | 팀, 카카오 SDK 로그인 (없으면 웹 OAuth 빌드)                                 |
+| `ANDROID_UPLOAD_KEYSTORE_BASE64` · `_STORE_PASSWORD` · `_KEY_ALIAS` · `_KEY_PASSWORD` | Secret          | Android 업로드 키. 없으면 서명하지 않은 `.aab`                               |
+| `PLAY_SERVICE_ACCOUNT_JSON` + Variable `ANDROID_PLAY_UPLOAD=true`                     | Secret·Variable | Play 내부 테스트 업로드 (Play 계정이 생기면)                                 |
+
+배포 인증서 만들기 (한 번, 맥에서): Xcode → Settings → Accounts → 팀 → Manage Certificates → `+` → Apple Distribution.
+키체인 접근 → 내 인증서 → "Apple Distribution: …" (개인 키 포함) 을 `.p12` 로 내보내고(암호 지정) 등록한다.
+
+```bash
+base64 -i dist.p12 | gh secret set IOS_DIST_CERT_P12_BASE64
+gh secret set IOS_DIST_CERT_PASSWORD      # 프롬프트에 암호 입력
+rm dist.p12
+```
+
+App Store Connect 에는 앱(`ing.boogie.seedbook`)이 만들어져 있어야 하고, 내부 테스트 그룹은 "자동 배포" 를 켜 둔다 (워크플로는
+빌드 처리를 기다리지 않는다). 암호화는 HTTPS 만 써서 `ITSAppUsesNonExemptEncryption = NO` (Info.plist) 로 수출 규정 질문을
+건너뛴다.
+
+**Android 업로드 키** 만들기 (한 번, 잃어버리면 Play 에 재설정 요청이 필요하니 비밀번호 관리자에 같이 보관):
+
+```bash
+keytool -genkeypair -v -keystore upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000
+base64 -i upload.jks | gh secret set ANDROID_UPLOAD_KEYSTORE_BASE64
+gh secret set ANDROID_UPLOAD_STORE_PASSWORD; gh secret set ANDROID_UPLOAD_KEY_ALIAS; gh secret set ANDROID_UPLOAD_KEY_PASSWORD
+```
+
+카카오 SDK 로그인을 쓰려면 업로드 키(와 Play App Signing 키)의 키 해시를 카카오 개발자 콘솔에 등록한다
+(`keytool -exportcert -alias upload -keystore upload.jks | openssl sha1 -binary | openssl base64`).
+
+**로컬에서** (Ruby 3.4+, `brew install ruby`): `apps/mobile` 에서 `bundle install` 뒤 `pnpm build && pnpm sync:ios` →
+`bundle exec fastlane ios build` (서명 없이 Release archive, Apple 계정 불필요). Android 는 `pnpm sync:android` →
+`JAVA_HOME=<JDK 21> ANDROID_HOME=~/Library/Android/sdk bundle exec fastlane android build`. 결과는 `build/` (gitignore).
+
 ## 스토어 제출 체크리스트
 
 |           | App Store                                                                    | Google Play                                                                       |
 | --------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | 계정      | Apple Developer Program (연 $99). 사업자(부기클럽) 명의면 D-U-N-S 번호 필요  | Play Console ($25). 신규 개인 계정은 테스터 12명 × 14일 비공개 테스트 후 프로덕션 |
 | 앱 ID     | `ing.boogie.seedbook` (App ID 에 Sign in with Apple 체크)                    | 같은 applicationId                                                                |
-| 서명      | Xcode 자동 서명 (Team 선택)                                                  | 업로드 키 생성 → Play App Signing                                                 |
+| 서명      | 위 "릴리스" — 배포 인증서 Secret + API 키 프로필                             | 업로드 키 생성 → Play App Signing                                                 |
 | 개인정보  | App Privacy 라벨, 개인정보처리방침 URL `https://seedbook.boogie.ing/privacy` | 데이터 보안 양식, 같은 URL, 계정 삭제 URL/설명                                    |
 | 심사 메모 | 송금·거래 기능 없는 자산 기록 도구, 테스트 계정, 앱 전용 기능(4.2) 설명      | 금융 기능 신고서: 해당 없음(기록 도구)                                            |
 | 계정 삭제 | 앱 안 프로필 버튼 → 설정 → 탈퇴하기                                          | 동일 + 웹 URL                                                                     |

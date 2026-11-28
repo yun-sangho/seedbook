@@ -1,0 +1,185 @@
+# 네이티브 앱 빌드·서명·업로드. CI 는 .github/workflows/mobile-release.yml 이 부르고, 로컬은 apps/mobile 에서
+# `bundle exec fastlane <platform> <lane>` 로 돈다. 웹 번들(vite build)과 `cap sync` 는 부르기 전에 끝나 있어야 한다.
+#
+# 버전: marketing version = apps/mobile/package.json `version` 하나. 빌드 번호 = SEEDBOOK_BUILD_NUMBER
+# (CI: 워크플로 run number, 로컬 기본 1). iOS 는 MARKETING_VERSION·CURRENT_PROJECT_VERSION, Android 는
+# versionName·versionCode 로 넣는다 — 프로젝트 파일의 값은 로컬 개발용 기본값이다.
+#
+# iOS 서명 (match 를 쓰지 않는다 — 인증서·프로필을 담는 별도 git 레포·스토리지가 없다):
+#   - 인증서: Apple Distribution 인증서 하나를 .p12 로 GitHub Secret 에 둔다 (IOS_DIST_CERT_*). 매 실행 같은
+#     인증서를 임시 키체인에 넣으므로 인증서가 늘지 않는다. 만료(1년)되면 새로 만들어 Secret 만 바꾼다.
+#   - 프로필: App Store Connect API 키로 매 실행 받는다 (get_provisioning_profile). 유효한 것이 있으면 그대로 쓴다.
+#   쓰지 않은 방식: 자동 서명 archive 는 새 러너마다 Apple Development 인증서를 새로 만들어 한도에 걸리고,
+#   ad-hoc archive + 클라우드 관리 인증서 export 는 Xcode 27 SDK 가 SPM 타깃의 ad-hoc 서명을 거부한다
+#   ("Ad Hoc code signing is not allowed with SDK 'iOS 27.2'"), 서명 없는 archive 는 entitlements(Sign in with
+#   Apple)가 빠진다.
+require "json"
+
+default_platform(:ios)
+
+APP_ID = "ing.boogie.seedbook"
+MOBILE_ROOT = File.expand_path("..", __dir__)
+OUTPUT_DIR = File.join(MOBILE_ROOT, "build")
+IOS_PROJECT = File.join(MOBILE_ROOT, "ios/App/App.xcodeproj")
+ANDROID_DIR = File.join(MOBILE_ROOT, "android")
+
+def app_version
+  JSON.parse(File.read(File.join(MOBILE_ROOT, "package.json"))).fetch("version")
+end
+
+def build_number
+  value = ENV.fetch("SEEDBOOK_BUILD_NUMBER", "1")
+  UI.user_error!("SEEDBOOK_BUILD_NUMBER 는 양의 정수여야 한다: #{value}") unless value.match?(/\A[1-9]\d*\z/)
+  value
+end
+
+# 없으면 웹 OAuth 로 로그인하는 빌드가 된다 (프로젝트 기본값 `unset`).
+def kakao_native_app_key
+  key = ENV["KAKAO_NATIVE_APP_KEY"].to_s.strip
+  key.empty? ? "unset" : key
+end
+
+def required_env(name)
+  value = ENV[name].to_s
+  UI.user_error!("환경변수 #{name} 가 없다") if value.empty?
+  value
+end
+
+platform :ios do
+  def ios_build_settings
+    [
+      "MARKETING_VERSION=#{app_version}",
+      "CURRENT_PROJECT_VERSION=#{build_number}",
+      "KAKAO_NATIVE_APP_KEY=#{kakao_native_app_key}",
+    ]
+  end
+
+  desc "서명 없이 Release 빌드 (컴파일 확인용, Apple 계정 불필요)"
+  lane :build do
+    build_app(
+      project: IOS_PROJECT,
+      scheme: "App",
+      configuration: "Release",
+      destination: "generic/platform=iOS",
+      output_directory: OUTPUT_DIR,
+      archive_path: File.join(OUTPUT_DIR, "Seedbook-unsigned.xcarchive"),
+      skip_codesigning: true,
+      skip_package_ipa: true,
+      xcargs: (ios_build_settings + ["CODE_SIGNING_ALLOWED=NO"]).join(" "),
+    )
+  end
+
+  desc "App Store 서명 .ipa 를 만들어 TestFlight 에 올린다 (내부 테스트)"
+  lane :beta do
+    team_id = required_env("APPLE_TEAM_ID")
+    api_key = app_store_connect_api_key(
+      key_id: required_env("ASC_KEY_ID"),
+      issuer_id: required_env("ASC_ISSUER_ID"),
+      key_filepath: required_env("ASC_KEY_PATH"),
+    )
+
+    # 배포 인증서: CI 는 Secret 의 .p12 를 임시 키체인에 넣는다. 로컬은 로그인 키체인에 이미 있는 것을 쓴다.
+    if is_ci
+      setup_ci
+      import_certificate(
+        certificate_path: required_env("IOS_DIST_CERT_PATH"),
+        certificate_password: required_env("IOS_DIST_CERT_PASSWORD"),
+        keychain_name: "fastlane_tmp_keychain",
+        keychain_password: "",
+      )
+    end
+
+    # App Store 프로필: 유효한 것이 있으면 받고, 없거나 만료됐으면 API 키로 새로 만든다 (레포에 두지 않는다).
+    get_provisioning_profile(api_key: api_key, app_identifier: APP_ID, team_id: team_id, output_path: OUTPUT_DIR)
+    profile_name = lane_context[SharedValues::SIGH_NAME]
+
+    # App 타깃만 수동 서명으로 바꾼다 (xcargs 로 넘기면 SPM 패키지 타깃까지 프로필을 요구해 실패한다).
+    # 프로젝트 파일은 빌드 뒤 되돌린다 — 레포의 설정은 로컬 개발용 자동 서명 그대로.
+    pbxproj = File.join(IOS_PROJECT, "project.pbxproj")
+    original = File.read(pbxproj)
+    begin
+      update_code_signing_settings(
+        path: IOS_PROJECT,
+        use_automatic_signing: false,
+        team_id: team_id,
+        targets: ["App"],
+        build_configurations: ["Release"],
+        code_sign_identity: "Apple Distribution",
+        profile_name: profile_name,
+      )
+      ipa = build_app(
+        project: IOS_PROJECT,
+        scheme: "App",
+        configuration: "Release",
+        destination: "generic/platform=iOS",
+        output_directory: OUTPUT_DIR,
+        output_name: "Seedbook-#{app_version}-#{build_number}.ipa",
+        xcargs: ios_build_settings.join(" "),
+        export_method: "app-store",
+        export_options: {
+          signingStyle: "manual",
+          teamID: team_id,
+          provisioningProfiles: { APP_ID => profile_name },
+          manageAppVersionAndBuildNumber: false,
+        },
+      )
+    ensure
+      File.write(pbxproj, original)
+    end
+
+    upload_to_testflight(
+      api_key: api_key,
+      ipa: ipa,
+      # 처리 완료를 기다리지 않는다 (macOS 러너 시간). 내부 테스트 그룹은 처리가 끝나면 자동으로 받는다.
+      skip_waiting_for_build_processing: true,
+    )
+  end
+end
+
+platform :android do
+  def gradle_properties
+    properties = {
+      "SEEDBOOK_VERSION_NAME" => app_version,
+      "SEEDBOOK_VERSION_CODE" => build_number,
+      "KAKAO_NATIVE_APP_KEY" => kakao_native_app_key,
+    }
+    store_file = ENV["ANDROID_UPLOAD_STORE_FILE"].to_s
+    unless store_file.empty?
+      properties["SEEDBOOK_UPLOAD_STORE_FILE"] = store_file
+      properties["SEEDBOOK_UPLOAD_STORE_PASSWORD"] = required_env("ANDROID_UPLOAD_STORE_PASSWORD")
+      properties["SEEDBOOK_UPLOAD_KEY_ALIAS"] = required_env("ANDROID_UPLOAD_KEY_ALIAS")
+      properties["SEEDBOOK_UPLOAD_KEY_PASSWORD"] = required_env("ANDROID_UPLOAD_KEY_PASSWORD")
+    end
+    properties
+  end
+
+  desc "Release .aab 빌드. ANDROID_UPLOAD_STORE_FILE 이 있으면 업로드 키로 서명, 없으면 서명 없이"
+  lane :build do
+    UI.important("업로드 키가 없어 서명하지 않은 .aab 를 만든다 (Play 에 올릴 수 없다)") if ENV["ANDROID_UPLOAD_STORE_FILE"].to_s.empty?
+    gradle(project_dir: ANDROID_DIR, task: "bundle", build_type: "Release", properties: gradle_properties, print_command: false)
+    aab = lane_context[SharedValues::GRADLE_AAB_OUTPUT_PATH]
+    FileUtils.mkdir_p(OUTPUT_DIR)
+    target = File.join(OUTPUT_DIR, "Seedbook-#{app_version}-#{build_number}.aab")
+    FileUtils.cp(aab, target)
+    UI.success("AAB: #{target}")
+  end
+
+  # Google Play 계정이 생기면 쓴다 — 워크플로는 Variable ANDROID_PLAY_UPLOAD=true 일 때만 부른다.
+  desc "build 가 만든 서명된 .aab 를 Play 내부 테스트 트랙에 올린다 (build 를 먼저 돌린다)"
+  lane :beta do
+    if ENV["ANDROID_UPLOAD_STORE_FILE"].to_s.empty?
+      UI.user_error!("Play 에는 업로드 키로 서명한 .aab 만 올릴 수 있다 (ANDROID_UPLOAD_STORE_FILE)")
+    end
+    aab = File.join(OUTPUT_DIR, "Seedbook-#{app_version}-#{build_number}.aab")
+    UI.user_error!("#{aab} 가 없다 — android build 를 먼저 돌린다") unless File.exist?(aab)
+    upload_to_play_store(
+      package_name: APP_ID,
+      track: "internal",
+      aab: aab,
+      json_key_data: required_env("PLAY_SERVICE_ACCOUNT_JSON"),
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+  end
+end

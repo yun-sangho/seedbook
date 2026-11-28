@@ -1,0 +1,231 @@
+name: Mobile release
+
+# 네이티브 앱 빌드·서명·업로드. main push 때는 돌지 않는다 (앱 화면 빌드·테스트는 ci.yml). macOS 러너는 비싸서
+# 손으로 돌리거나 `mobile-v<version>` 태그를 push 할 때만 돈다. 방법·필요한 Secret 은 apps/mobile/README.md "릴리스".
+#   - iOS: fastlane `ios beta` → TestFlight (내부 테스트). upload=false 면 서명 없이 빌드만 (`ios build`).
+#   - Android: fastlane `android build` → 업로드 키로 서명한 .aab 를 run artifact 로. Play 업로드(`android beta`)는
+#     Variable ANDROID_PLAY_UPLOAD=true 일 때만 (Google Play 계정이 생기면).
+# 버전: apps/mobile/package.json `version` + 빌드 번호(이 워크플로의 run number) + 번들의 커밋 sha.
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 빌드할 플랫폼
+        type: choice
+        options: [ios, android, both]
+        default: ios
+      upload:
+        description: 스토어에 올린다 (끄면 iOS 는 서명 없이 빌드만)
+        type: boolean
+        default: true
+  push:
+    tags: ["mobile-v*"]
+
+concurrency:
+  group: mobile-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  # 앱 번들 빌드 값 (apps/mobile/vite.config.ts define). 번들 안의 커밋 sha 로 어느 빌드인지 찾는다.
+  SEEDBOOK_APP_BUILD: ${{ github.sha }}
+  SEEDBOOK_API_BASE_URL: ${{ vars.BETTER_AUTH_URL || 'https://seedbook.boogie.ing' }}
+  SEEDBOOK_BUILD_NUMBER: ${{ github.run_number }}
+  KAKAO_NATIVE_APP_KEY: ${{ vars.KAKAO_NATIVE_APP_KEY }}
+  FASTLANE_SKIP_UPDATE_CHECK: "1"
+  FASTLANE_HIDE_CHANGELOG: "1"
+
+jobs:
+  # 비싼 네이티브 빌드 전에 ubuntu 에서 포맷·lint·타입·테스트·빌드를 먼저 통과시킨다.
+  checks:
+    uses: ./.github/workflows/ci.yml
+
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      ios: ${{ steps.plan.outputs.ios }}
+      android: ${{ steps.plan.outputs.android }}
+      upload: ${{ steps.plan.outputs.upload }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: 버전·대상 정하기
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          PLATFORM: ${{ inputs.platform }}
+          UPLOAD: ${{ inputs.upload }}
+        run: |
+          version=$(node -p "require('./apps/mobile/package.json').version")
+          if [ "$EVENT" = push ]; then
+            # 태그는 package.json 버전과 같아야 한다 (mobile-v1.2.0 ↔ "version": "1.2.0").
+            if [ "$REF_NAME" != "mobile-v$version" ]; then
+              echo "::error::태그 $REF_NAME 가 apps/mobile/package.json version ($version) 과 다르다 — mobile-v$version 이어야 한다"
+              exit 1
+            fi
+            PLATFORM=both
+            UPLOAD=true
+          fi
+          ios=false; android=false
+          case "$PLATFORM" in
+            ios) ios=true ;;
+            android) android=true ;;
+            both) ios=true; android=true ;;
+          esac
+          {
+            echo "version=$version"
+            echo "ios=$ios"
+            echo "android=$android"
+            echo "upload=$UPLOAD"
+          } >> "$GITHUB_OUTPUT"
+          echo "앱 $version (빌드 $SEEDBOOK_BUILD_NUMBER, ${GITHUB_SHA:0:7}) — iOS: $ios, Android: $android, 업로드: $UPLOAD" >> "$GITHUB_STEP_SUMMARY"
+
+  ios:
+    needs: [checks, plan]
+    if: needs.plan.outputs.ios == 'true'
+    runs-on: macos-26
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: 앱 화면 빌드 (Vite)
+        run: pnpm build
+
+      - name: cap sync ios
+        run: pnpm sync:ios
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          working-directory: apps/mobile
+          bundler-cache: true
+
+      - name: 서명 없이 빌드
+        if: needs.plan.outputs.upload != 'true'
+        run: bundle exec fastlane ios build
+
+      - name: 서명 키 파일 준비
+        if: needs.plan.outputs.upload == 'true'
+        env:
+          ASC_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+          DIST_CERT_BASE64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+        run: |
+          if [ -z "$DIST_CERT_BASE64" ]; then
+            echo "::error::Secret IOS_DIST_CERT_P12_BASE64 가 없다 — apps/mobile/README.md \"릴리스\" 의 배포 인증서 만들기"
+            exit 1
+          fi
+          umask 077
+          echo "$ASC_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/asc-api-key.p8"
+          echo "$DIST_CERT_BASE64" | base64 --decode > "$RUNNER_TEMP/ios-distribution.p12"
+
+      - name: TestFlight 업로드
+        if: needs.plan.outputs.upload == 'true'
+        env:
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          ASC_KEY_PATH: ${{ runner.temp }}/asc-api-key.p8
+          IOS_DIST_CERT_PATH: ${{ runner.temp }}/ios-distribution.p12
+          IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+        run: bundle exec fastlane ios beta
+
+      - name: 키 파일 지우기
+        if: always()
+        run: rm -f "$RUNNER_TEMP/asc-api-key.p8" "$RUNNER_TEMP/ios-distribution.p12"
+
+  android:
+    needs: [checks, plan]
+    if: needs.plan.outputs.android == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # Capacitor 8 / Gradle 8.14 는 JDK 21 (25 에서는 돌지 않는다).
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: 앱 화면 빌드 (Vite)
+        run: pnpm build
+
+      - name: cap sync android
+        run: pnpm sync:android
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          working-directory: apps/mobile
+          bundler-cache: true
+
+      # 업로드 키가 아직 없으면 서명하지 않은 .aab 를 만든다 (Play 에는 못 올린다).
+      - name: 업로드 키 준비
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::warning::Secret ANDROID_UPLOAD_KEYSTORE_BASE64 가 없어 서명하지 않은 .aab 를 만든다"
+            exit 0
+          fi
+          umask 077
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+          echo "ANDROID_UPLOAD_STORE_FILE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+
+      - name: .aab 빌드
+        env:
+          ANDROID_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
+          ANDROID_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: bundle exec fastlane android build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seedbook-android-${{ needs.plan.outputs.version }}-${{ github.run_number }}
+          path: apps/mobile/build/*.aab
+          retention-days: 14
+          if-no-files-found: error
+
+      # Google Play 계정·서비스 계정이 생기면 Variable ANDROID_PLAY_UPLOAD=true 로 켠다.
+      - name: Play 내부 테스트 업로드
+        if: needs.plan.outputs.upload == 'true' && vars.ANDROID_PLAY_UPLOAD == 'true'
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: bundle exec fastlane android beta
+
+      - name: 키 파일 지우기
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks"
