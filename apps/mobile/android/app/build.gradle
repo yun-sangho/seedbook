@@ -9,7 +9,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // 릴리스는 fastlane 이 package.json version·빌드 번호를 넣는다 (apps/mobile/fastlane/Fastfile). 없으면 로컬 기본값.
         versionCode((project.findProperty('SEEDBOOK_VERSION_CODE') ?: '1').toString().toInteger())
-        versionName((project.findProperty('SEEDBOOK_VERSION_NAME') ?: '1.0').toString())
+        versionName((project.findProperty('SEEDBOOK_VERSION_NAME') ?: '1.0.0').toString())
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         // 카카오 네이티브 앱 키 — `-PKAKAO_NATIVE_APP_KEY=…` 또는 환경변수. 없으면 카카오 SDK 로그인을 끄고
         // 웹 OAuth 로 로그인한다 (SeedbookKakaoLoginPlugin). 키 해시는 카카오 개발자 콘솔에 등록한다.

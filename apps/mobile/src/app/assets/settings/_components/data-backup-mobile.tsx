@@ -16,7 +16,7 @@ import {
   prepareBackupImport,
 } from "@mobile/features/settings/utils/restore-backup";
 import { getActiveAccount } from "@mobile/lib/account-storage";
-import { flushDeviceStorage } from "@mobile/lib/device-storage";
+import { flushDeviceStorage, reloadApp } from "@mobile/lib/device-storage";
 import { fetchCloudItemIds } from "@mobile/lib/storage-migration";
 import { getRecordLayer } from "@mobile/lib/sync/record-sync";
 import { buildRecordBackup } from "@mobile/lib/sync/v2/backup";
@@ -129,7 +129,7 @@ export function DataBackupMobile() {
         showError("이 기기에 저장하지 못했어요. 저장 공간을 확인해 주세요.");
         return;
       }
-      window.location.reload();
+      await reloadApp();
       return;
     }
     setDataDialog({ kind: "closed" });

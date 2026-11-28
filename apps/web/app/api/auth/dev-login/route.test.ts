@@ -37,6 +37,19 @@ describe("POST /api/auth/dev-login", () => {
     );
   });
 
+  it("also hands the signed token to the native app as a bearer session token", async () => {
+    const { POST } = await loadRoute();
+
+    const res = await POST();
+
+    const cookie = res.headers.get("Set-Cookie") ?? "";
+    const cookieValue = decodeURIComponent(
+      cookie.split(";")[0]?.split("=").slice(1).join("=") ?? ""
+    );
+    expect(res.headers.get("set-auth-token")).toBe(cookieValue);
+    expect(cookieValue).toMatch(/^dev-session-token-v1\./);
+  });
+
   it("returns 500 without a cookie when the dev session cannot be ensured", async () => {
     ensureDevAuth.mockRejectedValue(new Error("connection refused"));
     const { POST } = await loadRoute();

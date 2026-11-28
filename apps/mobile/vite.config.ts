@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
@@ -5,6 +6,7 @@ import { buildAppContentSecurityPolicy } from "./src/lib/csp.ts";
 import { devProxyRoutes, isVitePath } from "./src/lib/dev-proxy.ts";
 import { decideMobileRoute } from "./src/lib/device.ts";
 import { iosStartupImages } from "./src/lib/ios-splash.ts";
+import { BUNDLED_APP_API_BASE_URL } from "./src/lib/native/bundled-app-api.ts";
 
 /**
  * 앱 화면 (Vite + React SPA). 화면은 `src/main.tsx` 에서 시작하고, API·인증·소개·약관은 웹 서버
@@ -21,6 +23,8 @@ import { iosStartupImages } from "./src/lib/ios-splash.ts";
 const ROOT = import.meta.dirname;
 const DOMAIN_SRC = resolve(ROOT, "../../packages/domain/src");
 const APP_DIR = "_app";
+/** 앱 버전 = 이 패키지의 `version` (iOS·Android marketing version 과 같다, `app-version.test.ts`). */
+const APP_VERSION: string = JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf8")).version;
 
 /**
  * 앱 경로를 운영과 같은 규칙(`decideMobileRoute`, 웹 서버 proxy 와 같은 함수)으로 가른다. 개발에서는
@@ -59,8 +63,9 @@ const CHARSET_META = '<meta charset="UTF-8" />';
 /**
  * index.html 에 iOS 스플래시와 (빌드에만) CSP meta 를 넣는다. CSP meta 는 뒤에 오는 요소에만 걸리므로
  * charset 바로 뒤, 스크립트보다 앞에 둔다. dev 는 Vite 가 인라인 스크립트를 넣어 CSP 를 걸지 않는다.
+ * 앱 번들은 API 서버가 다른 origin 이라 그 주소를 connect-src 에 더한다 (`lib/api-client.ts`).
  */
-function appHtml(): Plugin {
+function appHtml({ isDev, apiBaseUrl }: { isDev: boolean; apiBaseUrl: string }): Plugin {
   return {
     name: "seedbook:app-html",
     transformIndexHtml(html, context) {
@@ -71,7 +76,11 @@ function appHtml(): Plugin {
       }));
       if (context.server) return { html, tags };
       if (!html.includes(CHARSET_META)) throw new Error(`index.html 에 ${CHARSET_META} 가 없다`);
-      const policy = buildAppContentSecurityPolicy({ isDev: false, meta: true });
+      const policy = buildAppContentSecurityPolicy({
+        isDev,
+        meta: true,
+        apiOrigins: [new URL(apiBaseUrl).origin],
+      });
       const csp = `<meta http-equiv="Content-Security-Policy" content="${policy}" />`;
       return { html: html.replace(CHARSET_META, `${CHARSET_META}\n    ${csp}`), tags };
     },
@@ -81,8 +90,9 @@ function appHtml(): Plugin {
 export default defineConfig(({ mode }) => {
   const port = Number(process.env.PORT ?? 4001);
   const apiTarget = `http://localhost:${process.env.API_PORT ?? port + 1}`;
+  const apiBaseUrl = process.env.SEEDBOOK_API_BASE_URL || BUNDLED_APP_API_BASE_URL;
   return {
-    plugins: [react(), appRoutes(), appHtml()],
+    plugins: [react(), appRoutes(), appHtml({ isDev: mode !== "production", apiBaseUrl })],
     resolve: {
       alias: {
         "@mobile": resolve(ROOT, "src"),
@@ -102,6 +112,7 @@ export default defineConfig(({ mode }) => {
               process.env.SEEDBOOK_API_BASE_URL ?? ""
             ),
             "process.env.SEEDBOOK_APP_BUILD": JSON.stringify(process.env.SEEDBOOK_APP_BUILD ?? ""),
+            "process.env.SEEDBOOK_APP_VERSION": JSON.stringify(APP_VERSION),
           },
     server: {
       port,

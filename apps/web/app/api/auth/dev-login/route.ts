@@ -8,6 +8,9 @@ import { DEV_SESSION_COOKIE_NAME, DEV_SESSION_TOKEN, ensureDevAuth } from "@seed
  * DB 에 보장한 뒤 (로그아웃하면 세션 행이 지워지므로 매번 되살린다), Better Auth 가
  * 검증 가능한 포맷 (token.hmacBase64) 으로 서명한 쿠키를 내려준다.
  *
+ * 네이티브 앱(앱 번들, 다른 origin)은 쿠키를 쓰지 않으므로 better-auth `bearer()` 로그인처럼
+ * `set-auth-token` 헤더로도 같은 서명 토큰을 준다 (앱이 `Authorization: Bearer` 로 보낸다).
+ *
  * 프로덕션 빌드에선 404 만 내려준다.
  */
 
@@ -59,5 +62,6 @@ export async function POST(): Promise<Response> {
       `Max-Age=${maxAgeSeconds}`,
     ].join("; ")
   );
+  headers.set("set-auth-token", decodeURIComponent(cookieValue));
   return new Response(null, { status: 204, headers });
 }

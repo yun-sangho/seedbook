@@ -1,13 +1,19 @@
+import { isBundledApp } from "./native/bundled-app";
+import { BUNDLED_APP_API_BASE_URL } from "./native/bundled-app-api";
 import { nativeSessionToken, type SessionTokenStore } from "./native/session-token";
 
 /**
- * 클라이언트가 우리 API(`/api/*`)를 부르는 유일한 길. 지금은 같은 origin 이라 기본값이 빈 문자열이고,
- * 앱 번들이 따로 떨어진 API 서버를 부를 때 빌드 환경변수 `SEEDBOOK_API_BASE_URL` 만 바꾸면 된다
- * (vite.config.ts 가 빌드 때 값을 넣는다).
+ * 클라이언트가 우리 API(`/api/*`)를 부르는 유일한 길. API 서버 주소는
+ * - 빌드 값 `SEEDBOOK_API_BASE_URL` (vite.config.ts 가 빌드 때 넣는다) 이 있으면 그것,
+ * - 없으면 번들 앱(`lib/native/bundled-app.ts`)은 운영 서버, 그 밖(브라우저·옛 앱 셸·dev live-reload)은
+ *   같은 origin (빈 문자열).
+ * 같은 `dist/` 를 운영 웹과 앱 번들이 함께 쓰므로 번들 앱 여부는 실행 때 가른다.
  * 계정 데이터 요청은 이걸 감싼 `accountFetch` (`lib/account-storage.ts`) 로 보낸다.
  * 직접 `fetch("/api/...")` 하지 않는다 — `api-client-guard.test.ts` 가 막는다.
  */
-export const API_BASE_URL = (process.env.SEEDBOOK_API_BASE_URL ?? "").replace(/\/+$/, "");
+export const API_BASE_URL = (
+  process.env.SEEDBOOK_API_BASE_URL || (isBundledApp() ? BUNDLED_APP_API_BASE_URL : "")
+).replace(/\/+$/, "");
 
 /** `/api/...` 경로에 API 서버 주소를 붙인다. */
 export function apiUrl(path: string): string {
