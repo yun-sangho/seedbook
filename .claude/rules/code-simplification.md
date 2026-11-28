@@ -41,5 +41,5 @@ One change -> run tests -> commit. Never batch multiple simplifications into an 
 
 - Already-clean code
 - Code you haven't fully understood yet
-- Performance-critical sections (chart rendering, large array projections) where simpler version would be measurably slower
+- Performance-critical sections (large array projections, 3D garden rendering) where simpler version would be measurably slower
 - Code about to be rewritten entirely
