@@ -9,39 +9,10 @@ import type { RecordType } from "@seedbook/domain";
  */
 
 /** 아직 서버 테이블이 없는 레코드 → 만들 단계. */
-export const PLANNED_SERVER_TABLES: Partial<Record<RecordType, string>> = {
-  rebalancingTask: "v2-2: rebalancing.tasks jsonb 를 rebalancing_task 테이블로 펼친다",
-};
+export const PLANNED_SERVER_TABLES: Partial<Record<RecordType, string>> = {};
 
 /** 아직 서버에 없는 컬럼 (레코드 → 컬럼 → 단계). */
-export const PLANNED_SERVER_COLUMNS: Partial<Record<RecordType, Record<string, string>>> = {
-  account: { changeSeq: "v2-2", sortKey: "v2-2" },
-  holding: childCommonColumns("v2-2", { sortKey: "v2-2" }),
-  cash: childCommonColumns("v2-2", { sortKey: "v2-2" }),
-  accountRecord: childCommonColumns("v2-2", { id: "v2-2: uuidv5(accountId, date) backfill" }),
-  portfolio: { changeSeq: "v2-2", sortKey: "v2-2" },
-  allocation: childCommonColumns("v2-2", { sortKey: "v2-2" }),
-  rebalancing: { changeSeq: "v2-2", sortKey: "v2-2" },
-  settings: {
-    version: "v2-2",
-    changeSeq: "v2-2",
-    deletedAt: "v2-2",
-    createdAt: "v2-2",
-    updatedAt: "v2-2",
-  },
-};
-
-function childCommonColumns(stage: string, extra: Record<string, string>): Record<string, string> {
-  return {
-    userId: stage,
-    version: stage,
-    changeSeq: stage,
-    deletedAt: stage,
-    createdAt: stage,
-    updatedAt: stage,
-    ...extra,
-  };
-}
+export const PLANNED_SERVER_COLUMNS: Partial<Record<RecordType, Record<string, string>>> = {};
 
 /** 서버에 있지만 정의에 넣지 않는 컬럼 (레코드 → 컬럼 → 이유). */
 export const LEGACY_SERVER_COLUMNS: Partial<Record<RecordType, Record<string, string>>> = {

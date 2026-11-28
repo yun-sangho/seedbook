@@ -5,6 +5,7 @@ export * from "./parse-patch";
 export * from "./records";
 export * from "./samples";
 export * from "./snapshot";
+export * from "./sort-key";
 export * from "./uuid-v5";
 export * from "./validate-definitions";
 export * from "./version";
