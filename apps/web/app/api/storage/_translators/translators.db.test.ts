@@ -61,14 +61,22 @@ function portfolio(id: string, accountIds: string[], updatedAt = "2026-11-01T00:
 }
 
 describe("translator round-trip (Drizzle, real Postgres)", () => {
-  it("investment: reads a saved 'default' holdings sort, which was removed, as the default sort", async () => {
+  it("investment: leaves the holdings sort (an account preference) alone when switching storage", async () => {
     const userId = await createTestUser();
     const { schema } = await import("@seedbook/database");
-    await db.insert(schema.userPreference).values({ userId, holdingsSortOption: "default" });
+    await db.insert(schema.userPreference).values({ userId, holdingsSortOption: "nameAsc" });
 
+    await investmentTranslator.write(db, userId, {
+      state: { investments: [investmentAccount(randomUUID())] },
+      version: 4,
+    });
     const envelope = await investmentTranslator.read(db, userId);
 
-    expect(envelope?.state.holdingsSortOption).toBe("evalDesc");
+    expect(envelope?.state).not.toHaveProperty("holdingsSortOption");
+    const row = await db.query.userPreference.findFirst({
+      where: (t, { eq }) => eq(t.userId, userId),
+    });
+    expect(row?.holdingsSortOption).toBe("nameAsc");
   });
 
   it("investment: write then read returns the same accounts with nested rows", async () => {
@@ -76,12 +84,11 @@ describe("translator round-trip (Drizzle, real Postgres)", () => {
     const account = investmentAccount(randomUUID());
 
     await investmentTranslator.write(db, userId, {
-      state: { investments: [account], holdingsSortOption: "nameDesc" },
+      state: { investments: [account] },
       version: 4,
     });
     const envelope = await investmentTranslator.read(db, userId);
 
-    expect(envelope?.state.holdingsSortOption).toBe("nameDesc");
     expect(envelope?.state.investments).toEqual([
       expect.objectContaining({
         id: account.id,

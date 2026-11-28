@@ -617,6 +617,12 @@ export const userPreference = seedbook.table("user_preference", {
     .array()
     .notNull()
     .default(sql`ARRAY[]::text[]`),
+  // 계좌 목록 정렬 ("evalDesc" | "evalAsc").
+  accountSortOption: text("accountSortOption").notNull().default("evalDesc"),
+  // 포트폴리오 현황 "종목별" 정렬 ("driftDesc" | "evalDesc" | "evalAsc" | "nameAsc" | "nameDesc").
+  portfolioStockSortOption: text("portfolioStockSortOption").notNull().default("driftDesc"),
+  // 투자 추이 차트 기간 ("1month" | "3months" | "1year" | "5years" | "10years" | "all").
+  investmentTrendRange: text("investmentTrendRange").notNull().default("3months"),
   // 사용자가 선택한 저장소 모드 ("local" | "cloud"). 로그인 시 클라이언트가 이 값을
   // 받아 localStorage 와 동기화한다. 기본 "local" 이라 기존 행도 안전.
   storageMode: text("storageMode").notNull().default("local"),

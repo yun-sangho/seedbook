@@ -20,11 +20,12 @@ import { formatDriftPercent } from "@web/features/portfolio/utils/drift-percent"
 import type { LinkedPortfolioStatus } from "@web/features/portfolio/utils/linked-portfolio-status";
 import { portfolioStockRows } from "@web/features/portfolio/utils/portfolio-stock-rows";
 import {
-  DEFAULT_PORTFOLIO_STOCK_SORT_OPTION,
   type PortfolioStockSortOption,
   sortPortfolioStockRows,
   stockRowDrift,
 } from "@web/features/portfolio/utils/sort-portfolio-stock-rows";
+import { savePreferences } from "@web/lib/preferences";
+import { usePreferencesStore } from "@web/lib/preferences-store";
 import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import { Badge } from "@web/seed-design/ui/badge";
@@ -55,9 +56,10 @@ export function PortfolioOverviewTab({
   accountStatuses: Map<string, LinkedPortfolioStatus | null>;
 }) {
   const { push } = useFlow();
-  const [sortOption, setSortOption] = useState<PortfolioStockSortOption>(
-    DEFAULT_PORTFOLIO_STOCK_SORT_OPTION
-  );
+  // 정렬은 계정 설정 — 화면을 다시 열거나 다른 기기에서도 이어진다.
+  const sortOption = usePreferencesStore((s) => s.portfolioStockSortOption);
+  const setSortOption = (option: PortfolioStockSortOption) =>
+    void savePreferences({ portfolioStockSortOption: option });
   const [sortOpen, setSortOpen] = useState(false);
   const stockRows = useMemo(
     () =>

@@ -7,11 +7,6 @@ import { parseNumericString } from "@web/utils/number-format";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { ACCOUNT_COLORS, COLOR_FAMILIES } from "../types/constants";
-import {
-  DEFAULT_HOLDINGS_SORT_OPTION,
-  type HoldingsSortOption,
-  normalizeHoldingsSortOption,
-} from "../types/holdings-sort";
 import type { CashItem, InvestmentItem, InvestmentRecord, StockHolding } from "../types/types";
 import type { HoldingSeed } from "../utils/holding-seeds";
 
@@ -41,10 +36,6 @@ const getNextColor = (existingInvestments: InvestmentItem[]): string => {
 interface InvestmentState {
   // 데이터
   investments: InvestmentItem[];
-
-  // 보유 주식 정렬 옵션 — 모든 계좌에 동일하게 적용되는 전역 UI 설정. LocalStorage 에 저장.
-  holdingsSortOption: HoldingsSortOption;
-  setHoldingsSortOption: (option: HoldingsSortOption) => void;
 
   /** 새 계좌를 맨 앞에 추가하고 id 를 돌려준다. `holdings` 로 시작 종목을 넣을 수 있다. */
   addInvestmentWithType: (accountType: string, options?: { holdings?: HoldingSeed[] }) => string;
@@ -100,9 +91,6 @@ export const useInvestmentStore = create<InvestmentState>()(
   persist(
     (set, get) => ({
       investments: [],
-      holdingsSortOption: DEFAULT_HOLDINGS_SORT_OPTION,
-
-      setHoldingsSortOption: (option) => set({ holdingsSortOption: option }),
 
       addInvestmentWithType: (accountType, options) => {
         const { investments } = get();
@@ -446,20 +434,15 @@ export const useInvestmentStore = create<InvestmentState>()(
       },
 
       resetStore: () => {
-        set({
-          investments: [],
-          holdingsSortOption: DEFAULT_HOLDINGS_SORT_OPTION,
-        });
+        set({ investments: [] });
       },
     }),
     {
       name: "investment-storage", // 저장 backend key (local 모드면 localStorage, cloud 모드면 /api/storage)
       storage: createJSONStorage(() => createHybridStorage("investment-storage")),
       version: 6,
-      partialize: (state) => ({
-        investments: state.investments,
-        holdingsSortOption: state.holdingsSortOption,
-      }),
+      // 보유 종목 정렬 같은 화면 설정은 계정 설정(`lib/preferences-store.ts`)에 둔다.
+      partialize: (state) => ({ investments: state.investments }),
       // v0~v3 에서 v4 로의 정규화 마이그레이션은 `lib/local-id-upgrade.ts` 가
       // hybrid-storage 보다 먼저 실행되어 localStorage envelope 을 재작성한다.
       // 여기선 하이드레이션 실패를 막는 안전망만 둔다.
@@ -503,14 +486,13 @@ export const useInvestmentStore = create<InvestmentState>()(
         }
         return state;
       },
-      // 없앤 "기본 순서" 처럼 지금은 없는 정렬값이 저장돼 있으면 기본값으로 바꾼다.
+      // 예전 버전이 계좌와 함께 저장한 보유 종목 정렬은 버린다 (지금은 계정 설정).
       merge: (persisted, current) => {
-        const saved = (persisted ?? {}) as Partial<InvestmentState>;
-        return {
-          ...current,
-          ...saved,
-          holdingsSortOption: normalizeHoldingsSortOption(saved.holdingsSortOption),
+        const { holdingsSortOption: _, ...saved } = (persisted ??
+          {}) as Partial<InvestmentState> & {
+          holdingsSortOption?: unknown;
         };
+        return { ...current, ...saved };
       },
       onRehydrateStorage: () => (state) => {
         // color 누락 방어 — 이전 버전에서 추가되지 않은 투자 계좌가 있을 수 있음

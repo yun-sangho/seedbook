@@ -1,37 +1,19 @@
 import {
-  parseCollapsedSections,
-  type RebalancingTaskSection,
-} from "@web/features/rebalancing/utils/collapsed-sections";
-import {
-  isRebalancingTaskSort,
-  type RebalancingTaskSort,
-} from "@web/features/rebalancing/utils/sort-rebalancing-tasks";
+  type AccountPreferences,
+  parseAccountPreferences,
+} from "@web/features/settings/utils/account-preferences";
 import { accountFetch } from "@web/lib/account-storage";
-
-export interface AccountPreferences {
-  rebalancingTaskSort?: RebalancingTaskSort;
-  rebalancingCollapsedSections?: RebalancingTaskSection[];
-}
+import { usePreferencesStore } from "@web/lib/preferences-store";
 
 /**
- * 계정에 저장된 개인 설정을 서버에서 받아온다. 로그인하지 않았거나 실패하면 null —
+ * 계정에 저장된 화면 설정을 서버에서 받아온다. 로그인하지 않았거나 실패하면 null —
  * 이 기기에 남아 있는 값을 그대로 쓴다. 알아볼 수 없는 항목은 빼고 돌려준다.
  */
 export async function fetchPreferences(): Promise<AccountPreferences | null> {
   try {
     const res = await accountFetch("/api/me/preferences", { credentials: "include" });
     if (!res.ok) return null;
-    const body = (await res.json()) as {
-      rebalancingTaskSort?: unknown;
-      rebalancingCollapsedSections?: unknown;
-    };
-    const sections = parseCollapsedSections(body.rebalancingCollapsedSections);
-    return {
-      ...(isRebalancingTaskSort(body.rebalancingTaskSort)
-        ? { rebalancingTaskSort: body.rebalancingTaskSort }
-        : {}),
-      ...(sections ? { rebalancingCollapsedSections: sections } : {}),
-    };
+    return parseAccountPreferences(await res.json());
   } catch {
     return null;
   }
@@ -51,14 +33,8 @@ async function pushPreferences(changes: AccountPreferences): Promise<void> {
   }
 }
 
-/** 매매 정렬을 계정에 저장한다. */
-export function pushRebalancingTaskSort(sort: RebalancingTaskSort): Promise<void> {
-  return pushPreferences({ rebalancingTaskSort: sort });
-}
-
-/** 접어 둔 매매 섹션을 계정에 저장한다. */
-export function pushRebalancingCollapsedSections(
-  sections: RebalancingTaskSection[]
-): Promise<void> {
-  return pushPreferences({ rebalancingCollapsedSections: sections });
+/** 화면 설정을 바꾼다 — 이 기기(캐시)에 바로 반영하고 계정에 저장한다. */
+export function savePreferences(changes: AccountPreferences): Promise<void> {
+  usePreferencesStore.getState().applyPreferences({ ...changes });
+  return pushPreferences(changes);
 }

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@web/components/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@web/components/ui/chart";
 import type { InvestmentItem } from "@web/features/investments/types/types";
 import { prepareStackedAreaChartData } from "@web/features/investments/utils/investments-stacked-area-chart-utils";
+import { savePreferences } from "@web/lib/preferences";
+import { usePreferencesStore } from "@web/lib/preferences-store";
 import { TimeRange } from "@web/types/time.consts";
 import { numberToKorean } from "@web/utils/number-format";
 import { getTimeRangeLabel } from "@web/utils/time-range-utils";
@@ -15,7 +16,10 @@ interface InvestmentStackedAreaChartProps {
 }
 
 export function InvestmentStackedAreaChart({ investments }: InvestmentStackedAreaChartProps) {
-  const [selectedRange, setSelectedRange] = useState<TimeRange>(TimeRange.THREE_MONTHS);
+  // 기간은 계정 설정 — 다시 열어도 고른 기간으로 보여 준다.
+  const selectedRange = usePreferencesStore((s) => s.investmentTrendRange);
+  const setSelectedRange = (range: TimeRange) =>
+    void savePreferences({ investmentTrendRange: range });
 
   const { data, config } = prepareStackedAreaChartData(investments, selectedRange);
   const hasData = data.length > 0;

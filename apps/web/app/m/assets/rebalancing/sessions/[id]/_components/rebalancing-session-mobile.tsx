@@ -50,7 +50,7 @@ import {
   type RebalancingCashOutlook,
   rebalancingCashOutlook,
 } from "@web/features/rebalancing/utils/trade-cash-check";
-import { pushRebalancingCollapsedSections, pushRebalancingTaskSort } from "@web/lib/preferences";
+import { savePreferences } from "@web/lib/preferences";
 import { usePreferencesStore } from "@web/lib/preferences-store";
 import { cn } from "@web/lib/utils";
 import { ActionButton } from "@web/seed-design/ui/action-button";
@@ -82,18 +82,14 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
   const [sortOpen, setSortOpen] = useState(false);
   // 정렬은 개인 설정 — 계정에 저장되어 어느 기기에서든 이어진다.
   const sort = usePreferencesStore((s) => s.rebalancingTaskSort);
-  const setLocalSort = usePreferencesStore((s) => s.setRebalancingTaskSort);
-  const setSort = (next: RebalancingTaskSort) => {
-    setLocalSort(next);
-    void pushRebalancingTaskSort(next);
-  };
+  const setSort = (next: RebalancingTaskSort) =>
+    void savePreferences({ rebalancingTaskSort: next });
   // 섹션 접힘도 개인 설정 — 정렬처럼 계정에 저장한다.
   const collapsedSections = usePreferencesStore((s) => s.rebalancingCollapsedSections);
-  const setLocalCollapsed = usePreferencesStore((s) => s.setRebalancingCollapsedSections);
   const toggleSection = (section: RebalancingTaskSection) => {
-    const next = toggleCollapsedSection(collapsedSections, section);
-    setLocalCollapsed(next);
-    void pushRebalancingCollapsedSections(next);
+    void savePreferences({
+      rebalancingCollapsedSections: toggleCollapsedSection(collapsedSections, section),
+    });
   };
   const account = useInvestmentStore((s) =>
     s.investments.find((inv) => inv.id === session?.accountId)

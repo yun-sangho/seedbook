@@ -1,19 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { IconChevronDownSmallLine, IconPlusLine } from "@karrotmarket/react-monochrome-icon";
 import { Divider, Icon } from "@seed-design/react";
 import { HoldingsPriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
 import {
   type AccountSortOption,
-  DEFAULT_ACCOUNT_SORT_OPTION,
-  normalizeAccountSortOption,
   sortAccounts,
 } from "@web/features/investments/utils/sort-accounts";
 import { useLiveAccounts } from "@web/features/investments/utils/use-live-accounts";
 import { useLinkedPortfolioStatus } from "@web/features/portfolio/utils/use-linked-portfolio-status";
-import { getDeviceStorage } from "@web/lib/device-storage";
+import { savePreferences } from "@web/lib/preferences";
+import { usePreferencesStore } from "@web/lib/preferences-store";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
   ChipTabsContent,
@@ -29,30 +28,6 @@ import { HoldingsSummaryList, InvestmentTrend, MonthlySummaryList } from "./inve
 
 type Tab = "accounts" | "holdings" | "monthly" | "trend";
 
-const ACCOUNT_SORT_KEY = "seedbook.mobile.accountSort";
-
-/** 계좌 정렬 선택은 기기별 편의 설정이라 기기 저장소에만 둔다. */
-function useAccountSort(): [AccountSortOption, (value: AccountSortOption) => void] {
-  const [value, setValue] = useState<AccountSortOption>(DEFAULT_ACCOUNT_SORT_OPTION);
-  useEffect(() => {
-    try {
-      // 없앤 "기본 순서"(default) 가 저장돼 있으면 기본값(평가액 높은 순)으로 읽는다.
-      setValue(normalizeAccountSortOption(getDeviceStorage().getItem(ACCOUNT_SORT_KEY)));
-    } catch {
-      // 스토리지 접근 불가 — 기본값 유지
-    }
-  }, []);
-  const update = (next: AccountSortOption) => {
-    setValue(next);
-    try {
-      getDeviceStorage().setItem(ACCOUNT_SORT_KEY, next);
-    } catch {
-      // noop
-    }
-  };
-  return [value, update];
-}
-
 /**
  * 모바일 "계좌" 탭: 계좌 목록과 통계(종목 / 월별 내역 / 투자 추이)를 칩 탭으로 나눠 보여준다 (기본은
  * 계좌). 계좌를 탭하면 계좌 상세(`/assets/investments/[id]`)로 이동한다. 총 평가금액은 홈(정원)에 있다.
@@ -67,7 +42,10 @@ export function InvestmentMobile() {
   const [tab, setTab] = useState<Tab>("accounts");
   const [addOpen, setAddOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
-  const [accountSort, setAccountSort] = useAccountSort();
+  // 정렬은 계정 설정 — 새로고침·다른 기기에서도 이어진다.
+  const accountSort = usePreferencesStore((s) => s.accountSortOption);
+  const setAccountSort = (option: AccountSortOption) =>
+    void savePreferences({ accountSortOption: option });
 
   const sortedAccounts = useMemo(
     () => sortAccounts(investments, accountSort),

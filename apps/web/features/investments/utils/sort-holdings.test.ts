@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { StockHolding } from "../types/types";
 import {
   DEFAULT_HOLDINGS_SORT_OPTION,
-  normalizeHoldingsSortOption,
   type SortPricePoint,
   sortByHoldingsOption,
   sortHoldings,
@@ -208,21 +207,8 @@ describe("sortByHoldingsOption", () => {
   });
 });
 
-describe("normalizeHoldingsSortOption", () => {
-  it("keeps a known option", () => {
-    expect(normalizeHoldingsSortOption("nameDesc")).toBe("nameDesc");
-  });
-
-  it("replaces the removed 'default' option with the default sort", () => {
-    expect(normalizeHoldingsSortOption("default")).toBe(DEFAULT_HOLDINGS_SORT_OPTION);
-  });
-
-  it("replaces a missing or unknown value with the default sort", () => {
-    expect(normalizeHoldingsSortOption(undefined)).toBe(DEFAULT_HOLDINGS_SORT_OPTION);
-    expect(normalizeHoldingsSortOption("value")).toBe(DEFAULT_HOLDINGS_SORT_OPTION);
-  });
-
-  it("defaults to the highest evaluated value first", () => {
+describe("DEFAULT_HOLDINGS_SORT_OPTION", () => {
+  it("is the highest evaluated value first", () => {
     expect(DEFAULT_HOLDINGS_SORT_OPTION).toBe("evalDesc");
   });
 });

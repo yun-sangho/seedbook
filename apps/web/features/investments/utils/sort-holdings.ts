@@ -2,7 +2,7 @@ import type { HoldingsSortOption } from "../types/holdings-sort";
 import type { StockHolding } from "../types/types";
 import { stockPriceKey } from "./use-stock-prices";
 
-export { DEFAULT_HOLDINGS_SORT_OPTION, normalizeHoldingsSortOption } from "../types/holdings-sort";
+export { DEFAULT_HOLDINGS_SORT_OPTION } from "../types/holdings-sort";
 
 export interface SortPricePoint {
   close: number;
