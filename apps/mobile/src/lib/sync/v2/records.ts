@@ -3,6 +3,7 @@ import {
   accountRecord,
   allocation,
   cash,
+  harvest,
   holding,
   portfolio,
   type RecordDefinition,
@@ -47,6 +48,7 @@ export const SYNCED_DEFINITIONS: readonly RecordDefinition[] = [
   accountRecord,
   rebalancing,
   rebalancingTask,
+  harvest,
 ];
 
 const DEFINITIONS = new Map(SYNCED_DEFINITIONS.map((d) => [d.type, d]));

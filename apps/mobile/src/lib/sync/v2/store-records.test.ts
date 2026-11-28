@@ -11,13 +11,14 @@ import {
   rebalancingState,
   SESSION,
 } from "@mobile/lib/native/device-db/testing/envelope-fixtures";
-import { uuidv5 } from "@seedbook/domain";
+import { harvestId, uuidv5 } from "@seedbook/domain";
 import { describe, expect, it } from "vitest";
 import { applyChangesToMap, planStoreChanges, type RecordChange } from "./changes";
 import type { RecordMap } from "./records";
 import {
   composeStore,
   decomposeStore,
+  HARVEST_STORE,
   INVESTMENT_STORE,
   PORTFOLIO_STORE,
   REBALANCING_STORE,
@@ -115,6 +116,28 @@ describe("decompose / compose", () => {
     const task = map.get(`rebalancingTask:${uuidv5(SESSION, ALLOCATION)}`);
     expect(task?.fields.allocationId).toBe(ALLOCATION);
     expect(composeStore(REBALANCING_STORE, map)).toEqual(state);
+  });
+
+  it("gives back the same harvests after saving, newest first", () => {
+    const goal = (amount: number) => ({ amount, reachedAt: "2026-11-01T00:00:00.000Z" });
+    const harvest = (season: number) => ({
+      id: harvestId(PORTFOLIO, season),
+      sourceType: "portfolio",
+      sourceId: PORTFOLIO,
+      sourceName: "안정형",
+      season,
+      plantKind: "fern",
+      wish: "제주 여행",
+      goals: [1, 2, 3, 4, 5].map(goal),
+      harvestedAt: "2026-11-28T06:30:00.000Z",
+      doneAt: null,
+    });
+    const state = { harvests: [harvest(2), harvest(1)] };
+
+    const { map } = save(HARVEST_STORE, state);
+
+    expect(map.get(`harvest:${harvestId(PORTFOLIO, 1)}`)?.parentId).toBeNull();
+    expect(composeStore(HARVEST_STORE, map)).toEqual(state);
   });
 
   it("does not save a session whose id cannot make task ids", () => {

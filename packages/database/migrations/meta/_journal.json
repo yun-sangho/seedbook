@@ -183,6 +183,13 @@
       "when": 1795847247246,
       "tag": "0025_tan_stark_industries",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1795851094881,
+      "tag": "0026_cooing_warlock",
+      "breakpoints": true
     }
   ]
 }

@@ -1,3 +1,5 @@
+import { useHarvestStore } from "@mobile/features/garden/stores/harvest-store";
+import { harvestId } from "@seedbook/domain";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_DRIFT_MODE,
@@ -19,6 +21,7 @@ vi.stubGlobal("localStorage", localStorageMock);
 describe("Portfolio Store", () => {
   beforeEach(() => {
     usePortfolioStore.getState().resetStore();
+    useHarvestStore.setState({ harvests: [] });
     vi.clearAllMocks();
   });
 
@@ -195,6 +198,95 @@ describe("Portfolio Store", () => {
       usePortfolioStore.getState().growPlants(new Map([[id, 10]]));
 
       expect(usePortfolioStore.getState().portfolios).toBe(before);
+    });
+  });
+
+  describe("plant seasons", () => {
+    const reached = (amount: number) => ({ amount, reachedAt: "2026-11-01T00:00:00.000Z" });
+    const ripen = (id: string) => {
+      usePortfolioStore.setState((state) => ({
+        portfolios: state.portfolios.map((p) =>
+          p.id === id
+            ? {
+                ...p,
+                growthStage: 4 as const,
+                goalHistory: [1, 2, 3, 4].map(reached),
+                fruitGoal: reached(5),
+                wish: "제주 여행",
+              }
+            : p
+        ),
+      }));
+    };
+
+    it("starts a new portfolio in the first season with no wish", () => {
+      usePortfolioStore.getState().addPortfolio();
+
+      expect(usePortfolioStore.getState().portfolios[0]).toMatchObject({
+        season: 1,
+        plantKind: null,
+        wish: "",
+        fruitGoal: null,
+        driftSince: null,
+      });
+    });
+
+    it("plants a seed with a kind and a wish", () => {
+      const id = usePortfolioStore.getState().addPortfolio();
+
+      const ok = usePortfolioStore
+        .getState()
+        .startPlantSeason(id, { plantKind: "fern", wish: "제주 여행" });
+
+      expect(ok).toBe(true);
+      expect(usePortfolioStore.getState().portfolios[0]).toMatchObject({
+        plantKind: "fern",
+        wish: "제주 여행",
+      });
+    });
+
+    it("refuses a wish over 100 characters", () => {
+      const id = usePortfolioStore.getState().addPortfolio();
+
+      expect(usePortfolioStore.getState().setPlantWish(id, "가".repeat(101))).toBe(false);
+      expect(usePortfolioStore.getState().setPlantWish(id, "  여행  ")).toBe(true);
+      expect(usePortfolioStore.getState().portfolios[0]!.wish).toBe("여행");
+    });
+
+    it("harvests a ripe plant into the basket and starts the next season", () => {
+      const id = usePortfolioStore.getState().addPortfolio("안정형");
+      ripen(id);
+
+      const harvested = usePortfolioStore.getState().harvestPlant(id);
+
+      expect(harvested).toBe(harvestId(id, 1));
+      expect(useHarvestStore.getState().harvests).toEqual([
+        expect.objectContaining({
+          id: harvestId(id, 1),
+          sourceId: id,
+          sourceName: "안정형",
+          season: 1,
+          wish: "제주 여행",
+          goals: [1, 2, 3, 4, 5].map(reached),
+          doneAt: null,
+        }),
+      ]);
+      expect(usePortfolioStore.getState().portfolios[0]).toMatchObject({
+        season: 2,
+        growthStage: 0,
+        goalHistory: [],
+        fruitGoal: null,
+        wish: "",
+      });
+    });
+
+    it("does not harvest before the fruit is ripe", () => {
+      const id = usePortfolioStore.getState().addPortfolio();
+      const before = usePortfolioStore.getState().portfolios;
+
+      expect(usePortfolioStore.getState().harvestPlant(id)).toBeNull();
+      expect(usePortfolioStore.getState().portfolios).toBe(before);
+      expect(useHarvestStore.getState().harvests).toEqual([]);
     });
   });
 

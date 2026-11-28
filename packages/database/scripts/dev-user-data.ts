@@ -222,7 +222,7 @@ export async function seedDevUserData(userId: string, db: Database = defaultDb):
 /**
  * dev 사용자의 데이터를 시나리오로 되돌린다.
  *
- * - 픽스처에 없는 계좌·포트폴리오와 모든 리밸런싱 → 톰스톤 (동기화로 다른 기기에도 지워진다).
+ * - 픽스처에 없는 계좌·포트폴리오와 모든 리밸런싱·수확 기록 → 톰스톤 (동기화로 다른 기기에도 지워진다).
  * - 픽스처의 계좌·포트폴리오 → 되살려 덮어쓴다.
  * - 개인 설정(정렬·접힘·저장소 모드)은 기본값으로 되돌리고, 서비스에서 빠진 도메인(저축·대출·실물자산·자산 기록·
  *   자산 계획)의 행은 지운다.
@@ -251,6 +251,15 @@ export async function resetDevUserData(userId: string, db: Database = defaultDb)
         changeSeq: 0,
       })
       .where(and(eq(schema.rebalancing.userId, userId), isNull(schema.rebalancing.deletedAt)));
+    await tx
+      .update(schema.plantHarvest)
+      .set({
+        deletedAt: now,
+        updatedAt: now,
+        version: sql`${schema.plantHarvest.version} + 1`,
+        changeSeq: 0,
+      })
+      .where(and(eq(schema.plantHarvest.userId, userId), isNull(schema.plantHarvest.deletedAt)));
     // 계좌가 먼저 포트폴리오를 놓아야 지워질 포트폴리오를 가리키지 않는다.
     await tx
       .update(schema.investmentAccount)

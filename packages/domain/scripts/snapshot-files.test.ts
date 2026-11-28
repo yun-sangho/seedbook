@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { stableStringify } from "../src/snapshot";
+import { SCHEMA_VERSION } from "../src/version";
 import { currentSnapshot, readReleasedSnapshots } from "./snapshot-files";
 
 describe("readReleasedSnapshots", () => {
@@ -12,15 +13,15 @@ describe("readReleasedSnapshots", () => {
 
   it("reads v<N>.json files and ignores other files", () => {
     const dir = mkdtempSync(join(tmpdir(), "schema-snapshots-"));
-    writeFileSync(join(dir, "v1.json"), stableStringify(currentSnapshot()));
+    writeFileSync(join(dir, `v${SCHEMA_VERSION}.json`), stableStringify(currentSnapshot()));
     writeFileSync(join(dir, "README.md"), "#");
 
-    expect(readReleasedSnapshots(dir).map((s) => s.schemaVersion)).toEqual([1]);
+    expect(readReleasedSnapshots(dir).map((s) => s.schemaVersion)).toEqual([SCHEMA_VERSION]);
   });
 
   it("fails when the file name and the version inside disagree", () => {
     const dir = mkdtempSync(join(tmpdir(), "schema-snapshots-"));
-    writeFileSync(join(dir, "v2.json"), stableStringify(currentSnapshot()));
+    writeFileSync(join(dir, `v${SCHEMA_VERSION + 1}.json`), stableStringify(currentSnapshot()));
 
     expect(() => readReleasedSnapshots(dir)).toThrow();
   });

@@ -8,6 +8,7 @@ import {
 } from "@mobile/lib/sync/v2/backup";
 import type { RecordChange } from "@mobile/lib/sync/v2/changes";
 import { type RecordMap, recordKey, SYNCED_TYPES } from "@mobile/lib/sync/v2/records";
+import { recordTypesAt } from "@seedbook/domain";
 import { backupAccountTag, resolveBackupIds } from "./backup-ids";
 import { type BackupSections, parseBackup } from "./data-backup";
 import { reassignIds } from "./reassign-ids";
@@ -48,7 +49,10 @@ export async function prepareBackupImport(
 
   if (file.kind === "records") {
     if (file.accountTag === (await backupAccountTag(context.userId))) {
-      return { ok: true, plan: { records: file.records, types: [...SYNCED_TYPES], relinks: [] } };
+      // 파일 버전에 없던 타입(예: v1 백업의 수확 기록)은 파일이 모르는 것이라 그대로 둔다.
+      const known = new Set<string>(recordTypesAt(file.schemaVersion));
+      const types = SYNCED_TYPES.filter((type) => known.has(type));
+      return { ok: true, plan: { records: file.records, types, relinks: [] } };
     }
     // 다른 계정의 백업 — store 모양으로 묶어 id 를 바꾼다.
     const sections = recordsToSections(file.records) as unknown as Partial<BackupSections>;

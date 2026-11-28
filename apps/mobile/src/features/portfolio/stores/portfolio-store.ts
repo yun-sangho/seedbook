@@ -1,5 +1,7 @@
 "use client";
 
+import { useHarvestStore } from "@mobile/features/garden/stores/harvest-store";
+import { kindForPortfolio } from "@mobile/features/garden/utils/garden-home";
 import { ACCOUNT_COLORS, COLOR_FAMILIES } from "@mobile/features/investments/types/constants";
 import { createHybridStorage } from "@mobile/lib/hybrid-storage";
 import { getNextColor as getNextColorUtil } from "@mobile/utils/color-selection";
@@ -13,7 +15,8 @@ import {
   INITIAL_PLANT_PROGRESS,
   LEGACY_DRIFT_MODE,
 } from "../types/constants";
-import type { DriftMode, PortfolioAllocation, PortfolioItem } from "../types/types";
+import type { DriftMode, PlantKind, PortfolioAllocation, PortfolioItem } from "../types/types";
+import { harvestPlant, startPlantSeason, wishError } from "../utils/plant-season";
 import { growPlant, plantGoalError, readPlantProgress } from "../utils/portfolio-plant";
 
 const nowIso = () => new Date().toISOString();
@@ -66,6 +69,15 @@ interface PortfolioState {
    * 상태를 바꾸지 않는다 (동기화 대기열에도 남지 않는다).
    */
   growPlants: (values: ReadonlyMap<string, number>) => void;
+  /** 씨앗 심기 — 이번 계절의 식물 종류와 소원. 소원이 규칙(`wishError`)에 어긋나면 false. */
+  startPlantSeason: (portfolioId: string, input: { plantKind: PlantKind; wish: string }) => boolean;
+  /** 이번 계절의 소원을 고친다. 규칙에 어긋나면 false. */
+  setPlantWish: (portfolioId: string, wish: string) => boolean;
+  /**
+   * 열매가 열린 식물을 수확한다 — 수확 기록을 바구니(`useHarvestStore`)에 남기고 다음 계절 씨앗으로
+   * 되돌린다. 수확 기록 id 를 돌려주고, 익지 않았으면 아무것도 바꾸지 않고 null.
+   */
+  harvestPlant: (portfolioId: string) => string | null;
 
   resetStore: () => void;
 }
@@ -236,6 +248,40 @@ export const usePortfolioStore = create<PortfolioState>()(
           return grown === p ? p : touch(grown);
         });
         if (next.some((p, i) => p !== portfolios[i])) set({ portfolios: next });
+      },
+
+      startPlantSeason: (portfolioId, input) => {
+        if (wishError(input.wish)) return false;
+        set((state) => ({
+          portfolios: state.portfolios.map((p) =>
+            p.id === portfolioId ? touch(startPlantSeason(p, input)) : p
+          ),
+        }));
+        return true;
+      },
+
+      setPlantWish: (portfolioId, wish) => {
+        if (wishError(wish)) return false;
+        set((state) => ({
+          portfolios: state.portfolios.map((p) =>
+            p.id === portfolioId ? touch({ ...p, wish: wish.trim() }) : p
+          ),
+        }));
+        return true;
+      },
+
+      harvestPlant: (portfolioId) => {
+        const portfolio = get().portfolios.find((p) => p.id === portfolioId);
+        if (!portfolio) return null;
+        const result = harvestPlant(portfolio, kindForPortfolio(portfolio.id), nowIso());
+        if (!result) return null;
+        useHarvestStore.getState().addHarvest(result.harvest);
+        set((state) => ({
+          portfolios: state.portfolios.map((p) =>
+            p.id === portfolioId ? touch(result.progress) : p
+          ),
+        }));
+        return result.harvest.id;
       },
 
       resetStore: () => {
