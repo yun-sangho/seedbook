@@ -213,19 +213,7 @@ function CurrentStep({
           sessionId={session.id}
           task={task}
           embedded
-          // 리밸런싱 전체 금액은 펼쳤을 때만.
-          extraDetails={
-            onShowCash && (
-              <ActionButton
-                variant="neutralWeak"
-                size="small"
-                className="self-start"
-                onClick={onShowCash}
-              >
-                리밸런싱 전체 금액 보기
-              </ActionButton>
-            )
-          }
+          onShowAmounts={onShowCash}
           onDone={onDone}
         />
       </div>

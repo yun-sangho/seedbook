@@ -2,8 +2,7 @@
 
 import { type ReactNode, useState } from "react";
 import {
-  IconChevronDownSmallLine,
-  IconChevronUpSmallLine,
+  IconChevronRightLine,
   IconMinusLine,
   IconPlusLine,
 } from "@karrotmarket/react-monochrome-icon";
@@ -37,9 +36,15 @@ import { cn } from "@mobile/lib/utils";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
 import { Callout } from "@mobile/seed-design/ui/callout";
 import { Checkbox } from "@mobile/seed-design/ui/checkbox";
+import { List, ListButtonItem } from "@mobile/seed-design/ui/list";
 import { ResultSection } from "@mobile/seed-design/ui/result-section";
 import { TextField, TextFieldInput } from "@mobile/seed-design/ui/text-field";
-import { formatSignedWon, formatWithCommas, parseNumericString } from "@mobile/utils/number-format";
+import {
+  formatSignedWon,
+  formatWithCommas,
+  numberToKorean,
+  parseNumericString,
+} from "@mobile/utils/number-format";
 import { Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 import { markJustMoved } from "./just-moved-tasks";
@@ -109,14 +114,14 @@ export function TradeEntryForm({
   sessionId,
   task,
   embedded = false,
-  extraDetails,
+  onShowAmounts,
   onDone,
 }: {
   sessionId: string;
   task: RebalancingTask;
   embedded?: boolean;
-  /** `embedded` 에서 "금액 자세히" 를 펼치면 금액 요약 아래에 붙는 내용. */
-  extraDetails?: ReactNode;
+  /** `embedded` 에서 금액 줄을 누르면 여는 리밸런싱 전체 금액 (계좌를 모르면 없다). */
+  onShowAmounts?: (() => void) | null;
   onDone?: () => void;
 }) {
   const session = useRebalancingStore((s) => s.sessions.find((x) => x.id === sessionId))!;
@@ -132,8 +137,6 @@ export function TradeEntryForm({
   );
   const { pop } = useFlow();
   const done = onDone ?? (() => pop());
-  // 단계 화면은 한 화면에 다 들어와야 해서 금액 요약은 펼칠 때만 보인다 (모자랄 때는 아래 경고가 따로 뜬다).
-  const [showDetails, setShowDetails] = useState(!embedded);
 
   const partial = isPartiallyFilled(task);
   const filled = filledQuantityOf(task);
@@ -310,20 +313,34 @@ export function TradeEntryForm({
           }
         />
 
-        {embedded && (
-          <ActionButton
-            variant="ghost"
-            size="small"
-            bleedX="asPadding"
-            className="self-start"
-            aria-expanded={showDetails}
-            onClick={() => setShowDetails((v) => !v)}
-          >
-            {showDetails ? "금액 접기" : "금액 자세히"}
-            <Icon svg={showDetails ? <IconChevronUpSmallLine /> : <IconChevronDownSmallLine />} />
-          </ActionButton>
-        )}
-        {showDetails && (
+        {embedded ? (
+          // 단계 화면: 이 거래의 금액과 거래 뒤 쓸 수 있는 돈을 한 줄로 늘 보여 주고, 누르면 전체 금액을 연다.
+          <div className="-mx-x4">
+            <List>
+              <ListButtonItem
+                title={
+                  <span className="tabular-nums">
+                    {task.action === "매도" ? "파는 금액" : "사는 금액"}{" "}
+                    {amount !== null ? `${formatWithCommas(amount)}원` : "-"}
+                  </span>
+                }
+                detail={
+                  cash && (
+                    <span className="tabular-nums">
+                      쓸 수 있는 돈 {wonLabel(cash.before)} →{" "}
+                      <span className={cn(cash.after < 0 && "text-fg-critical")}>
+                        {wonLabel(cash.after)}
+                      </span>
+                    </span>
+                  )
+                }
+                suffix={<Icon svg={<IconChevronRightLine />} />}
+                disabled={!onShowAmounts}
+                onClick={onShowAmounts ?? undefined}
+              />
+            </List>
+          </div>
+        ) : (
           <dl className="bg-bg-neutral-weak rounded-r3 flex flex-col gap-y-x2 px-x4 py-x3">
             <SummaryRow label={task.action === "매도" ? "파는 금액" : "사는 금액"}>
               {amount !== null ? `${formatWithCommas(amount)}원` : "-"}
@@ -340,7 +357,6 @@ export function TradeEntryForm({
             )}
           </dl>
         )}
-        {showDetails && extraDetails}
 
         {oversold && (
           <Callout
@@ -421,7 +437,7 @@ export function TradeEntryForm({
  * 증권사에 넣어 둔 주문: "주문 32주 · 주당 11,800원 / 총 377,600원" 과 [정정].
  * 아래 입력 칸은 체결 값이라, 주문 값은 여기서 따로 보여 정정할 수 있게 한다.
  */
-/** `compact` 는 단계 화면 — 한 화면에 들어가도록 총 금액 줄을 뺀다 ("금액 자세히" 에 있다). */
+/** `compact` 는 단계 화면 — 한 화면에 들어가도록 총 금액 줄을 뺀다 (아래 금액 줄에 있다). */
 function OrderCard({
   task,
   compact = false,
@@ -603,3 +619,9 @@ function priceHint(
   if (task.price !== null) parts.push(`시작할 때 가격 ${formatWithCommas(task.price)}원`);
   return parts.join(" · ");
 }
+
+/** 금액 줄의 짧은 표기 — 만원 단위 (1만원 미만은 원 단위). */
+const wonLabel = (won: number) =>
+  numberToKorean(Math.abs(won))
+    ? `${won < 0 ? "−" : ""}${numberToKorean(Math.abs(won))}`
+    : formatSignedWon(won);
