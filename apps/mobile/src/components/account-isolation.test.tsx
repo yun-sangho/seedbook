@@ -350,7 +350,7 @@ describe("before the session is known", () => {
     const saved = localStorage.getItem("seedbook.records");
     const page = await openPage(SIGNED_OUT);
 
-    expect(page.text()).toContain("Seedbook 로그인");
+    expect(page.text()).toContain("이름·이메일·프로필 사진은 받지 않아요");
     expect(page.store.getState().investments).toEqual([]);
     expect(localStorage.getItem("seedbook.records")).toBe(saved);
   });

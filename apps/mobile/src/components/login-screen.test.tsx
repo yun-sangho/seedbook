@@ -14,7 +14,7 @@ function openAt(url: string) {
   render(<LoginScreen />);
 }
 
-const kakao = () => screen.getByRole("button", { name: /카카오로 로그인/ });
+const kakao = () => screen.getByRole("button", { name: /카카오 로그인/ });
 
 describe("LoginScreen", () => {
   beforeEach(() => {
@@ -30,6 +30,12 @@ describe("LoginScreen", () => {
     const { callbackURL, errorCallbackURL } = mockSignInSocial.mock.calls[0]?.[0] ?? {};
     expect(callbackURL).toContain("signedInWith=kakao");
     expect(errorCallbackURL).not.toContain("signedInWith");
+  });
+
+  it("follows Kakao's login button guide: the official label with the speech-bubble symbol", () => {
+    openAt("/assets");
+    expect(kakao()).toHaveTextContent(/^카카오 로그인$/);
+    expect(kakao().querySelector("svg")).not.toBeNull();
   });
 
   it("points at the provider this device last signed in with", () => {
