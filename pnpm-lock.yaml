@@ -226,6 +226,9 @@ importers:
       drizzle-orm:
         specifier: ^0.45.4
         version: 0.45.4(kysely@0.29.9)(postgres@4.1.1)
+      jose:
+        specifier: 6.2.17
+        version: 6.2.17
       lucide-react:
         specifier: ^1.72.0
         version: 1.72.0(@types/react@19.3.0)(react@19.3.1)

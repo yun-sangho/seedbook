@@ -1,6 +1,15 @@
 {
-  "originHash" : "d272cf041ba1b790cda753ee4f0e988af2ae1bb5554109476e39854d0370f81f",
+  "originHash" : "5e1aabd096d0b9401c31020270d9d6f35526ae69f428b6bf88b866512eb2117c",
   "pins" : [
+    {
+      "identity" : "alamofire",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Alamofire/Alamofire.git",
+      "state" : {
+        "revision" : "bda9ed57d72988a3a2ada33d824583541f86eac6",
+        "version" : "5.12.2"
+      }
+    },
     {
       "identity" : "capacitor-swift-pm",
       "kind" : "remoteSourceControl",
@@ -8,6 +17,15 @@
       "state" : {
         "revision" : "e9e932f7748d3b948bc47f5791c761ac5221ec6a",
         "version" : "8.6.0"
+      }
+    },
+    {
+      "identity" : "kakao-ios-sdk",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/kakao/kakao-ios-sdk",
+      "state" : {
+        "revision" : "7a3aecd54167b56dddd29a52f581634db897b8e7",
+        "version" : "2.30.0"
       }
     },
     {

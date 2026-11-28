@@ -11,6 +11,7 @@ import {
   resolveDeviceKind,
   VIEW_OVERRIDE_COOKIE,
 } from "@mobile/lib/device";
+import { corsHeaders } from "@web/lib/cors";
 
 /**
  * 앱 화면 (Vite SPA, apps/mobile) 의 index.html. 빌드가 `public/_app/` 에 복사한다 (scripts/copy-app.mjs).
@@ -26,6 +27,8 @@ const APP_INDEX = "/_app/index.html";
  * 없는 앱 정책을 건다 (index.html 의 meta 와 같은 정책 + frame-ancestors).
  */
 export function proxy(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/api/")) return apiCors(request);
+
   const agent = userAgent(request);
   const kind = resolveDeviceKind({
     deviceType: agent.device.type,
@@ -67,7 +70,28 @@ export function proxy(request: NextRequest) {
   return response;
 }
 
+/**
+ * 네이티브 앱(앱 번들, origin `capacitor://localhost`·`https://localhost`)의 `/api` 요청에 CORS 헤더를
+ * 붙이고 preflight(OPTIONS) 에 답한다 (`lib/cors.ts`). 그 밖의 origin·같은 origin 요청은 그대로 넘긴다.
+ */
+function apiCors(request: NextRequest) {
+  const preflight = request.method === "OPTIONS";
+  const headers = corsHeaders(
+    {
+      origin: request.headers.get("origin"),
+      requestedHeaders: request.headers.get("access-control-request-headers"),
+    },
+    preflight
+  );
+  if (!headers) return NextResponse.next();
+  if (preflight) return new NextResponse(null, { status: 204, headers });
+  const response = NextResponse.next();
+  for (const [name, value] of Object.entries(headers)) response.headers.set(name, value);
+  return response;
+}
+
 export const config = {
-  // API, Next 내부 자산, 확장자가 있는 정적 파일(앱 번들 `/_app/*` 포함)은 제외.
-  matcher: ["/((?!api|_next/static|_next/image|.*\\..*).*)"],
+  // `/api` 는 CORS 만 본다 (`apiCors`). 화면 분기에서는 API, Next 내부 자산, 확장자가 있는 정적
+  // 파일(앱 번들 `/_app/*` 포함)을 제외한다.
+  matcher: ["/api/:path*", "/((?!api|_next/static|_next/image|.*\\..*).*)"],
 };

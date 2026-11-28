@@ -3,6 +3,7 @@ import { schema } from "@seedbook/database";
 import { openTestDb } from "@web/test/db/test-db";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { bearer } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { deviceCredentialPlugin } from "./device-credential-plugin";
@@ -23,7 +24,7 @@ const auth = betterAuth({
     },
   }),
   emailAndPassword: { enabled: true },
-  plugins: [deviceCredentialPlugin({ db })],
+  plugins: [deviceCredentialPlugin({ db }), bearer()],
 });
 
 const createdEmails: string[] = [];
@@ -86,6 +87,39 @@ describe("device credential sign-in (better-auth + real Postgres)", () => {
 
     expect(response.status).toBe(200);
     expect(await sessionUserId(sessionCookie(response))).toBe(userId);
+  });
+
+  it("hands the native app a bearer token for the new session", async () => {
+    const { cookie, userId } = await signUp();
+    const credential = await enroll(cookie);
+
+    const response = await post("/device-credential/sign-in", { body: credential });
+
+    const token = response.headers.get("set-auth-token") ?? "";
+    const session = await auth.api.getSession({
+      headers: new Headers({ authorization: `Bearer ${token}` }),
+    });
+    expect(session?.user.id).toBe(userId);
+  });
+
+  it("enrolls with a bearer session instead of a cookie", async () => {
+    const { cookie } = await signUp();
+    const signIn = await post("/device-credential/sign-in", { body: await enroll(cookie) });
+    const token = signIn.headers.get("set-auth-token") ?? "";
+
+    const response = await auth.handler(
+      new Request(`${BASE_URL}/api/auth/device-credential/enroll`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: BASE_URL,
+          authorization: `Bearer ${token}`,
+        },
+        body: "{}",
+      })
+    );
+
+    expect(response.status).toBe(200);
   });
 
   it("creates a new session instead of reusing the enrolling one", async () => {

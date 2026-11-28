@@ -17,6 +17,11 @@ import {
   unlinkErrorMessage,
 } from "@mobile/lib/login-methods";
 import { markSignedOut } from "@mobile/lib/native/biometric-login";
+import {
+  hasNativeLoginPlugin,
+  type NativeSignInResult,
+  signInNatively,
+} from "@mobile/lib/native/social-login";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
 import {
   AlertDialogAction,
@@ -103,6 +108,12 @@ export function LoginMethodsMobile({
   const link = async (provider: SocialProvider) => {
     setLinking(provider);
     setNotice(null);
+    // 네이티브 앱: 카카오 SDK·Sign in with Apple 의 ID 토큰으로 이 화면에서 바로 연결한다.
+    const native = hasNativeLoginPlugin(provider) ? await signInNatively(provider) : null;
+    if (native) {
+      await linkNatively(provider, native);
+      return;
+    }
     try {
       // 성공하면 클라이언트가 제공자 화면으로 이동한다 — 진행 상태를 유지한다.
       const response: ApiResult<unknown> = await authClient.linkSocial({
@@ -115,6 +126,25 @@ export function LoginMethodsMobile({
     }
     setLinking(null);
     setNotice(linkResultMessage({ provider, error: "unknown" }));
+  };
+
+  const linkNatively = async (provider: SocialProvider, native: NativeSignInResult) => {
+    let error: string | null = "unknown";
+    if (native.status === "cancelled") error = "user_cancelled_authorize";
+    if (native.status === "ok") {
+      try {
+        const response: ApiResult<unknown> = await authClient.linkSocial({
+          provider,
+          idToken: native.idToken,
+        });
+        error = response?.error ? (response.error.code ?? "unknown").toLowerCase() : null;
+      } catch {
+        error = "unknown";
+      }
+    }
+    setLinking(null);
+    setNotice(linkResultMessage({ provider, error }));
+    if (error === null) await loadAccounts();
   };
 
   const unlink = async (row: LoginMethodRow) => {

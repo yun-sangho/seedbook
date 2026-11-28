@@ -3,7 +3,9 @@ import { schema } from "@seedbook/database";
 import { openTestDb } from "@web/test/db/test-db";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { bearer } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
+import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from "jose";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import {
   appleProviderOptions,
@@ -11,9 +13,18 @@ import {
   privacyAccountOptions,
   privacyDatabaseHooks,
 } from "./auth-privacy";
+import { NATIVE_APP_ORIGINS } from "./cors";
+import { createKakaoIdTokenVerifier, KAKAO_ISSUER } from "./kakao-id-token";
 
 const { db, close } = openTestDb();
 const BASE_URL = "http://localhost:3001";
+
+// 카카오 SDK 가 주는 ID 토큰을 흉내 낸다 — 테스트 키로 서명하고 그 공개키로 검증한다.
+const KAKAO_NATIVE_APP_KEY = "kakao-native-app-key";
+const kakaoSigningKey = await generateKeyPair("RS256");
+const kakaoJwks = createLocalJWKSet({
+  keys: [{ ...(await exportJWK(kakaoSigningKey.publicKey)), kid: "kakao-test", alg: "RS256" }],
+});
 
 // `lib/auth.ts` 와 같은 신상 정보 설정. 카카오는 실제 OAuth 콜백을, Apple 은 id token 로그인을 탄다.
 const auth = betterAuth({
@@ -28,10 +39,18 @@ const auth = betterAuth({
       verification: schema.verification,
     },
   }),
+  user: { deleteUser: { enabled: true } },
   account: privacyAccountOptions,
   databaseHooks: privacyDatabaseHooks(db),
   socialProviders: {
-    kakao: kakaoProviderOptions({ clientId: "kakao-client", clientSecret: "kakao-secret" }),
+    kakao: kakaoProviderOptions({
+      clientId: "kakao-client",
+      clientSecret: "kakao-secret",
+      verifyIdToken: createKakaoIdTokenVerifier({
+        audiences: [KAKAO_NATIVE_APP_KEY],
+        jwks: kakaoJwks,
+      }),
+    }),
     apple: appleProviderOptions({
       clientId: "ing.boogie.seedbook",
       clientSecret: "apple-secret",
@@ -39,6 +58,8 @@ const auth = betterAuth({
       verifyIdToken: async () => true,
     }),
   },
+  plugins: [bearer()],
+  trustedOrigins: [...NATIVE_APP_ORIGINS],
 });
 
 const CLIENT_HEADERS = {
@@ -618,5 +639,168 @@ describe("linking another login method (better-auth + real Postgres)", () => {
 
     expect(response.status).toBeGreaterThanOrEqual(400);
     expect(await providers(userId)).toEqual(["kakao"]);
+  });
+});
+
+describe("native app sign-in: kakao SDK id token + bearer session (better-auth + real Postgres)", () => {
+  const APP_ORIGIN = "capacitor://localhost";
+  const NONCE = "nonce-from-the-app";
+
+  async function kakaoIdToken(kakaoId: number, signWith = kakaoSigningKey.privateKey) {
+    return new SignJWT({ nonce: NONCE })
+      .setProtectedHeader({ alg: "RS256", kid: "kakao-test" })
+      .setIssuer(KAKAO_ISSUER)
+      .setAudience(KAKAO_NATIVE_APP_KEY)
+      .setSubject(String(kakaoId))
+      .setIssuedAt()
+      .setExpirationTime("6h")
+      .sign(signWith);
+  }
+
+  /** 앱 번들이 보내는 모양: 앱 origin, 쿠키 없음. */
+  async function nativeKakaoSignIn(token: string, nonce = NONCE) {
+    return auth.handler(
+      new Request(`${BASE_URL}/api/auth/sign-in/social`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: APP_ORIGIN, ...CLIENT_HEADERS },
+        body: JSON.stringify({ provider: "kakao", idToken: { token, nonce } }),
+      })
+    );
+  }
+
+  async function bearerUserId(token: string): Promise<string | null> {
+    const session = await auth.api.getSession({
+      headers: new Headers({ authorization: `Bearer ${token}` }),
+    });
+    return session?.user.id ?? null;
+  }
+
+  it("signs in with a kakao id token and hands the session token to the app", async () => {
+    const kakaoId = randomInt(1, 2 ** 40);
+    createdEmails.push(`kakao-${kakaoId}@users.seedbook.invalid`);
+
+    const response = await nativeKakaoSignIn(await kakaoIdToken(kakaoId));
+
+    expect(response.status).toBe(200);
+    const token = response.headers.get("set-auth-token");
+    expect(token).toBeTruthy();
+    const userId = await bearerUserId(token ?? "");
+    expect(await userRow(userId ?? "")).toMatchObject({
+      email: `kakao-${kakaoId}@users.seedbook.invalid`,
+      name: "사용자",
+      image: null,
+    });
+  });
+
+  it("lands on the same account the web kakao login created", async () => {
+    const kakaoId = randomInt(1, 2 ** 40);
+    const webUserId = await signInWithKakao(kakaoId);
+
+    const response = await nativeKakaoSignIn(await kakaoIdToken(kakaoId));
+
+    expect(await bearerUserId(response.headers.get("set-auth-token") ?? "")).toBe(webUserId);
+    expect(await accountRows(webUserId)).toHaveLength(1);
+  });
+
+  it("keeps no kakao id token on the account", async () => {
+    const kakaoId = randomInt(1, 2 ** 40);
+    createdEmails.push(`kakao-${kakaoId}@users.seedbook.invalid`);
+    const response = await nativeKakaoSignIn(await kakaoIdToken(kakaoId));
+    const userId = await bearerUserId(response.headers.get("set-auth-token") ?? "");
+
+    const [account] = await accountRows(userId ?? "");
+
+    expect(account).toMatchObject({ providerId: "kakao", accessToken: null, idToken: null });
+  });
+
+  it("rejects an id token not signed by kakao and creates no user", async () => {
+    const kakaoId = randomInt(1, 2 ** 40);
+    const forger = await generateKeyPair("RS256");
+
+    const response = await nativeKakaoSignIn(await kakaoIdToken(kakaoId, forger.privateKey));
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("set-auth-token")).toBeNull();
+    const rows = await db
+      .select()
+      .from(schema.user)
+      .where(eq(schema.user.email, `kakao-${kakaoId}@users.seedbook.invalid`));
+    expect(rows).toHaveLength(0);
+  });
+
+  it("rejects an id token whose nonce is not the one the app sent", async () => {
+    const response = await nativeKakaoSignIn(
+      await kakaoIdToken(randomInt(1, 2 ** 40)),
+      "another-nonce"
+    );
+
+    expect(response.status).toBe(401);
+  });
+
+  it("ends the bearer session on sign-out", async () => {
+    const kakaoId = randomInt(1, 2 ** 40);
+    createdEmails.push(`kakao-${kakaoId}@users.seedbook.invalid`);
+    const token =
+      (await nativeKakaoSignIn(await kakaoIdToken(kakaoId))).headers.get("set-auth-token") ?? "";
+
+    const signOut = await auth.handler(
+      new Request(`${BASE_URL}/api/auth/sign-out`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: APP_ORIGIN,
+          authorization: `Bearer ${token}`,
+        },
+        body: "{}",
+      })
+    );
+
+    expect(signOut.status).toBe(200);
+    expect(await bearerUserId(token)).toBeNull();
+  });
+
+  it("deletes the account with the bearer session (fresh sign-in)", async () => {
+    const kakaoId = randomInt(1, 2 ** 40);
+    const token =
+      (await nativeKakaoSignIn(await kakaoIdToken(kakaoId))).headers.get("set-auth-token") ?? "";
+    const userId = await bearerUserId(token);
+
+    const response = await auth.handler(
+      new Request(`${BASE_URL}/api/auth/delete-user`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: APP_ORIGIN,
+          authorization: `Bearer ${token}`,
+        },
+        body: "{}",
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(await userRow(userId ?? "")).toBeUndefined();
+  });
+
+  it("switches accounts: a new sign-in hands over the other user's token", async () => {
+    const first = randomInt(1, 2 ** 40);
+    const second = randomInt(1, 2 ** 40);
+    createdEmails.push(
+      `kakao-${first}@users.seedbook.invalid`,
+      `kakao-${second}@users.seedbook.invalid`
+    );
+    const firstToken =
+      (await nativeKakaoSignIn(await kakaoIdToken(first))).headers.get("set-auth-token") ?? "";
+
+    const secondToken =
+      (await nativeKakaoSignIn(await kakaoIdToken(second))).headers.get("set-auth-token") ?? "";
+
+    expect(secondToken).not.toBe(firstToken);
+    expect(await bearerUserId(secondToken)).not.toBe(await bearerUserId(firstToken));
+  });
+
+  it("keeps the web cookie session working next to bearer", async () => {
+    const cookie = await kakaoSessionCookie(randomInt(1, 2 ** 40));
+
+    expect(await sessionUserId(cookie)).toBeTruthy();
   });
 });
