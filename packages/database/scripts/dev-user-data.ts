@@ -30,7 +30,6 @@ type InvestmentFixture = {
   currentValue: number;
   note?: string;
   color: string;
-  sellCostPercent?: number;
   records?: { date: string; initialInvestment: number; currentValue: number }[];
   holdings?: {
     id: string;
@@ -96,7 +95,7 @@ function portfolioOfAccount(portfolios: PortfolioFixture[]): Map<string, string>
  * 딸린 행(기록·보유 종목·예수금·비중)은 픽스처대로 바꾼다. `version` 을 올리고 `updatedAt`
  * 을 지금으로 두어 엔티티 동기화 pull 이 바뀐 것으로 받아 가게 한다.
  *
- * 동기화 v2: 바꾼 루트는 `changeSeq` 를 0 으로, 목록 순서(`sortKey`)를 비워 두고, 끝에서
+ * 동기화 v2: 바꾼 루트는 `changeSeq` 를 0 으로, 목록 순서(`sortKey`)는 픽스처 순서로 두고, 끝에서
  * `backfillUserSyncV2` 가 0 인 행 모두(새로 넣은 하위 행 포함)에 `user_sync_state` 의 새 번호와
  * 키·순서를 매긴다 — 번호가 그대로면 v2 pull 이 커서 뒤의 변경으로 받지 않는다.
  */
@@ -104,23 +103,25 @@ async function writeFixture(tx: Tx, userId: string, fixture: UserDataFixture, no
   const investments = fixture.investments ?? [];
   const portfolios = fixture.portfolios ?? [];
   const links = portfolioOfAccount(portfolios);
+  // 목록 순서는 픽스처 순서.
+  const portfolioSortKeys = syncV2Keys.sortKeysAfter(null, portfolios.length);
+  const accountSortKeys = syncV2Keys.sortKeysAfter(null, investments.length);
   const revive = (table: typeof schema.investmentAccount | typeof schema.portfolio) => ({
     deletedAt: null,
     updatedAt: now,
     version: sql`${table.version} + 1`,
     changeSeq: 0,
-    sortKey: null,
   });
 
   // 계좌가 portfolioId 로 포트폴리오를 가리키므로 포트폴리오를 먼저 쓴다.
-  for (const p of portfolios) {
+  for (const [i, p] of portfolios.entries()) {
     const values = {
       name: p.name,
       color: p.color,
       note: p.note ?? "",
-      accountIds: p.accountIds,
       driftMode: p.driftMode,
       driftThresholdPercent: p.driftThresholdPercent,
+      sortKey: portfolioSortKeys[i] ?? null,
     };
     await tx
       .insert(schema.portfolio)
@@ -139,7 +140,7 @@ async function writeFixture(tx: Tx, userId: string, fixture: UserDataFixture, no
     }
   }
 
-  for (const inv of investments) {
+  for (const [i, inv] of investments.entries()) {
     const values = {
       accountName: inv.accountName,
       accountType: inv.accountType,
@@ -148,8 +149,8 @@ async function writeFixture(tx: Tx, userId: string, fixture: UserDataFixture, no
       currentValue: BigInt(inv.currentValue),
       note: inv.note ?? "",
       color: inv.color,
-      sellCostPercent: inv.sellCostPercent ?? 0,
       portfolioId: links.get(inv.id) ?? null,
+      sortKey: accountSortKeys[i] ?? null,
     };
     await tx
       .insert(schema.investmentAccount)
@@ -191,22 +192,6 @@ async function writeFixture(tx: Tx, userId: string, fixture: UserDataFixture, no
         }))
       );
     }
-  }
-
-  // 목록 순서는 픽스처 순서. 리밸런싱은 시나리오에 없으므로 비운다.
-  const orders = [
-    { domain: "investment-accounts", order: investments.map((i) => i.id) },
-    { domain: "portfolios", order: portfolios.map((p) => p.id) },
-    { domain: "rebalancings", order: [] as string[] },
-  ];
-  for (const { domain, order } of orders) {
-    await tx
-      .insert(schema.userListOrder)
-      .values({ userId, domain, order, updatedAt: now })
-      .onConflictDoUpdate({
-        target: [schema.userListOrder.userId, schema.userListOrder.domain],
-        set: { order, updatedAt: now },
-      });
   }
 
   await backfillUserSyncV2(tx, userId, syncV2Keys);
@@ -279,7 +264,7 @@ export async function resetDevUserData(userId: string, db: Database = defaultDb)
       );
     await tx
       .update(schema.portfolio)
-      .set({ ...tombstone(schema.portfolio), accountIds: [] })
+      .set(tombstone(schema.portfolio))
       .where(
         and(
           eq(schema.portfolio.userId, userId),
@@ -298,7 +283,6 @@ export async function resetDevUserData(userId: string, db: Database = defaultDb)
         rebalancingCollapsedSections: sql`DEFAULT`,
         accountSortOption: sql`DEFAULT`,
         portfolioStockSortOption: sql`DEFAULT`,
-        investmentTrendRange: sql`DEFAULT`,
         storageMode: sql`DEFAULT`,
         storageModeChosenAt: null,
         version: sql`${p.version} + 1`,
@@ -310,18 +294,6 @@ export async function resetDevUserData(userId: string, db: Database = defaultDb)
     await tx.delete(schema.realAsset).where(eq(schema.realAsset.userId, userId));
     await tx.delete(schema.assetProgressPoint).where(eq(schema.assetProgressPoint.userId, userId));
     await tx.delete(schema.assetPlan).where(eq(schema.assetPlan.userId, userId));
-    await tx
-      .delete(schema.userListOrder)
-      .where(
-        and(
-          eq(schema.userListOrder.userId, userId),
-          notInArray(schema.userListOrder.domain, [
-            "investment-accounts",
-            "portfolios",
-            "rebalancings",
-          ])
-        )
-      );
 
     return writeFixture(tx, userId, fixture, now);
   });

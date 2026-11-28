@@ -280,11 +280,7 @@ export const investmentAccount = seedbook.table(
     currentValue: bigint("currentValue", { mode: "bigint" }).notNull(),
     note: text("note").notNull().default(""),
     color: text("color").notNull(),
-    // 매도 제비용률 (%) — 매도 대금에서 세금·수수료로 빠지는 비율.
-    sellCostPercent: doublePrecision("sellCostPercent").notNull().default(0),
-    // 이 계좌가 연결된 포트폴리오. 한 계좌는 최대 하나의 포트폴리오에만 연결된다.
-    // 전환 기간에는 `portfolio.accountIds` 가 클라이언트 envelope 의 원본이고, 이 컬럼은
-    // translator 가 `syncAccountPortfolioLinks` 로 맞춰 둔다.
+    // 이 계좌가 연결된 포트폴리오 (연결의 원본). 한 계좌는 최대 하나의 포트폴리오에만 연결된다.
     portfolioId: uuid("portfolioId").references((): AnyPgColumn => portfolio.id, {
       onDelete: "set null",
       onUpdate: "cascade",
@@ -548,10 +544,8 @@ export const portfolio = seedbook.table(
       .notNull()
       .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
     name: text("name").notNull(),
-    description: text("description").notNull().default(""),
     color: text("color").notNull(),
     note: text("note").notNull().default(""),
-    accountIds: uuid("accountIds").array().notNull().default(sql`ARRAY[]::uuid[]`),
     // 이격률 계산 방식: "relative" (목표 대비 비율) | "absolute" (%p 차이).
     // 기존 행은 방식이 생기기 전처럼 %p 차이로 판정하도록 "absolute" 가 기본값.
     driftMode: text("driftMode", { enum: ["relative", "absolute"] })
@@ -607,7 +601,7 @@ export const portfolioAllocation = seedbook.table(
 // ─── Rebalancing ────────────────────────────────────────────────────────────
 
 /**
- * 계좌 하나에 대해 시작한 리밸런싱. 시작 시점의 권장 매매를 할 일(`tasks`)로 스냅샷해
+ * 계좌 하나에 대해 시작한 리밸런싱. 시작 시점의 권장 매매를 할 일(`rebalancing_task`)로 스냅샷해
  * 두고, 모두 끝내면 `completedAt` 이 찍혀 기록으로 남는다. 계좌/포트폴리오가 지워져도
  * 기록은 남도록 FK 대신 id 와 이름을 함께 보관한다.
  */
@@ -623,8 +617,6 @@ export const rebalancing = seedbook.table(
     portfolioId: text("portfolioId").notNull(),
     portfolioName: text("portfolioName").notNull(),
     cashDelta: bigint("cashDelta", { mode: "bigint" }).notNull(),
-    // 할 일 목록 (종목별 매수/매도). 행 단위로 함께 바뀌므로 jsonb 한 컬럼에 둔다.
-    tasks: jsonb("tasks").notNull(),
     startedAt: timestamp("startedAt", { precision: 3, mode: "date" }).notNull(),
     completedAt: timestamp("completedAt", { precision: 3, mode: "date" }),
     // 완료하며 계좌에 반영한 뒤의 포트폴리오 구성 스냅샷. 반영하지 않았으면 null.
@@ -645,8 +637,8 @@ export const rebalancing = seedbook.table(
 );
 
 /**
- * 리밸런싱 할 일 (동기화 v2 `rebalancingTask` 레코드). v2-2 에서 `rebalancing.tasks` jsonb 를
- * `db:backfill:sync-v2` 로 펼쳐 만든다 — v1 엔드포인트는 아직 `tasks` 를 읽고 쓴다 (v2-5 에서 제거).
+ * 리밸런싱 할 일 (동기화 v2 `rebalancingTask` 레코드). v2-2 에서 옛 `rebalancing.tasks` jsonb 를
+ * 펼쳐 만들었다 (jsonb 컬럼은 v2-5b 에서 지웠다).
  * id = uuidv5(rebalancingId, allocationId). `allocationId` 는 옛 `task.id` (포트폴리오 배분 id).
  */
 export const rebalancingTask = seedbook.table(
@@ -724,7 +716,7 @@ export const assetProgressPoint = seedbook.table(
   ]
 );
 
-// ─── User preferences / list orders ─────────────────────────────────────────
+// ─── User preferences ───────────────────────────────────────────────────────
 
 export const userPreference = seedbook.table("user_preference", {
   userId: text("userId")
@@ -742,8 +734,6 @@ export const userPreference = seedbook.table("user_preference", {
   accountSortOption: text("accountSortOption").notNull().default("evalDesc"),
   // 포트폴리오 현황 "종목별" 정렬 ("driftDesc" | "evalDesc" | "evalAsc" | "nameAsc" | "nameDesc").
   portfolioStockSortOption: text("portfolioStockSortOption").notNull().default("driftDesc"),
-  // 투자 추이 차트 기간 ("1month" | "3months" | "1year" | "5years" | "10years" | "all").
-  investmentTrendRange: text("investmentTrendRange").notNull().default("3months"),
   // 사용자가 선택한 저장소 모드 ("local" | "cloud"). 로그인 시 클라이언트가 이 값을
   // 받아 localStorage 와 동기화한다. 기본 "local" 이라 기존 행도 안전.
   storageMode: text("storageMode").notNull().default("local"),
@@ -759,23 +749,6 @@ export const userPreference = seedbook.table("user_preference", {
     .$onUpdate(() => sql`now()`),
 });
 
-export const userListOrder = seedbook.table(
-  "user_list_order",
-  {
-    userId: text("userId")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
-    domain: text("domain").notNull(),
-    order: text("order").array().notNull(),
-    // 동기화 pull 커서용. 순서는 last-write-wins 라 version 은 두지 않는다.
-    updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
-  },
-  (t) => [
-    primaryKey({ columns: [t.userId, t.domain], name: "user_list_order_pkey" }),
-    index("user_list_order_userId_idx").on(t.userId),
-  ]
-);
-
 // ─── Relations (for Drizzle relational query API) ───────────────────────────
 
 export const userRelations = relations(user, ({ many, one }) => ({
@@ -790,7 +763,6 @@ export const userRelations = relations(user, ({ many, one }) => ({
   portfolios: many(portfolio),
   rebalancings: many(rebalancing),
   preference: one(userPreference, { fields: [user.id], references: [userPreference.userId] }),
-  listOrders: many(userListOrder),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
@@ -896,8 +868,4 @@ export const assetProgressPointRelations = relations(assetProgressPoint, ({ one 
 
 export const userPreferenceRelations = relations(userPreference, ({ one }) => ({
   user: one(user, { fields: [userPreference.userId], references: [user.id] }),
-}));
-
-export const userListOrderRelations = relations(userListOrder, ({ one }) => ({
-  user: one(user, { fields: [userListOrder.userId], references: [user.id] }),
 }));

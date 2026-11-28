@@ -58,32 +58,8 @@ async function insertHoldings(accountId: string, names: string[]) {
   return ids;
 }
 
-function task(id: string, overrides: Record<string, unknown> = {}) {
-  return {
-    id,
-    market: "KR",
-    ticker: id,
-    name: id,
-    action: "매수",
-    amount: 10000,
-    price: 5000,
-    quantity: 2,
-    priceAsOf: "2026-11-01T06:30:00.000Z",
-    priceKind: "close",
-    executedQuantity: null,
-    executedPrice: null,
-    orderedQuantity: null,
-    orderedPrice: null,
-    filledQuantity: null,
-    filledAmount: null,
-    done: false,
-    ...overrides,
-  };
-}
-
 async function insertRebalancing(
   userId: string,
-  tasks: unknown[],
   options: { updatedAt?: Date; deletedAt?: Date } = {}
 ) {
   const id = randomUUID();
@@ -95,7 +71,6 @@ async function insertRebalancing(
     portfolioId: "portfolio",
     portfolioName: "포트폴리오",
     cashDelta: 0n,
-    tasks,
     startedAt: T1,
     updatedAt: options.updatedAt ?? T1,
     deletedAt: options.deletedAt ?? null,
@@ -103,12 +78,23 @@ async function insertRebalancing(
   return id;
 }
 
-const tasksOf = (rebalancingId: string) =>
-  db
-    .select()
-    .from(schema.rebalancingTask)
-    .where(eq(schema.rebalancingTask.rebalancingId, rebalancingId))
-    .orderBy(asc(schema.rebalancingTask.sortKey));
+/** 할 일 행 하나 (번호·순서 없이). */
+async function insertTask(userId: string, rebalancingId: string, allocationId: string) {
+  const id = deriveRecordId(rebalancingTask, { parentId: rebalancingId, fields: { allocationId } });
+  await db.insert(schema.rebalancingTask).values({
+    id,
+    userId,
+    rebalancingId,
+    allocationId,
+    market: "KR",
+    ticker: allocationId,
+    name: allocationId,
+    action: "매수",
+    amount: 10000,
+    done: false,
+  });
+  return id;
+}
 
 /** 사용자의 동기화 행 전부 (테이블·키·changeSeq). */
 async function changeSeqs(userId: string) {
@@ -215,14 +201,11 @@ describe("backfillUserSyncV2", () => {
     );
   });
 
-  it("orders root records by the saved list order, then by creation", async () => {
+  it("orders root records by creation", async () => {
     const userId = await createTestUser();
+    const third = await insertAccount(userId, T1, T3);
     const first = await insertAccount(userId, T1, T1);
     const second = await insertAccount(userId, T1, T2);
-    const unlisted = await insertAccount(userId, T1, T3);
-    await db
-      .insert(schema.userListOrder)
-      .values({ userId, domain: "investment-accounts", order: [second, first] });
 
     await backfill(userId);
 
@@ -231,7 +214,7 @@ describe("backfillUserSyncV2", () => {
       .from(schema.investmentAccount)
       .where(eq(schema.investmentAccount.userId, userId))
       .orderBy(asc(schema.investmentAccount.sortKey));
-    expect(rows.map((r) => r.id)).toEqual([second, first, unlisted]);
+    expect(rows.map((r) => r.id)).toEqual([first, second, third]);
   });
 
   it("orders child records in the order they were saved", async () => {
@@ -249,81 +232,6 @@ describe("backfillUserSyncV2", () => {
     expect(rows.map((r) => r.id)).toEqual(ids);
   });
 
-  it("expands rebalancing tasks into rebalancing_task rows in jsonb order", async () => {
-    const userId = await createTestUser();
-    const rebalancingId = await insertRebalancing(userId, [
-      task("alloc-b", { action: "매도", done: true, executedQuantity: 3 }),
-      task("alloc-a", { price: null, quantity: null, priceAsOf: null, priceKind: null }),
-    ]);
-
-    await backfill(userId);
-
-    const rows = await tasksOf(rebalancingId);
-    expect(
-      rows.map((r) => ({ id: r.id, allocationId: r.allocationId, action: r.action, done: r.done }))
-    ).toEqual([
-      {
-        id: deriveRecordId(rebalancingTask, {
-          parentId: rebalancingId,
-          fields: { allocationId: "alloc-b" },
-        }),
-        allocationId: "alloc-b",
-        action: "매도",
-        done: true,
-      },
-      {
-        id: deriveRecordId(rebalancingTask, {
-          parentId: rebalancingId,
-          fields: { allocationId: "alloc-a" },
-        }),
-        allocationId: "alloc-a",
-        action: "매수",
-        done: false,
-      },
-    ]);
-    expect(rows[0]).toMatchObject({
-      userId,
-      executedQuantity: 3,
-      priceAsOf: new Date("2026-11-01T06:30:00.000Z"),
-      priceKind: "close",
-      deletedAt: null,
-    });
-    expect(rows[1]).toMatchObject({
-      price: null,
-      quantity: null,
-      priceAsOf: null,
-      priceKind: null,
-    });
-  });
-
-  it("gives the same allocation different task ids in two rebalancings", async () => {
-    const userId = await createTestUser();
-    const a = await insertRebalancing(userId, [task("alloc-1")]);
-    const b = await insertRebalancing(userId, [task("alloc-1")]);
-
-    await backfill(userId);
-
-    const [[taskA], [taskB]] = await Promise.all([tasksOf(a), tasksOf(b)]);
-    expect(taskA?.id).toBeDefined();
-    expect(taskA?.id).not.toBe(taskB?.id);
-  });
-
-  it("skips malformed tasks and repeated allocations", async () => {
-    const userId = await createTestUser();
-    const rebalancingId = await insertRebalancing(userId, [
-      task("alloc-1"),
-      task("alloc-1", { amount: 1 }),
-      { id: "broken" },
-    ]);
-
-    const summary = await backfill(userId);
-
-    expect((await tasksOf(rebalancingId)).map((r) => [r.allocationId, r.amount])).toEqual([
-      ["alloc-1", 10000],
-    ]);
-    expect(summary.tasksSkipped).toBe(2);
-  });
-
   it("tombstones the children of a deleted parent", async () => {
     const userId = await createTestUser();
     const accountId = await insertAccount(userId, T1);
@@ -332,7 +240,8 @@ describe("backfillUserSyncV2", () => {
       .update(schema.investmentAccount)
       .set({ deletedAt: T2 })
       .where(eq(schema.investmentAccount.id, accountId));
-    const rebalancingId = await insertRebalancing(userId, [task("alloc-1")], { deletedAt: T2 });
+    const rebalancingId = await insertRebalancing(userId, { deletedAt: T2 });
+    const taskId = await insertTask(userId, rebalancingId, "alloc-1");
 
     await backfill(userId);
 
@@ -340,7 +249,10 @@ describe("backfillUserSyncV2", () => {
       .select()
       .from(schema.stockHolding)
       .where(eq(schema.stockHolding.accountId, accountId));
-    const [taskRow] = await tasksOf(rebalancingId);
+    const [taskRow] = await db
+      .select()
+      .from(schema.rebalancingTask)
+      .where(eq(schema.rebalancingTask.id, taskId));
     expect([holding?.deletedAt, taskRow?.deletedAt]).toEqual([T2, T2]);
   });
 
@@ -349,15 +261,12 @@ describe("backfillUserSyncV2", () => {
     const later = await insertAccount(userId, T2);
     const earlier = await insertAccount(userId, T1);
     const [holding] = await insertHoldings(earlier, ["삼성전자"]);
-    const rebalancingId = await insertRebalancing(userId, [task("alloc-1")], { updatedAt: T3 });
+    const rebalancingId = await insertRebalancing(userId, { updatedAt: T3 });
+    const taskId = await insertTask(userId, rebalancingId, "alloc-1");
     await db.insert(schema.userPreference).values({ userId });
 
     await backfill(userId);
 
-    const taskId = deriveRecordId(rebalancingTask, {
-      parentId: rebalancingId,
-      fields: { allocationId: "alloc-1" },
-    });
     const seqs = await changeSeqs(userId);
     // 설정의 updatedAt 은 방금(마이그레이션 기본값) 이라 마지막.
     expect(seqs).toEqual([
@@ -381,7 +290,9 @@ describe("backfillUserSyncV2", () => {
       initialInvestment: 1n,
       currentValue: 1n,
     });
-    await insertRebalancing(userId, [task("alloc-1"), task("alloc-2")]);
+    const rebalancingId = await insertRebalancing(userId);
+    await insertTask(userId, rebalancingId, "alloc-1");
+    await insertTask(userId, rebalancingId, "alloc-2");
     await backfill(userId);
     const before = {
       seqs: await changeSeqs(userId),
@@ -455,34 +366,6 @@ describe("backfillUserSyncV2", () => {
     ]);
     expect(await syncStateSeq(userId)).toBe(4);
   });
-
-  it("follows task changes made through v1 when run again", async () => {
-    const userId = await createTestUser();
-    const rebalancingId = await insertRebalancing(userId, [task("alloc-1"), task("alloc-2")]);
-    await backfill(userId);
-    await db
-      .update(schema.rebalancing)
-      // v1 저장은 저장한 시각을 찍는다 — backfill 이 할 일을 쓴 뒤다.
-      .set({ tasks: [task("alloc-1", { done: true })], updatedAt: new Date(Date.now() + 1000) })
-      .where(eq(schema.rebalancing.id, rebalancingId));
-
-    const summary = await backfill(userId);
-
-    const rows = await tasksOf(rebalancingId);
-    expect(
-      rows.map((r) => ({
-        allocationId: r.allocationId,
-        done: r.done,
-        version: r.version,
-        deleted: r.deletedAt !== null,
-        seq: r.changeSeq,
-      }))
-    ).toEqual([
-      { allocationId: "alloc-1", done: true, version: 2, deleted: false, seq: 4 },
-      { allocationId: "alloc-2", done: false, version: 2, deleted: true, seq: 5 },
-    ]);
-    expect(summary).toMatchObject({ tasksUpdated: 1, tasksTombstoned: 1, changeSeqs: 2 });
-  });
 });
 
 // ─── v2 로 쓴 행 ─────────────────────────────────────────────────────────────
@@ -540,7 +423,7 @@ async function syncRows(userId: string) {
 }
 
 describe("backfillUserSyncV2 after v2 writes", () => {
-  it("leaves a rebalancing created through v2 (empty tasks jsonb) and its tasks alone", async () => {
+  it("leaves records created through v2 alone", async () => {
     const userId = await createTestUser();
     const rebalancingId = randomUUID();
     const accountId = randomUUID();
@@ -599,61 +482,5 @@ describe("backfillUserSyncV2 after v2 writes", () => {
     expect(Object.values(summary).every((n) => n === 0)).toBe(true);
     expect(await syncRows(userId)).toEqual(before);
     expect(before.tasks.filter((r) => r.deletedAt === null)).toHaveLength(2);
-  });
-
-  it("keeps task edits made through v2 on a rebalancing v1 wrote", async () => {
-    const userId = await createTestUser();
-    const rebalancingId = await insertRebalancing(userId, [task("alloc-1"), task("alloc-2")]);
-    await backfill(userId);
-    await push(userId, [
-      {
-        type: "rebalancingTask",
-        id: taskIdOf(rebalancingId, "alloc-1"),
-        op: "patch",
-        fields: { done: true },
-      },
-      { type: "rebalancingTask", id: taskIdOf(rebalancingId, "alloc-2"), op: "delete" },
-      {
-        type: "rebalancingTask",
-        id: taskIdOf(rebalancingId, "alloc-3"),
-        parentId: rebalancingId,
-        op: "create",
-        fields: v2Task("alloc-3"),
-      },
-    ]);
-    const before = await syncRows(userId);
-
-    const summary = await backfill(userId);
-
-    expect(Object.values(summary).every((n) => n === 0)).toBe(true);
-    expect(await syncRows(userId)).toEqual(before);
-  });
-
-  it("keeps task edits when v2 then writes the rebalancing itself", async () => {
-    const userId = await createTestUser();
-    const rebalancingId = await insertRebalancing(userId, [task("alloc-1"), task("alloc-2")]);
-    await backfill(userId);
-    await push(userId, [
-      {
-        type: "rebalancingTask",
-        id: taskIdOf(rebalancingId, "alloc-1"),
-        op: "patch",
-        fields: { done: true },
-      },
-    ]);
-    await push(userId, [
-      {
-        type: "rebalancing",
-        id: rebalancingId,
-        op: "patch",
-        fields: { completedAt: "2026-11-28T09:00:00.000Z" },
-      },
-    ]);
-    const before = await syncRows(userId);
-
-    const summary = await backfill(userId);
-
-    expect(Object.values(summary).every((n) => n === 0)).toBe(true);
-    expect(await syncRows(userId)).toEqual(before);
   });
 });

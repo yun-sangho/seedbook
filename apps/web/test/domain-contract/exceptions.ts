@@ -16,14 +16,7 @@ export const PLANNED_SERVER_COLUMNS: Partial<Record<RecordType, Record<string, s
 
 /** 서버에 있지만 정의에 넣지 않는 컬럼 (레코드 → 컬럼 → 이유). */
 export const LEGACY_SERVER_COLUMNS: Partial<Record<RecordType, Record<string, string>>> = {
-  account: { sellCostPercent: "v2-5 다음 PR 에서 컬럼 제거 (배포 순서 때문에 분리)" },
-  portfolio: {
-    accountIds: "v2-5 다음 PR 에서 컬럼 제거 (배포 순서 때문에 분리)",
-    description: "v2-5 다음 PR 에서 컬럼 제거 (배포 순서 때문에 분리)",
-  },
-  rebalancing: { tasks: "v2-5 다음 PR 에서 컬럼 제거 (배포 순서 때문에 분리)" },
   settings: {
-    investmentTrendRange: "v2-5 다음 PR 에서 컬럼 제거 (배포 순서 때문에 분리)",
     storageMode: "저장 모드는 동기화 밖 계정 상태 (사용자 결정)",
     storageModeChosenAt: "저장 모드는 동기화 밖 계정 상태 (사용자 결정)",
   },

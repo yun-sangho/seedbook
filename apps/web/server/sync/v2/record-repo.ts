@@ -231,7 +231,6 @@ async function createRecord(
 
   const changeSeq = await nextSeq(tx, userId);
   const values: Row = {
-    ...rt.legacyInsert,
     [rt.key.name]: id,
     userId,
     version: 1,
