@@ -1,8 +1,14 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  DEPLOY_WORKFLOWS,
+  expectedWorkflows,
   failedStepNames,
   findDeployRun,
+  matchesPath,
   runVerdict,
+  successorRun,
 } from "../../../../scripts/check-deploy-lib.mjs";
 
 const SHA = "c973535d0719e31656e796792a7ea25044441d16";
@@ -55,8 +61,12 @@ describe("runVerdict", () => {
     expect(runVerdict(run({}))).toBe("success");
   });
 
+  it("is cancelled when a later push cancelled the pending run", () => {
+    expect(runVerdict(run({ conclusion: "cancelled" }))).toBe("cancelled");
+  });
+
   it("is failure when the run completed with any other conclusion", () => {
-    expect(runVerdict(run({ conclusion: "cancelled" }))).toBe("failure");
+    expect(runVerdict(run({ conclusion: "failure" }))).toBe("failure");
   });
 });
 
@@ -91,5 +101,113 @@ describe("failedStepNames", () => {
       { name: "deploy", conclusion: "success", steps: [] },
     ];
     expect(failedStepNames(jobs)).toEqual([]);
+  });
+});
+
+describe("successorRun", () => {
+  it("returns the first push run created after the cancelled one", () => {
+    const cancelled = run({ databaseId: 1, createdAt: "2026-11-26T15:00:00Z" });
+    const runs = [
+      cancelled,
+      run({ databaseId: 3, headSha: "c", createdAt: "2026-11-26T15:20:00Z" }),
+      run({ databaseId: 2, headSha: "b", createdAt: "2026-11-26T15:10:00Z" }),
+    ];
+    expect(successorRun(runs, cancelled)?.databaseId).toBe(2);
+  });
+
+  it("returns null while no later run exists yet", () => {
+    const cancelled = run({ databaseId: 1 });
+    expect(successorRun([cancelled], cancelled)).toBeNull();
+  });
+
+  it("ignores later manual runs", () => {
+    const cancelled = run({ databaseId: 1, createdAt: "2026-11-26T15:00:00Z" });
+    const runs = [
+      cancelled,
+      run({ databaseId: 2, event: "workflow_dispatch", createdAt: "2026-11-26T15:10:00Z" }),
+    ];
+    expect(successorRun(runs, cancelled)).toBeNull();
+  });
+});
+
+describe("matchesPath", () => {
+  it("matches everything under a dir/** pattern", () => {
+    expect(matchesPath("apps/web/app/m/page.tsx", "apps/web/**")).toBe(true);
+  });
+
+  it("does not match a sibling dir that shares the prefix", () => {
+    expect(matchesPath("apps/web-old/x.ts", "apps/web/**")).toBe(false);
+  });
+
+  it("matches a single-segment wildcard", () => {
+    expect(
+      matchesPath(
+        "packages/database/scripts/backfill-x.ts",
+        "packages/database/scripts/backfill-*.ts"
+      )
+    ).toBe(true);
+  });
+
+  it("does not let a single-segment wildcard cross a slash", () => {
+    expect(
+      matchesPath(
+        "packages/database/scripts/backfill-a/b.ts",
+        "packages/database/scripts/backfill-*.ts"
+      )
+    ).toBe(false);
+  });
+
+  it("requires an exact match for plain paths", () => {
+    expect(matchesPath("apps/web/package.json", "package.json")).toBe(false);
+  });
+});
+
+describe("expectedWorkflows", () => {
+  it("expects only the web deploy for web changes", () => {
+    expect(expectedWorkflows(["apps/web/app/page.tsx"])).toEqual(["deploy-web.yml"]);
+  });
+
+  it("expects only the crawler deploy for migrations", () => {
+    expect(expectedWorkflows(["packages/database/migrations/0042_x.sql"])).toEqual([
+      "deploy-crawler.yml",
+    ]);
+  });
+
+  it("expects both for shared database source", () => {
+    expect(expectedWorkflows(["packages/database/src/schema.ts"])).toEqual([
+      "deploy-web.yml",
+      "deploy-crawler.yml",
+    ]);
+  });
+
+  it("expects both when the compose file changes", () => {
+    expect(expectedWorkflows(["docker-compose.yml"])).toEqual([
+      "deploy-web.yml",
+      "deploy-crawler.yml",
+    ]);
+  });
+
+  it("expects nothing for docs and dev-only seed data", () => {
+    expect(expectedWorkflows(["CLAUDE.md", "packages/database/seed-data/stocks.json"])).toEqual([]);
+  });
+});
+
+// 워크플로 YAML 의 on.push.paths 목록 (이 레포 워크플로 모양만 읽는 단순 파서)
+function workflowPushPaths(file: string): string[] {
+  const text = readFileSync(resolve(__dirname, "../../../../.github/workflows", file), "utf8");
+  const lines = text.split("\n");
+  const start = lines.indexOf("    paths:");
+  const paths: string[] = [];
+  for (const line of lines.slice(start + 1)) {
+    const match = line.match(/^ {6}- (.+)$/);
+    if (!match?.[1]) break;
+    paths.push(match[1]);
+  }
+  return paths;
+}
+
+describe("DEPLOY_WORKFLOWS", () => {
+  it.each(DEPLOY_WORKFLOWS)("matches the push paths of $file", ({ file, paths }) => {
+    expect([...paths].sort()).toEqual(workflowPushPaths(file).sort());
   });
 });
