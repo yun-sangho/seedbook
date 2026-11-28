@@ -98,6 +98,8 @@ export interface OfflineSession {
   subscribe(listener: () => void): () => void;
   remember(data: SessionQueryState["data"]): Promise<void>;
   forget(): Promise<void>;
+  /** 로그아웃: 기억한 세션과 토큰을 지금 상태와 상관없이 지운다 (`lib/sign-out.ts`). */
+  clear(): Promise<void>;
 }
 
 export function createOfflineSession({
@@ -136,6 +138,14 @@ export function createOfflineSession({
     return loading;
   };
 
+  const clear = async () => {
+    publish(null);
+    // 서버가 받지 않는 토큰을 계속 보내지 않는다.
+    if (tokens.enabled()) await tokens.clear();
+    const device = await ready();
+    device.removeItem(OFFLINE_SESSION_KEY);
+  };
+
   return {
     enabled: () => tokens.enabled(),
     get() {
@@ -157,12 +167,9 @@ export function createOfflineSession({
     },
     async forget() {
       if (snapshot === null) return;
-      publish(null);
-      const device = await ready();
-      device.removeItem(OFFLINE_SESSION_KEY);
-      // 서버가 받지 않는 토큰을 계속 보내지 않는다.
-      await tokens.clear();
+      await clear();
     },
+    clear,
   };
 }
 

@@ -7,6 +7,7 @@ import { type DeleteAccountResult, deleteAccount } from "@mobile/lib/delete-acco
 import { reloadApp } from "@mobile/lib/device-storage";
 import { isBiometricLoginEnrolledFor } from "@mobile/lib/native/biometric-login";
 import { getBiometricLoginDeps } from "@mobile/lib/native/biometric-login-client";
+import { signOutAndReload } from "@mobile/lib/sign-out";
 
 /**
  * 회원 탈퇴 흐름 (모바일·데스크탑 공통). 성공하면 랜딩으로 이동하고, 세션이 오래돼
@@ -46,10 +47,7 @@ export function useDeleteAccount() {
   };
 
   /** 새 세션을 받도록 로그아웃한다 — 다시 로그인한 뒤 바로 탈퇴할 수 있다. */
-  const signOutToReauthenticate = async () => {
-    await authClient.signOut();
-    await reloadApp();
-  };
+  const signOutToReauthenticate = signOutAndReload;
 
   const reset = () => setOutcome(null);
 

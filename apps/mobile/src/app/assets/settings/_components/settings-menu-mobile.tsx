@@ -17,10 +17,8 @@ import { SessionUserAvatar, useSessionUser } from "@mobile/components/mobile/pro
 import { separateStorageNotice } from "@mobile/features/settings/utils/storage-notice";
 import { useBiometryLabel } from "@mobile/hooks/use-biometry-label";
 import { usePwaInstallState } from "@mobile/hooks/use-pwa-install";
-import { authClient } from "@mobile/lib/auth-client";
-import { reloadApp } from "@mobile/lib/device-storage";
 import { koreanDate, LEGAL_DOCUMENTS } from "@mobile/lib/legal-documents";
-import { markSignedOut } from "@mobile/lib/native/biometric-login";
+import { signOutAndReload } from "@mobile/lib/sign-out";
 import { getStorageMode, type StorageMode } from "@mobile/lib/storage-mode";
 import { List, ListButtonItem, ListItem } from "@mobile/seed-design/ui/list";
 import { Icon } from "@seed-design/react";
@@ -123,13 +121,7 @@ export function SettingsMenuMobile() {
         <ListButtonItem
           prefix={<Icon svg={<IconArrowLeftBracketRightLine />} />}
           title="로그아웃"
-          onClick={async () => {
-            // 로그인 화면이 생체 인증 프롬프트를 곧바로 다시 띄우지 않게 한다. signOut 이
-            // 끝나면 바로 로그인 화면이 그려지므로 그 전에 남긴다.
-            markSignedOut(window.sessionStorage);
-            await authClient.signOut();
-            await reloadApp();
-          }}
+          onClick={signOutAndReload}
         />
         <ListButtonItem
           prefix={<Icon svg={<IconTrashcanLine />} />}
