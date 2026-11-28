@@ -387,7 +387,7 @@ function StartRebalancingSection({
                 취소
               </AlertDialogAction>
               <AlertDialogAction
-                variant="brandSolid"
+                variant="neutralSolid"
                 size="large"
                 onClick={() => {
                   const id = startRebalancing({
