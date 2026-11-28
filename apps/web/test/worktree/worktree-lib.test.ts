@@ -6,6 +6,7 @@ import {
   isAgentProcess,
   isLocalEnvFile,
   isOrphanCwd,
+  orphanSimulators,
   orphanSlotDatabases,
   parseSlotFile,
   parseWorktreeList,
@@ -315,5 +316,34 @@ describe("stopTargets", () => {
       [6, { ppid: 5, args: "b" }],
     ]);
     expect(sorted(stopTargets([5], cycle, { isOwn: all }))).toEqual([5, 6]);
+  });
+});
+
+describe("orphanSimulators", () => {
+  const list = {
+    devices: {
+      "com.apple.CoreSimulator.SimRuntime.iOS-27-2": [
+        { name: "seedbook-seedbook", udid: "MAIN", state: "Shutdown", isAvailable: true },
+        { name: "seedbook-feat-live", udid: "LIVE", state: "Booted", isAvailable: true },
+        { name: "seedbook-feat-gone", udid: "GONE", state: "Shutdown", isAvailable: true },
+        { name: "seedbook-fix-gone", udid: "GONE2", state: "Booted", isAvailable: true },
+        { name: "iPhone 17", udid: "STOCK", state: "Shutdown", isAvailable: true },
+      ],
+    },
+  };
+  const checkouts = ["/Users/me/project/seedbook", "/Users/me/.herdr/worktrees/seedbook/feat-live"];
+
+  it("lists seedbook simulators whose worktree no longer exists", () => {
+    expect(orphanSimulators(list, checkouts)).toEqual([
+      { name: "seedbook-feat-gone", udid: "GONE", state: "Shutdown" },
+      { name: "seedbook-fix-gone", udid: "GONE2", state: "Booted" },
+    ]);
+  });
+
+  it("keeps the main checkout's and live worktrees' simulators and other simulators", () => {
+    const names = orphanSimulators(list, checkouts).map((sim: { name: string }) => sim.name);
+    expect(names).not.toContain("seedbook-seedbook");
+    expect(names).not.toContain("seedbook-feat-live");
+    expect(names).not.toContain("iPhone 17");
   });
 });

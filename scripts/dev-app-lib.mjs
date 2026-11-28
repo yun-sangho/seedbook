@@ -119,9 +119,16 @@ function compareVersions(a, b) {
   return 0;
 }
 
+/** `iPhone-SE-3rd-generation` → 3, `iPhone-SE--2nd-generation-` → 2, `iPhone-SE` → 1 */
+function seGeneration(id) {
+  const match = /iPhone-SE(?:-+(\d+)\w*-generation-?)?$/.exec(id);
+  return match ? Number(match[1] ?? 1) : null;
+}
+
 /**
  * 새 시뮬레이터를 만들 런타임·기종 (`xcrun simctl list runtimes --json`). 가장 새 iOS 런타임 가운데 기종이
- * 가장 많은 것(특정 기종 전용 런타임은 뺀다), 기종은 가장 새 `iPhone-<n>-Pro`, 없으면 마지막 iPhone.
+ * 가장 많은 것(특정 기종 전용 런타임은 뺀다). 기종은 가벼운 작은 화면: 가장 새 iPhone SE, 없으면 가장 새 mini,
+ * 없으면 가장 오래된 기본 기종(`iPhone-<n>e` 먼저, 그다음 `iPhone-<n>`), 그마저 없으면 첫 iPhone.
  */
 export function pickSimulatorTarget(runtimesJson) {
   const runtimes = (runtimesJson?.runtimes ?? []).filter(
@@ -138,13 +145,59 @@ export function pickSimulatorTarget(runtimesJson) {
   const iphones = (runtime.supportedDeviceTypes ?? [])
     .map((type) => type.identifier)
     .filter((id) => /SimDeviceType\.iPhone-/.test(id));
-  const pros = iphones
-    .map((id) => ({ id, generation: Number(/iPhone-(\d+)-Pro$/.exec(id)?.[1] ?? Number.NaN) }))
-    .filter((entry) => !Number.isNaN(entry.generation))
-    .sort((a, b) => b.generation - a.generation);
-  const deviceType = pros[0]?.id ?? iphones.at(-1);
+  const ranked = (score) =>
+    iphones
+      .map((id) => ({ id, score: score(id) }))
+      .filter((entry) => entry.score !== null)
+      .sort((a, b) => a.score - b.score)[0]?.id;
+  const deviceType =
+    ranked((id) => {
+      const generation = seGeneration(id);
+      return generation === null ? null : -generation;
+    }) ??
+    ranked((id) => {
+      const match = /iPhone-(\d+)-mini$/.exec(id);
+      return match ? -Number(match[1]) : null;
+    }) ??
+    ranked((id) => {
+      const match = /iPhone-(\d+)(e?)$/.exec(id);
+      return match ? Number(match[1]) * 2 + (match[2] ? 0 : 1) : null;
+    }) ??
+    iphones[0];
   if (!deviceType) throw new Error(`${runtime.identifier} 에 iPhone 기종이 없다`);
   return { runtime: runtime.identifier, deviceType };
+}
+
+/** 세션 시뮬레이터 이름의 머리 (`simulatorName`) */
+const SESSION_SIMULATOR_PREFIX = "seedbook-";
+
+/** 동시에 켜 둘 수 있는 세션 시뮬레이터 수. 하나가 iOS 데몬까지 수 GB 메모리를 쓴다. */
+export const MAX_BOOTED_SIMULATORS = 2;
+
+/** `xcrun simctl list devices --json` 에서 세션 시뮬레이터(`seedbook-*`) [{ name, udid, state }], 이름 순. */
+export function sessionSimulators(devicesJson) {
+  const found = [];
+  for (const devices of Object.values(devicesJson?.devices ?? {})) {
+    for (const device of devices) {
+      if (device.isAvailable === false || !device.name?.startsWith(SESSION_SIMULATOR_PREFIX))
+        continue;
+      found.push({ name: device.name, udid: device.udid, state: device.state });
+    }
+  }
+  return found.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * 이 세션 시뮬레이터(`ownName`)를 켜면 세션 시뮬레이터가 `MAX_BOOTED_SIMULATORS` 를 넘는가. 넘으면 어떤 세션 것이
+ * 켜져 있는지 담은 안내, 아니면 null. 이미 켜진 자기 것은 다시 써도 된다. 다른 세션 시뮬레이터는 끄지 않는다.
+ */
+export function simulatorLimitError(devicesJson, ownName, max = MAX_BOOTED_SIMULATORS) {
+  const booted = sessionSimulators(devicesJson).filter((sim) => sim.state === "Booted");
+  if (booted.some((sim) => sim.name === ownName) || booted.length < max) return null;
+  return (
+    `세션 시뮬레이터가 이미 ${booted.length}대 켜져 있다 (최대 ${max}대): ${booted.map((sim) => sim.name).join(", ")} — ` +
+    "그 세션이 dev:ios-sim:stop 으로 끌 때까지 기다리거나, 꼭 지금 켜야 하면 --force 를 붙인다 (다른 세션 시뮬레이터는 끄지 않는다)"
+  );
 }
 
 /**

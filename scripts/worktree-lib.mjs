@@ -6,6 +6,7 @@
 //   web 포트는 앱 dev 서버(Vite, apps/mobile) — 브라우저가 여는 곳. API 포트는 Next(apps/web) 로, Vite 가 /api·소개·약관을 넘긴다.
 
 import { sep } from "node:path";
+import { sessionSimulators, simulatorName } from "./dev-app-lib.mjs";
 
 /** 워크트리 루트의 슬롯 파일 (gitignore). 내용은 `SEEDBOOK_SLOT=N` */
 export const SLOT_FILE = ".worktree-slot";
@@ -251,4 +252,16 @@ export function isAgentProcess(args) {
  */
 export function isLocalEnvFile(name) {
   return name === ".env" || /^\.env(\.[\w-]+)?\.local$/.test(name);
+}
+
+/**
+ * 살아 있는 체크아웃(메인·워크트리) 어느 것의 것도 아닌 세션 시뮬레이터 (`seedbook-<워크트리 폴더>`).
+ * 다른 이름의 시뮬레이터는 대상이 아니다
+ * @param {unknown} devicesJson `xcrun simctl list devices --json`
+ * @param {string[]} checkoutDirs 디렉터리가 있는 체크아웃 경로
+ * @returns {{ name: string, udid: string, state: string }[]}
+ */
+export function orphanSimulators(devicesJson, checkoutDirs) {
+  const live = new Set(checkoutDirs.map(simulatorName));
+  return sessionSimulators(devicesJson).filter((sim) => !live.has(sim.name));
 }

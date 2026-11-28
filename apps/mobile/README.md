@@ -57,12 +57,15 @@ pnpm --filter @seedbook/mobile open:android
 ## Seedbook Dev (개발용 앱, 앱 QA 는 이것으로)
 
 출시 앱과 **나란히 설치되는** 개발용 앱이다. 운영이 아니라 이 체크아웃의 dev 서버(슬롯 web 포트, 슬롯 DB)에 붙어 실제
-데이터와 완전히 나뉜다. **앱 QA 는 세션마다 전용 iOS 시뮬레이터에 Seedbook Dev 를 깔아서 한다** — 여러 세션이 한 아이폰에
-번갈아 깔면 서로 덮어쓴다. Android 에뮬레이터는 띄우지 않는다.
+데이터와 완전히 나뉜다. **네이티브 동작(플러그인·로그인 SDK·기기 저장·딥링크) QA 는 세션마다 전용 iOS 시뮬레이터에 Seedbook
+Dev 를 깔아서 한다** — 여러 세션이 한 아이폰에 번갈아 깔면 서로 덮어쓴다. 화면만 바꿨다면 시뮬레이터 대신 브라우저로 본다
+(시뮬레이터 하나가 iOS 데몬까지 수 GB 메모리를 쓴다). Android 에뮬레이터는 띄우지 않는다.
 
 ```bash
 pnpm dev                                            # 이 체크아웃의 dev 서버 (먼저)
-pnpm --filter @seedbook/mobile dev:ios-sim          # 이 세션 전용 시뮬레이터에 빌드·설치·실행 (QA 는 이것으로)
+pnpm --filter @seedbook/mobile dev:ios-sim          # 이 세션 전용 시뮬레이터(창 없음)에 빌드·설치·실행 (QA 는 이것으로)
+xcrun simctl io seedbook-<워크트리 폴더> screenshot shot.png   # 창 없이 화면 확인
+pnpm --filter @seedbook/mobile dev:ios-sim:show     # 사람이 직접 눌러야 할 때만 Simulator 앱에 띄운다 (dev:ios-sim --window 도 같다)
 pnpm --filter @seedbook/mobile dev:ios-sim:stop     # QA 가 끝나면 시뮬레이터를 끈다
 pnpm --filter @seedbook/mobile dev:ios-device       # 연결된 아이폰 (같은 Wi-Fi, 기기에서만 볼 것이 있을 때)
 pnpm --filter @seedbook/mobile dev:android-device   # adb 로 연결된 Android 기기 (dev 빌드 타입)
@@ -72,9 +75,13 @@ pnpm --filter @seedbook/mobile dev:android-device   # adb 로 연결된 Android 
 기기는 맥 LAN IP(en0))를 정해 dev 서버가 응답하는지 보고, `vite build --mode development` (`SEEDBOOK_API_BASE_URL` = 그 주소,
 "개발용 빠른 로그인" 이 보인다) → `cap sync` (`SEEDBOOK_DEV_APP=1`, OTA `beta` 채널 + 로컬 공개 키) → fastlane lane 을 돌린다.
 
-- 시뮬레이터 (`ios dev_sim`): 이름 `seedbook-<워크트리 폴더>` 하나를 세션이 쓴다 — 없으면 가장 새 런타임의 iPhone Pro 로
-  만들고 켠 뒤 `-configuration Dev` 로 빌드해 `simctl install/launch` 한다. 다른 세션의 시뮬레이터는 건드리지 않는다.
-  로컬 서명이라 Apple 계정이 필요 없다.
+- 시뮬레이터 (`ios dev_sim`): 이름 `seedbook-<워크트리 폴더>` 하나를 세션이 쓴다 — 없으면 가장 새 런타임의 작은 기종
+  (iPhone SE, 없으면 가장 작은 기본 iPhone)으로 만들고 **창 없이** 켠 뒤(`simctl boot`) `-configuration Dev` 로 빌드해
+  `simctl install/launch` 한다. 화면은 `xcrun simctl io <이름> screenshot` 으로 본다. 로컬 서명이라 Apple 계정이 필요 없다.
+- 세션 시뮬레이터(`seedbook-*`)는 **동시에 2대까지** 켠다. 이미 2대면 어느 세션 것이 켜져 있는지 알려 주고 실패한다 —
+  그 세션이 끌 때까지 기다리거나 꼭 필요하면 `--force`. 다른 세션의 시뮬레이터는 끄지 않는다.
+- 지운 워크트리의 시뮬레이터는 `pnpm wt:gc` (머지 큐 정리 때 돈다) 가 지운다. 메인 체크아웃(`seedbook-seedbook`)·살아 있는
+  워크트리 것은 그대로 둔다.
 - 아이폰 (`ios dev`): xcodebuild `-destination id=<아이폰>` 개발 서명 + `devicectl install`. 기기·팀 ID 는 자동으로 찾고
   `SEEDBOOK_IOS_DEVICE`·`APPLE_TEAM_ID`·`SEEDBOOK_DEV_HOST` 로 바꿀 수 있다. 처음에는 "로컬 네트워크" 권한을 허용한다.
 

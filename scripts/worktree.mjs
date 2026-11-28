@@ -11,8 +11,9 @@
 //   pnpm wt:info            이 워크트리의 슬롯·URL·DB (없으면 배정)
 //   pnpm wt:stop            이 워크트리 슬롯의 web·API 포트를 듣는 dev 서버만 끈다 (DB·슬롯은 그대로)
 //   pnpm wt:down            이 워크트리의 dev 서버를 끄고 슬롯 DB 2개를 지운 뒤 슬롯 반납
-//   pnpm wt:gc [--dry-run]  살아 있는 워크트리가 쥐지 않은 seedbook_s* DB 와, 지워진 워크트리 경로를
-//                           cwd 로 쥔 node 프로세스를 정리 (메인 세션이 hwt rm 뒤 메인 체크아웃에서)
+//   pnpm wt:gc [--dry-run]  살아 있는 워크트리가 쥐지 않은 seedbook_s* DB, 지워진 워크트리 경로를
+//                           cwd 로 쥔 node 프로세스, 지워진 워크트리의 seedbook-<워크트리> 시뮬레이터를 정리
+//                           (메인 세션이 hwt rm 뒤 메인 체크아웃에서)
 import { execFileSync, spawn } from "node:child_process";
 import {
   closeSync,
@@ -45,6 +46,7 @@ import {
   isOrphanCwd,
   isUnder,
   MAX_SLOT,
+  orphanSimulators,
   orphanSlotDatabases,
   parseSlotFile,
   parseWorktreeList,
@@ -739,9 +741,51 @@ async function gcDatabases({ dryRun = false, quiet = false } = {}) {
   log(`주인 없는 슬롯 DB 를 지웠다: ${names.join(", ")}`);
 }
 
+/**
+ * 살아 있는 체크아웃(메인·워크트리) 것이 아닌 세션 시뮬레이터(`seedbook-<워크트리 폴더>`)를 지운다 (켜져 있으면 끄고).
+ * Xcode 가 없으면 건너뛴다
+ */
+function gcSimulators({ dryRun }) {
+  let orphans;
+  try {
+    const devices = JSON.parse(
+      execFileSync("xcrun", ["simctl", "list", "devices", "--json"], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      })
+    );
+    orphans = orphanSimulators(
+      devices,
+      worktreePaths().filter((dir) => existsSync(dir))
+    );
+  } catch {
+    log("iOS 시뮬레이터를 볼 수 없어(xcrun simctl) 시뮬레이터 정리를 건너뛴다");
+    return;
+  }
+  if (orphans.length === 0) {
+    log("정리할 시뮬레이터가 없다");
+    return;
+  }
+  const list = orphans.map((sim) => `${sim.name} (${sim.udid}, ${sim.state})`).join(", ");
+  if (dryRun) {
+    log(`(dry-run) 주인 없는 시뮬레이터: ${list}`);
+    return;
+  }
+  for (const sim of orphans) {
+    try {
+      if (sim.state === "Booted") execFileSync("xcrun", ["simctl", "shutdown", sim.udid]);
+      execFileSync("xcrun", ["simctl", "delete", sim.udid]);
+    } catch (error) {
+      warn(`시뮬레이터 ${sim.name} 를 지우지 못했다: ${error.message}`);
+    }
+  }
+  log(`주인 없는 시뮬레이터를 지웠다: ${list}`);
+}
+
 async function gc({ dryRun }) {
   await gcProcesses({ dryRun });
   await gcDatabases({ dryRun });
+  gcSimulators({ dryRun });
 }
 
 async function down() {
