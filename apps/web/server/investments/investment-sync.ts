@@ -8,7 +8,7 @@ import {
 } from "@seedbook/domain/v1/investment-record";
 import { createEntityRepo, selectRowsByIds, type Tx } from "@web/server/sync/entity-repo";
 import type { SyncEntity } from "@web/server/sync/registry";
-import { linkNewAccount, replaceChildren } from "@web/server/sync/v1-changeseq";
+import { bySortKey, linkNewAccount, replaceChildren } from "@web/server/sync/v1-changeseq";
 import { and, inArray, isNull } from "drizzle-orm";
 
 type AccountRow = typeof schema.investmentAccount.$inferSelect;
@@ -52,11 +52,13 @@ export const investmentRepo = createEntityRepo<InvestmentFields, InvestmentField
         .from(schema.stockHolding)
         .where(
           and(inArray(schema.stockHolding.accountId, ids), isNull(schema.stockHolding.deletedAt))
-        ),
+        )
+        .orderBy(bySortKey(schema.stockHolding.sortKey)),
       db
         .select()
         .from(schema.cashItem)
-        .where(and(inArray(schema.cashItem.accountId, ids), isNull(schema.cashItem.deletedAt))),
+        .where(and(inArray(schema.cashItem.accountId, ids), isNull(schema.cashItem.deletedAt)))
+        .orderBy(bySortKey(schema.cashItem.sortKey)),
     ]);
     return new Map(
       accounts.map((a) => [

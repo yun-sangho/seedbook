@@ -22,6 +22,11 @@ export const SYNC_V2_KEYS: SyncV2Keys = {
   sortKeysAfter,
 };
 
+/** v1 읽기의 하위 행 순서 (`sortKey` 바이트 순, 없으면 뒤). */
+export function bySortKey(column: PgColumn) {
+  return sql`${column} COLLATE "C" ASC NULLS LAST`;
+}
+
 export async function numberV1Writes(tx: Tx, userId: string): Promise<void> {
   await lockChangeSeqs(tx, userId);
   await backfillUserSyncV2(tx, userId, SYNC_V2_KEYS);
@@ -91,7 +96,8 @@ type ChildTable =
 /**
  * v1 의 하위 목록 통째 저장 (부모 하나의 보유 종목·현금·금액 기록·배분). 지웠다 다시 넣으면 v2 기기가
  * 지운 항목을 알 수 없으니, 목록에서 빠진 행은 톰스톤으로, 들어온 행은 upsert (톰스톤이면 되살림) 한다.
- * 바꾼 행은 모두 새 번호를 받는다. 남의 행과 키가 겹치면 건너뛴다 (부모가 다르면 갱신하지 않는다).
+ * 바꾼 행은 모두 새 번호를 받고, 목록 순서는 `sortKey` 로 남긴다 (v1 읽기도 그 순서로 읽는다). 남의
+ * 행과 키가 겹치면 건너뛴다 (부모가 다르면 갱신하지 않는다).
  *
  * `key`: 행을 가리는 열 — 보유 종목·현금·배분은 `id`, 금액 기록은 날짜 (`(accountId, date)` 가 기본 키).
  */
@@ -109,6 +115,8 @@ export async function replaceChildren(
   const version = t.version as PgColumn;
   const now = new Date();
   const kept = rows.map((r) => r[key] as string);
+  // 목록 순서 = sortKey (금액 기록은 날짜 순이라 sortKey 가 없다). v1 은 순서를 하위 목록 순서로 보낸다.
+  const sortKeys = key === "id" ? sortKeysAfter(null, rows.length) : [];
   await tx
     .update(table)
     .set({ deletedAt: now, version: sql`${version} + 1`, changeSeq: 0 } as never)
@@ -119,7 +127,8 @@ export async function replaceChildren(
         kept.length > 0 ? notInArray(keyCol, kept) : undefined
       )
     );
-  for (const row of rows) {
+  for (const [index, given] of rows.entries()) {
+    const row = sortKeys.length > 0 ? { ...given, sortKey: sortKeys[index] } : given;
     const { [parent.column]: _parent, [key]: _key, ...columns } = row;
     await tx
       .insert(table)

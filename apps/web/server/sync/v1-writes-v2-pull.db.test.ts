@@ -148,6 +148,26 @@ describe("v1 writes show up in the v2 pull", () => {
     expect(find(records, "holding", ids.holding2)?.deletedAt).toEqual(expect.any(String));
   });
 
+  it("keeps the list order of a v1 save as sort keys", async () => {
+    const userId = await createTestUser();
+    const account = randomUUID();
+    const ids = { holding1: randomUUID(), holding2: randomUUID(), cash: randomUUID() };
+    await applyMutation(db, userId, {
+      entity: "investment",
+      op: "upsert",
+      id: account,
+      data: investment(ids),
+    });
+    const data = investment(ids) as { holdings: unknown[] };
+    data.holdings.reverse();
+
+    await applyMutation(db, userId, { entity: "investment", op: "upsert", id: account, data });
+
+    const { records } = await pullAll(userId);
+    const key = (id: string) => find(records, "holding", id)?.sortKey ?? "";
+    expect(key(ids.holding2) < key(ids.holding1)).toBe(true);
+  });
+
   it("delivers a v1 delete as a tombstone", async () => {
     const userId = await createTestUser();
     const account = randomUUID();

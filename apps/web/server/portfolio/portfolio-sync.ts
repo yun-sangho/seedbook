@@ -10,7 +10,7 @@ import {
 import { createEntityRepo, selectRowsByIds } from "@web/server/sync/entity-repo";
 import type { SyncEntity } from "@web/server/sync/registry";
 import type { MutationResult } from "@web/server/sync/types";
-import { linkPortfolioAccounts, replaceChildren } from "@web/server/sync/v1-changeseq";
+import { bySortKey, linkPortfolioAccounts, replaceChildren } from "@web/server/sync/v1-changeseq";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 type PortfolioRow = typeof schema.portfolio.$inferSelect;
@@ -63,7 +63,8 @@ export const portfolioRepo = createEntityRepo<PortfolioFields, PortfolioData>({
             inArray(schema.portfolioAllocation.portfolioId, ids),
             isNull(schema.portfolioAllocation.deletedAt)
           )
-        ),
+        )
+        .orderBy(bySortKey(schema.portfolioAllocation.sortKey)),
     ]);
     return new Map(
       portfolios.map((p) => [
