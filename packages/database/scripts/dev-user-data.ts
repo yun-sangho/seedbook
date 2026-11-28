@@ -14,7 +14,9 @@ import { existsSync, readFileSync } from "node:fs";
 import path, { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { and, eq, isNull, notInArray, sql } from "drizzle-orm";
-import { db, schema } from "../src/client";
+import { type Database, db as defaultDb, schema } from "../src/client";
+import { backfillUserSyncV2 } from "../src/sync-v2-backfill";
+import { syncV2Keys } from "./sync-v2-keys";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE_PATH = resolve(__dirname, "../seed-data/user-data.json");
@@ -65,7 +67,7 @@ type UserDataFixture = {
   portfolios?: PortfolioFixture[];
 };
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
 function readFixture(): UserDataFixture | null {
   if (!existsSync(FIXTURE_PATH)) {
@@ -93,6 +95,10 @@ function portfolioOfAccount(portfolios: PortfolioFixture[]): Map<string, string>
  * 픽스처의 계좌·포트폴리오를 쓴다. 같은 id 의 행이 (톰스톤이어도) 있으면 되살려 덮어쓰고,
  * 딸린 행(기록·보유 종목·예수금·비중)은 픽스처대로 바꾼다. `version` 을 올리고 `updatedAt`
  * 을 지금으로 두어 엔티티 동기화 pull 이 바뀐 것으로 받아 가게 한다.
+ *
+ * 동기화 v2: 바꾼 루트는 `changeSeq` 를 0 으로, 목록 순서(`sortKey`)를 비워 두고, 끝에서
+ * `backfillUserSyncV2` 가 0 인 행 모두(새로 넣은 하위 행 포함)에 `user_sync_state` 의 새 번호와
+ * 키·순서를 매긴다 — 번호가 그대로면 v2 pull 이 커서 뒤의 변경으로 받지 않는다.
  */
 async function writeFixture(tx: Tx, userId: string, fixture: UserDataFixture, now: Date) {
   const investments = fixture.investments ?? [];
@@ -102,6 +108,8 @@ async function writeFixture(tx: Tx, userId: string, fixture: UserDataFixture, no
     deletedAt: null,
     updatedAt: now,
     version: sql`${table.version} + 1`,
+    changeSeq: 0,
+    sortKey: null,
   });
 
   // 계좌가 portfolioId 로 포트폴리오를 가리키므로 포트폴리오를 먼저 쓴다.
@@ -201,11 +209,13 @@ async function writeFixture(tx: Tx, userId: string, fixture: UserDataFixture, no
       });
   }
 
+  await backfillUserSyncV2(tx, userId, syncV2Keys);
+
   return { investments: investments.length, portfolios: portfolios.length };
 }
 
 /** 계좌·포트폴리오가 하나도 없을 때만 시나리오를 넣는다 (dev DB 를 처음 만들 때). */
-export async function seedDevUserData(userId: string): Promise<void> {
+export async function seedDevUserData(userId: string, db: Database = defaultDb): Promise<void> {
   const fixture = readFixture();
   if (!fixture) return;
 
@@ -229,10 +239,10 @@ export async function seedDevUserData(userId: string): Promise<void> {
  *
  * - 픽스처에 없는 계좌·포트폴리오와 모든 리밸런싱 → 톰스톤 (동기화로 다른 기기에도 지워진다).
  * - 픽스처의 계좌·포트폴리오 → 되살려 덮어쓴다.
- * - 개인 설정(정렬·접힘·저장소 모드)과, 서비스에서 빠진 도메인(저축·대출·실물자산·자산 기록·
+ * - 개인 설정(정렬·접힘·저장소 모드)은 기본값으로 되돌리고, 서비스에서 빠진 도메인(저축·대출·실물자산·자산 기록·
  *   자산 계획)의 행은 지운다.
  */
-export async function resetDevUserData(userId: string): Promise<void> {
+export async function resetDevUserData(userId: string, db: Database = defaultDb): Promise<void> {
   const fixture = readFixture();
   if (!fixture) return;
   const accountIds = (fixture.investments ?? []).map((i) => i.id);
@@ -244,11 +254,17 @@ export async function resetDevUserData(userId: string): Promise<void> {
       deletedAt: now,
       updatedAt: now,
       version: sql`${table.version} + 1`,
+      changeSeq: 0,
     });
 
     await tx
       .update(schema.rebalancing)
-      .set({ deletedAt: now, updatedAt: now, version: sql`${schema.rebalancing.version} + 1` })
+      .set({
+        deletedAt: now,
+        updatedAt: now,
+        version: sql`${schema.rebalancing.version} + 1`,
+        changeSeq: 0,
+      })
       .where(and(eq(schema.rebalancing.userId, userId), isNull(schema.rebalancing.deletedAt)));
     // 계좌가 먼저 포트폴리오를 놓아야 지워질 포트폴리오를 가리키지 않는다.
     await tx
@@ -272,7 +288,23 @@ export async function resetDevUserData(userId: string): Promise<void> {
         )
       );
 
-    await tx.delete(schema.userPreference).where(eq(schema.userPreference.userId, userId));
+    // 설정은 v2 에서 지우지 않는 레코드라(사용자당 하나) 행을 지우지 않고 기본값으로 되돌린다.
+    const p = schema.userPreference;
+    await tx
+      .update(p)
+      .set({
+        holdingsSortOption: sql`DEFAULT`,
+        rebalancingTaskSort: sql`DEFAULT`,
+        rebalancingCollapsedSections: sql`DEFAULT`,
+        accountSortOption: sql`DEFAULT`,
+        portfolioStockSortOption: sql`DEFAULT`,
+        investmentTrendRange: sql`DEFAULT`,
+        storageMode: sql`DEFAULT`,
+        storageModeChosenAt: null,
+        version: sql`${p.version} + 1`,
+        changeSeq: 0,
+      })
+      .where(eq(p.userId, userId));
     await tx.delete(schema.savingsAccount).where(eq(schema.savingsAccount.userId, userId));
     await tx.delete(schema.debt).where(eq(schema.debt.userId, userId));
     await tx.delete(schema.realAsset).where(eq(schema.realAsset.userId, userId));
