@@ -3,7 +3,7 @@ name: CI
 # 깨끗한 checkout 에서 포맷 · lint · 타입 · 테스트 · 빌드를 확인한다. 로컬 작업 트리에만 있고
 # 커밋되지 않은 파일에 기대는 커밋도 여기서 걸린다.
 #   - PR 마다 실행 (DB 통합 테스트는 DB 관련 경로가 바뀐 PR 에서만 — "DB 테스트 대상 판단")
-#   - main push 때는 deploy.yml 이 이 워크플로를 먼저 불러, 통과해야 이미지 빌드/배포로 간다.
+#   - main push 때는 deploy-web.yml · deploy-crawler.yml 이 이 워크플로를 먼저 불러, 통과해야 이미지 빌드/배포로 간다.
 on:
   pull_request:
   workflow_call:
