@@ -26,6 +26,7 @@ import { List, ListButtonItem, ListItem } from "@mobile/seed-design/ui/list";
 import { Icon } from "@seed-design/react";
 import { ANONYMOUS_USER_NAME } from "@seedbook/domain/anonymous-identity";
 import { useFlow } from "@stackflow/react";
+import { AppVersionItem } from "./app-version-item";
 
 const chevron = <Icon svg={<IconChevronRightLine />} size="x5" color="fg.neutralSubtle" />;
 
@@ -153,6 +154,7 @@ export function SettingsMenuMobile() {
             />
           );
         })}
+        <AppVersionItem />
       </MenuCard>
     </div>
   );

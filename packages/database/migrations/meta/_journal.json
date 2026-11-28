@@ -197,6 +197,13 @@
       "when": 1795856407392,
       "tag": "0027_bored_iron_fist",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1795862032096,
+      "tag": "0028_keen_mockingbird",
+      "breakpoints": true
     }
   ]
 }

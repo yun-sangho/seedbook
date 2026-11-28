@@ -34,6 +34,9 @@ env:
   SEEDBOOK_API_BASE_URL: ${{ vars.BETTER_AUTH_URL || 'https://seedbook.boogie.ing' }}
   SEEDBOOK_BUILD_NUMBER: ${{ github.run_number }}
   KAKAO_NATIVE_APP_KEY: ${{ vars.KAKAO_NATIVE_APP_KEY }}
+  # OTA 번들 서명 확인용 공개 키 (capacitor.config.ts LiveUpdate). 없으면 이 바이너리는 OTA 를 받지 않는다 —
+  # 스토어에 올리는 빌드는 막는다 (plan). 짝인 개인 키는 Secret APP_BUNDLE_SIGNING_KEY (app-bundle.yml).
+  SEEDBOOK_OTA_PUBLIC_KEY: ${{ vars.APP_BUNDLE_PUBLIC_KEY }}
   FASTLANE_SKIP_UPDATE_CHECK: "1"
   FASTLANE_HIDE_CHANGELOG: "1"
 
@@ -69,6 +72,11 @@ jobs:
             fi
             PLATFORM=both
             UPLOAD=true
+          fi
+          # OTA 가 빠진 바이너리를 스토어에 내면 다음 스토어 릴리스 전까지 화면을 고칠 수 없다.
+          if [ "$UPLOAD" = true ] && [ -z "$SEEDBOOK_OTA_PUBLIC_KEY" ]; then
+            echo "::error::Variable APP_BUNDLE_PUBLIC_KEY 가 없다 — apps/mobile/README.md \"OTA 번들\" 의 키 만들기"
+            exit 1
           fi
           ios=false; android=false
           case "$PLATFORM" in
@@ -114,6 +122,10 @@ jobs:
 
       - name: cap sync ios
         run: pnpm sync:ios
+
+      - name: OTA 공개 키 확인
+        if: needs.plan.outputs.upload == 'true'
+        run: node -e "const c=require('./ios/App/App/capacitor.config.json');if(!c.plugins?.LiveUpdate?.publicKey){console.error('::error::ios/App/App/capacitor.config.json 에 LiveUpdate.publicKey 가 없다');process.exit(1)}"
 
       - uses: ruby/setup-ruby@v1
         with:
@@ -186,6 +198,10 @@ jobs:
 
       - name: cap sync android
         run: pnpm sync:android
+
+      - name: OTA 공개 키 확인
+        if: needs.plan.outputs.upload == 'true'
+        run: node -e "const c=require('./android/app/src/main/assets/capacitor.config.json');if(!c.plugins?.LiveUpdate?.publicKey){console.error('::error::android/app/src/main/assets/capacitor.config.json 에 LiveUpdate.publicKey 가 없다');process.exit(1)}"
 
       - uses: ruby/setup-ruby@v1
         with:
