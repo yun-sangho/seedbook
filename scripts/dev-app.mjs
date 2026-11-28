@@ -2,13 +2,16 @@
  * 개발용 앱 Seedbook Dev 를 만들어 시뮬레이터·기기에 바로 설치한다. 출시 앱과 나란히 설치되고
  * (`ing.boogie.seedbook.dev`), 운영이 아니라 이 체크아웃의 dev 서버(슬롯 web 포트, 슬롯 DB)에 붙는다.
  *
- *   pnpm --filter @seedbook/mobile dev:ios-sim          # 이 세션 전용 iOS 시뮬레이터 (앱 QA 는 이것으로)
+ *   pnpm --filter @seedbook/mobile dev:ios-sim          # 이 세션 전용 iOS 시뮬레이터, 창 없이 (네이티브 QA 는 이것으로)
+ *   pnpm --filter @seedbook/mobile dev:ios-sim:show     # 사람이 직접 눌러야 할 때 그 시뮬레이터를 Simulator 앱에 띄운다
  *   pnpm --filter @seedbook/mobile dev:ios-sim:stop     # QA 가 끝나면 그 시뮬레이터를 끈다
  *   pnpm --filter @seedbook/mobile dev:ios-device       # 연결된 아이폰 (같은 Wi-Fi)
  *   pnpm --filter @seedbook/mobile dev:android-device   # adb 로 연결된 Android 기기
  *
- * 시뮬레이터는 이름 `seedbook-<워크트리 폴더>` 로 세션마다 하나다 — 없으면 만들고, 다른 세션의 시뮬레이터는
- * 건드리지 않는다. 시뮬레이터는 맥과 네트워크를 같이 써서 `http://localhost:<포트>` 로 붙는다.
+ * 시뮬레이터는 이름 `seedbook-<워크트리 폴더>` 로 세션마다 하나다 — 없으면 작은 기종(iPhone SE)으로 만들고, 창 없이
+ * 켠다(`--window` 면 Simulator 앱에 띄운다). 세션 시뮬레이터는 동시에 2대까지 — 넘으면 켜진 세션을 알려 주고 실패한다
+ * (`--force` 로 넘는다). 다른 세션의 시뮬레이터는 끄지 않는다. 지운 워크트리의 시뮬레이터는 `pnpm wt:gc` 가 지운다.
+ * 시뮬레이터는 맥과 네트워크를 같이 써서 `http://localhost:<포트>` 로 붙는다.
  *
  * 순서: 슬롯 web 포트(`pnpm wt:info`)·주소(시뮬레이터 localhost, 기기는 맥 LAN IP) 확인 → dev 서버 응답 확인 →
  * `vite build --mode development` (SEEDBOOK_API_BASE_URL = 그 주소, 개발용 빠른 로그인이 보인다) →
@@ -51,6 +54,7 @@ import {
   pickLanAddress,
   pickSimulatorTarget,
   readEnvValue,
+  simulatorLimitError,
   simulatorName,
   teamIdFromCertificateSubject,
 } from "./dev-app-lib.mjs";
@@ -235,10 +239,20 @@ function simctlJson(...args) {
   return JSON.parse(output("xcrun", ["simctl", "list", ...args, "--json"]));
 }
 
-/** 이 세션 전용 시뮬레이터를 (없으면 만들어) 켜고 Simulator 앱에 띄운다. */
-function sessionSimulator() {
+/**
+ * 이 세션 전용 시뮬레이터를 (없으면 만들어) 창 없이 켠다 — 설치·실행·스크린샷은 simctl 로 한다.
+ * 세션 시뮬레이터가 이미 최대 대수만큼 켜져 있으면 켜지 않고 실패한다 (`force` 면 넘어서 켠다).
+ * `window` 면 Simulator 앱에 띄운다 (사람이 직접 눌러야 할 때).
+ */
+function sessionSimulator({ window = false, force = false } = {}) {
   const name = simulatorName(ROOT);
-  let simulator = findSimulator(simctlJson("devices"), name);
+  const devices = simctlJson("devices");
+  let simulator = findSimulator(devices, name);
+  if (simulator?.state !== "Booted") {
+    const limit = simulatorLimitError(devices, name);
+    if (limit && !force) fail(limit);
+    if (limit) log(`--force: ${limit.split(" — ")[0]} — 그래도 켠다`);
+  }
   if (!simulator) {
     const { runtime, deviceType } = pickSimulatorTarget(simctlJson("runtimes"));
     log(
@@ -248,15 +262,18 @@ function sessionSimulator() {
     simulator = { udid, state: "Shutdown" };
   }
   if (simulator.state !== "Booted") run("xcrun", ["simctl", "boot", simulator.udid]);
-  // 화면을 띄운다. Simulator 앱이 없는 Xcode 면 창 없이 켜진 채로 둔다 (simctl 로 설치·실행·스크린샷은 된다).
-  const shown = spawnSync(
-    "open",
-    ["-b", "com.apple.iphonesimulator", "--args", "-CurrentDeviceUDID", simulator.udid],
-    { stdio: "ignore" }
+  if (window) {
+    const shown = spawnSync(
+      "open",
+      ["-b", "com.apple.iphonesimulator", "--args", "-CurrentDeviceUDID", simulator.udid],
+      { stdio: "ignore" }
+    );
+    if (shown.status !== 0)
+      log("Simulator 앱을 찾지 못해 창 없이 켜 두었다 (Xcode → Settings → Components)");
+  }
+  log(
+    `시뮬레이터: ${name} (${simulator.udid}, ${window ? "Simulator 창" : "창 없음 — 화면은 xcrun simctl io <이름> screenshot <파일>.png, 직접 누르려면 dev:ios-sim:show"})`
   );
-  if (shown.status !== 0)
-    log("Simulator 앱을 찾지 못해 창 없이 켰다 (Xcode → Settings → Components)");
-  log(`시뮬레이터: ${name} (${simulator.udid})`);
   return simulator.udid;
 }
 
@@ -271,12 +288,19 @@ function stopSessionSimulator() {
   log(`${name} 을 껐다`);
 }
 
-const PLATFORMS = ["ios-sim", "ios-sim-stop", "ios", "android", "ota-publish"];
+const PLATFORMS = ["ios-sim", "ios-sim-show", "ios-sim-stop", "ios", "android", "ota-publish"];
 
 async function main() {
   const platform = process.argv[2];
-  if (!PLATFORMS.includes(platform)) fail(`usage: dev-app.mjs <${PLATFORMS.join("|")}>`);
+  const flags = new Set(process.argv.slice(3));
+  const simulatorOptions = { window: flags.has("--window"), force: flags.has("--force") };
+  if (!PLATFORMS.includes(platform))
+    fail(`usage: dev-app.mjs <${PLATFORMS.join("|")}> [--window] [--force]`);
   if (platform === "ios-sim-stop") return stopSessionSimulator();
+  if (platform === "ios-sim-show") {
+    sessionSimulator({ ...simulatorOptions, window: true });
+    return;
+  }
 
   const port = slotWebPort();
   const host =
@@ -301,7 +325,10 @@ async function main() {
   const kakaoKey = kakaoNativeAppKey();
   if (platform === "ios-sim") {
     run("bundle", ["exec", "fastlane", "ios", "dev_sim"], {
-      env: { SEEDBOOK_IOS_SIMULATOR: sessionSimulator(), KAKAO_NATIVE_APP_KEY: kakaoKey },
+      env: {
+        SEEDBOOK_IOS_SIMULATOR: sessionSimulator(simulatorOptions),
+        KAKAO_NATIVE_APP_KEY: kakaoKey,
+      },
     });
     log("QA 가 끝나면 pnpm --filter @seedbook/mobile dev:ios-sim:stop 으로 시뮬레이터를 끈다");
   } else if (platform === "ios") {
