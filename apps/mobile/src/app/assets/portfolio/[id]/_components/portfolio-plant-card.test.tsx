@@ -116,7 +116,7 @@ describe("PortfolioPlantRow", () => {
     expect(screen.getByText(/시들해요 · 바람이 불어요/)).toBeTruthy();
   });
 
-  it("lets a seed write its wish", () => {
+  it("asks to plant a seed that has no goal yet, without a wish line", () => {
     const onAction = vi.fn();
     render(
       <PortfolioPlantRow
@@ -124,8 +124,10 @@ describe("PortfolioPlantRow", () => {
         onAction={onAction}
       />
     );
-    fireEvent.click(screen.getByRole("button", { name: "이루면 하고 싶은 일 적기" }));
+    fireEvent.click(actionButton());
+    expect(actionButton().textContent).toBe("씨앗 심기");
     expect(onAction).toHaveBeenCalledWith("season");
+    expect(screen.queryByText(/이루면/)).toBeNull();
   });
 
   it("shows the wish of a grown plant without editing it", () => {
@@ -178,23 +180,55 @@ describe("EditPlantGoalSheet", () => {
 });
 
 describe("PlantSeasonSheet", () => {
-  it("plants a seed of the chosen kind with a wish", () => {
+  const seedProps = {
+    open: true,
+    onOpenChange: vi.fn(),
+    title: "씨앗 심기",
+    initialKind: "tree" as const,
+    initialWish: "",
+    progress: INITIAL_PLANT_PROGRESS,
+  };
+
+  it("plants a seed of the chosen kind with a goal and a wish", () => {
     const onSave = vi.fn();
     render(
       <PlantSeasonSheet
-        open
-        onOpenChange={vi.fn()}
-        title="씨앗 심기"
-        initialKind="tree"
-        initialWish=""
+        {...seedProps}
+        valuation={{ value: 1_000_000, pricesComplete: true }}
         onSave={onSave}
       />
     );
     fireEvent.click(screen.getByRole("radio", { name: "고사리" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "첫 목표 금액" }), {
+      target: { value: "1,100,000" },
+    });
     fireEvent.change(screen.getByLabelText("이루면 하고 싶은 일"), {
       target: { value: "부모님과 제주 여행" },
     });
     fireEvent.click(screen.getByRole("button", { name: "심기" }));
-    expect(onSave).toHaveBeenCalledWith({ plantKind: "fern", wish: "부모님과 제주 여행" });
+    expect(onSave).toHaveBeenCalledWith({
+      plantKind: "fern",
+      wish: "부모님과 제주 여행",
+      goalAmount: 1_100_000,
+    });
+  });
+
+  it("needs a goal at or above the floor", () => {
+    const onSave = vi.fn();
+    render(
+      <PlantSeasonSheet
+        {...seedProps}
+        valuation={{ value: 1_000_000, pricesComplete: true }}
+        onSave={onSave}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "심기" }));
+    expect(screen.getByText("목표 금액을 1원 이상으로 입력해 주세요")).toBeTruthy();
+    fireEvent.change(screen.getByRole("textbox", { name: "첫 목표 금액" }), {
+      target: { value: "1,050,000" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "심기" }));
+    expect(screen.getByText("목표는 110만원 이상이어야 해요 (지금보다 10% 이상)")).toBeTruthy();
+    expect(onSave).not.toHaveBeenCalled();
   });
 });

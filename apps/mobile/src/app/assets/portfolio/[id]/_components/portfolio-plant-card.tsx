@@ -38,7 +38,10 @@ function rowButton(plant: PortfolioPlantView): { label: string; action: PlantRow
     case "set":
       return { label: "수정", action: "goal" };
     case "needs-goal":
-      return { label: "목표 정하기", action: "goal" };
+      // 목표가 없는 씨앗은 아직 심지 않은 것 — 종류·첫 목표·소원을 함께 정한다.
+      return plant.stage === 0
+        ? { label: "씨앗 심기", action: "season" }
+        : { label: "목표 정하기", action: "goal" };
     case "needs-fruit-goal":
       return { label: "열매 목표 정하기", action: "goal" };
     case "blocked-by-drift":
@@ -109,20 +112,9 @@ export function PortfolioPlantRow({
           {button.label}
         </ActionButton>
       </div>
-      {plant.stage === 0 ? (
-        // 하고 싶은 일은 씨앗을 심을 때(씨앗 단계)만 적는다.
-        <button
-          type="button"
-          onClick={() => onAction("season")}
-          aria-label={plant.wish ? `이루면: ${plant.wish}` : "이루면 하고 싶은 일 적기"}
-          className="t3-regular text-fg-neutral-subtle block w-full truncate text-left"
-        >
-          {plant.wish ? `🌱 이루면: ${plant.wish}` : "🌱 이루면 하고 싶은 일 적기"}
-        </button>
-      ) : (
-        plant.wish && (
-          <p className="t3-regular text-fg-neutral-subtle truncate">🌱 이루면: {plant.wish}</p>
-        )
+      {/* 하고 싶은 일은 씨앗을 심을 때만 적는다 — 여기서는 보여 주기만. */}
+      {plant.wish && (
+        <p className="t3-regular text-fg-neutral-subtle truncate">🌱 이루면: {plant.wish}</p>
       )}
     </div>
   );
@@ -190,7 +182,8 @@ export function EditPlantGoalSheet({
         </BottomSheetBody>
         <BottomSheetFooter>
           <div className="flex w-full gap-x2">
-            {progress.goalAmount !== null && (
+            {/* 씨앗의 목표는 심을 때 정한 첫 목표라 지우지 않는다 (바꿀 수는 있다). */}
+            {progress.goalAmount !== null && progress.growthStage > 0 && (
               <ActionButton
                 variant="neutralWeak"
                 size="large"
@@ -231,8 +224,8 @@ export function plantSeasonSheetText(
 }
 
 /**
- * 씨앗 심기 시트 — 식물 종류와 이번 계절 목표를 이루면 하고 싶은 일. 둘 다 건너뛸 수 있다. 씨앗일 때만
- * 연다 (새 포트폴리오, 수확 뒤 새 계절).
+ * 씨앗 심기 시트 — 식물 종류, 첫 목표(필수, 하한 `nextGoalError`), 이번 계절 목표를 이루면 하고 싶은
+ * 일(선택). 목표 없는 씨앗일 때만 연다 (새 포트폴리오, 수확 뒤 새 계절).
  */
 export function PlantSeasonSheet({
   open,
@@ -241,6 +234,8 @@ export function PlantSeasonSheet({
   description,
   initialKind,
   initialWish,
+  progress,
+  valuation,
   onSave,
 }: {
   open: boolean;
@@ -249,11 +244,27 @@ export function PlantSeasonSheet({
   description?: string;
   initialKind: PlantKind;
   initialWish: string;
-  onSave: (input: { plantKind: PlantKind; wish: string }) => void;
+  progress: Pick<PlantProgress, "goalHistory" | "fruitGoal">;
+  valuation: Pick<PortfolioValuation, "value" | "pricesComplete">;
+  onSave: (input: { plantKind: PlantKind; wish: string; goalAmount: number }) => void;
 }) {
   const [kind, setKind] = useState<PlantKind>(initialKind);
   const [wish, setWish] = useState(initialWish);
+  const [goalDraft, setGoalDraft] = useState("");
+  const [goalError, setGoalError] = useState<string | undefined>();
   const invalid = wishError(wish) !== null;
+  const floor = nextGoalFloor(progress, valuation);
+
+  const plant = () => {
+    const goalAmount = goalDraft.trim() === "" ? 0 : parseNumericString(goalDraft);
+    const error = nextGoalError(progress, goalAmount, valuation);
+    if (error) {
+      setGoalError(NEXT_GOAL_ERROR_MESSAGES[error](floor));
+      return;
+    }
+    onSave({ plantKind: kind, wish: wish.trim(), goalAmount });
+    onOpenChange(false);
+  };
 
   return (
     <BottomSheetRoot open={open} onOpenChange={onOpenChange}>
@@ -277,6 +288,25 @@ export function PlantSeasonSheet({
               ))}
             </SegmentedControl>
           </div>
+          <div className="pb-x3">
+            <MoneyField
+              label="첫 목표 금액"
+              ariaLabel="첫 목표 금액"
+              value={goalDraft}
+              onValueChange={(next) => {
+                setGoalDraft(next);
+                setGoalError(undefined);
+              }}
+              errorMessage={goalError}
+            />
+            <p className="t3-regular text-fg-neutral-subtle pt-x1">
+              {floor === null
+                ? NEXT_GOAL_ERROR_MESSAGES["prices-loading"](null)
+                : floor > 0
+                  ? `${numberToKorean(floor)} 이상 (지금보다 10% 이상). 금액이 닿고 비중이 기준 안이면 자라요.`
+                  : "금액이 닿고 비중이 기준 안이면 자라요."}
+            </p>
+          </div>
           <TextField
             label="이루면 하고 싶은 일"
             value={wish}
@@ -289,15 +319,7 @@ export function PlantSeasonSheet({
           </TextField>
         </BottomSheetBody>
         <BottomSheetFooter>
-          <ActionButton
-            size="large"
-            className="w-full"
-            disabled={invalid}
-            onClick={() => {
-              onSave({ plantKind: kind, wish: wish.trim() });
-              onOpenChange(false);
-            }}
-          >
+          <ActionButton size="large" className="w-full" disabled={invalid} onClick={plant}>
             심기
           </ActionButton>
         </BottomSheetFooter>
