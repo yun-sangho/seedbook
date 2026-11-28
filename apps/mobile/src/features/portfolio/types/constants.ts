@@ -55,4 +55,9 @@ export const INITIAL_PLANT_PROGRESS: PlantProgress = {
   goalAmount: null,
   growthStage: 0,
   goalHistory: [],
+  season: 1,
+  plantKind: null,
+  wish: "",
+  fruitGoal: null,
+  driftSince: null,
 };

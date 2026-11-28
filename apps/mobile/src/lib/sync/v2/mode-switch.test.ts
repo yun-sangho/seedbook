@@ -30,6 +30,14 @@ function server(records: PulledRecord[]) {
   return { pushed, fetchFn };
 }
 
+const PLANT_DEFAULTS = {
+  season: 1,
+  plantKind: null,
+  wish: "",
+  fruitGoal: null,
+  driftSince: null,
+};
+
 const serverPortfolio = (fields: Record<string, unknown>): PulledRecord => {
   const { id, allocations, accountIds, createdAt, updatedAt, ...rest } = portfolioItem();
   return {
@@ -40,7 +48,8 @@ const serverPortfolio = (fields: Record<string, unknown>): PulledRecord => {
     changeSeq: "1",
     deletedAt: null,
     sortKey: "a0",
-    fields: { ...rest, ...fields },
+    // 서버는 생성 때 기본값을 채운다.
+    fields: { ...PLANT_DEFAULTS, ...rest, ...fields },
   };
 };
 
@@ -78,5 +87,95 @@ describe("mergeLocalIntoCloud", () => {
     await mergeLocalIntoCloud(engine, device.layer);
 
     expect(pushed.find((op) => op.id === PORTFOLIO)?.fields).toMatchObject({ growthStage: 1 });
+  });
+
+  const FOUR_GOALS = [1, 2, 3, 4].map((n) => ({
+    amount: n * 1_000_000,
+    reachedAt: "2026-09-01T00:00:00.000Z",
+  }));
+
+  it("keeps the server's later season even when this device's plant is at a higher stage", async () => {
+    const device = memoryDevice({ cloud: false });
+    await device.layer.saveStore(
+      PORTFOLIO_STORE,
+      envelope(
+        {
+          portfolios: [
+            portfolioItem({
+              accountIds: [],
+              growthStage: 4,
+              goalHistory: FOUR_GOALS,
+              goalAmount: null,
+            }),
+          ],
+        },
+        3
+      )
+    );
+    const nextSeason = {
+      season: 2,
+      plantKind: "fern",
+      wish: "여행",
+      growthStage: 0,
+      goalAmount: null,
+      goalHistory: [],
+      fruitGoal: null,
+    };
+    const { pushed, fetchFn } = server([serverPortfolio(nextSeason)]);
+    const engine = createSyncEngine({ layer: device.layer, fetchFn, client: "test" });
+
+    await mergeLocalIntoCloud(engine, device.layer);
+
+    expect(pushed.filter((op) => op.id === PORTFOLIO)).toEqual([]);
+    const [portfolio] = composeStore(PORTFOLIO_STORE, await device.layer.loadRecords())
+      .portfolios as Array<Record<string, unknown>>;
+    expect(portfolio).toMatchObject(nextSeason);
+  });
+
+  it("sends the local ripe fruit over the same stage on the server", async () => {
+    const device = memoryDevice({ cloud: false });
+    const fruitGoal = { amount: 9_000_000, reachedAt: "2026-11-01T00:00:00.000Z" };
+    await device.layer.saveStore(
+      PORTFOLIO_STORE,
+      envelope(
+        {
+          portfolios: [
+            portfolioItem({
+              accountIds: [],
+              growthStage: 4,
+              goalHistory: FOUR_GOALS,
+              goalAmount: null,
+              fruitGoal,
+            }),
+          ],
+        },
+        3
+      )
+    );
+    const flowers = { growthStage: 4, goalHistory: FOUR_GOALS, goalAmount: 9_000_000 };
+    const { pushed, fetchFn } = server([serverPortfolio(flowers)]);
+    const engine = createSyncEngine({ layer: device.layer, fetchFn, client: "test" });
+
+    await mergeLocalIntoCloud(engine, device.layer);
+
+    expect(pushed.find((op) => op.id === PORTFOLIO)?.fields).toMatchObject({
+      fruitGoal,
+      goalAmount: null,
+    });
+  });
+
+  it("sends the local drift day apart from the plant", async () => {
+    const device = memoryDevice({ cloud: false });
+    const driftSince = "2026-11-20T15:00:00.000Z";
+    await device.layer.saveStore(
+      PORTFOLIO_STORE,
+      envelope({ portfolios: [portfolioItem({ accountIds: [], driftSince })] }, 3)
+    );
+    const { pushed, fetchFn } = server([serverPortfolio({ growthStage: 3, goalHistory: [] })]);
+    const engine = createSyncEngine({ layer: device.layer, fetchFn, client: "test" });
+
+    await mergeLocalIntoCloud(engine, device.layer);
+
+    expect(pushed.find((op) => op.id === PORTFOLIO)?.fields).toEqual({ driftSince });
   });
 });

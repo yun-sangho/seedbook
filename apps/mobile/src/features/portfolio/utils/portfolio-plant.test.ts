@@ -4,6 +4,7 @@ import {
   stockPriceKey,
 } from "@mobile/features/investments/utils/use-stock-prices";
 import { describe, expect, it } from "vitest";
+import { INITIAL_PLANT_PROGRESS } from "../types/constants";
 import type { PlantProgress } from "../types/types";
 import {
   computePlantStatus,
@@ -44,7 +45,7 @@ const prices = new Map<string, StockPricePoint>([
 ]);
 
 function progress(partial: Partial<PlantProgress> = {}): PlantProgress {
-  return { goalAmount: null, growthStage: 0, goalHistory: [], ...partial };
+  return { ...INITIAL_PLANT_PROGRESS, ...partial };
 }
 
 const reached = (amount: number) => ({ amount, reachedAt: "2026-11-01T00:00:00.000Z" });
@@ -105,11 +106,13 @@ describe("growPlant", () => {
   it("grows one stage, clears the goal and records it when the value reaches the goal", () => {
     const grown = growPlant(progress({ goalAmount: 10000 }), 10000, NOW);
 
-    expect(grown).toEqual({
-      goalAmount: null,
-      growthStage: 1,
-      goalHistory: [{ amount: 10000, reachedAt: NOW }],
-    });
+    expect(grown).toEqual(
+      progress({
+        goalAmount: null,
+        growthStage: 1,
+        goalHistory: [{ amount: 10000, reachedAt: NOW }],
+      })
+    );
   });
 
   it("returns the same progress when the value is below the goal", () => {
@@ -148,6 +151,27 @@ describe("furtherPlantProgress", () => {
     const server = progress({ goalAmount: 4000, growthStage: 1, goalHistory: [reached(1000)] });
 
     expect(furtherPlantProgress(local, server)).toBe(local);
+  });
+
+  it("keeps a later season even at a lower stage", () => {
+    const local = progress({ growthStage: 4, goalHistory: [1, 2, 3, 4].map(reached) });
+    const server = progress({ season: 2, wish: "여행", plantKind: "fern" });
+
+    expect(furtherPlantProgress(local, server)).toEqual(server);
+  });
+
+  it("keeps the ripe fruit at the same season and stage", () => {
+    const local = progress({ growthStage: 4, goalHistory: [1, 2, 3, 4].map(reached) });
+    const server = { ...local, fruitGoal: reached(5) };
+
+    expect(furtherPlantProgress(local, server)).toEqual(server);
+  });
+
+  it("keeps its own drift day", () => {
+    const local = progress({ driftSince: "2026-11-20T15:00:00.000Z" });
+    const server = progress({ growthStage: 1, goalHistory: [reached(1)] });
+
+    expect(furtherPlantProgress(local, server).driftSince).toBe("2026-11-20T15:00:00.000Z");
   });
 });
 
@@ -237,19 +261,82 @@ describe("computePlantStatus", () => {
 });
 
 describe("readPlantProgress", () => {
-  it("defaults to a seed for a portfolio saved before plants existed", () => {
-    expect(readPlantProgress({})).toEqual({ goalAmount: null, growthStage: 0, goalHistory: [] });
+  it("defaults to a seed of the first season for a portfolio saved before plants existed", () => {
+    expect(readPlantProgress({})).toEqual(INITIAL_PLANT_PROGRESS);
   });
 
   it("reads saved progress", () => {
-    const saved = { goalAmount: 30000, growthStage: 2, goalHistory: [reached(1), reached(2)] };
+    const saved = progress({
+      goalAmount: 30000,
+      growthStage: 2,
+      goalHistory: [reached(1), reached(2)],
+      season: 3,
+      plantKind: "fern",
+      wish: "여행",
+      driftSince: "2026-11-20T15:00:00.000Z",
+    });
 
     expect(readPlantProgress(saved)).toEqual(saved);
   });
 
+  it("reads a ripe fruit at flowers and fruit", () => {
+    const saved = progress({
+      growthStage: 4,
+      goalHistory: [1, 2, 3, 4].map(reached),
+      fruitGoal: reached(5),
+    });
+
+    expect(readPlantProgress(saved)).toEqual(saved);
+  });
+
+  it("keeps a plant kind this app does not know (added by a newer app)", () => {
+    expect(readPlantProgress({ plantKind: "cactus" }).plantKind).toBe("cactus");
+  });
+
   it("drops broken values", () => {
     expect(
-      readPlantProgress({ goalAmount: -5, growthStage: 9, goalHistory: [{ amount: "x" }, null] })
-    ).toEqual({ goalAmount: null, growthStage: 0, goalHistory: [] });
+      readPlantProgress({
+        goalAmount: -5,
+        growthStage: 9,
+        goalHistory: [{ amount: "x" }, null],
+        season: 0,
+        plantKind: 3,
+        wish: null,
+        fruitGoal: { amount: "x" },
+        driftSince: "not-a-date",
+      })
+    ).toEqual(INITIAL_PLANT_PROGRESS);
+  });
+
+  it("clears a goal that does not match the stage (patch from another season)", () => {
+    const mixed = { growthStage: 0, goalHistory: [reached(1), reached(2)], goalAmount: 5000 };
+
+    const read = readPlantProgress(mixed);
+
+    expect(read).toMatchObject({ growthStage: 0, goalHistory: [reached(1), reached(2)] });
+    expect(read.goalAmount).toBeNull();
+  });
+
+  it("clears a fruit before flowers and fruit", () => {
+    const read = readPlantProgress({
+      growthStage: 1,
+      goalHistory: [reached(1)],
+      fruitGoal: reached(5),
+    });
+
+    expect(read.fruitGoal).toBeNull();
+    expect(read.growthStage).toBe(1);
+  });
+
+  it("clears a goal next to a ripe fruit", () => {
+    const read = readPlantProgress({
+      growthStage: 4,
+      goalHistory: [1, 2, 3, 4].map(reached),
+      fruitGoal: reached(5),
+      goalAmount: 9000,
+    });
+
+    expect(read.goalAmount).toBeNull();
+    expect(read.fruitGoal).toEqual(reached(5));
   });
 });

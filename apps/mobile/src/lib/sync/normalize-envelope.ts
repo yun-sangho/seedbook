@@ -1,3 +1,4 @@
+import { normalizeHarvest } from "@mobile/features/garden/utils/normalize-harvest";
 import { normalizeInvestment } from "@mobile/features/investments/utils/normalize-investment";
 import { normalizePortfolio } from "@mobile/features/portfolio/utils/normalize-portfolio";
 import { normalizeSession } from "@mobile/features/rebalancing/utils/normalize-session";
@@ -9,6 +10,7 @@ const NORMALIZE_ITEM: Record<RecordStoreKey, (item: any) => unknown> = {
   "investment-storage": normalizeInvestment,
   "portfolio-storage": normalizePortfolio,
   "rebalancing-storage": normalizeSession,
+  "harvest-storage": normalizeHarvest,
 };
 
 /**

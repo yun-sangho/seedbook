@@ -1,5 +1,6 @@
 "use client";
 
+import { useHarvestStore } from "@mobile/features/garden/stores/harvest-store";
 import { useInvestmentStore } from "@mobile/features/investments/stores/investment-store";
 import { usePortfolioStore } from "@mobile/features/portfolio/stores/portfolio-store";
 import { useRebalancingStore } from "@mobile/features/rebalancing/stores/rebalancing-store";
@@ -16,6 +17,7 @@ const RECORD_STORES: Record<
   "investment-storage": useInvestmentStore,
   "portfolio-storage": usePortfolioStore,
   "rebalancing-storage": useRebalancingStore,
+  "harvest-storage": useHarvestStore,
 };
 
 /** 레코드에서 다시 읽는다. 아직 처음 읽기 전인 store 는 그대로 둔다 (곧 최신 레코드를 읽는다). */

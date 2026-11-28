@@ -3,6 +3,7 @@ import {
   envelope,
   investmentState,
 } from "@mobile/lib/native/device-db/testing/envelope-fixtures";
+import { SCHEMA_VERSION } from "@seedbook/domain";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createSyncEngine } from "./engine";
 import { INVESTMENT_STORE } from "./store-records";
@@ -29,7 +30,10 @@ describe("sync engine", () => {
     await engine.sync();
 
     const headers = (fetch.mock.calls[0] as unknown as [string, RequestInit])[1].headers;
-    expect(headers).toMatchObject({ "x-seedbook-sync": "2", "x-seedbook-schema": "1" });
+    expect(headers).toMatchObject({
+      "x-seedbook-sync": "2",
+      "x-seedbook-schema": String(SCHEMA_VERSION),
+    });
   });
 
   it("stops on 426 and reports that an update is needed", async () => {
