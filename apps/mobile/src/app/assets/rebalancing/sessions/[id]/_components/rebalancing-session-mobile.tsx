@@ -157,10 +157,6 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
           available={cash?.now ?? null}
           selectedId={selectedId}
           onSelect={setSelectedId}
-          onShowList={() => {
-            setView("list");
-            topRef.current?.scrollIntoView();
-          }}
           footerTop={readyToComplete && completeButton}
         />
       )}
@@ -284,21 +280,9 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
         </>
       )}
 
-      {/* 목록도 아래 고정 줄에서 하나씩 보기로 돌아간다. 다 끝냈으면 완료 버튼이 위에 붙는다. */}
-      {!completed && view === "list" && (
-        <BottomAction compact>
-          {readyToComplete && completeButton}
-          <ActionButton
-            variant="ghost"
-            size="medium"
-            onClick={() => {
-              setView("steps");
-              topRef.current?.scrollIntoView();
-            }}
-          >
-            하나씩 보기
-          </ActionButton>
-        </BottomAction>
+      {/* 목록에서도 다 끝냈으면 완료 버튼을 하단에 고정한다. */}
+      {!completed && view === "list" && readyToComplete && (
+        <BottomAction>{completeButton}</BottomAction>
       )}
       {canComplete && remaining > 0 && view === "list" && (
         <div className="px-x4 pt-x2">
@@ -329,6 +313,19 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
       />
 
       <HeaderAction>
+        {/* 단계 ↔ 목록을 오가는 토글 하나. */}
+        {!completed && (
+          <ActionButton
+            variant="ghost"
+            size="small"
+            onClick={() => {
+              setView(view === "steps" ? "list" : "steps");
+              topRef.current?.scrollIntoView();
+            }}
+          >
+            {view === "steps" ? "목록" : "단계로"}
+          </ActionButton>
+        )}
         <ActionButton
           variant="ghost"
           size="small"

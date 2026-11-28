@@ -2,6 +2,7 @@
 
 import { type ReactNode, useState } from "react";
 import { IconMinusLine, IconPlusLine } from "@karrotmarket/react-monochrome-icon";
+import { BottomAction } from "@mobile/components/mobile/bottom-action";
 import { formatMoneyDraft } from "@mobile/components/mobile/input-format";
 import { useInvestmentStore } from "@mobile/features/investments/stores/investment-store";
 import { snapToTick, stepByTick, tickSize } from "@mobile/features/investments/utils/krx-tick-size";
@@ -35,7 +36,7 @@ import { Checkbox } from "@mobile/seed-design/ui/checkbox";
 import { ResultSection } from "@mobile/seed-design/ui/result-section";
 import { TextField, TextFieldInput } from "@mobile/seed-design/ui/text-field";
 import { formatSignedWon, formatWithCommas, parseNumericString } from "@mobile/utils/number-format";
-import { Icon } from "@seed-design/react";
+import { Icon, ResponsivePair } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 import { markJustMoved } from "./just-moved-tasks";
 import { SnapshotPriceBanner } from "./snapshot-price-banner";
@@ -104,11 +105,14 @@ export function TradeEntryForm({
   sessionId,
   task,
   embedded = false,
+  footerTop,
   onDone,
 }: {
   sessionId: string;
   task: RebalancingTask;
   embedded?: boolean;
+  /** `embedded` 하단 고정 바에서 행동 버튼 위에 붙일 것 (다 끝냈을 때 "리밸런싱 완료하기"). */
+  footerTop?: ReactNode;
   onDone?: () => void;
 }) {
   const session = useRebalancingStore((s) => s.sessions.find((x) => x.id === sessionId))!;
@@ -243,6 +247,66 @@ export function TradeEntryForm({
     setAmending(false);
   };
 
+  // 행동 버튼. 비슷한 위계 두 개는 나란히(긴 라벨은 위아래로 — ResponsivePair), 취소처럼 물러나는
+  // 버튼과 함께면 3:7 로 위계를 드러낸다 (SEED Action Button 배치 지침).
+  const dismiss = (label: string, onClick: () => void) => (
+    <ActionButton
+      variant="neutralWeak"
+      size="large"
+      flexGrow={3}
+      className="basis-0"
+      onClick={onClick}
+    >
+      {label}
+    </ActionButton>
+  );
+  const primary = (label: string, onClick: () => void, grow?: number) => (
+    <ActionButton
+      variant="neutralSolid"
+      size="large"
+      flexGrow={grow}
+      className={grow ? "basis-0" : undefined}
+      disabled={!canSave}
+      onClick={onClick}
+    >
+      {label}
+    </ActionButton>
+  );
+  const actions = confirming ? (
+    <ResponsivePair gap="x2">
+      <ActionButton variant="neutralWeak" size="large" onClick={() => setPartialInput(true)}>
+        일부만 거래됐어요
+      </ActionButton>
+      {/* 남은 주문 수량·주문가 그대로 체결로 기록한다. */}
+      {primary("다 거래됐어요", recordFill)}
+    </ResponsivePair>
+  ) : status === "pending" && !amending ? (
+    <ResponsivePair gap="x2">
+      {/* 시장가처럼 주문하자마자 체결됐으면 주문 기록을 건너뛴다. */}
+      <ActionButton variant="neutralWeak" size="large" disabled={!canSave} onClick={recordFill}>
+        바로 거래됨
+      </ActionButton>
+      {primary(PRIMARY_LABEL.pending, recordOrder)}
+    </ResponsivePair>
+  ) : (
+    <div className="flex gap-x2">
+      {amending && dismiss("고치기 취소", stopAmend)}
+      {fillingOrder &&
+        // 일부만 거래됨 입력을 접고 다시 주문대로 확인하는 화면으로.
+        dismiss("취소", () => {
+          setQuantityDraft(draftOf(remaining));
+          setPriceDraft(draftOf(task.orderedPrice));
+          setPartialInput(false);
+        })}
+      {status === "filled" && dismiss("기록 취소", unfill)}
+      {primary(
+        amending ? "고친 주문 저장" : fillingOrder ? "기록하기" : PRIMARY_LABEL[status],
+        amending ? saveAmend : recordFill,
+        7
+      )}
+    </div>
+  );
+
   return (
     <>
       {/* 주문을 넣을 때 보는 가격이 시작 시점 기준이라는 것과, 오래됐으면 그 경고. */}
@@ -359,76 +423,26 @@ export function TradeEntryForm({
           </div>
         )}
 
-        {confirming ? (
-          <div className="flex flex-col gap-x2">
-            {/* 남은 주문 수량·주문가 그대로 체결로 기록한다. */}
-            <ActionButton
-              size="large"
-              variant="neutralSolid"
-              disabled={!canSave}
-              onClick={recordFill}
-            >
-              다 거래됐어요
+        {confirming && (
+          // 주문을 고치거나 취소하는 건 드문 일이라 본문에 작게 둔다.
+          <div className="flex items-center justify-center gap-x2">
+            <ActionButton variant="ghost" size="small" onClick={startAmend}>
+              주문 고치기
             </ActionButton>
-            <ActionButton size="large" variant="neutralWeak" onClick={() => setPartialInput(true)}>
-              일부만 거래됐어요
+            <ActionButton variant="ghost" size="small" onClick={cancelOrder}>
+              {partial ? "남은 주문 취소" : "주문 취소"}
             </ActionButton>
-            {/* 주문을 고치거나 취소하는 건 드문 일이라 작게 둔다. */}
-            <div className="flex items-center justify-center gap-x2">
-              <ActionButton variant="ghost" size="small" onClick={startAmend}>
-                주문 고치기
-              </ActionButton>
-              <ActionButton variant="ghost" size="small" onClick={cancelOrder}>
-                {partial ? "남은 주문 취소" : "주문 취소"}
-              </ActionButton>
-            </div>
           </div>
+        )}
+
+        {/* 단계 화면은 이 단계의 행동(CTA)을 하단 고정 바에 둔다 — SEED: Solid CTA 하나 + Weak 보조. */}
+        {embedded ? (
+          <BottomAction>
+            {footerTop}
+            {actions}
+          </BottomAction>
         ) : (
-          <div className="flex gap-x2">
-            {status === "pending" && (
-              // 시장가처럼 주문하자마자 체결됐으면 주문 기록을 건너뛴다.
-              <ActionButton
-                variant="neutralWeak"
-                size="large"
-                disabled={!canSave}
-                onClick={recordFill}
-              >
-                바로 거래됨
-              </ActionButton>
-            )}
-            {fillingOrder && (
-              // 일부만 거래됨 입력을 접고 다시 주문대로 확인하는 화면으로.
-              <ActionButton
-                variant="neutralWeak"
-                size="large"
-                onClick={() => {
-                  setQuantityDraft(draftOf(remaining));
-                  setPriceDraft(draftOf(task.orderedPrice));
-                  setPartialInput(false);
-                }}
-              >
-                취소
-              </ActionButton>
-            )}
-            {amending && (
-              <ActionButton variant="neutralWeak" size="large" onClick={stopAmend}>
-                고치기 취소
-              </ActionButton>
-            )}
-            {status === "filled" && (
-              <ActionButton variant="neutralWeak" size="large" onClick={unfill}>
-                거래 기록 취소
-              </ActionButton>
-            )}
-            <ActionButton
-              size="large"
-              flexGrow
-              disabled={!canSave}
-              onClick={amending ? saveAmend : status === "pending" ? recordOrder : recordFill}
-            >
-              {amending ? "고친 주문 저장" : fillingOrder ? "기록하기" : PRIMARY_LABEL[status]}
-            </ActionButton>
-          </div>
+          actions
         )}
       </div>
     </>

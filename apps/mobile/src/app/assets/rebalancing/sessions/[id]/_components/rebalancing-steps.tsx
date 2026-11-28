@@ -17,7 +17,7 @@ import {
 import { cn } from "@mobile/lib/utils";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
 import { formatWithCommas, numberToKorean } from "@mobile/utils/number-format";
-import { PrefixIcon, SuffixIcon } from "@seed-design/react";
+import { Icon } from "@seed-design/react";
 import { SnapshotPriceBanner } from "./snapshot-price-banner";
 import { TradeEntryForm } from "./trade-entry-mobile";
 
@@ -34,7 +34,6 @@ export function RebalancingSteps({
   available,
   selectedId,
   onSelect,
-  onShowList,
   footerTop,
 }: {
   session: RebalancingSession;
@@ -43,8 +42,6 @@ export function RebalancingSteps({
   available: number | null;
   selectedId: string | null;
   onSelect: (taskId: string | null) => void;
-  /** 팔기·사기 전체 목록으로. */
-  onShowList: () => void;
   /** 내비게이션 위에 함께 고정할 버튼 (다 끝냈을 때 "리밸런싱 완료하기"). */
   footerTop?: ReactNode;
 }) {
@@ -61,7 +58,35 @@ export function RebalancingSteps({
   return (
     <div>
       {priceAsOf && <SnapshotPriceBanner summary={priceAsOf} live={current !== null} compact />}
-      <StepProgress tasks={tasks} currentId={current?.id ?? null} onSelect={(id) => onSelect(id)} />
+      {/* 스텝 인디케이터 + 양 끝 아이콘 버튼으로 단계를 옮긴다 (SEED: 단계 흐름은 스텝 인디케이터·버튼 조합). */}
+      <div className="flex items-center gap-x1 px-x2 pt-x1">
+        <ActionButton
+          variant="ghost"
+          size="small"
+          layout="iconOnly"
+          aria-label="이전 거래"
+          // 다 끝낸 화면에서는 마지막 거래로 돌아가 기록을 볼 수 있다.
+          disabled={index === 0 || tasks.length === 0}
+          onClick={() => onSelect(tasks[(index < 0 ? tasks.length : index) - 1]?.id ?? null)}
+        >
+          <Icon svg={<IconChevronLeftLine />} />
+        </ActionButton>
+        <StepProgress
+          tasks={tasks}
+          currentId={current?.id ?? null}
+          onSelect={(id) => onSelect(id)}
+        />
+        <ActionButton
+          variant="ghost"
+          size="small"
+          layout="iconOnly"
+          aria-label="다음 거래"
+          disabled={index < 0 || index >= tasks.length - 1}
+          onClick={() => onSelect(tasks[index + 1]?.id ?? null)}
+        >
+          <Icon svg={<IconChevronRightLine />} />
+        </ActionButton>
+      </div>
       {current === null ? (
         <section className="flex flex-col gap-x2 px-x4 py-x6">
           <p className="t9-bold">모든 거래를 마쳤어요</p>
@@ -76,36 +101,11 @@ export function RebalancingSteps({
           action={current.id === recommendedId ? recommended : null}
           // 기록하면 다음 추천 단계로.
           onDone={() => onSelect(null)}
+          footerTop={footerTop}
         />
       )}
-      {/* 이전 · 목록 · 다음 — 항상 아래에 고정한다. 다 끝냈으면 완료 버튼이 그 위에 붙는다. */}
-      <BottomAction compact>
-        {footerTop}
-        <div className="flex items-center justify-between">
-          <ActionButton
-            variant="ghost"
-            size="medium"
-            // 다 끝낸 화면에서는 마지막 거래로 돌아가 기록을 볼 수 있다.
-            disabled={index === 0 || tasks.length === 0}
-            onClick={() => onSelect(tasks[(index < 0 ? tasks.length : index) - 1]?.id ?? null)}
-          >
-            <PrefixIcon svg={<IconChevronLeftLine />} />
-            이전
-          </ActionButton>
-          <ActionButton variant="ghost" size="medium" onClick={onShowList}>
-            목록
-          </ActionButton>
-          <ActionButton
-            variant="ghost"
-            size="medium"
-            disabled={index < 0 || index >= tasks.length - 1}
-            onClick={() => onSelect(tasks[index + 1]?.id ?? null)}
-          >
-            다음
-            <SuffixIcon svg={<IconChevronRightLine />} />
-          </ActionButton>
-        </div>
-      </BottomAction>
+      {/* 다 끝냈으면 완료 버튼만 하단에 고정한다. 단계가 열려 있으면 그 단계의 폼이 하단 바를 채운다. */}
+      {current === null && footerTop && <BottomAction>{footerTop}</BottomAction>}
     </div>
   );
 }
@@ -130,7 +130,7 @@ function StepProgress({
       aria-valuemin={0}
       aria-valuemax={tasks.length}
       aria-valuenow={doneCount}
-      className="flex items-center gap-x1 px-x4 pt-x1"
+      className="flex flex-1 items-center gap-x1"
     >
       {tasks.map((task, i) => {
         const status = rebalancingTaskStatus(task);
@@ -167,11 +167,13 @@ function CurrentStep({
   task,
   action,
   onDone,
+  footerTop,
 }: {
   session: RebalancingSession;
   task: RebalancingTask;
   action: NextRebalancingAction | null;
   onDone: () => void;
+  footerTop?: ReactNode;
 }) {
   const status = rebalancingTaskStatus(task);
   const copy = stepCopy(task, action);
@@ -216,6 +218,7 @@ function CurrentStep({
           sessionId={session.id}
           task={task}
           embedded
+          footerTop={footerTop}
           onDone={onDone}
         />
       </div>
