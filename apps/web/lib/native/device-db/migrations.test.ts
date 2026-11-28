@@ -8,6 +8,21 @@ import { createNodeSqliteDriver } from "./testing/node-sqlite-driver";
 /** 서버에만 있는 컬럼 — 기기에는 한 사람의 데이터만 있고 동기화 상태가 없다. */
 const SERVER_ONLY_COLUMNS = new Set(["userId", "version", "deletedAt"]);
 
+/**
+ * 동기화 v2 expand (v2-2) 가 서버에 더한 열. 기기는 v2-4a 에서 표를 레코드 JSON 테이블(`records`)로
+ * 바꾸므로 지금 표에는 따라 넣지 않는다 (설계 §2.5).
+ */
+const SYNC_V2_SERVER_COLUMNS: Record<string, string[]> = {
+  investment_account: ["changeSeq", "sortKey"],
+  investment_record: ["id", "changeSeq", "createdAt", "updatedAt"],
+  stock_holding: ["changeSeq", "sortKey", "createdAt", "updatedAt"],
+  cash_item: ["changeSeq", "sortKey", "createdAt", "updatedAt"],
+  portfolio: ["changeSeq", "sortKey"],
+  portfolio_allocation: ["changeSeq", "sortKey", "createdAt", "updatedAt"],
+  rebalancing: ["changeSeq", "sortKey"],
+  user_preference: ["changeSeq", "createdAt", "updatedAt"],
+};
+
 /** 기기에만 있는 컬럼 — 설정은 한 행뿐이라 userId 대신 고정 id 를 쓴다. */
 const DEVICE_ONLY_COLUMNS: Record<string, string[]> = { user_preference: ["id"] };
 
@@ -36,7 +51,8 @@ describe("device database schema", () => {
         .filter((c) => !(DEVICE_ONLY_COLUMNS[name] ?? []).includes(c));
       const serverColumns = getTableConfig(table)
         .columns.map((c) => c.name)
-        .filter((c) => !SERVER_ONLY_COLUMNS.has(c));
+        .filter((c) => !SERVER_ONLY_COLUMNS.has(c))
+        .filter((c) => !(SYNC_V2_SERVER_COLUMNS[name] ?? []).includes(c));
 
       expect(deviceColumns.sort()).toEqual(serverColumns.sort());
     }
