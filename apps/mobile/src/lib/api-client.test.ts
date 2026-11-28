@@ -34,6 +34,32 @@ describe("apiUrl", () => {
   });
 });
 
+describe("API_BASE_URL in the bundled app", () => {
+  async function loadInBundledApp(baseUrl: string | undefined) {
+    vi.doMock("./native/bundled-app", async (importOriginal) => ({
+      ...(await importOriginal<typeof import("./native/bundled-app")>()),
+      isBundledApp: () => true,
+    }));
+    try {
+      return await load(baseUrl);
+    } finally {
+      vi.doUnmock("./native/bundled-app");
+    }
+  }
+
+  it("calls the production server when the build sets no base URL", async () => {
+    const { apiUrl } = await loadInBundledApp(undefined);
+
+    expect(apiUrl("/api/app-config")).toBe("https://seedbook.boogie.ing/api/app-config");
+  });
+
+  it("uses the build's base URL over the production default", async () => {
+    const { apiUrl } = await loadInBundledApp("http://localhost:4012");
+
+    expect(apiUrl("/api/app-config")).toBe("http://localhost:4012/api/app-config");
+  });
+});
+
 describe("apiFetch", () => {
   it("sends the request to the base URL with the given init unchanged", async () => {
     const fetchMock = vi.fn(async () => new Response("{}"));

@@ -56,6 +56,8 @@ const ACCOUNT_ENVELOPE_KEYS = [
 ];
 const ACCOUNT_ITEM_KEYS = [
   ...SYNC_META_KEYS,
+  // `lib/consent-client.ts` CONSENT_AGREED_KEY (그 모듈이 이 모듈을 import 해 이름으로 둔다).
+  "seedbook.consentAgreed",
   "seedbook.storageMode",
   RECORD_DOCUMENT_KEY,
   SYNC_STATE_KEY,

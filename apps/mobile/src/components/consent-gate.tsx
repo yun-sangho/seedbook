@@ -2,8 +2,13 @@
 
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { ConsentScreen } from "@mobile/components/consent-screen";
-import { type ConsentStatus, fetchConsentStatus } from "@mobile/lib/consent-client";
+import {
+  type ConsentStatus,
+  fetchConsentStatus,
+  withRememberedConsent,
+} from "@mobile/lib/consent-client";
 import type { LegalNotice } from "@mobile/lib/legal/catalog";
+import { offlineSession } from "@mobile/lib/offline-session";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
 import { Loader2 } from "lucide-react";
 
@@ -17,14 +22,15 @@ export function useLegalNotices(): LegalNotice[] {
 
 /**
  * 현재 약관에 동의하지 않았으면 앱 대신 동의 화면을 보여 준다. 동의를 확인하지 못해도 열지 않는다.
- * 서버도 동의 전에는 데이터 API 를 거절한다 (`lib/auth-server.ts`).
+ * 서버도 동의 전에는 데이터 API 를 거절한다 (`lib/auth-server.ts`). 네이티브 앱은 오프라인이면 마지막으로
+ * 확인한 동의로 연다 (`withRememberedConsent`).
  */
 export function ConsentGate({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<ConsentStatus | null>(null);
 
   const load = useCallback(async () => {
     setStatus(null);
-    setStatus(await fetchConsentStatus());
+    setStatus(withRememberedConsent(await fetchConsentStatus(), offlineSession.enabled()));
   }, []);
   useEffect(() => {
     void load();

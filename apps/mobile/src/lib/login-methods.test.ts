@@ -46,6 +46,22 @@ describe("loginMethodRows", () => {
     const rows = loginMethodRows([kakao, apple], { appleEnabled: false });
     expect(rows.map((row) => row.provider)).toEqual(["kakao", "apple"]);
   });
+
+  it("hides a method this device cannot link (bundled app without the native plugin)", () => {
+    const rows = loginMethodRows([kakao], {
+      appleEnabled: true,
+      available: (provider) => provider !== "apple",
+    });
+    expect(rows.map((row) => row.provider)).toEqual(["kakao"]);
+  });
+
+  it("still shows a linked method this device cannot link, so it can be unlinked", () => {
+    const rows = loginMethodRows([kakao, apple], {
+      appleEnabled: true,
+      available: (provider) => provider !== "apple",
+    });
+    expect(rows.map((row) => row.provider)).toEqual(["kakao", "apple"]);
+  });
 });
 
 describe("linkCallbackURLs", () => {

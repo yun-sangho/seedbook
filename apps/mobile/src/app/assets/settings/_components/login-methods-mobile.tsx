@@ -18,6 +18,7 @@ import {
 } from "@mobile/lib/login-methods";
 import { markSignedOut } from "@mobile/lib/native/biometric-login";
 import {
+  canSignInWith,
   hasNativeLoginPlugin,
   type NativeSignInResult,
   signInNatively,
@@ -177,7 +178,9 @@ export function LoginMethodsMobile({
     await reloadApp();
   };
 
-  const rows = accounts ? loginMethodRows(accounts, { appleEnabled }) : [];
+  const rows = accounts
+    ? loginMethodRows(accounts, { appleEnabled, available: canSignInWith })
+    : [];
 
   return (
     <div className="flex flex-col gap-x4 pb-x6">

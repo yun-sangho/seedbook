@@ -36,16 +36,21 @@ const PROVIDERS: SocialProvider[] = ["kakao", "apple"];
 
 /**
  * 화면에 보일 수단. Apple 은 서버에 설정이 없으면 숨긴다 (이미 연결돼 있으면 해제할 수 있게 보인다).
+ * 이 기기에서 연결할 수 없는 수단(`available`, 번들 앱의 웹 OAuth)도 연결돼 있지 않으면 숨긴다.
  * 마지막 하나는 해제할 수 없다 — 소셜이 아닌 계정(개발용 이메일 로그인)도 하나로 센다 (서버와 같은 규칙).
  */
 export function loginMethodRows(
   accounts: readonly LinkedAccount[],
-  { appleEnabled }: { appleEnabled: boolean }
+  {
+    appleEnabled,
+    available = () => true,
+  }: { appleEnabled: boolean; available?: (provider: SocialProvider) => boolean }
 ): LoginMethodRow[] {
   const canUnlinkAny = accounts.length > 1;
   return PROVIDERS.flatMap((provider) => {
     const linked = accounts.find((account) => account.providerId === provider);
     if (provider === "apple" && !appleEnabled && !linked) return [];
+    if (!available(provider) && !linked) return [];
     return [
       {
         provider,

@@ -1,4 +1,5 @@
 import type { SocialProvider } from "@mobile/lib/last-login-method";
+import { isBundledApp } from "./bundled-app";
 
 /**
  * 네이티브 앱의 카카오·Apple 로그인 (`packages/native-plugins`).
@@ -90,6 +91,15 @@ export function hasNativeLoginPlugin(provider: SocialProvider): boolean {
     capacitor?.isNativePlatform?.() === true &&
     capacitor.isPluginAvailable?.(NATIVE_LOGIN_PLUGINS[provider]) === true
   );
+}
+
+/**
+ * 이 기기에서 그 수단으로 로그인(연결)할 수 있는지. 번들 앱은 웹 OAuth 를 쓸 수 없다 — 제공자 화면이
+ * 서버 주소로 돌아와 앱 번들을 떠난다. 그래서 네이티브 플러그인이 있는 수단만 보인다 (Android 의 Apple 은
+ * 숨는다). 브라우저·옛 앱 셸은 웹 OAuth 로 모두 된다.
+ */
+export function canSignInWith(provider: SocialProvider): boolean {
+  return !isBundledApp() || hasNativeLoginPlugin(provider);
 }
 
 /** 이 기기의 네이티브 카카오·Apple 로그인. 쓸 수 없으면 null. */

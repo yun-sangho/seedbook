@@ -1,34 +1,41 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 /**
- * Seedbook 네이티브 앱 셸. 앱 안에 웹 번들을 담지 않고 운영 서버를 WebView 로 띄운다 —
- * 웹앱은 서버(로그인·API·proxy)가 있어야 동작하고, 웹 배포가 곧 앱 업데이트가 된다.
+ * Seedbook 네이티브 앱. 앱 화면(Vite 빌드 `dist/`)을 바이너리에 담아 앱 origin
+ * (iOS `capacitor://localhost`, Android `https://localhost`) 에서 띄우고, API 는 운영 서버를 부른다
+ * (`src/lib/api-client.ts`, `src/lib/native/bundled-app.ts`). 서버가 멈춰 있거나 오프라인이어도 화면은
+ * 뜨고, 기기에 저장된 로그인으로 계정을 연다 (`src/lib/offline-session.ts`).
  *
- * - 서버 주소: 기본은 운영. 로컬 dev 서버(앱 Vite, 슬롯 web 포트)로 띄우려면 `CAP_SERVER_URL=http://<맥 LAN IP>:4001 pnpm sync`.
- * - `appendUserAgent` 는 웹의 `NATIVE_APP_UA_MARKER` (apps/mobile/src/lib/device.ts) 와 같아야 한다.
- *   웹은 이 표시를 보고 iPad 에서도 모바일 UI 를 주고 PWA 설치 안내를 숨긴다.
- * - 서버에 닿지 않으면 `www/error.html` (scripts/build-www.mjs 가 만든다) 을 보여준다.
+ * - 빌드: `pnpm --filter @seedbook/mobile sync` (= `vite build` + `cap sync`). 같은 `dist/` 를 운영 웹도 쓴다.
+ * - dev live-reload: `CAP_SERVER_URL=http://localhost:4001 pnpm --filter @seedbook/mobile sync` 이면 앱이
+ *   로컬 앱 dev 서버(Vite, 슬롯 web 포트)를 띄운다 — 다시 빌드하지 않고 화면을 고친다. 개발에서만 쓴다
+ *   (`server.url` 은 운영용이 아니다, https://capacitorjs.com/docs/config).
+ * - `appendUserAgent` 는 웹의 `NATIVE_APP_UA_MARKER` (src/lib/device.ts) 와 같아야 한다. 앱 화면은 이
+ *   표시로 기기 저장소(SQLite)를 고르고 iPad 에서도 모바일 UI·PWA 설치 안내 숨김을 정한다.
  */
-const DEFAULT_SERVER_URL = "https://seedbook.boogie.ing";
-const serverUrl = process.env.CAP_SERVER_URL ?? DEFAULT_SERVER_URL;
+const liveReloadUrl = process.env.CAP_SERVER_URL;
 
 const config: CapacitorConfig = {
   appId: "ing.boogie.seedbook",
   appName: "Seedbook",
-  webDir: "www",
+  webDir: "dist",
   appendUserAgent: "SeedbookApp/1",
   // backgroundColor 는 쓰지 않는다 — 고정색이라 다크 모드에서 흰색이 비친다 (iOS 상태바 뒤, 첫 로딩).
   // 배경은 네이티브가 시스템 테마에 맞춰 정한다 (SceneDelegate.swift, MainActivity.java).
-  server: {
-    url: serverUrl,
-    cleartext: serverUrl.startsWith("http://"),
-    errorPath: "error.html",
-    // 앱 안에서 열어야 하는 외부 화면 (로그인). 그 밖의 도메인은 시스템 브라우저로 연다.
-    allowNavigation: ["*.kakao.com", "appleid.apple.com"],
-  },
+  // 카카오·Apple 로그인은 네이티브 SDK 로 하므로 (src/lib/native/social-login.ts) 앱 안에서 열 외부
+  // 도메인이 없다 — 그 밖의 주소는 시스템 브라우저로 열린다. live-reload 에서는 dev 서버가 웹 OAuth 를
+  // 쓸 수 있게 로그인 화면을 앱 안에서 연다.
+  ...(liveReloadUrl
+    ? {
+        server: {
+          url: liveReloadUrl,
+          cleartext: liveReloadUrl.startsWith("http://"),
+          allowNavigation: ["*.kakao.com", "appleid.apple.com"],
+        },
+      }
+    : {}),
   plugins: {
-    // Android 뒤로가기는 웹이 리스너를 건 뒤에 켠다 (apps/mobile/src/lib/native/system-back.ts). 처음부터
-    // 켜면 웹이 뜨지 못한 화면(error.html)에서 뒤로가기가 아무 일도 하지 않는다.
+    // Android 뒤로가기는 웹이 리스너를 건 뒤에 켠다 (src/lib/native/system-back.ts).
     App: { disableBackButtonHandler: true },
   },
 };

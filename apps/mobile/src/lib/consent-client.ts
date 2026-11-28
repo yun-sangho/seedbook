@@ -1,4 +1,4 @@
-import { accountFetch, releaseAccountSlot } from "@mobile/lib/account-storage";
+import { accountFetch, accountStorage, releaseAccountSlot } from "@mobile/lib/account-storage";
 import type { ConsentDocument, LegalNotice } from "@mobile/lib/legal/catalog";
 
 const CONSENTS_URL = "/api/me/consents";
@@ -66,6 +66,26 @@ export async function fetchConsentStatus(): Promise<ConsentStatus> {
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** 이 계정이 현재 약관에 동의했다고 서버가 마지막으로 답했는지 (계정 자리, 오프라인 시작용). */
+export const CONSENT_AGREED_KEY = "seedbook.consentAgreed";
+
+/**
+ * 오프라인 시작 (네이티브 앱, `lib/offline-session.ts`): 동의를 확인하지 못하면 (네트워크 오류·5xx)
+ * 서버가 마지막으로 "동의함" 이라 답한 계정은 연다. 서버는 동의 전에는 데이터 API 를 거절하므로
+ * (`lib/auth-server.ts`) 화면만 열린다. `enabled` 가 false (브라우저) 면 그대로 돌려준다.
+ */
+export function withRememberedConsent(
+  status: ConsentStatus,
+  enabled: boolean,
+  storage: Pick<typeof accountStorage, "getItem" | "setItem" | "removeItem"> = accountStorage
+): ConsentStatus {
+  if (!enabled) return status;
+  if (status.kind === "agreed") storage.setItem(CONSENT_AGREED_KEY, "1");
+  else if (status.kind === "required") storage.removeItem(CONSENT_AGREED_KEY);
+  else if (storage.getItem(CONSENT_AGREED_KEY) === "1") return { kind: "agreed", notices: [] };
+  return status;
 }
 
 /** `changed`: 화면을 연 뒤 약관이 개정됨 — 새로고침해 다시 보여 준다. */

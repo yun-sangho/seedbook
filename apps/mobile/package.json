@@ -12,10 +12,9 @@
     "format:check": "biome check --linter-enabled=false",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build:www": "node scripts/build-www.mjs",
-    "sync": "pnpm build:www && cap sync",
-    "sync:ios": "pnpm build:www && cap sync ios",
-    "sync:android": "pnpm build:www && cap sync android",
+    "sync": "pnpm build && cap sync",
+    "sync:ios": "pnpm build && cap sync ios",
+    "sync:android": "pnpm build && cap sync android",
     "open:ios": "cap open ios",
     "open:android": "cap open android"
   },
