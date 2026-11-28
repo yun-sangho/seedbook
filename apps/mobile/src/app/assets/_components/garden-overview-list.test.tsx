@@ -25,6 +25,7 @@ function plant(partial: Partial<PortfolioPlantView>): PortfolioPlantView {
     stage: 1,
     goalState: "set",
     goalAmount: 1_000_000,
+    finalGoalAmount: 1_000_000,
     remainingToNextStage: 1_000_000,
     drifting: false,
     driftDays: 0,
@@ -118,7 +119,7 @@ describe("GardenOverviewList", () => {
   });
 
   it("fills the goal bar with the progress toward the goal", () => {
-    renderRow({ value: 750_000, goalAmount: 1_000_000 });
+    renderRow({ value: 750_000, goalAmount: 900_000, finalGoalAmount: 1_000_000 });
 
     const bar = screen.getByRole("progressbar", { name: "안정형 목표 도달" });
     expect(bar.getAttribute("aria-valuenow")).toBe("75");

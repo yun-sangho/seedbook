@@ -25,6 +25,7 @@ function plant(partial: Partial<PortfolioPlantView> = {}): PortfolioPlantView {
     stage: 1,
     goalState: "set",
     goalAmount: 10_000_000,
+    finalGoalAmount: 10_000_000,
     remainingToNextStage: 2_000_000,
     drifting: false,
     driftDays: 0,
@@ -227,7 +228,7 @@ describe("EditPlantGoalSheet", () => {
       />
     );
     expect(screen.getByText(/110만원 이상으로 정할 수 있어요/)).toBeTruthy();
-    fireEvent.change(screen.getByRole("textbox", { name: "식물 목표 금액" }), {
+    fireEvent.change(screen.getByRole("textbox", { name: "목표 금액" }), {
       target: { value: "1,050,000" },
     });
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
@@ -283,7 +284,7 @@ describe("PlantSeasonSheet", () => {
       />
     );
     fireEvent.click(screen.getByRole("radio", { name: "고사리" }));
-    fireEvent.change(screen.getByRole("textbox", { name: "첫 목표 금액" }), {
+    fireEvent.change(screen.getByRole("textbox", { name: "목표 금액" }), {
       target: { value: "1,100,000" },
     });
     fireEvent.change(screen.getByLabelText("식물 이름"), { target: { value: "몽글이" } });
@@ -310,7 +311,7 @@ describe("PlantSeasonSheet", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "심기" }));
     expect(screen.getByText("목표 금액을 1원 이상으로 입력해 주세요")).toBeTruthy();
-    fireEvent.change(screen.getByRole("textbox", { name: "첫 목표 금액" }), {
+    fireEvent.change(screen.getByRole("textbox", { name: "목표 금액" }), {
       target: { value: "1,050,000" },
     });
     fireEvent.click(screen.getByRole("button", { name: "심기" }));

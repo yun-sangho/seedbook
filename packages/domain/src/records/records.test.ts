@@ -133,6 +133,20 @@ describe("plant name and wish history", () => {
   );
 });
 
+describe("stage goals", () => {
+  it("keeps the five goals of a season", () => {
+    const result = parsePatch(portfolio, { stageGoals: [1, 2, 3, 4, 5] }, { op: "patch" });
+
+    expect(result.rejected).toEqual([]);
+  });
+
+  it("rejects more than five goals", () => {
+    const result = parsePatch(portfolio, { stageGoals: [1, 2, 3, 4, 5, 6] }, { op: "patch" });
+
+    expect(result.rejected.map((r) => r.field)).toEqual(["stageGoals"]);
+  });
+});
+
 describe("recordTypesAt", () => {
   it.each(readReleasedSnapshots().map((s) => [s.schemaVersion, s] as const))(
     "lists the record types of released snapshot v%s",

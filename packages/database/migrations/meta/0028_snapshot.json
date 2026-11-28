@@ -1,5 +1,5 @@
 {
-  "id": "84906155-7b97-4d63-ab5c-c699e7ed4179",
+  "id": "91c35187-b9a9-40b5-8825-79cb7ac32073",
   "prevId": "c5d6b1ec-d8e9-4cea-a239-c273960b058a",
   "version": "7",
   "dialect": "postgresql",
@@ -1257,6 +1257,13 @@
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
+        },
+        "stageGoals": {
+          "name": "stageGoals",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
         },
         "driftSince": {
           "name": "driftSince",

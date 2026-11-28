@@ -205,6 +205,7 @@ describe("computePlantStatus", () => {
       empty: true,
       goalState: "needs-goal",
       goalAmount: null,
+      finalGoalAmount: null,
       remainingToNextStage: null,
       drifting: false,
       driftDays: 0,

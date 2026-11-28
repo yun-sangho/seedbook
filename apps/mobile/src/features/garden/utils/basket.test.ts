@@ -31,7 +31,7 @@ describe("basketCards", () => {
     expect(basketCards([])).toEqual([]);
   });
 
-  it("describes a harvest: wish, season, the time it took and the goals", () => {
+  it("describes a harvest: wish, season, the time it took and the final goal", () => {
     expect(basketCards([harvest()])).toEqual([
       {
         id: "h1",
@@ -39,7 +39,7 @@ describe("basketCards", () => {
         wish: "부모님과 제주 여행",
         source: "안정형",
         period: "2026.01.05 ~ 2026.11.28",
-        goals: ["1,000만원", "1,100만원", "1,210만원", "1,331만원", "1,465만원"],
+        goal: "1,465만원",
         doneOn: null,
       },
     ]);

@@ -59,6 +59,7 @@ export const PLANT_FIELDS = [
   "growthStage",
   "goalHistory",
   "fruitGoal",
+  "stageGoals",
 ] as const satisfies ReadonlyArray<keyof PlantProgress>;
 
 /** 더 자란 정도 비교 — (수확 주기 번호, 단계, 열매가 열림) 사전순. 양수면 `a` 가 더 자랐다. */
@@ -111,6 +112,14 @@ function readWish(w: unknown): PlantWish | null {
   return isTimestamp(at) ? { wish, at } : null;
 }
 
+/** 단계 목표 읽기 — 양의 정수 금액이 아니면 전부 버린다 (예전처럼 단계마다 목표를 정한다). */
+function readStageGoals(value: unknown): number[] {
+  if (!Array.isArray(value) || value.length > MAX_PLANT_STAGE + 1) return [];
+  return value.every((g) => typeof g === "number" && Number.isSafeInteger(g) && g > 0)
+    ? (value as number[])
+    : [];
+}
+
 /** 소원 이력 읽기 — 깨진 항목은 빼고 최근 `PLANT_WISH_HISTORY_MAX` 개. */
 export function readWishHistory(value: unknown): PlantWish[] {
   if (!Array.isArray(value)) return [];
@@ -140,6 +149,7 @@ export function readPlantProgress(value: {
   wish?: unknown;
   wishHistory?: unknown;
   fruitGoal?: unknown;
+  stageGoals?: unknown;
   driftSince?: unknown;
 }): PlantProgress {
   const initial = INITIAL_PLANT_PROGRESS;
@@ -172,6 +182,7 @@ export function readPlantProgress(value: {
     wish: typeof value.wish === "string" ? value.wish : initial.wish,
     wishHistory: readWishHistory(value.wishHistory),
     fruitGoal,
+    stageGoals: readStageGoals(value.stageGoals),
     driftSince: isTimestamp(value.driftSince) ? value.driftSince : initial.driftSince,
   };
 }

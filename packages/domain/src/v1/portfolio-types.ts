@@ -32,6 +32,7 @@ export interface PlantProgress
     | "wish"
     | "wishHistory"
     | "fruitGoal"
+    | "stageGoals"
     | "driftSince"
   > {
   growthStage: PlantStage;

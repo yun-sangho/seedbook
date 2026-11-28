@@ -38,12 +38,16 @@ export const plantWishHistoryShape = shape.list(plantWishShape, {
  * - `driftMode` 기본값은 방식이 생기기 전의 판정(%p 차이)인 `absolute` 다. 새 포트폴리오는 앱이
  *   `relative` 를 보낸다.
  * - 식물 (`season`·`plantKind`·`plantName`·`wish`·`wishHistory`·`goalAmount`·`growthStage`·`goalHistory`·
- *   `fruitGoal`) 은 모드 전환 병합에서만 묶어서 고른다 (§5.5). 한 수확 주기는 목표 다섯 개 — 넷은 `goalHistory` (단계 1~4), 다섯 번째
+ *   `fruitGoal`·`stageGoals`) 은 모드 전환 병합에서만 묶어서 고른다 (§5.5). 한 수확 주기는 목표 다섯 개 — 넷은 `goalHistory` (단계 1~4), 다섯 번째
  *   (열매) 는 `fruitGoal` 이다. 옛 앱이 자기 정의(`maxItems: 4`)로 받은 레코드를 격리하지 않도록
  *   `goalHistory` 를 늘리지 않는다.
  * - `plantKind` 가 null 이면 화면이 포트폴리오 id 해시로 종류를 정한다 (식물 종류가 생기기 전 모양).
  * - `plantName` 은 씨앗을 심을 때 정하는 식물 이름 (비우면 포트폴리오 이름만 보인다). `wishHistory` 의 마지막
  *   항목이 지금 `wish` 다 (식물 이름·소원 이력이 생기기 전에 정한 소원은 이력이 비어 있다). 수확하면 둘 다 비운다.
+ * - `stageGoals` 는 씨앗을 심을 때 정한 최종 목표까지의 단계 목표 다섯 개 (새싹·묘목·나무·꽃·열매, 마지막이
+ *   최종 목표). 처음엔 간격이 좁고 갈수록 넓다. `goalAmount` 는 그대로 "다음 단계 목표" 라 옛 앱도 그 뜻으로
+ *   자라게 한다 — 새 앱은 비워진 `goalAmount` 를 `stageGoals[growthStage]` 로 다시 채운다. 비어 있으면 단계마다
+ *   목표를 정하던 예전 식물이다.
  * - `driftSince` 는 비중 이탈을 처음 본 시각 (KST 날짜 시작). 수확과 무관하다.
  */
 export const portfolio = defineRecord({
@@ -68,6 +72,9 @@ export const portfolio = defineRecord({
     plantName: f.text({ default: "" }),
     wishHistory: f.json(plantWishHistoryShape, { default: [] }),
     fruitGoal: f.json(plantGoalShape, { nullable: true, default: null }),
+    stageGoals: f.json(shape.list(f.money({ min: 1 }), { maxItems: MAX_PLANT_STAGE + 1 }), {
+      default: [],
+    }),
     driftSince: f.timestamp({ nullable: true, default: null }),
   },
 });

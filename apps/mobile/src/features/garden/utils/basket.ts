@@ -12,10 +12,10 @@ export interface BasketCard {
   wish: string;
   /** 어느 식물·포트폴리오의 수확 — "몽글이 · 연금" (몇 번째인지는 세지 않는다). */
   source: string;
-  /** 첫 목표를 이룬 날 ~ 수확한 날 (KST). */
+  /** 첫 단계 목표를 이룬 날 ~ 수확한 날 (KST). */
   period: string;
-  /** 이룬 목표 금액 (만원 단위). */
-  goals: string[];
+  /** 이룬 최종 목표 금액 (만원 단위). */
+  goal: string;
   /** 하고 싶은 일을 "했어요" 한 날 (KST). 아직이면 null. */
   doneOn: string | null;
 }
@@ -37,7 +37,7 @@ export function basketCards(harvests: readonly HarvestItem[]): BasketCard[] {
         wish: h.wish || "하고 싶은 일 없이 수확했어요",
         source: plantTitle(h.plantName, h.sourceName || "이름 없는 포트폴리오"),
         period: `${kstDay(start)} ~ ${kstDay(h.harvestedAt)}`,
-        goals: h.goals.map((g) => numberToKorean(g.amount)),
+        goal: numberToKorean(h.goals.at(-1)?.amount ?? 0),
         doneOn: h.doneAt === null ? null : kstDay(h.doneAt),
       };
     });

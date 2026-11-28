@@ -442,6 +442,8 @@ export const portfolio = seedbook.table(
       .default([]),
     // 이룬 열매 목표 { amount, reachedAt } (수확 주기의 다섯 번째 목표). 있으면 열매가 열려 바로 수확할 수 있다.
     fruitGoal: jsonb("fruitGoal").$type<{ amount: number; reachedAt: string }>(),
+    // 최종 목표까지의 단계 목표 다섯 개 (원, 새싹·묘목·나무·꽃·열매). 비어 있으면 단계마다 목표를 정하던 식물.
+    stageGoals: jsonb("stageGoals").$type<number[]>().notNull().default([]),
     // 비중 이탈을 처음 본 시각 (KST 날짜 시작). 기준 안으로 돌아오면 null.
     driftSince: timestamp("driftSince", { precision: 3, mode: "date" }),
     ...syncColumns(),

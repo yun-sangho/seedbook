@@ -11,10 +11,12 @@ import {
   nextGoalError,
   nextGoalFloor,
   PLANT_NAME_MAX_LENGTH,
+  planStageGoals,
   plantNameError,
   plantWilt,
   plantWind,
   seasonGoalState,
+  setSeasonGoal,
   startPlantSeason,
   trackDriftSince,
   WIND_MAX,
@@ -161,6 +163,103 @@ describe("advancePlant", () => {
     const p = progress({ growthStage: 4, goalHistory: FOUR_GOALS, fruitGoal: reached(500_000) });
 
     expect(advancePlant(p, evaluation(9_000_000), NOW)).toBe(p);
+  });
+
+  describe("with the season's stage goals", () => {
+    const STAGE_GOALS = [110_000, 125_000, 145_000, 170_000, 200_000];
+    const planted = progress({ goalAmount: 110_000, stageGoals: STAGE_GOALS });
+
+    it("heads for the next stage goal after growing", () => {
+      const grown = advancePlant(planted, evaluation(115_000), NOW);
+
+      expect(grown).toMatchObject({ growthStage: 1, goalAmount: 125_000 });
+    });
+
+    it("grows several stages at once when the amount passed them", () => {
+      const grown = advancePlant(planted, evaluation(150_000), NOW);
+
+      expect(grown).toMatchObject({
+        growthStage: 3,
+        goalAmount: 170_000,
+        goalHistory: [
+          { amount: 110_000, reachedAt: NOW },
+          { amount: 125_000, reachedAt: NOW },
+          { amount: 145_000, reachedAt: NOW },
+        ],
+      });
+    });
+
+    it("bears fruit when the final goal is reached", () => {
+      const grown = advancePlant(planted, evaluation(200_000), NOW);
+
+      expect(grown).toMatchObject({
+        growthStage: 4,
+        goalAmount: null,
+        fruitGoal: { amount: 200_000, reachedAt: NOW },
+      });
+    });
+
+    it("picks up the next stage goal an older app cleared after growing", () => {
+      const cleared = progress({
+        growthStage: 1,
+        goalHistory: [reached(110_000)],
+        goalAmount: null,
+        stageGoals: STAGE_GOALS,
+      });
+
+      expect(advancePlant(cleared, evaluation(100_000), NOW).goalAmount).toBe(125_000);
+    });
+  });
+});
+
+describe("planStageGoals", () => {
+  it("spreads the steps from today's amount to the goal, small first and larger later", () => {
+    expect(planStageGoals(progress(), 2_000_000, 1_000_000)).toEqual([
+      1_100_000, 1_250_000, 1_450_000, 1_700_000, 2_000_000,
+    ]);
+  });
+
+  it("keeps the goals already reached and spreads only the rest", () => {
+    const grown = progress({
+      growthStage: 2,
+      goalHistory: [reached(1_100_000), reached(1_250_000)],
+    });
+
+    const goals = planStageGoals(grown, 2_000_000, 1_300_000);
+
+    expect(goals.slice(0, 2)).toEqual([1_100_000, 1_250_000]);
+    expect(goals.at(-1)).toBe(2_000_000);
+    expect(goals).toHaveLength(5);
+    const steps = goals.slice(2).map((g, i, all) => g - (all[i - 1] ?? 1_300_000));
+    expect(steps).toEqual([...steps].sort((a, b) => a - b));
+  });
+
+  it("rounds the steps up to 10,000 won", () => {
+    const goals = planStageGoals(progress(), 1_234_567, 1_000_000);
+
+    expect(goals.slice(0, 4).every((g) => g % 10_000 === 0)).toBe(true);
+    expect(goals.at(-1)).toBe(1_234_567);
+  });
+
+  it("never lets a step pass the final goal", () => {
+    const goals = planStageGoals(progress(), 15_000, 10_000);
+
+    expect(goals.every((g, i) => g <= 15_000 && g >= (goals[i - 1] ?? 0))).toBe(true);
+  });
+});
+
+describe("setSeasonGoal", () => {
+  it("sets the final goal and heads for the first stage", () => {
+    const next = setSeasonGoal(progress(), 2_000_000, 1_000_000);
+
+    expect(next.stageGoals).toEqual([1_100_000, 1_250_000, 1_450_000, 1_700_000, 2_000_000]);
+    expect(next.goalAmount).toBe(1_100_000);
+  });
+
+  it("clears the goals", () => {
+    const next = setSeasonGoal(progress({ goalAmount: 5, stageGoals: [1, 2, 3, 4, 5] }), null, 0);
+
+    expect(next).toMatchObject({ goalAmount: null, stageGoals: [] });
   });
 });
 
@@ -330,6 +429,7 @@ describe("harvestPlant", () => {
       wish: "",
       plantName: "",
       wishHistory: [],
+      stageGoals: [],
       plantKind: "fern",
       driftSince: KST_TODAY,
       id: PORTFOLIO_ID,

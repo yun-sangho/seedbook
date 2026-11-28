@@ -8,9 +8,9 @@ import { PlantAvatar } from "@mobile/features/garden/components/plant-avatar";
 import { PLANT_KIND_LABELS, PLANT_KINDS } from "@mobile/features/garden/plant-3d/plant-options";
 import { kstDay } from "@mobile/features/garden/utils/basket";
 import { plantConditionLabel, plantStageLabel } from "@mobile/features/garden/utils/garden-home";
-import { MAX_PLANT_STAGE } from "@mobile/features/portfolio/types/constants";
 import type { PlantKind, PlantProgress } from "@mobile/features/portfolio/types/types";
 import {
+  finalGoalOf,
   NEXT_GOAL_ERROR_MESSAGES,
   nextGoalError,
   nextGoalFloor,
@@ -45,7 +45,7 @@ function rowButton(plant: PortfolioPlantView): { label: string; action: PlantRow
     case "set":
       return { label: "수정", action: "goal" };
     case "needs-goal":
-      // 목표가 없는 씨앗은 아직 심지 않은 것 — 종류·첫 목표·소원을 함께 정한다.
+      // 목표가 없는 씨앗은 아직 심지 않은 것 — 종류·이름·목표·소원을 함께 정한다.
       return plant.stage === 0
         ? { label: "씨앗 심기", action: "season" }
         : { label: "목표 정하기", action: "goal" };
@@ -107,7 +107,7 @@ export function PortfolioPlantRow({
           className="min-w-0 flex-1"
           stage={plant.stage}
           goalState={plant.goalState}
-          goalPercent={goalPercentOf(plant.value, plant.goalAmount)}
+          goalPercent={goalPercentOf(plant.value, plant.finalGoalAmount)}
           wilt={plant.wilt}
           wind={plant.wind}
           ariaLabel="식물 목표 도달"
@@ -140,9 +140,14 @@ export function PortfolioPlantRow({
   );
 }
 
+/** 목표를 향해 어떻게 자라는지 (씨앗 심기·목표 수정 시트). */
+const GROWTH_HINT =
+  "목표에 가까워질수록 자라요. 처음엔 빨리, 목표에 가까울수록 천천히 자라고, 비중이 기준 안이어야 자라요.";
+
 /**
- * 식물의 지금 목표 금액을 정하거나 지우는 시트. 4단계(꽃)에서는 열매 목표다. 다음 목표는 지금 평가금액과
- * 지난 목표 중 큰 값의 +10% 이상이고, 시세가 다 오기 전에는 받지 않는다 (`nextGoalError`).
+ * 식물의 목표(수확까지의 최종 목표)를 고치거나 지우는 시트. 고치면 남은 단계 목표를 지금부터 다시 나눈다
+ * (`setSeasonGoal`). 목표는 지금 평가금액과 이룬 단계 목표 중 큰 값의 +10% 이상이고, 시세가 다 오기 전에는
+ * 받지 않는다 (`nextGoalError`).
  */
 export function EditPlantGoalSheet({
   open,
@@ -158,13 +163,11 @@ export function EditPlantGoalSheet({
   /** `null` 이면 목표를 지운다. */
   onSave: (amount: number | null) => void;
 }) {
-  const [draft, setDraft] = useState(
-    progress.goalAmount === null ? "" : formatMoneyDraft(String(progress.goalAmount))
-  );
+  const finalGoal = finalGoalOf(progress);
+  const [draft, setDraft] = useState(finalGoal === null ? "" : formatMoneyDraft(String(finalGoal)));
   const [error, setError] = useState<string | undefined>();
   const floor = nextGoalFloor(progress, valuation);
-  const fruit = progress.growthStage >= MAX_PLANT_STAGE;
-  const title = fruit ? "열매 목표 금액" : "식물 목표 금액";
+  const title = "목표 금액";
 
   const save = () => {
     const invalid = nextGoalError(progress, parseNumericString(draft), valuation);
@@ -181,9 +184,7 @@ export function EditPlantGoalSheet({
       <BottomSheetContent title={title} showHandle>
         <BottomSheetBody>
           <p className="t4-regular text-fg-neutral-subtle pb-x3">
-            {fruit
-              ? "포트폴리오 금액이 열매 목표에 닿고 비중이 기준 안이면 열매가 열려요."
-              : "포트폴리오 금액이 목표에 닿고 비중이 기준 안이면 식물이 한 단계 자라요."}{" "}
+            {GROWTH_HINT} 목표에 닿으면 열매가 열려요.{" "}
             {floor === null
               ? NEXT_GOAL_ERROR_MESSAGES["prices-loading"](null)
               : floor > 0 &&
@@ -203,7 +204,7 @@ export function EditPlantGoalSheet({
         <BottomSheetFooter>
           <div className="flex w-full gap-x2">
             {/* 씨앗의 목표를 지우면 빈 화분으로 돌아간다. */}
-            {progress.goalAmount !== null && (
+            {finalGoal !== null && (
               <ActionButton
                 variant="neutralWeak"
                 size="large"
@@ -247,7 +248,7 @@ export function plantSeasonSheetText(harvestedWish: string | undefined): {
 }
 
 /**
- * 씨앗 심기 시트 — 식물 종류, 식물 이름(선택), 첫 목표(필수, 하한 `nextGoalError`), 목표를 이루면 하고
+ * 씨앗 심기 시트 — 식물 종류, 식물 이름(선택), 목표(필수, 수확까지의 최종 목표, 하한 `nextGoalError`), 목표를 이루면 하고
  * 싶은 일(선택). 목표 없는 씨앗일 때만 연다 (빈 화분, 수확 뒤 다시 심기 — 새 식물이라 이름은 비어 있다).
  */
 export function PlantSeasonSheet({
@@ -300,7 +301,7 @@ export function PlantSeasonSheet({
       <BottomSheetContent title={title} showHandle>
         <BottomSheetBody>
           <p className="t4-regular text-fg-neutral-subtle pb-x3">
-            {description ?? "목표 다섯 개를 이루면 열매를 수확해 바구니에 담아요."}
+            {description ?? "목표에 닿으면 열매를 수확해 바구니에 담아요."}
           </p>
           <div className="flex flex-col items-center gap-x3 pb-x4">
             <PlantAvatar stage="sapling" kind={kind} size={72} />
@@ -331,8 +332,8 @@ export function PlantSeasonSheet({
           </div>
           <div className="pb-x3">
             <MoneyField
-              label="첫 목표 금액"
-              ariaLabel="첫 목표 금액"
+              label="목표 금액"
+              ariaLabel="목표 금액"
               value={goalDraft}
               onValueChange={(next) => {
                 setGoalDraft(next);
@@ -344,8 +345,8 @@ export function PlantSeasonSheet({
               {floor === null
                 ? NEXT_GOAL_ERROR_MESSAGES["prices-loading"](null)
                 : floor > 0
-                  ? `${numberToKorean(floor)} 이상 (지금보다 10% 이상). 금액이 닿고 비중이 기준 안이면 자라요.`
-                  : "금액이 닿고 비중이 기준 안이면 자라요."}
+                  ? `${numberToKorean(floor)} 이상 (지금보다 10% 이상). ${GROWTH_HINT}`
+                  : GROWTH_HINT}
             </p>
           </div>
           <TextField

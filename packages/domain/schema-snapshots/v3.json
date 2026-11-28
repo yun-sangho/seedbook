@@ -420,6 +420,22 @@
           "min": 1,
           "nullable": false
         },
+        "stageGoals": {
+          "default": {
+            "value": []
+          },
+          "kind": "json",
+          "nullable": false,
+          "shape": {
+            "item": {
+              "kind": "money",
+              "min": 1,
+              "nullable": false
+            },
+            "kind": "list",
+            "maxItems": 5
+          }
+        },
         "wish": {
           "default": {
             "value": ""

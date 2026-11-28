@@ -23,6 +23,7 @@ import {
   nextGoalError,
   type PlantEvaluation,
   plantNameError,
+  setSeasonGoal,
   startPlantSeason,
   wishError,
 } from "../utils/plant-season";
@@ -248,7 +249,7 @@ export const usePortfolioStore = create<PortfolioState>()(
         if (amount !== null && nextGoalError(portfolio, amount, valuation)) return false;
         set((state) => ({
           portfolios: state.portfolios.map((p) =>
-            p.id === portfolioId ? touch({ ...p, goalAmount: amount }) : p
+            p.id === portfolioId ? touch(setSeasonGoal(p, amount, valuation.value)) : p
           ),
         }));
         return true;

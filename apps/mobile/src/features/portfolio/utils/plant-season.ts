@@ -15,9 +15,14 @@ import { lastReachedGoal, type PortfolioValuation } from "./portfolio-plant";
 /**
  * 포트폴리오 식물의 성장·수확 규칙 (명세 `docs/plant-growth.md` §3·§4·§5).
  *
- * - 목표는 지금 평가금액과 이번 수확 주기의 마지막 달성 목표 중 큰 값의 +10% 이상이어야 한다 (정할 때만).
- * - 금액이 목표에 닿고 **비중이 기준 안** 이어야 한 단계 자란다. 4단계에서 다섯 번째(열매) 목표를
- *   이루면 열매가 열리고 바로 수확할 수 있다 (익어 가는 단계는 없다). 수확하면 수확 기록을 남기고 빈 화분으로 돌아간다.
+ * - 씨앗을 심을 때 **최종 목표 하나**를 정한다. 지금 평가금액(과 마지막 달성 목표 중 큰 값)의 +10% 이상
+ *   이어야 한다 (정할 때만). 최종 목표까지를 다섯 걸음(새싹·묘목·나무·꽃·열매)으로 나눈 단계 목표
+ *   (`stageGoals`, `planStageGoals`)는 처음엔 좁고 갈수록 넓다 — 처음엔 빨리 자라고 목표에 가까울수록 오래 걸린다.
+ * - 금액이 다음 단계 목표에 닿고 **비중이 기준 안** 이어야 자란다. 한 평가에 지난 단계를 모두 지나간다.
+ *   최종 목표를 이루면 열매가 열리고 바로 수확할 수 있다 (익어 가는 단계는 없다). 수확하면 수확 기록을 남기고
+ *   빈 화분으로 돌아간다.
+ * - 단계 목표가 없는 식물(이 규칙 전에 심은 식물)은 예전처럼 단계마다 목표를 정한다 — 목표를 정하면 그때부터
+ *   남은 단계를 나눈다.
  * - `season` 은 수확할 때마다 +1 되는 수확 주기 번호다. 화면에는 보이지 않고 수확 기록 id·병합·아바타
  *   비교에만 쓴다.
  * - 비중 이탈을 처음 본 날(`driftSince`)부터 센 기간으로 시든다. 시듦은 보이기만 한다.
@@ -89,6 +94,81 @@ export function nextGoalError(
 
 // ─── 성장 ───────────────────────────────────────────────────────────────────
 
+// ─── 단계 목표 ──────────────────────────────────────────────────────────────
+
+/**
+ * 최종 목표까지 다섯 걸음(새싹·묘목·나무·꽃·열매)의 비중 — 처음엔 빨리 자라고 갈수록 오래 걸린다
+ * (누적 10·25·45·70·100%).
+ */
+export const STAGE_STEP_WEIGHTS: readonly number[] = [10, 15, 20, 25, 30];
+
+/**
+ * 식물 종류별 걸음 비중. 지금은 모두 같고, 종류마다 다르게 자라게 하려면 여기에 더한다. 단계 목표는 심을 때
+ * 정해 저장하므로(`stageGoals`) 바꿔도 이미 자라는 식물에는 영향이 없다.
+ */
+const STAGE_STEP_WEIGHTS_BY_KIND: Partial<Record<string, readonly number[]>> = {};
+
+/** 그 종류의 걸음 비중 (모르는 종류·고르지 않음이면 기본). */
+export function stageStepWeights(kind: PlantKind | null): readonly number[] {
+  return (kind && STAGE_STEP_WEIGHTS_BY_KIND[kind]) || STAGE_STEP_WEIGHTS;
+}
+
+/**
+ * 최종 목표까지의 단계 목표 다섯 개 (식물 종류의 걸음 비중, `stageStepWeights`). 이미 이룬 단계는 이룬 금액 그대로, 남은 걸음은 지금(평가금액과 마지막
+ * 달성 목표 중 큰 값)부터 최종 목표까지를 남은 비중대로 나눠 만원 단위로 올린다. 마지막은 최종 목표.
+ */
+export function planStageGoals(
+  progress: Pick<PlantProgress, "growthStage" | "goalHistory" | "plantKind">,
+  finalGoal: number,
+  value: number
+): number[] {
+  const reached = progress.goalHistory.slice(0, progress.growthStage).map((g) => g.amount);
+  const base = Math.max(0, value, reached.at(-1) ?? 0);
+  const weights = stageStepWeights(progress.plantKind).slice(progress.growthStage);
+  const total = weights.reduce((sum, w) => sum + w, 0);
+  const goals: number[] = [];
+  let cumulative = 0;
+  weights.forEach((weight, i) => {
+    cumulative += weight;
+    if (i === weights.length - 1) {
+      goals.push(finalGoal);
+      return;
+    }
+    const raw = base + ((finalGoal - base) * cumulative) / total;
+    const rounded = Math.ceil(raw / GOAL_FLOOR_UNIT) * GOAL_FLOOR_UNIT;
+    goals.push(Math.max(goals.at(-1) ?? 1, Math.min(finalGoal, rounded)));
+  });
+  return [...reached, ...goals];
+}
+
+/**
+ * 최종 목표를 정한다 (null 이면 지운다 — 씨앗이면 빈 화분으로). 단계 목표를 다시 나누고 다음 단계 목표를
+ * 향한다. 열매가 열린 식물은 부르지 않는다 (`nextGoalError`).
+ */
+export function setSeasonGoal<T extends PlantProgress>(
+  progress: T,
+  finalGoal: number | null,
+  value: number
+): T {
+  if (finalGoal === null) return { ...progress, goalAmount: null, stageGoals: [] };
+  const stageGoals = planStageGoals(progress, finalGoal, value);
+  return { ...progress, stageGoals, goalAmount: stageGoals[progress.growthStage] ?? null };
+}
+
+/** 이번 수확 주기의 최종 목표 (단계 목표가 없는 예전 식물은 지금 목표). */
+export function finalGoalOf(
+  progress: Pick<PlantProgress, "stageGoals" | "goalAmount">
+): number | null {
+  return progress.stageGoals.at(-1) ?? progress.goalAmount;
+}
+
+/** 다음 단계 목표가 비어 있으면 단계 목표에서 채운다 (옛 앱이 자란 뒤 비운 경우). 그대로면 같은 참조. */
+function withNextStageGoal<T extends PlantProgress>(progress: T): T {
+  if (progress.goalAmount !== null || progress.fruitGoal !== null) return progress;
+  const next = progress.stageGoals[progress.growthStage];
+  return next === undefined ? progress : { ...progress, goalAmount: next };
+}
+
 /** 이번 평가로 목표를 이뤘는가 — 목표가 있고, 시세가 다 왔고, 금액이 닿았고, 비중이 기준 안. */
 function reachesGoal(progress: PlantProgress, evaluation: PlantEvaluation): boolean {
   const { goalAmount } = progress;
@@ -100,26 +180,35 @@ function reachesGoal(progress: PlantProgress, evaluation: PlantEvaluation): bool
   );
 }
 
+/** 목표를 이뤘으니 한 단계 자란다 (4단계면 열매). 단계 목표가 있으면 다음 단계 목표를 향한다. */
+function growOneStage<T extends PlantProgress>(progress: T, now: string): T {
+  const goal = { amount: progress.goalAmount as number, reachedAt: now };
+  if (progress.growthStage >= MAX_PLANT_STAGE) {
+    return { ...progress, goalAmount: null, fruitGoal: goal };
+  }
+  return withNextStageGoal({
+    ...progress,
+    goalAmount: null,
+    growthStage: (progress.growthStage + 1) as PlantStage,
+    goalHistory: [...progress.goalHistory, goal],
+  });
+}
+
 /**
- * 목표를 이뤘으면 한 단계 자란 진행 (목표는 비우고 이력에 남긴다). 4단계(꽃)에서는 열매가 열린다
- * (`fruitGoal`, 단계는 그대로). 그대로면 같은 참조를 돌려준다. 한 평가에 한 단계만 자란다.
+ * 목표를 이뤘으면 자란 진행 (이룬 목표는 이력에 남는다). 단계 목표가 있으면 금액이 지난 단계를 한 번에
+ * 지나가고, 없으면(예전 식물) 한 단계만 자라고 다음 목표를 비운다. 4단계(꽃)에서 마지막 목표를 이루면 열매가
+ * 열린다 (`fruitGoal`, 단계는 그대로). 그대로면 같은 참조를 돌려준다.
  */
 export function advancePlant<T extends PlantProgress>(
   progress: T,
   evaluation: PlantEvaluation,
   now: string
 ): T {
-  if (progress.fruitGoal !== null || !reachesGoal(progress, evaluation)) return progress;
-  const goal = { amount: progress.goalAmount as number, reachedAt: now };
-  if (progress.growthStage >= MAX_PLANT_STAGE) {
-    return { ...progress, goalAmount: null, fruitGoal: goal };
+  let next = withNextStageGoal(progress);
+  while (next.fruitGoal === null && reachesGoal(next, evaluation)) {
+    next = growOneStage(next, now);
   }
-  return {
-    ...progress,
-    goalAmount: null,
-    growthStage: (progress.growthStage + 1) as PlantStage,
-    goalHistory: [...progress.goalHistory, goal],
-  };
+  return next;
 }
 
 /**
@@ -244,8 +333,10 @@ export interface PlantStatus {
    */
   empty: boolean;
   goalState: SeasonGoalState;
-  /** 향하는 목표 (원). `set`·`blocked-by-drift` 일 때만. */
+  /** 향하는 다음 단계 목표 (원). `set`·`blocked-by-drift` 일 때만. */
   goalAmount: number | null;
+  /** 이번 수확 주기의 최종 목표 (원, 막대가 향하는 곳). `set`·`blocked-by-drift` 일 때만. */
+  finalGoalAmount: number | null;
   /** 목표까지 남은 금액 (원). 목표가 없으면 null. */
   remainingToNextStage: number | null;
   /** 비중이 기준 밖이다 (연결 계좌·목표 비중이 없으면 false). */
@@ -278,6 +369,7 @@ export function computePlantStatus(
     empty: next.growthStage === 0 && next.goalAmount === null,
     goalState,
     goalAmount,
+    finalGoalAmount: goalAmount === null ? null : finalGoalOf(next),
     remainingToNextStage: goalAmount === null ? null : Math.max(0, goalAmount - evaluation.value),
     drifting: evaluation.drifting,
     driftDays: days,
@@ -340,6 +432,7 @@ export function harvestPlant<T extends PlantProgress & { id: string; name: strin
       goalAmount: null,
       goalHistory: [],
       fruitGoal: null,
+      stageGoals: [],
       wish: "",
       plantName: "",
       wishHistory: [],

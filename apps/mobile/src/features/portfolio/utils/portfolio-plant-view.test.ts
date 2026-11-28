@@ -114,6 +114,7 @@ describe("portfolioPlantView", () => {
       stage: 0,
       goalState: "set",
       goalAmount: 150_000,
+      finalGoalAmount: 150_000,
       remainingToNextStage: 50_000,
       drifting: false,
       driftDays: 0,

@@ -126,7 +126,7 @@ export interface GardenRow {
   goalState: PortfolioPlantView["goalState"];
   /** 지금 목표 금액 (원). 목표가 없으면 null. */
   goalAmount: number | null;
-  /** 지금 목표 대비 금액 (%, 소수 버림, 100 이하). 목표가 없으면 null. 목록의 도달 막대. */
+  /** 최종 목표 대비 금액 (%, 소수 버림, 100 이하). 목표가 없으면 null. 목록의 도달 막대. */
   goalPercent: number | null;
   /** 연결 계좌들의 수익률 (%). 연결 계좌가 없거나 투자원금이 0 이면 null. */
   returnRate: number | null;
@@ -159,8 +159,8 @@ function gardenRow(plant: PortfolioPlantView, accounts: readonly RowAccount[]): 
     goalState: plant.goalState,
     goalAmount: plant.goalAmount,
     goalPercent:
-      plant.goalAmount !== null && plant.goalAmount > 0
-        ? Math.min(100, Math.floor((Math.max(0, plant.value) / plant.goalAmount) * 100))
+      plant.finalGoalAmount !== null && plant.finalGoalAmount > 0
+        ? Math.min(100, Math.floor((Math.max(0, plant.value) / plant.finalGoalAmount) * 100))
         : null,
     returnRate: linkedReturnRate(accounts),
   };

@@ -66,7 +66,7 @@ type Editing =
   | { kind: "settings" }
   | { kind: "drift" }
   | { kind: "plant-goal" }
-  /** 씨앗 심기 (종류·이름·첫 목표·소원). `harvestedWish` 가 있으면 방금 수확한 뒤 다시 심기. */
+  /** 씨앗 심기 (종류·이름·목표·소원). `harvestedWish` 가 있으면 방금 수확한 뒤 다시 심기. */
   | { kind: "plant-season"; harvestedWish?: string }
   /** 소원 고치기·이력. */
   | { kind: "plant-wish" }
