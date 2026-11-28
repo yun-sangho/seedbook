@@ -179,9 +179,70 @@ export function filledQuantityOf(task: RebalancingTask): number {
   return task.filledQuantity ?? 0;
 }
 
-/** 주문 중이고 일부가 체결된 할 일 — 체결된 만큼은 거래한 것으로 보고 잔량은 주문 중으로 둔다. */
+/**
+ * 일부만 거래된 할 일 — 거래된 만큼은 거래한 것으로 보고 나머지는 남아 있다. 주문 없이 체결을
+ * 바로 기록해도(`recordRebalancingFill`), 예전 주문의 부분 체결이어도 같다.
+ */
 export function isPartiallyFilled(task: RebalancingTask): boolean {
-  return rebalancingTaskStatus(task) === "ordered" && filledQuantityOf(task) > 0;
+  return !task.done && filledQuantityOf(task) > 0;
+}
+
+/**
+ * 할 일의 목표 수량 (주) — 시작할 때 계산한 권장 수량. 시세를 몰라 권장 수량이 없으면 예전에
+ * 기록한 주문 수량, 그것도 없으면 null (목표를 모르면 한 번 기록하면 끝난다).
+ */
+export function targetQuantityOf(task: RebalancingTask): number | null {
+  return task.quantity ?? task.orderedQuantity ?? null;
+}
+
+/** 목표까지 남은 수량 (주). 끝난 할 일은 0, 목표를 모르면 null. */
+export function remainingQuantityOf(task: RebalancingTask): number | null {
+  if (task.done) return 0;
+  const target = targetQuantityOf(task);
+  return target === null ? null : Math.max(0, target - filledQuantityOf(task));
+}
+
+/**
+ * 실제로 거래된 체결 한 건을 기록한다 (주문 없이 — 증권사 앱에서 거래된 수량·가격 그대로).
+ * 앞선 체결과 합쳐 목표 수량에 못 미치면 남은 수량을 두고 열어 둔다. 목표를 채우면(넘어도) 합친
+ * 수량과 평균가로 끝낸다 — 앞선 체결 기록은 남겨 두어 끝낸 것을 되돌리면 그 상태로 돌아간다.
+ */
+export function recordRebalancingFill(
+  session: RebalancingSession,
+  taskId: string,
+  quantity: number,
+  price: number
+): RebalancingSession {
+  return updateUnfilledTask(session, taskId, (t) => {
+    const filledQuantity = filledQuantityOf(t) + quantity;
+    const filledAmount = (t.filledAmount ?? 0) + quantity * price;
+    const target = targetQuantityOf(t);
+    if (target !== null && filledQuantity < target) return { ...t, filledQuantity, filledAmount };
+    return finishFill(t, filledQuantity, filledAmount);
+  });
+}
+
+/**
+ * 남은 수량은 거래하지 않고 할 일을 끝낸다 ("남은 n주는 안 팔래요"). 거래된 것이 있으면 그 수량·
+ * 평균가로, 없으면 거래하지 않은 것(0주)으로 끝낸다.
+ */
+export function closeRebalancingTask(
+  session: RebalancingSession,
+  taskId: string
+): RebalancingSession {
+  return updateUnfilledTask(session, taskId, (t) =>
+    isPartiallyFilled(t)
+      ? finishFill(t, filledQuantityOf(t), t.filledAmount ?? 0)
+      : { ...t, done: true, executedQuantity: 0, executedPrice: null }
+  );
+}
+
+/** 열려 있는 할 일의 체결 기록을 지운다 (잘못 기록했을 때 처음부터 다시). */
+export function clearRebalancingFills(
+  session: RebalancingSession,
+  taskId: string
+): RebalancingSession {
+  return updateUnfilledTask(session, taskId, (t) => ({ ...t, filledQuantity: 0, filledAmount: 0 }));
 }
 
 /** 아직 체결되지 않은 주문 수량 (주). 주문 중이 아니면 0. */

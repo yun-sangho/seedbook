@@ -25,13 +25,10 @@ function task(
   };
 }
 
-const ordered = (quantity: number, price: number) => ({
-  orderedQuantity: quantity,
-  orderedPrice: price,
-});
+const done = { done: true };
 
 describe("nextRebalancingAction", () => {
-  it("asks to sell first while a sell has not been ordered", () => {
+  it("asks to sell first while a sell is still open", () => {
     const tasks = [task("buy", "매수", 10, 1000), task("sell", "매도", 5, 2000)];
 
     expect(nextRebalancingAction(tasks, 100_000)).toEqual({
@@ -41,8 +38,17 @@ describe("nextRebalancingAction", () => {
     });
   });
 
-  it("asks to buy once every sell is ordered and the cash covers the buy", () => {
-    const tasks = [task("sell", "매도", 5, 2000, ordered(5, 2000)), task("buy", "매수", 10, 1000)];
+  it("keeps a partly sold sell as the next action for the shares left", () => {
+    const tasks = [
+      task("sell", "매도", 5, 2000, { filledQuantity: 3, filledAmount: 6_000 }),
+      task("buy", "매수", 10, 1000),
+    ];
+
+    expect(nextRebalancingAction(tasks, 0)).toMatchObject({ kind: "sell", amount: 4_000 });
+  });
+
+  it("asks to buy once every sell is done and the cash covers the buy", () => {
+    const tasks = [task("sell", "매도", 5, 2000, done), task("buy", "매수", 10, 1000)];
 
     expect(nextRebalancingAction(tasks, 10_000)).toEqual({
       kind: "buy",
@@ -53,45 +59,24 @@ describe("nextRebalancingAction", () => {
     });
   });
 
-  it("waits for sale proceeds when a buy needs more cash and a sell is still unfilled", () => {
-    const tasks = [task("sell", "매도", 5, 2000, ordered(5, 2000)), task("buy", "매수", 10, 1000)];
+  it("asks to buy with the shortfall when the cash does not cover it", () => {
+    const tasks = [task("sell", "매도", 5, 2000, done), task("buy", "매수", 10, 1000)];
 
-    expect(nextRebalancingAction(tasks, 4_000)).toEqual({
-      kind: "wait",
-      reason: "proceeds",
-      task: tasks[0],
-      shortfall: 6_000,
-    });
-  });
-
-  it("asks to buy with the shortfall when no sell can bring in more cash", () => {
-    const tasks = [task("sell", "매도", 5, 2000, { done: true }), task("buy", "매수", 10, 1000)];
-
-    expect(nextRebalancingAction(tasks, 4_000)).toEqual({
+    expect(nextRebalancingAction(tasks, 4_000)).toMatchObject({
       kind: "buy",
       task: tasks[1],
-      amount: 10_000,
-      available: 4_000,
       shortfall: 6_000,
     });
   });
 
-  it("waits for fills when every remaining trade is ordered", () => {
-    const tasks = [
-      task("sell", "매도", 5, 2000, { done: true }),
-      task("buy", "매수", 10, 1000, ordered(10, 1000)),
-    ];
+  it("treats an old unfilled order as still open", () => {
+    const tasks = [task("sell", "매도", 5, 2000, { orderedQuantity: 5, orderedPrice: 2000 })];
 
-    expect(nextRebalancingAction(tasks, 0)).toEqual({
-      kind: "wait",
-      reason: "fill",
-      task: tasks[1],
-      shortfall: 0,
-    });
+    expect(nextRebalancingAction(tasks, 0)).toMatchObject({ kind: "sell", task: tasks[0] });
   });
 
-  it("is done when every trade is filled", () => {
-    const tasks = [task("sell", "매도", 5, 2000, { done: true })];
+  it("is done when every trade is done", () => {
+    const tasks = [task("sell", "매도", 5, 2000, done)];
 
     expect(nextRebalancingAction(tasks, 0)).toEqual({ kind: "done" });
   });

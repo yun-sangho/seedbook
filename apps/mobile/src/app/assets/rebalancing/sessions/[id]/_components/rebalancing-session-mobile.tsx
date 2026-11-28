@@ -32,7 +32,7 @@ import {
   type RebalancingTaskGroup,
   rebalancingProgress,
   rebalancingTaskStatus,
-  remainingOrderQuantity,
+  remainingQuantityOf,
 } from "@mobile/features/rebalancing/utils/rebalancing-session";
 import {
   type RebalancingTaskSort,
@@ -404,11 +404,13 @@ function TaskRow({
   showAction: boolean;
   onOpen: () => void;
 }) {
+  // 거래하지 않고 닫은 할 일 ("안 팔래요") 은 수량·가격 없이 "안 함" 배지만.
+  const skipped = task.done && executedQuantityOf(task) === 0;
   const content = {
     // 아직 손대지 않은 매매는 배지 없이 — 주문했거나 거래가 끝났을 때만 앞에 알린다.
     prefix: <TaskStatusBadge task={task} ended={ended} />,
     title: <span>{task.name || task.ticker || "(미선택)"}</span>,
-    detail: <TaskDetail task={task} />,
+    detail: skipped ? null : <TaskDetail task={task} />,
     // 몇 주, 주당 얼마에 — 수량 아래 주당 가격을 두고 오른쪽 정렬해 같은 세로선에 놓이게 한다.
     suffix: (
       <span className="flex flex-col items-end gap-[2px]">
@@ -418,9 +420,9 @@ function TaskRow({
               {task.action === "매수" ? "사기" : "팔기"}
             </Badge>
           )}
-          <TaskQuantity task={task} />
+          {!skipped && <TaskQuantity task={task} />}
         </span>
-        <TaskPrice task={task} />
+        {!skipped && <TaskPrice task={task} />}
       </span>
     ),
   };
@@ -465,7 +467,9 @@ function TaskStatusBadge({ task, ended }: { task: RebalancingTask; ended: boolea
       </Badge>
     );
   }
-  const shown = ended ? ENDED_LABEL[status] : label;
+  // 거래하지 않고 닫은 할 일 ("안 팔래요") 은 끝났어도 거래한 것이 없다.
+  const skipped = task.done && executedQuantityOf(task) === 0;
+  const shown = skipped ? "안 함" : ended ? ENDED_LABEL[status] : label;
   if (shown === null) return null;
   return (
     <Badge tone={tone} variant="weak">
@@ -635,12 +639,21 @@ function TaskDetail({ task }: { task: RebalancingTask }) {
     return (
       <span className="tabular-nums">
         {formatWithCommas(filledQuantityOf(task))}주 거래됨 · 남은{" "}
-        {formatWithCommas(remainingOrderQuantity(task))}주
+        {formatWithCommas(remainingQuantityOf(task) ?? 0)}주
       </span>
     );
   }
   const differs = !!quantity && task.quantity !== null && quantity !== task.quantity;
-  const total = quantity !== null && price !== null ? Math.round(quantity * price) : null;
+  // 끝난 거래의 총 금액은 반올림 전 평균가로 — 체결 금액 합과 같게.
+  const executedPrice = task.done ? executedPriceOf(task) : null;
+  const total =
+    quantity === null
+      ? null
+      : executedPrice !== null
+        ? Math.round(quantity * executedPrice)
+        : price !== null
+          ? Math.round(quantity * price)
+          : null;
   if (total === null && !differs) return null;
   return (
     <span className="tabular-nums">

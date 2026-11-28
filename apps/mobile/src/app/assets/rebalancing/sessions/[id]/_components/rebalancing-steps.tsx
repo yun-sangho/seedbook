@@ -11,8 +11,8 @@ import {
 import { summarizeRebalancingPriceAsOf } from "@mobile/features/rebalancing/utils/rebalancing-price-as-of";
 import {
   executedQuantityOf,
-  rebalancingTaskStatus,
-  remainingOrderQuantity,
+  isPartiallyFilled,
+  targetQuantityOf,
 } from "@mobile/features/rebalancing/utils/rebalancing-session";
 import { cn } from "@mobile/lib/utils";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
@@ -111,7 +111,7 @@ export function RebalancingSteps({
 }
 
 /**
- * 매매마다 한 칸 — 끝난 거래는 채우고, 주문한 거래는 옅게, 지금 단계는 두껍게. 누르면 그 단계로.
+ * 매매마다 한 칸 — 끝난 거래는 채우고, 일부만 거래된 것은 옅게, 지금 단계는 두껍게. 누르면 그 단계로.
  */
 function StepProgress({
   tasks,
@@ -133,7 +133,6 @@ function StepProgress({
       className="flex items-center gap-x1 px-x4 pt-x1"
     >
       {tasks.map((task, i) => {
-        const status = rebalancingTaskStatus(task);
         const isCurrent = task.id === currentId;
         return (
           <button
@@ -149,9 +148,10 @@ function StepProgress({
               className={cn(
                 "block w-full rounded-full transition-[height]",
                 isCurrent ? "h-[6px]" : "h-[3px]",
-                status === "filled" && "bg-bg-brand-solid",
-                status === "ordered" && "bg-bg-brand-solid opacity-40",
-                status === "pending" &&
+                task.done && "bg-bg-brand-solid",
+                isPartiallyFilled(task) && "bg-bg-brand-solid opacity-40",
+                !task.done &&
+                  !isPartiallyFilled(task) &&
                   (isCurrent ? "bg-bg-neutral-weak-pressed" : "bg-bg-neutral-weak")
               )}
             />
@@ -173,7 +173,6 @@ function CurrentStep({
   action: NextRebalancingAction | null;
   onDone: () => void;
 }) {
-  const status = rebalancingTaskStatus(task);
   const copy = stepCopy(task, action);
   return (
     <>
@@ -183,8 +182,8 @@ function CurrentStep({
           {copy.quantity && <>{copy.quantity} </>}
           <span
             className={cn(
-              status === "pending" && task.action === "매도" && "text-fg-critical",
-              status === "pending" && task.action === "매수" && "text-fg-positive"
+              !task.done && task.action === "매도" && "text-fg-critical",
+              !task.done && task.action === "매수" && "text-fg-positive"
             )}
           >
             {copy.verb}
@@ -203,8 +202,8 @@ function CurrentStep({
       </section>
       <div>
         <TradeEntryForm
-          // 상태가 바뀌면 (주문 → 거래 끝) 입력을 새로 채운다.
-          key={`${task.id}:${status}`}
+          // 기록할 때마다 (일부 거래 · 끝남) 입력을 남은 수량으로 새로 채운다.
+          key={`${task.id}:${task.done}:${task.filledQuantity ?? 0}`}
           sessionId={session.id}
           task={task}
           embedded
@@ -221,39 +220,30 @@ const wonLabel = (won: number) => numberToKorean(won) || `${formatWithCommas(Mat
 const taskName = (task: RebalancingTask) => task.name || task.ticker || "(미선택)";
 
 /**
- * 단계의 큰 글씨 — 종목 수량과 쉬운 말 동사 ("111주 파세요"). 설명 문장은 두지 않고, 돈이 모자랄
- * 때만 경고 한 줄을 붙인다 (금액은 "금액 자세히" 에 있다).
+ * 단계의 큰 글씨 — 목표 수량과 쉬운 말 ("111주 팔기"). 끝났으면 거래한 수량 ("111주 팔았어요").
+ * 설명 문장은 두지 않고, 돈이 모자랄 때만 경고 한 줄을 붙인다.
  */
 function stepCopy(
   task: RebalancingTask,
   action: NextRebalancingAction | null
 ): { quantity: string | null; verb: string; note: string | null; critical?: boolean } {
   const sell = task.action === "매도";
-  switch (rebalancingTaskStatus(task)) {
-    case "filled": {
-      const quantity = executedQuantityOf(task);
-      return {
-        quantity: quantity === null ? null : `${formatWithCommas(quantity)}주`,
-        verb: sell ? "팔았어요" : "샀어요",
-        note: null,
-      };
-    }
-    case "ordered":
-      return {
-        quantity: `${formatWithCommas(remainingOrderQuantity(task))}주`,
-        verb: sell ? "파는 중" : "사는 중",
-        note: null,
-      };
-    case "pending": {
-      const quantity = task.quantity === null ? null : `${formatWithCommas(task.quantity)}주`;
-      const shortfall = action?.kind === "buy" ? action.shortfall : 0;
-      return {
-        quantity,
-        verb: sell ? "파세요" : "사세요",
-        note:
-          shortfall > 0 ? `돈이 ${wonLabel(shortfall)} 모자라요 · 살 수 있는 만큼만 사세요` : null,
-        critical: shortfall > 0,
-      };
-    }
+  if (task.done) {
+    const executed = executedQuantityOf(task) ?? 0;
+    if (executed === 0)
+      return { quantity: null, verb: sell ? "안 팔았어요" : "안 샀어요", note: null };
+    return {
+      quantity: `${formatWithCommas(executed)}주`,
+      verb: sell ? "팔았어요" : "샀어요",
+      note: null,
+    };
   }
+  const target = targetQuantityOf(task);
+  const shortfall = action?.kind === "buy" ? action.shortfall : 0;
+  return {
+    quantity: target === null ? null : `${formatWithCommas(target)}주`,
+    verb: sell ? "팔기" : "사기",
+    note: shortfall > 0 ? `돈이 ${wonLabel(shortfall)} 모자라요 · 살 수 있는 만큼만 사세요` : null,
+    critical: shortfall > 0,
+  };
 }

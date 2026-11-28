@@ -525,3 +525,35 @@ describe("applyRebalancingToAccount with a partially filled order", () => {
     expect(applied.cashChange).toBe(0);
   });
 });
+
+describe("applyRebalancingToAccount with fills recorded without an order", () => {
+  // 목표 매도 4주 중 3주를 51,000원에 팔았다고 바로 기록했다 (주문 기록 없음).
+  const partialSell = task({
+    action: "매도",
+    quantity: 4,
+    done: false,
+    filledQuantity: 3,
+    filledAmount: 3 * 51_000,
+  });
+
+  it("applies the shares sold so far", () => {
+    const applied = applyRebalancingToAccount(account(), session([partialSell]), KRW);
+
+    expect(applied.account.holdings[0]?.quantity).toBe(7);
+  });
+
+  it("adds the sale proceeds of the fills to cash", () => {
+    const applied = applyRebalancingToAccount(account(), session([partialSell]), KRW);
+
+    expect(applied.cashChange).toBe(153_000);
+  });
+
+  it("applies nothing for a task closed without trading", () => {
+    const closed = task({ action: "매도", quantity: 4, done: true, executedQuantity: 0 });
+
+    const applied = applyRebalancingToAccount(account(), session([closed]), KRW);
+
+    expect(applied.account.holdings[0]?.quantity).toBe(10);
+    expect(applied.cashChange).toBe(0);
+  });
+});
