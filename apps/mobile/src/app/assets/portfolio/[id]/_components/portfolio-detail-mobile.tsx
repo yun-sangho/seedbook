@@ -126,7 +126,6 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
   const setDriftMode = usePortfolioStore((s) => s.setDriftMode);
   const setPlantGoal = usePortfolioStore((s) => s.setPlantGoal);
   const startPlantSeason = usePortfolioStore((s) => s.startPlantSeason);
-  const setPlantWish = usePortfolioStore((s) => s.setPlantWish);
   const harvestPlant = usePortfolioStore((s) => s.harvestPlant);
   const investments = useInvestmentStore((s) => s.investments);
   const portfolios = usePortfolioStore((s) => s.portfolios);
@@ -484,14 +483,9 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
           editing?.kind === "plant-season" ? editing.harvestedWish : undefined,
           plant
         )}
-        kindEditable={plant.stage === 0}
         initialKind={plant.kind}
         initialWish={portfolio.wish}
-        onSave={(input) =>
-          plant.stage === 0
-            ? startPlantSeason(portfolio.id, input)
-            : setPlantWish(portfolio.id, input.wish)
-        }
+        onSave={(input) => startPlantSeason(portfolio.id, input)}
       />
       <ImportAllocationsSheet
         key={`import-${editing?.kind === "import-allocations"}`}

@@ -29,7 +29,7 @@ import { SegmentedControl, SegmentedControlItem } from "@mobile/seed-design/ui/s
 import { TextField, TextFieldInput } from "@mobile/seed-design/ui/text-field";
 import { numberToKorean, parseNumericString } from "@mobile/utils/number-format";
 
-/** 식물 줄에서 누를 수 있는 것 — 목표(열매 목표) 정하기, 리밸런싱 보기, 수확, 종류·소원 고치기. */
+/** 식물 줄에서 누를 수 있는 것 — 목표(열매 목표) 정하기, 리밸런싱 보기, 수확, 씨앗 심기(종류·소원). */
 export type PlantRowAction = "goal" | "rebalance" | "harvest" | "season";
 
 /** 목표 상태별 버튼 문구와 할 일. */
@@ -109,14 +109,21 @@ export function PortfolioPlantRow({
           {button.label}
         </ActionButton>
       </div>
-      <button
-        type="button"
-        onClick={() => onAction("season")}
-        aria-label={plant.wish ? `이루면: ${plant.wish}` : "이루면 하고 싶은 일 적기"}
-        className="t3-regular text-fg-neutral-subtle block w-full truncate text-left"
-      >
-        {plant.wish ? `🌱 이루면: ${plant.wish}` : "🌱 이루면 하고 싶은 일 적기"}
-      </button>
+      {plant.stage === 0 ? (
+        // 하고 싶은 일은 씨앗을 심을 때(씨앗 단계)만 적는다.
+        <button
+          type="button"
+          onClick={() => onAction("season")}
+          aria-label={plant.wish ? `이루면: ${plant.wish}` : "이루면 하고 싶은 일 적기"}
+          className="t3-regular text-fg-neutral-subtle block w-full truncate text-left"
+        >
+          {plant.wish ? `🌱 이루면: ${plant.wish}` : "🌱 이루면 하고 싶은 일 적기"}
+        </button>
+      ) : (
+        plant.wish && (
+          <p className="t3-regular text-fg-neutral-subtle truncate">🌱 이루면: {plant.wish}</p>
+        )
+      )}
     </div>
   );
 }
@@ -206,13 +213,10 @@ export function EditPlantGoalSheet({
   );
 }
 
-/**
- * 씨앗 심기 시트의 제목·설명. 방금 수확했으면(`harvestedWish` 가 있으면) 새 계절, 씨앗이면 씨앗 심기,
- * 자란 뒤에는 소원만 고친다.
- */
+/** 씨앗 심기 시트의 제목·설명. 방금 수확했으면(`harvestedWish` 가 있으면) 새 계절. */
 export function plantSeasonSheetText(
   harvestedWish: string | undefined,
-  plant: Pick<PortfolioPlantView, "season" | "stage">
+  plant: Pick<PortfolioPlantView, "season">
 ): { title: string; description?: string } {
   if (harvestedWish !== undefined) {
     const basket = harvestedWish
@@ -223,19 +227,18 @@ export function plantSeasonSheetText(
       description: `${basket} ${plant.season}번째 계절에 키울 식물과 하고 싶은 일을 정해요.`,
     };
   }
-  return plant.stage === 0 ? { title: "씨앗 심기" } : { title: "하고 싶은 일" };
+  return { title: "씨앗 심기" };
 }
 
 /**
- * 씨앗 심기 시트 — 식물 종류(씨앗일 때만)와 이번 계절 목표를 이루면 하고 싶은 일. 둘 다 건너뛸 수 있다.
- * 새 포트폴리오, 수확 뒤 새 계절, 소원 고치기에 쓴다.
+ * 씨앗 심기 시트 — 식물 종류와 이번 계절 목표를 이루면 하고 싶은 일. 둘 다 건너뛸 수 있다. 씨앗일 때만
+ * 연다 (새 포트폴리오, 수확 뒤 새 계절).
  */
 export function PlantSeasonSheet({
   open,
   onOpenChange,
   title,
   description,
-  kindEditable,
   initialKind,
   initialWish,
   onSave,
@@ -244,8 +247,6 @@ export function PlantSeasonSheet({
   onOpenChange: (open: boolean) => void;
   title: string;
   description?: string;
-  /** 종류를 고를 수 있는지 — 씨앗일 때만 (자란 뒤에는 모양이 바뀌지 않게). */
-  kindEditable: boolean;
   initialKind: PlantKind;
   initialWish: string;
   onSave: (input: { plantKind: PlantKind; wish: string }) => void;
@@ -261,23 +262,21 @@ export function PlantSeasonSheet({
           <p className="t4-regular text-fg-neutral-subtle pb-x3">
             {description ?? "이번 계절 목표 다섯 개를 이루면 수확해 바구니에 담아요."}
           </p>
-          {kindEditable && (
-            <div className="flex flex-col items-center gap-x3 pb-x4">
-              <PlantAvatar stage="sapling" kind={kind} size={72} />
-              <SegmentedControl
-                aria-label="식물 종류"
-                value={kind}
-                onValueChange={(next) => setKind(next as PlantKind)}
-                className="w-full"
-              >
-                {PLANT_KINDS.map((k) => (
-                  <SegmentedControlItem key={k} value={k}>
-                    {PLANT_KIND_LABELS[k]}
-                  </SegmentedControlItem>
-                ))}
-              </SegmentedControl>
-            </div>
-          )}
+          <div className="flex flex-col items-center gap-x3 pb-x4">
+            <PlantAvatar stage="sapling" kind={kind} size={72} />
+            <SegmentedControl
+              aria-label="식물 종류"
+              value={kind}
+              onValueChange={(next) => setKind(next as PlantKind)}
+              className="w-full"
+            >
+              {PLANT_KINDS.map((k) => (
+                <SegmentedControlItem key={k} value={k}>
+                  {PLANT_KIND_LABELS[k]}
+                </SegmentedControlItem>
+              ))}
+            </SegmentedControl>
+          </div>
           <TextField
             label="이루면 하고 싶은 일"
             value={wish}
@@ -299,7 +298,7 @@ export function PlantSeasonSheet({
               onOpenChange(false);
             }}
           >
-            {kindEditable ? "심기" : "저장"}
+            심기
           </ActionButton>
         </BottomSheetFooter>
       </BottomSheetContent>

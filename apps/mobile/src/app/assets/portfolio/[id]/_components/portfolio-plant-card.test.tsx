@@ -116,18 +116,27 @@ describe("PortfolioPlantRow", () => {
     expect(screen.getByText(/시들해요 · 바람이 불어요/)).toBeTruthy();
   });
 
-  it("shows the wish and lets it be edited", () => {
+  it("lets a seed write its wish", () => {
     const onAction = vi.fn();
-    render(<PortfolioPlantRow plant={plant({ wish: "제주 여행" })} onAction={onAction} />);
-    fireEvent.click(screen.getByRole("button", { name: "이루면: 제주 여행" }));
+    render(
+      <PortfolioPlantRow
+        plant={plant({ stage: 0, goalState: "needs-goal", goalAmount: null })}
+        onAction={onAction}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "이루면 하고 싶은 일 적기" }));
     expect(onAction).toHaveBeenCalledWith("season");
   });
 
-  it("invites a wish when there is none", () => {
-    const onAction = vi.fn();
-    render(<PortfolioPlantRow plant={plant()} onAction={onAction} />);
-    fireEvent.click(screen.getByRole("button", { name: "이루면 하고 싶은 일 적기" }));
-    expect(onAction).toHaveBeenCalledWith("season");
+  it("shows the wish of a grown plant without editing it", () => {
+    render(<PortfolioPlantRow plant={plant({ wish: "제주 여행" })} onAction={vi.fn()} />);
+    expect(screen.getByText("🌱 이루면: 제주 여행")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /이루면/ })).toBeNull();
+  });
+
+  it("shows nothing about the wish once grown without one", () => {
+    render(<PortfolioPlantRow plant={plant()} onAction={vi.fn()} />);
+    expect(screen.queryByText(/이루면/)).toBeNull();
   });
 });
 
@@ -176,7 +185,6 @@ describe("PlantSeasonSheet", () => {
         open
         onOpenChange={vi.fn()}
         title="씨앗 심기"
-        kindEditable
         initialKind="tree"
         initialWish=""
         onSave={onSave}
@@ -188,20 +196,5 @@ describe("PlantSeasonSheet", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "심기" }));
     expect(onSave).toHaveBeenCalledWith({ plantKind: "fern", wish: "부모님과 제주 여행" });
-  });
-
-  it("only edits the wish once the plant has grown", () => {
-    render(
-      <PlantSeasonSheet
-        open
-        onOpenChange={vi.fn()}
-        title="하고 싶은 일"
-        kindEditable={false}
-        initialKind="tree"
-        initialWish="여행"
-        onSave={vi.fn()}
-      />
-    );
-    expect(screen.queryByRole("radio", { name: "고사리" })).toBeNull();
   });
 });
