@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { bottomSheetHandle } from "@seed-design/css/recipes/bottom-sheet-handle";
 import { clampSheetHeight, sheetSnap } from "@web/features/garden/utils/sheet-snap";
 
 /** 머리만 보일 때 높이 (손잡이 + 총 평가금액). */
@@ -21,6 +22,8 @@ const MIDDLE_GAP = 16;
 /** 끄는 것으로 보는 최소 이동 (px). 그보다 작으면 탭 (높이 바꾸기). */
 const DRAG_SLOP = 6;
 const SNAP_MS = 260;
+/** SEED `BottomSheet.Handle` 과 같은 손잡이 막대 (색·크기·누름 색). */
+const handleClasses = bottomSheetHandle();
 
 /**
  * 정원 홈의 끌 수 있는 바텀시트. 부모(`position: relative`) 영역의 아래에 붙고, 머리(`header`)를
@@ -52,6 +55,8 @@ export function GardenSheet({
   const [areaHeight, setAreaHeight] = useState(0);
   const [height, setHeight] = useState<number | null>(null);
   const [dragging, setDragging] = useState(false);
+  // 머리를 누르고 있는 동안 손잡이를 SEED 누름 색으로 바꾼다 (손잡이 밖 머리를 눌러도).
+  const [pressed, setPressed] = useState(false);
 
   useEffect(() => {
     const area = areaRef.current;
@@ -98,6 +103,7 @@ export function GardenSheet({
   const onPointerDown = useCallback(
     (event: PointerEvent<HTMLDivElement>) => {
       event.currentTarget.setPointerCapture(event.pointerId);
+      setPressed(true);
       drag.current = {
         startY: event.clientY,
         startHeight: shown,
@@ -134,6 +140,7 @@ export function GardenSheet({
     const state = drag.current;
     drag.current = null;
     setDragging(false);
+    setPressed(false);
     if (!state) return;
     if (!state.moved) {
       // 탭: 머리만 → 중간, 중간 → 전체, 전체 → 중간.
@@ -146,7 +153,7 @@ export function GardenSheet({
   return (
     <section
       aria-label="정원 목록"
-      className="bg-bg-layer-default absolute inset-x-0 bottom-0 z-[1] flex flex-col rounded-t-[20px] shadow-[0_-4px_16px_rgba(0,0,0,0.18)]"
+      className="bg-bg-layer-floating absolute inset-x-0 bottom-0 z-[1] flex flex-col rounded-t-[20px] shadow-[0_-4px_16px_rgba(0,0,0,0.18)]"
       style={{
         height: shown,
         transition: dragging ? "none" : `height ${SNAP_MS}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
@@ -174,9 +181,9 @@ export function GardenSheet({
               if (event.detail !== 0) return;
               setHeight(shown < top ? top : middle);
             }}
-            className="flex h-x5 w-x16 items-center justify-center"
+            className="relative h-x5 w-x16"
           >
-            <span className="bg-stroke-neutral-muted h-[4px] w-[36px] rounded-full" />
+            <span className={handleClasses.root} data-active={pressed || undefined} />
           </button>
         </div>
         {header}

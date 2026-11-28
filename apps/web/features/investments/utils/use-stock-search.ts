@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { apiFetch } from "@web/lib/api-client";
 import type { Stock, StockSearchResponse } from "../types/stock";
 
 const DEBOUNCE_MS = 200;
@@ -42,7 +43,7 @@ export function useStockSearch(query: string): UseStockSearchResult {
 
     const timer = setTimeout(() => {
       const url = `/api/stocks/search?q=${encodeURIComponent(query)}`;
-      fetch(url, { signal: controller.signal })
+      apiFetch(url, { signal: controller.signal })
         .then(async (res) => {
           if (!res.ok) throw new Error(`search failed: ${res.status}`);
           return (await res.json()) as StockSearchResponse;

@@ -1,13 +1,14 @@
 "use client";
 
 import { type SVGProps, useEffect, useState } from "react";
+import { apiFetch } from "@web/lib/api-client";
 
 /** 서버에 Apple 키가 설정돼 있는지 (`/api/auth-providers`). 모르면 숨긴다. */
 export function useAppleSignInEnabled(): boolean {
   const [enabled, setEnabled] = useState(false);
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/auth-providers")
+    apiFetch("/api/auth-providers")
       .then((response) => (response.ok ? response.json() : null))
       .then((providers: { apple?: boolean } | null) => {
         if (!cancelled) setEnabled(providers?.apple === true);

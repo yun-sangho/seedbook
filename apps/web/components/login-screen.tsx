@@ -5,6 +5,7 @@ import { Icon } from "@seed-design/react";
 import { AppleSignInActionButton } from "@web/components/apple-sign-in-action-button";
 import { BiometricSignInButton } from "@web/components/biometric-sign-in-button";
 import { useSocialSignIn } from "@web/hooks/use-social-sign-in";
+import { apiFetch } from "@web/lib/api-client";
 import { getDeviceStorage } from "@web/lib/device-storage";
 import {
   lastLoginMethodLabel,
@@ -58,7 +59,7 @@ export function LoginScreen() {
   const signInWithDevBypass = async () => {
     setDevPending(true);
     setDevFailed(false);
-    const response = await fetch("/api/auth/dev-login", { method: "POST" }).catch(() => null);
+    const response = await apiFetch("/api/auth/dev-login", { method: "POST" }).catch(() => null);
     if (response?.ok) {
       window.location.href = returnPath;
       return;
