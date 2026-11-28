@@ -5,6 +5,7 @@ import {
   POT_COLORS,
   type PotColor,
 } from "../plant-3d/plant-options";
+import { Flower, Fruit } from "./blossom-art";
 import { FernArt } from "./fern-art";
 
 /**
@@ -25,9 +26,6 @@ const TRUNK = "#8B5E3C";
 const SOIL = "#5E3F2A";
 const SEED = "#F0C070";
 const SEED_HIGHLIGHT = "#FFE3B0";
-const PETAL = "#F8B3CB";
-const PETAL_CENTER = "#FFD66B";
-const FRUIT = "#E8664F";
 
 /** 색을 검정(음수)·흰색(양수) 쪽으로 섞는다. 툰 그늘·밝은 면용. */
 function shade(hex: string, amount: number): string {
@@ -94,23 +92,6 @@ function Pot({ pot }: { pot: PotColor }) {
   );
 }
 
-function Flower({ x, y }: { x: number; y: number }) {
-  return (
-    <g transform={`translate(${x} ${y})`}>
-      {[0, 72, 144, 216, 288].map((a) => (
-        <circle
-          key={a}
-          cx={Math.cos((a * Math.PI) / 180) * 1.7}
-          cy={Math.sin((a * Math.PI) / 180) * 1.7}
-          r="1.5"
-          fill={PETAL}
-        />
-      ))}
-      <circle r="1.1" fill={PETAL_CENTER} />
-    </g>
-  );
-}
-
 function StageArt({ stage }: { stage: PlantStage }) {
   switch (stage) {
     case "seed":
@@ -170,8 +151,8 @@ function StageArt({ stage }: { stage: PlantStage }) {
               <Flower x={37} y={15} />
               <Flower x={20} y={26} />
               <Flower x={43} y={23} />
-              <circle cx="25" cy="33.5" r="2.4" fill={FRUIT} />
-              <circle cx="40" cy="31.5" r="2.4" fill={FRUIT} />
+              <Fruit x={25} y={33.5} />
+              <Fruit x={40} y={31.5} />
             </>
           )}
         </>
