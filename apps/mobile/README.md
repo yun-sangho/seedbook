@@ -217,6 +217,49 @@ gh secret set ANDROID_UPLOAD_STORE_PASSWORD; gh secret set ANDROID_UPLOAD_KEY_AL
 `bundle exec fastlane ios build` (서명 없이 Release archive, Apple 계정 불필요). Android 는 `pnpm sync:android` →
 `JAVA_HOME=<JDK 21> ANDROID_HOME=~/Library/Android/sdk bundle exec fastlane android build`. 결과는 `build/` (gitignore).
 
+## OTA 번들 (무심사 화면 업데이트)
+
+`@capawesome/capacitor-live-update` (MIT, 무료, Capawesome Cloud 없이 우리 서버에서 받는다). 앱은 시작·복귀 때
+`GET /api/app-bundle/latest?native=<바이너리 버전>&channel=<beta|production>` 를 묻고, 받을 번들이 있으면 내려받아
+체크섬·RSA 서명(앱에 내장한 공개 키)을 확인한 뒤 **다음 실행 때** 그 번들로 뜬다 (`src/lib/native/live-update.ts`).
+새 번들이 15초 안에 `ready()` 를 못 부르면 내장 번들로 자동 롤백한다. 결과(적용·롤백·검증 실패)를 서버에 보고하고, 실패가
+쌓이면(3대 이상이면서 20% 이상) 서버가 그 번들을 내린다. 번들은 DB(`app_bundle*`)에 두고 Next 가 서빙한다
+(`apps/web/server/app-bundles/`).
+
+- **채널**: 올린 번들은 `beta` (Dev 앱·내부 테스터), 승격하면 `production` (승격 때 정한 비율의 기기부터). 바이너리의
+  기본 채널은 빌드 env `SEEDBOOK_OTA_CHANNEL` (기본 production, Dev 앱 빌드는 `beta`). 설정 > 정보의 "버전" 줄을
+  7번 연달아 누르면 그 기기만 beta ↔ production 이 바뀐다.
+- **네이티브 호환**: 번들은 `minNative ≤ 바이너리 버전 ≤ 번들의 앱 버전` 인 앱에만 간다. 기본 `minNative` 는
+  `package.json` `version` — 네이티브 플러그인·설정이 바뀐 화면은 OTA 로 내지 않는다 (스토어 릴리스).
+- **운영** (`.github/workflows/app-bundle.yml`, 수동, main 머지 때 자동 OTA 없음):
+
+```bash
+gh workflow run app-bundle.yml -f action=publish                       # 빌드 → 서명 → beta
+gh workflow run app-bundle.yml -f action=list                          # 번들·기기 보고 (run summary)
+gh workflow run app-bundle.yml -f action=promote -f bundle_id=<id> -f rollout_percent=20
+gh workflow run app-bundle.yml -f action=promote -f bundle_id=<id> -f rollout_percent=100
+gh workflow run app-bundle.yml -f action=halt -f bundle_id=<id> -f reason="…"
+```
+
+**키 만들기 (한 번, 사용자)** — 개인 키는 Secret 에만, 레포·로그에 남기지 않는다. 공개 키는 앱 바이너리에 들어가므로
+**첫 스토어 빌드 전에** 만든다 (`mobile-release.yml` 은 공개 키가 없으면 업로드 빌드를 막는다). 키를 바꾸면 옛 바이너리는
+새 키로 서명한 번들을 받지 못한다.
+
+```bash
+umask 077
+openssl genrsa -out ~/seedbook-ota-signing.pem 2048        # 2048비트여야 한다 (iOS 플러그인)
+openssl rsa -in ~/seedbook-ota-signing.pem -pubout | gh variable set APP_BUNDLE_PUBLIC_KEY
+gh secret set APP_BUNDLE_SIGNING_KEY < ~/seedbook-ota-signing.pem
+openssl rand -hex 32 | gh secret set APP_BUNDLE_ADMIN_TOKEN   # 운영자 API 토큰 (웹 배포가 서버에 넣는다)
+# 개인 키 파일은 비밀번호 관리자에 보관한 뒤 지운다
+```
+
+`APP_BUNDLE_ADMIN_TOKEN` 은 다음 웹 배포(`deploy-web.yml`) 때 서버에 들어간다. 그 전에는 운영자 API 가 404 다.
+
+**로컬 확인**: 공개 키를 넣어 빌드(`SEEDBOOK_OTA_PUBLIC_KEY="<PEM>" SEEDBOOK_OTA_CHANNEL=beta pnpm sync:ios`)하고,
+dev 서버를 `APP_BUNDLE_ADMIN_TOKEN` 과 함께 띄운 뒤 `node scripts/app-bundle.mjs publish --server http://localhost:<web 포트>
+--build <sha> --run <n>` (env 에 `APP_BUNDLE_SIGNING_KEY`·`APP_BUNDLE_PUBLIC_KEY`·`APP_BUNDLE_ADMIN_TOKEN`) 로 올린다.
+
 ## 스토어 제출 체크리스트
 
 |           | App Store                                                                    | Google Play                                                                       |

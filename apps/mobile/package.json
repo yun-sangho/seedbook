@@ -24,6 +24,7 @@
     "@capacitor/app": "8.1.2",
     "@capacitor/core": "8.6.0",
     "@capacitor/ios": "8.6.0",
+    "@capawesome/capacitor-live-update": "8.10.0",
     "@capgo/capacitor-native-biometric": "8.9.1",
     "@karrotmarket/react-monochrome-icon": "^1.35.0",
     "@seed-design/css": "^3.3.0",

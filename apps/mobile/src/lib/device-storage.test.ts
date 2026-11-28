@@ -73,6 +73,25 @@ describe("createNativeDeviceStorage startup", () => {
     expect(await snapshots.read(names[1] as string)).toHaveLength(1);
   });
 
+  it("snapshots the records on request (before an app bundle update)", async () => {
+    const snapshots = createMemorySnapshotStore();
+    const storage = createNativeDeviceStorage(async () => driver, window.localStorage, {
+      openSnapshots: async () => snapshots,
+    });
+    await storage.writeEnvelope("seedbook.preferences", preferencesEnvelope("계좌"));
+
+    const name = await storage.snapshot("update");
+
+    expect(name).toMatch(/update$/);
+    expect(await snapshots.read(name as string)).toHaveLength(1);
+  });
+
+  it("has no snapshot to take without a snapshot store", async () => {
+    const storage = nativeStorage();
+
+    expect(await storage.snapshot("update")).toBeNull();
+  });
+
   it("runs PRAGMA quick_check on launch", async () => {
     await nativeStorage().whenReady();
 

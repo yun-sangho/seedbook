@@ -1,0 +1,111 @@
+name: App bundle (OTA)
+
+# OTA 앱 번들 (무심사 화면 업데이트, apps/mobile/README.md "OTA 번들"). 사람이 손으로만 돌린다 — main 머지 때
+# 자동으로 번들을 내지 않는다.
+#   - publish: ci 통과 → Vite 빌드 → zip → 체크섬·서명(Secret APP_BUNDLE_SIGNING_KEY) → 앱 공개 키(Variable
+#     APP_BUNDLE_PUBLIC_KEY)로 서명 확인 → 운영 서버에 올림 → beta 채널 (Dev 앱·내부 테스터가 받는다)
+#   - promote: beta 에서 확인한 번들을 production 채널로 (rollout_percent 만큼의 기기, 나중에 100 으로 다시 돌린다)
+#   - halt: 번들을 내린다 (쓰던 기기는 다음 확인 때 이전 번들이나 내장 번들로). 기기 실패가 쌓이면 서버가 스스로 내린다.
+#   - list: 최근 번들과 기기 보고 수 (적용·롤백·검증 실패·받기 실패)
+# 운영자 API 는 Secret APP_BUNDLE_ADMIN_TOKEN (서버에는 배포가 같은 값을 env 로 넣는다, deploy-service.yml).
+# 네이티브 코드·플러그인이 바뀐 화면은 OTA 로 내지 않는다 — 스토어 릴리스(mobile-release.yml).
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 할 일
+        type: choice
+        options: [publish, promote, halt, list]
+        default: publish
+      bundle_id:
+        description: promote·halt 할 번들 id (list 로 확인)
+        type: string
+        default: ""
+      rollout_percent:
+        description: promote 때 production 을 받을 기기 비율 (0~100)
+        type: string
+        default: "20"
+      reason:
+        description: halt 이유
+        type: string
+        default: ""
+      min_native:
+        description: publish 때 이 번들을 받을 가장 낮은 바이너리 버전 (비우면 apps/mobile/package.json version)
+        type: string
+        default: ""
+
+concurrency:
+  group: app-bundle
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  SERVER: ${{ vars.BETTER_AUTH_URL || 'https://seedbook.boogie.ing' }}
+
+jobs:
+  checks:
+    if: inputs.action == 'publish'
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    needs: checks
+    if: inputs.action == 'publish'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # 앱 번들 빌드 값 (apps/mobile/vite.config.ts define). 번들 안의 커밋 sha 로 어느 빌드인지 찾는다.
+      SEEDBOOK_APP_BUILD: ${{ github.sha }}
+      SEEDBOOK_API_BASE_URL: ${{ vars.BETTER_AUTH_URL || 'https://seedbook.boogie.ing' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: 앱 화면 빌드 (Vite)
+        run: pnpm --filter @seedbook/mobile build
+
+      - name: 서명·업로드 (beta 채널)
+        env:
+          APP_BUNDLE_SIGNING_KEY: ${{ secrets.APP_BUNDLE_SIGNING_KEY }}
+          APP_BUNDLE_PUBLIC_KEY: ${{ vars.APP_BUNDLE_PUBLIC_KEY }}
+          APP_BUNDLE_ADMIN_TOKEN: ${{ secrets.APP_BUNDLE_ADMIN_TOKEN }}
+          MIN_NATIVE: ${{ inputs.min_native }}
+        run: >-
+          node scripts/app-bundle.mjs publish --server "$SERVER" --build "$GITHUB_SHA"
+          --run "$GITHUB_RUN_NUMBER" --min-native "$MIN_NATIVE"
+
+  manage:
+    if: inputs.action != 'publish'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: ${{ inputs.action }}
+        env:
+          APP_BUNDLE_ADMIN_TOKEN: ${{ secrets.APP_BUNDLE_ADMIN_TOKEN }}
+          ACTION: ${{ inputs.action }}
+          BUNDLE_ID: ${{ inputs.bundle_id }}
+          ROLLOUT: ${{ inputs.rollout_percent }}
+          REASON: ${{ inputs.reason }}
+        run: |
+          case "$ACTION" in
+            promote) node scripts/app-bundle.mjs promote "$BUNDLE_ID" --server "$SERVER" --rollout "$ROLLOUT" ;;
+            halt) node scripts/app-bundle.mjs halt "$BUNDLE_ID" --server "$SERVER" --reason "$REASON" ;;
+          esac
+          # 바뀐 뒤의 목록을 요약에 남긴다.
+          node scripts/app-bundle.mjs list --server "$SERVER"

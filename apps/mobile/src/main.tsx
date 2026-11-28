@@ -6,6 +6,7 @@ import { StrictMode, Suspense } from "react";
 import { MobileStack } from "@mobile/app/_stack/mobile-stack";
 import { AuthGate } from "@mobile/components/auth-gate";
 import { HydrationGate } from "@mobile/components/hydration-gate";
+import { LiveUpdateRunner } from "@mobile/components/live-update-runner";
 import { BiometricLoginOffer } from "@mobile/components/mobile/biometric-login";
 import { useSeedColorScheme } from "@mobile/components/mobile/seed-color-scheme";
 import { SystemBackButton } from "@mobile/components/mobile/system-back-button";
@@ -27,6 +28,8 @@ function App() {
       <SystemBackButton />
       <UpdateGate>
         <HydrationGate>
+          {/* 앱이 여기까지 떠야 OTA 번들이 정상으로 떴다고 알린다 (못 알리면 자동 롤백). */}
+          <LiveUpdateRunner />
           <AuthGate>
             <Suspense fallback={null}>
               <MobileStack />

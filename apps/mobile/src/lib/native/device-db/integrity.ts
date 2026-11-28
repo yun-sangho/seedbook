@@ -2,7 +2,7 @@ import { META_LAST_QUICK_CHECK, META_LAST_SNAPSHOT_AT, readMeta, writeMeta } fro
 import type { SqlDriver, SqlValue } from "./sql-driver";
 
 /**
- * JS 밖의 장치 (설계 §5.7.3): 시작할 때 `PRAGMA quick_check`, 하루 1회·저장 틀 마이그레이션 직전에
+ * JS 밖의 장치 (설계 §5.7.3): 시작할 때 `PRAGMA quick_check`, 하루 1회·저장 틀 마이그레이션·OTA 번들 교체 직전에
  * `records` 전체를 별도 SQLite 파일(스냅샷)로 복사해 최근 7개를 보관한다. 번들 버그로 많은 행이
  * 망가져도 되돌릴 수 있게 한다.
  */
@@ -90,7 +90,8 @@ export const SNAPSHOT_COLUMNS = [
 /** 스냅샷 이름의 접두사. 이름은 시각 순으로 정렬된다 (데이터베이스 이름에 쓸 수 있는 글자만). */
 export const SNAPSHOT_PREFIX = "seedbooksnap";
 
-export type SnapshotReason = "daily" | "migration";
+/** `update`: OTA 번들을 바꾸기 직전 (`lib/native/live-update.ts`). */
+export type SnapshotReason = "daily" | "migration" | "update";
 
 export function snapshotName(at: Date, reason: SnapshotReason): string {
   const stamp = at
