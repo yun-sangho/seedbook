@@ -42,7 +42,7 @@ export function StorageChoiceGate({
       aria-live="polite"
       className="w-screen h-screen flex items-center justify-center"
     >
-      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      <Loader2 className="w-6 h-6 animate-spin text-fg-neutral-subtle" />
       <span className="sr-only">저장 방식을 확인하는 중...</span>
     </div>
   );
