@@ -54,6 +54,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # web 번들이 기기 레코드에 쓴 번들을 남긴다 (writtenBy). crawler 는 쓰지 않는다.
+          build-args: |
+            APP_BUILD=${{ github.sha }}
           cache-from: type=gha,scope=${{ inputs.service }}
           cache-to: type=gha,mode=max,scope=${{ inputs.service }}
 

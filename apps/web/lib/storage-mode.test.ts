@@ -29,6 +29,7 @@ async function launch(platform: "web" | "native" = "native") {
   vi.doMock("./device", () => ({ isNativeAppUserAgent: () => platform === "native" }));
   vi.doMock("./native/device-db/capacitor-driver", () => ({
     openCapacitorSqlDriver: async () => slow.driver,
+    openCapacitorSnapshotStore: async () => null,
   }));
   const { activateAccount, accountStorage } = await import("./account-storage");
   const mode = await import("./storage-mode");

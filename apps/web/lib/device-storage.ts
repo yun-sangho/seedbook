@@ -2,9 +2,32 @@
 
 import type { StateStorage } from "zustand/middleware";
 import { isNativeAppUserAgent } from "./device";
-import { openCapacitorSqlDriver } from "./native/device-db/capacitor-driver";
-import { migrateDeviceDatabase } from "./native/device-db/migrations";
+import { APP_BUILD } from "./native/device-db/app-build";
+import {
+  openCapacitorSnapshotStore,
+  openCapacitorSqlDriver,
+} from "./native/device-db/capacitor-driver";
+import {
+  type DeviceSnapshotStore,
+  ensureDailySnapshot,
+  runQuickCheck,
+  takeSnapshot,
+} from "./native/device-db/integrity";
+import { DEVICE_MIGRATIONS, migrateDeviceDatabase } from "./native/device-db/migrations";
+import {
+  isRecordEnvelopeKey,
+  readRecordEnvelope,
+  removeRecordEnvelope,
+  writeRecordEnvelope,
+} from "./native/device-db/record-envelopes";
+import { clearRecords } from "./native/device-db/record-store";
+import { migrateTablesToRecords } from "./native/device-db/records-migration";
 import type { SqlDriver, SqlStatement } from "./native/device-db/sql-driver";
+import {
+  isDevSqliteOptIn,
+  openSqlJsDriver,
+  openSqlJsSnapshotStore,
+} from "./native/device-db/sqljs-driver";
 import {
   clearDeviceTables,
   isTableEnvelopeKey,
@@ -20,8 +43,13 @@ import {
  *   - `getItem` / `setItem` / `removeItem`: 작은 기기 상태 (동기화 대기열, 저장소 모드, 앱 잠금,
  *     화면 설정). 동기 API 라 앱에서는 시작할 때 SQLite 에서 메모리로 한 번 읽고, 쓰기는 메모리에
  *     바로 반영한 뒤 SQLite 에 차례로 저장한다. 저장소 모드는 서버처럼 `user_preference.storageMode`.
- *   - `readEnvelope` / `writeEnvelope`: Zustand persist envelope. 자산 store 는 서버와 같은 모양의
- *     테이블(`native/device-db/table-envelopes.ts`), 나머지(시세 캐시)는 `device_kv`.
+ *   - `readEnvelope` / `writeEnvelope`: Zustand persist envelope. 자산 store·계정 설정은 레코드 JSON
+ *     (`records`, `native/device-db/record-envelopes.ts` 가 나누고 묶는다 — 쓰기는 `writeRecords()`
+ *     하나로 검증·체크섬·이력), 계좌 총액 기록은 기기 표(`table-envelopes.ts`), 나머지(시세 캐시)는
+ *     `device_kv`. 레코드 이전에 실패한 기기는 자산도 옛 표를 계속 쓴다.
+ *
+ * 시작할 때 저장 틀 마이그레이션(바꾸기 전 스냅샷) → `PRAGMA quick_check` → 옛 표 → `records` 이전 →
+ * 하루 1회 스냅샷 순서로 준비한다 (`native/device-db/integrity.ts`).
  *
  * 계정 데이터(자산·동기화 대기열·저장소 모드·개인 설정)는 여기를 직접 쓰지 말고 계정별로 나누는
  * `account-storage.ts` 를 쓴다.
@@ -129,25 +157,94 @@ async function loadDeviceState(driver: SqlDriver): Promise<Map<string, string>> 
   return state;
 }
 
-/** 이전 앱 빌드가 localStorage 에 남긴 값을 SQLite 로 옮기고 localStorage 를 비운다. */
+/** 자산 envelope 을 어디에 두나 — 레코드로 옮긴 기기는 `records`, 아니면 옛 표. */
+interface EnvelopeTables {
+  read: (driver: SqlDriver, key: string) => Promise<string | null>;
+  write: (driver: SqlDriver, key: string, value: string) => Promise<void>;
+  remove: (driver: SqlDriver, key: string) => Promise<void>;
+}
+
+function envelopeTables(usesRecords: boolean): EnvelopeTables {
+  const records = (key: string) => usesRecords && isRecordEnvelopeKey(key);
+  return {
+    read: (driver, key) =>
+      records(key) ? readRecordEnvelope(driver, key) : readTableEnvelope(driver, key),
+    write: (driver, key, value) =>
+      records(key)
+        ? writeRecordEnvelope(driver, key, value, APP_BUILD)
+        : writeTableEnvelope(driver, key, value),
+    remove: (driver, key) =>
+      records(key)
+        ? removeRecordEnvelope(driver, key, APP_BUILD)
+        : removeTableEnvelope(driver, key),
+  };
+}
+
+/**
+ * 이전 앱 빌드가 localStorage 에 남긴 값을 SQLite 로 옮긴다. `clear` 면 옮긴 뒤 localStorage 를
+ * 비운다 (앱). 개발용 브라우저 SQLite 는 브라우저 데이터를 남겨 쿠키를 지우면 원래대로 돌아간다.
+ */
 async function moveLegacyStorage(
   driver: SqlDriver,
+  tables: EnvelopeTables,
   legacy: LegacyStorage,
-  memory: Map<string, string>
+  memory: Map<string, string>,
+  clear: boolean
 ): Promise<void> {
   for (const key of storageKeys(legacy)) {
     const value = safe(() => legacy.getItem(key), null);
     if (value === null) continue;
     if (isTableEnvelopeKey(key)) {
-      if ((await readTableEnvelope(driver, key)) === null) {
-        await writeTableEnvelope(driver, key, value);
+      if ((await tables.read(driver, key)) === null) {
+        await tables.write(driver, key, value);
       }
     } else if (!memory.has(key)) {
       memory.set(key, value);
       await driver.batch([kvWrite(key, value)]);
     }
   }
-  safe(() => legacy.clear(), undefined);
+  if (clear) safe(() => legacy.clear(), undefined);
+}
+
+export interface NativeStorageOptions {
+  /** 스냅샷 보관소. 없으면 스냅샷을 남기지 않는다. */
+  openSnapshots?: () => Promise<DeviceSnapshotStore | null>;
+  /** 옛 localStorage 를 옮긴 뒤 비울지 (기본 true). */
+  clearLegacy?: boolean;
+}
+
+/**
+ * 데이터베이스를 쓸 수 있게 준비한다. 스냅샷·무결성 검사가 실패해도 시작은 계속한다 — 그것 때문에
+ * localStorage 로 돌아가면 기기 데이터가 안 보인다. 레코드를 쓰는지 돌려준다.
+ */
+async function prepareDatabase(
+  driver: SqlDriver,
+  options: NativeStorageOptions
+): Promise<{ usesRecords: boolean }> {
+  const snapshots = await (options.openSnapshots?.() ?? Promise.resolve(null)).catch(
+    (error: unknown) => {
+      console.warn("[seedbook] snapshot store unavailable", error);
+      return null;
+    }
+  );
+  await migrateDeviceDatabase(driver, DEVICE_MIGRATIONS, {
+    beforeMigrate: async () => {
+      if (!snapshots) return;
+      await takeSnapshot(driver, snapshots, "migration").catch((error: unknown) =>
+        console.warn("[seedbook] snapshot before migration failed", error)
+      );
+    },
+  });
+  const check = await runQuickCheck(driver);
+  const migration = await migrateTablesToRecords(driver, { writtenBy: APP_BUILD });
+  const usesRecords = migration.status !== "failed";
+  // 손상이 보이면 스냅샷을 새로 만들지 않는다 — 좋은 스냅샷이 밀려나지 않게.
+  if (snapshots && check.ok && usesRecords) {
+    await ensureDailySnapshot(driver, snapshots).catch((error: unknown) =>
+      console.warn("[seedbook] daily snapshot failed", error)
+    );
+  }
+  return { usesRecords };
 }
 
 /** 실패한 쓰기를 다시 시도하기까지 기다리는 시간 (실패할 때마다 두 배, 최대값까지). */
@@ -162,11 +259,13 @@ const RETRY_MAX_MS = 60_000;
  */
 export function createNativeDeviceStorage(
   openDriver: () => Promise<SqlDriver | null>,
-  legacy: LegacyStorage
+  legacy: LegacyStorage,
+  options: NativeStorageOptions = {}
 ): DeviceStorage {
   const memory = new Map<string, string>();
   const fallback = createBrowserStorage(legacy);
   let driver: SqlDriver | null = null;
+  let tables = envelopeTables(false);
   let usingFallback = false;
   let ready = false;
 
@@ -177,11 +276,12 @@ export function createNativeDeviceStorage(
         usingFallback = true;
         return;
       }
-      await migrateDeviceDatabase(opened);
+      const { usesRecords } = await prepareDatabase(opened, options);
+      tables = envelopeTables(usesRecords);
       const saved = await loadDeviceState(opened);
       // 준비 전에 쓴 값이 이긴다 (그 쓰기는 대기열에서 곧 저장된다).
       for (const [key, value] of saved) if (!memory.has(key)) memory.set(key, value);
-      await moveLegacyStorage(opened, legacy, memory);
+      await moveLegacyStorage(opened, tables, legacy, memory, options.clearLegacy ?? true);
       driver = opened;
     } catch (error) {
       console.warn("[seedbook] SQLite unavailable, using localStorage", error);
@@ -201,8 +301,8 @@ export function createNativeDeviceStorage(
 
   const save = async (db: SqlDriver, key: string, value: string | null) => {
     if (!isTableEnvelopeKey(key)) await db.batch([kvWrite(key, value)]);
-    else if (value === null) await removeTableEnvelope(db, key);
-    else await writeTableEnvelope(db, key, value);
+    else if (value === null) await tables.remove(db, key);
+    else await tables.write(db, key, value);
   };
 
   const saveToFallback = (key: string, value: string | null) => {
@@ -284,7 +384,7 @@ export function createNativeDeviceStorage(
       if (!isTableEnvelopeKey(key)) return memory.get(key) ?? null;
       // 저장에 실패해 대기 중인 값이 테이블보다 최신이다.
       if (pending.has(key)) return pending.get(key) ?? null;
-      return readTableEnvelope(driver, key);
+      return tables.read(driver, key);
     },
     writeEnvelope: (key, value) => {
       if (!isTableEnvelopeKey(key)) memory.set(key, value);
@@ -302,7 +402,10 @@ export function createNativeDeviceStorage(
       if (retryTimer) clearTimeout(retryTimer);
       retryTimer = null;
       await drain();
-      if (driver) await clearDeviceTables(driver);
+      if (driver) {
+        await clearDeviceTables(driver);
+        await clearRecords(driver);
+      }
       fallback.clear();
     },
     isReady: () => ready,
@@ -330,12 +433,17 @@ const serverStorage: DeviceStorage = {
 
 let current: DeviceStorage | null = null;
 
-/** 이 기기의 저장소. 네이티브 앱이면 SQLite, 브라우저면 localStorage, 서버 렌더링이면 빈 저장소. */
+/**
+ * 이 기기의 저장소. 네이티브 앱이면 SQLite, 브라우저면 localStorage (개발 환경에서
+ * `seedbook.deviceDb=sqlite` 쿠키가 있으면 WASM SQLite), 서버 렌더링이면 빈 저장소.
+ */
 export function getDeviceStorage(): DeviceStorage {
   if (typeof window === "undefined") return serverStorage;
   if (current) return current;
   if (isNativeAppUserAgent(window.navigator.userAgent)) {
-    const storage = createNativeDeviceStorage(openCapacitorSqlDriver, window.localStorage);
+    const storage = createNativeDeviceStorage(openCapacitorSqlDriver, window.localStorage, {
+      openSnapshots: openCapacitorSnapshotStore,
+    });
     // 앱이 백그라운드로 가면 OS 가 곧 멈추거나 종료할 수 있다 — 실패해 기다리던 쓰기를
     // 재시도 타이머를 기다리지 않고 바로 다시 저장한다.
     const flushWhenHidden = () => {
@@ -344,6 +452,12 @@ export function getDeviceStorage(): DeviceStorage {
     document.addEventListener("visibilitychange", flushWhenHidden);
     window.addEventListener("pagehide", () => void storage.flush());
     current = storage;
+  } else if (isDevSqliteOptIn()) {
+    // 개발용: 앱과 같은 SQLite 저장 경로를 브라우저(WASM)에서 확인한다.
+    current = createNativeDeviceStorage(openSqlJsDriver, window.localStorage, {
+      openSnapshots: async () => openSqlJsSnapshotStore(),
+      clearLegacy: false,
+    });
   } else {
     current = createBrowserStorage(window.localStorage);
   }
@@ -376,9 +490,15 @@ export async function reloadApp(): Promise<void> {
   window.location.reload();
 }
 
-/** 네이티브 앱 저장소를 쓰는지 (예전 브라우저 데이터 업그레이드 같은 브라우저 전용 작업을 건너뛸 때). */
+/**
+ * SQLite 기기 저장소를 쓰는지 — 앱, 또는 개발용 브라우저 SQLite (예전 브라우저 데이터 업그레이드
+ * 같은 localStorage 전용 작업을 건너뛸 때).
+ */
 export function isNativeDeviceStorage(): boolean {
-  return typeof window !== "undefined" && isNativeAppUserAgent(window.navigator.userAgent);
+  return (
+    typeof window !== "undefined" &&
+    (isNativeAppUserAgent(window.navigator.userAgent) || isDevSqliteOptIn())
+  );
 }
 
 /**

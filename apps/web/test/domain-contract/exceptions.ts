@@ -31,19 +31,6 @@ export const LEGACY_SERVER_COLUMNS: Partial<Record<RecordType, Record<string, st
 };
 
 /**
- * 기기 SQLite (`lib/native/device-db`). v2-4a 에서 레코드 JSON 테이블 하나(`records`)로 바뀌기 전까지
- * 지금 표와 대조한다. 기기에는 동기화 열이 없다.
- */
-export const DEVICE_COMMON_COLUMNS = ["id", "createdAt", "updatedAt"] as const;
-
-export const PLANNED_DEVICE_TABLES: Partial<Record<RecordType, string>> = {
-  rebalancingTask: "v2-4a: 기기는 records JSON 테이블로 바뀐다",
-};
-
-/** 기기 표의 옛 컬럼은 서버와 같다. */
-export const LEGACY_DEVICE_COLUMNS = LEGACY_SERVER_COLUMNS;
-
-/**
  * 지금 클라이언트·서버 검증에 없는 필드 (레코드 → 필드 → 단계). 클라이언트 타입·동기화 설정·
  * 서버 검증 대조에서 뺀다.
  */
