@@ -41,6 +41,28 @@ function body(root: THREE.Group): THREE.Object3D {
   return group;
 }
 
+function hiddenCount(root: THREE.Object3D): number {
+  let count = 0;
+  root.traverse((node) => {
+    if (!node.visible) count++;
+  });
+  return count;
+}
+
+/** 보이는 잎줄기(정점 색) 의 빨강 평균 — 초록이 누렇게·금빛으로 바뀌면 커진다. */
+function meanVertexRed(root: THREE.Object3D): number {
+  let sum = 0;
+  let count = 0;
+  root.traverseVisible((node) => {
+    if (!(node instanceof THREE.Mesh)) return;
+    const color = node.geometry.getAttribute("color");
+    if (!color) return;
+    for (let i = 0; i < color.count; i++) sum += color.getX(i);
+    count += color.count;
+  });
+  return sum / count;
+}
+
 function bounds(root: THREE.Object3D) {
   root.updateMatrixWorld(true);
   return new THREE.Box3().setFromObject(root);
@@ -122,11 +144,52 @@ describe("buildPlant (fern)", () => {
     expect(new Set(sizes).size).toBeGreaterThan(1);
   });
 
-  it("droops its fronds lower without shrinking the stage", () => {
-    const fresh = bounds(fern({ stage: "tree", droop: 0 }).root);
-    const drooped = bounds(fern({ stage: "tree", droop: 1 }).root);
-    expect(drooped.max.y).toBeLessThan(fresh.max.y);
-    expect(drooped.max.x - drooped.min.x).toBeGreaterThan((fresh.max.x - fresh.min.x) * 0.8);
+  it("hangs its fronds lower as it wilts without shrinking the stage", () => {
+    const fresh = bounds(fern({ stage: "tree", wilt: 0 }).root);
+    const wilted = bounds(fern({ stage: "tree", wilt: 0.7 }).root);
+    expect(wilted.max.y).toBeLessThan(fresh.max.y);
+    expect(wilted.max.x - wilted.min.x).toBeGreaterThan((fresh.max.x - fresh.min.x) * 0.8);
+  });
+
+  it("yellows its fronds as it wilts", () => {
+    expect(meanVertexRed(fern({ stage: "tree", wilt: 0.35 }).root)).toBeGreaterThan(
+      meanVertexRed(fern({ stage: "tree", wilt: 0 }).root)
+    );
+  });
+
+  it("sheds about 30% of the fronds only from the last wilt step", () => {
+    // 고사리 단계 잎줄기 11개 → 3개
+    expect(hiddenCount(fern({ stage: "tree", wilt: 0.7 }).root)).toBe(0);
+    expect(hiddenCount(fern({ stage: "tree", wilt: 1 }).root)).toBe(3);
+  });
+
+  it("keeps its colors in the wind", () => {
+    expect(meanVertexRed(fern({ stage: "tree", wind: 0.5 }).root)).toBe(
+      meanVertexRed(fern({ stage: "tree" }).root)
+    );
+  });
+
+  it("sways wider in the wind, like the tree", () => {
+    const range = (built: ReturnType<typeof fern>) => {
+      const samples: number[] = [];
+      for (let t = 0; t < 4; t += 0.02) {
+        built.update(t, PX);
+        samples.push(body(built.root).rotation.z);
+      }
+      return Math.max(...samples) - Math.min(...samples);
+    };
+    expect(range(fern({ stage: "tree", wind: 0.5 }))).toBeGreaterThan(
+      range(fern({ stage: "tree" })) * 2
+    );
+  });
+
+  it("gilds the frond tips when ripe (full fern only)", () => {
+    expect(meanVertexRed(fern({ stage: "bloom", ripe: 1 }).root)).toBeGreaterThan(
+      meanVertexRed(fern({ stage: "bloom", ripe: 0 }).root) + 0.02
+    );
+    expect(meanVertexRed(fern({ stage: "tree", ripe: 1 }).root)).toBe(
+      meanVertexRed(fern({ stage: "tree", ripe: 0 }).root)
+    );
   });
 
   it("tilts and shows the badge when rebalancing is needed, like the tree", () => {

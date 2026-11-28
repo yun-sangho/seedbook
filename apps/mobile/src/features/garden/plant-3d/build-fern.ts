@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { PlantOptions, PlantStage } from "./plant-options";
+import { type PlantOptions, type PlantStage, wiltSag } from "./plant-options";
 
 /**
  * 보스턴고사리 몸통 (시안). `buildPlant` 가 `kind: "fern"` 일 때 화분·그림자·기울기·흔들림·배지는 그대로 두고
@@ -18,7 +18,9 @@ const COLORS = {
   rachis: "#3F8C3E",
   fiddlehead: "#8BCB68",
   fiddleheadTip: "#A8DB7E",
-  droop: "#A9A24C",
+  wilt: "#B59A3C",
+  /** 익은 고사리의 잎 끝 금빛. */
+  gold: "#E9BE3A",
   seed: "#9BD38A",
   seedHighlight: "#DDF4D2",
   dew: "#E4F6FF",
@@ -29,8 +31,8 @@ const COLORS = {
 const DEW_PER_FROND = 1;
 const SPARKLE_COUNT = 14;
 
-/** 처짐 1 일 때 잎줄기가 더 숙여지는 각도(라디안). 모양(아치)에도 따로 처짐을 넣는다. */
-const DROOP_PITCH = 0.3;
+/** 늘어짐 1 일 때 잎줄기가 더 숙여지는 각도(라디안). 모양(아치)에도 따로 늘어짐을 넣는다. */
+const SAG_PITCH = 0.3;
 
 /** 단계별 리밸런싱 배지 높이 (화분 바닥 기준). */
 const BADGE_HEIGHT: Record<PlantStage, number> = {
@@ -248,6 +250,8 @@ interface FrondSpec {
   pairs: number;
   color: THREE.Color;
   tipColor: THREE.Color;
+  /** 잎 끝 금빛 (익음, 0~1). 잎줄기 끝 쪽 소엽만 물든다. */
+  gold: number;
 }
 
 /** 소엽 길이 비율: 밑동은 조금 짧고, 1/4 쯤에서 가장 길고, 끝으로 갈수록 짧아진다. */
@@ -269,14 +273,15 @@ function frondCurve(spec: FrondSpec): THREE.CubicBezierCurve3 {
 /** 잎줄기 하나 (엽축 + 양쪽 소엽) 를 지오메트리 하나로. */
 function frondGeometry(
   spec: FrondSpec,
-  droop: number,
+  /** 늘어짐 (`wiltSag`). */
+  sag: number,
   /** 잎줄기에 맺힐 이슬 수 (풍성 단계). */
   dew = 0,
   rand: () => number = Math.random
 ): { geometry: THREE.BufferGeometry; curve: THREE.CubicBezierCurve3 } {
   const mb = new MeshBuilder();
   const curve = frondCurve(spec);
-  const rachisColor = mixColor(COLORS.rachis, COLORS.droop, droop * 0.5);
+  const rachisColor = mixColor(COLORS.rachis, COLORS.wilt, sag * 0.5);
   addTaperedTube(
     mb,
     curve,
@@ -292,7 +297,8 @@ function frondGeometry(
   const axis = new THREE.Vector3();
   const sideDir = new THREE.Vector3();
   const sweep = 0.5; // 소엽이 끝쪽으로 기우는 정도 (라디안)
-  const fall = 0.12 + droop * 0.35; // 소엽이 아래로 처지는 정도
+  const fall = 0.12 + sag * 0.35; // 소엽이 아래로 처지는 정도
+  const gold = new THREE.Color(COLORS.gold);
   for (let i = 0; i < spec.pairs; i++) {
     const s = 0.1 + (i / Math.max(spec.pairs - 1, 1)) * 0.88;
     curve.getPoint(s, point);
@@ -301,6 +307,7 @@ function frondGeometry(
     // crossVectors(T, +X) 는 T 가 +Z 일 때 +Y — 잎줄기 윗면.
     const len = leafletLength * leafletProfile(s);
     const color = spec.color.clone().lerp(spec.tipColor, s);
+    if (spec.gold > 0) color.lerp(gold, spec.gold * THREE.MathUtils.smoothstep(s, 0.45, 1));
     for (const sign of [1, -1]) {
       sideDir.set(sign, 0, 0);
       axis
@@ -326,7 +333,7 @@ function frondGeometry(
     tipUp,
     leafletLength * 0.35,
     leafletLength * 0.1,
-    spec.tipColor
+    spec.gold > 0 ? spec.tipColor.clone().lerp(gold, spec.gold) : spec.tipColor
   );
 
   // 이슬: 소엽 끝에 맺힌 물방울 + 하얀 반사점. 잎줄기와 같이 흔들린다.
@@ -357,7 +364,7 @@ function frondGeometry(
 }
 
 /** 동그랗게 말린 새순 (fiddlehead): 위로 선 줄기 끝이 앞(+Z)으로 말려 들어간다. */
-function fiddleheadGeometry(height: number, coil: number, droop: number): THREE.BufferGeometry {
+function fiddleheadGeometry(height: number, coil: number, wilt: number): THREE.BufferGeometry {
   const mb = new MeshBuilder();
   const points: THREE.Vector3[] = [];
   const stemSteps = 5;
@@ -374,8 +381,8 @@ function fiddleheadGeometry(height: number, coil: number, droop: number): THREE.
     points.push(new THREE.Vector3(0, height + r * Math.sin(theta), coil - r * Math.cos(theta)));
   }
   const curve = new THREE.CatmullRomCurve3(points);
-  const base = mixColor(COLORS.fiddlehead, COLORS.droop, droop * 0.6);
-  const tip = mixColor(COLORS.fiddleheadTip, COLORS.droop, droop * 0.6);
+  const base = mixColor(COLORS.fiddlehead, COLORS.wilt, wilt * 0.6);
+  const tip = mixColor(COLORS.fiddleheadTip, COLORS.wilt, wilt * 0.6);
   const stemShare = height / (height + coil * 4);
   addTaperedTube(
     mb,
@@ -476,7 +483,7 @@ function buildFernSeed(
   ctx.geometries.push(seedGeo, highlightGeo);
   const seed = new THREE.Mesh(
     seedGeo,
-    material(mixColor(COLORS.seed, "#8E7A63", ctx.options.droop * 0.6))
+    material(mixColor(COLORS.seed, "#8E7A63", ctx.options.wilt * 0.6))
   );
   seed.scale.set(1.25, 0.95, 0.95);
   seed.position.set(0, 0.075, 0);
@@ -487,7 +494,10 @@ function buildFernSeed(
 }
 
 export function buildFernBody(ctx: FernBuildContext, body: THREE.Group): FernBody {
-  const { stage, droop } = ctx.options;
+  const { stage, wilt } = ctx.options;
+  const sag = wiltSag(wilt);
+  // 익음은 풍성(4단계) 고사리에서만 보인다.
+  const ripe = stage === "bloom" ? THREE.MathUtils.clamp(ctx.options.ripe, 0, 1) : 0;
 
   const material = new THREE.MeshToonMaterial({
     vertexColors: true,
@@ -515,7 +525,7 @@ export function buildFernBody(ctx: FernBuildContext, body: THREE.Group): FernBod
     ctx.geometries.push(geometry);
     return geometry;
   };
-  const fade = (color: string) => mixColor(color, COLORS.droop, droop * 0.65);
+  const fade = (color: string) => mixColor(color, COLORS.wilt, wilt * 0.7);
 
   const golden = 2.399963;
   const azimuthStart = ctx.rand() * Math.PI * 2;
@@ -527,20 +537,21 @@ export function buildFernBody(ctx: FernBuildContext, body: THREE.Group): FernBod
       const jitter = 0.9 + ctx.rand() * 0.2;
       const frondSpec: FrondSpec = {
         length: ring.length * jitter,
-        rise: ring.rise * (1 - droop * 0.45),
-        hang: ring.hang + droop * 0.5,
+        rise: ring.rise * (1 - sag * 0.45),
+        hang: ring.hang + sag * 0.5,
         pairs: ring.pairs,
         color: fade(ring.inner ? COLORS.frondInner : COLORS.frond),
         tipColor: fade(COLORS.frondTip),
+        gold: ripe,
       };
       const dew = stage === "bloom" ? DEW_PER_FROND : 0;
-      const { geometry, curve } = frondGeometry(frondSpec, droop, dew, ctx.rand);
+      const { geometry, curve } = frondGeometry(frondSpec, sag, dew, ctx.rand);
       const pivot = new THREE.Group();
       const azimuth = azimuthStart + index * golden + (ctx.rand() - 0.5) * 0.25;
       pivot.rotation.y = azimuth;
       pivot.position.set(Math.sin(azimuth) * 0.04, 0, Math.cos(azimuth) * 0.04);
       const frond = new THREE.Group();
-      const basePitch = (ring.inner ? -0.05 : 0.05) + droop * DROOP_PITCH;
+      const basePitch = (ring.inner ? -0.05 : 0.05) + sag * SAG_PITCH;
       frond.rotation.x = basePitch;
       frond.add(new THREE.Mesh(track(geometry), material));
       pivot.add(frond);
@@ -561,9 +572,9 @@ export function buildFernBody(ctx: FernBuildContext, body: THREE.Group): FernBod
     const offset = fiddleheads.length > 1 ? 0.05 + (i % 2) * 0.03 : 0;
     pivot.position.set(Math.sin(azimuth) * offset, 0, Math.cos(azimuth) * offset);
     const head = new THREE.Group();
-    const basePitch = -0.08 + (fiddleheads.length > 1 ? 0.12 : 0) + droop * 0.5;
+    const basePitch = -0.08 + (fiddleheads.length > 1 ? 0.12 : 0) + sag * 0.5;
     head.rotation.x = basePitch;
-    head.add(new THREE.Mesh(track(fiddleheadGeometry(f.height, f.coil, droop)), material));
+    head.add(new THREE.Mesh(track(fiddleheadGeometry(f.height, f.coil, wilt)), material));
     pivot.add(head);
     body.add(pivot);
     ctx.leaves.push({ mesh: head, basePitch, phase: ctx.rand() * Math.PI * 2 });
@@ -577,7 +588,7 @@ export function buildFernBody(ctx: FernBuildContext, body: THREE.Group): FernBod
       map: texture,
       transparent: true,
       depthWrite: false,
-      color: "#FFF1A8",
+      color: mixColor("#FFF1A8", "#FFD24A", ripe),
     });
     disposers.push(
       () => texture.dispose(),

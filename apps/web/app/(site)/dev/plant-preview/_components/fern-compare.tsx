@@ -14,7 +14,16 @@ import {
 } from "@mobile/features/garden/plant-3d/plant-options";
 import type { PlantSlot } from "@mobile/features/garden/plant-3d/plant-renderer";
 import { GardenCanvas } from "@web/app/(site)/_components/garden-canvas";
-import { DroopSlider, MetricsBadge, ON_OFF, Segmented, useMetrics } from "./plant-preview";
+import {
+  CALM_CONDITION,
+  ConditionControls,
+  conditionOptions,
+  MetricsBadge,
+  ON_OFF,
+  type PlantCondition,
+  Segmented,
+  useMetrics,
+} from "./plant-preview";
 
 /**
  * 보스턴고사리 시안: 지금 식물(나무)과 단계별로 나란히, 정원에 섞은 모습, 2D 아바타, 무게 비교.
@@ -24,11 +33,11 @@ const STAGE_SPACING = 2.2;
 
 function StageRow({
   kind,
-  droop,
+  condition,
   rebalance,
 }: {
   kind: PlantKind;
-  droop: number;
+  condition: PlantCondition;
   rebalance: boolean;
 }) {
   const { metrics, onMetrics } = useMetrics();
@@ -37,16 +46,16 @@ function StageRow({
       PLANT_STAGES.map((stage, i) => ({
         options: {
           ...DEFAULT_PLANT_OPTIONS,
+          ...conditionOptions(condition),
           kind,
           stage,
-          droop,
           needsRebalance: rebalance,
           seed: 11 + i,
         },
         x: (i - 2) * STAGE_SPACING,
         z: 0,
       })),
-    [kind, droop, rebalance]
+    [kind, condition, rebalance]
   );
   return (
     <div className="relative h-[210px] overflow-hidden rounded-3xl bg-gradient-to-b from-[#FFF8EC] to-[#E8F3DF]">
@@ -66,7 +75,7 @@ function StageRow({
 }
 
 function StageCompare() {
-  const [droop, setDroop] = useState(0);
+  const [condition, setCondition] = useState<PlantCondition>(CALM_CONDITION);
   const [rebalance, setRebalance] = useState(false);
   return (
     <section className="flex flex-col gap-3">
@@ -74,9 +83,9 @@ function StageCompare() {
       <p className="text-[12px] text-neutral-500">
         고사리: 씨앗(연두) → 새순 → 어린 잎 → 고사리 → 풍성 (잎 끝 이슬·반짝임)
       </p>
-      <StageRow kind="tree" droop={droop} rebalance={rebalance} />
-      <StageRow kind="fern" droop={droop} rebalance={rebalance} />
-      <DroopSlider value={droop} onChange={setDroop} />
+      <StageRow kind="tree" condition={condition} rebalance={rebalance} />
+      <StageRow kind="fern" condition={condition} rebalance={rebalance} />
+      <ConditionControls value={condition} onChange={setCondition} />
       <Segmented
         label="리밸런싱"
         value={rebalance ? "on" : "off"}
@@ -92,38 +101,96 @@ function StageCompare() {
 const MIXED_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
   {
     name: "A",
-    options: { kind: "fern", stage: "bloom", droop: 0, needsRebalance: false, pot: "cream" },
+    options: {
+      kind: "fern",
+      stage: "bloom",
+      wind: 0,
+      wilt: 0,
+      ripe: 1,
+      needsRebalance: false,
+      pot: "cream",
+    },
   },
   {
     name: "B",
-    options: { kind: "tree", stage: "bloom", droop: 0, needsRebalance: true, pot: "lavender" },
+    options: {
+      kind: "tree",
+      stage: "bloom",
+      wind: 0,
+      wilt: 0,
+      ripe: 0,
+      needsRebalance: true,
+      pot: "lavender",
+    },
   },
   {
     name: "C",
-    options: { kind: "fern", stage: "sapling", droop: 0.4, needsRebalance: true, pot: "sky" },
+    options: {
+      kind: "fern",
+      stage: "sapling",
+      wind: 0,
+      wilt: 0.7,
+      ripe: 0,
+      needsRebalance: true,
+      pot: "sky",
+    },
   },
   {
     name: "D",
-    options: { kind: "tree", stage: "tree", droop: 0, needsRebalance: false, pot: "terracotta" },
+    options: {
+      kind: "tree",
+      stage: "tree",
+      wind: 0,
+      wilt: 0,
+      ripe: 0,
+      needsRebalance: false,
+      pot: "terracotta",
+    },
   },
   {
     name: "E",
-    options: { kind: "fern", stage: "tree", droop: 0, needsRebalance: false, pot: "sun" },
+    options: {
+      kind: "fern",
+      stage: "tree",
+      wind: 0,
+      wilt: 0,
+      ripe: 0,
+      needsRebalance: false,
+      pot: "sun",
+    },
   },
   {
     name: "F",
-    options: { kind: "fern", stage: "sprout", droop: 0, needsRebalance: false, pot: "terracotta" },
+    options: {
+      kind: "fern",
+      stage: "sprout",
+      wind: 0,
+      wilt: 0,
+      ripe: 0,
+      needsRebalance: false,
+      pot: "terracotta",
+    },
   },
   {
     name: "G",
-    options: { kind: "tree", stage: "sapling", droop: 0.7, needsRebalance: false, pot: "sky" },
+    options: {
+      kind: "tree",
+      stage: "sapling",
+      wind: 0.5,
+      wilt: 0,
+      ripe: 0,
+      needsRebalance: false,
+      pot: "sky",
+    },
   },
   {
     name: "H",
     options: {
       kind: "fern",
       stage: "bloom",
-      droop: 0,
+      wind: 0,
+      wilt: 0,
+      ripe: 0,
       needsRebalance: false,
       pot: "lavender",
     },

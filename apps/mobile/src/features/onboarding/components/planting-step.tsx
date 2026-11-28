@@ -20,7 +20,9 @@ export function seedSlotFor(portfolioId: string | null): PlantSlot {
   return {
     options: {
       stage: "seed",
-      droop: 0,
+      wind: 0,
+      wilt: 0,
+      ripe: 0,
       needsRebalance: false,
       pot: portfolioId ? potForPortfolio(portfolioId) : "terracotta",
       seed: portfolioId ? hashString(portfolioId) % 1000 : 3,

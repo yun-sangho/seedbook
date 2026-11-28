@@ -2,7 +2,15 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { buildFernBody } from "./build-fern";
 import { leafGeometry, veinGeometry } from "./leaf-geometry";
-import { PLANT_STAGES, type PlantOptions, type PlantStage, POT_COLORS } from "./plant-options";
+import {
+  PLANT_STAGES,
+  type PlantOptions,
+  type PlantStage,
+  POT_COLORS,
+  WILT_SHED_FROM,
+  WILT_SHED_SHARE,
+  wiltSag,
+} from "./plant-options";
 import { createRebalanceBadge } from "./rebalance-badge";
 
 /**
@@ -24,14 +32,30 @@ const COLORS = {
   seed: "#F0C070",
   seedHighlight: "#FFE3B0",
   soil: "#5E3F2A",
-  droop: "#A9A24C",
+  wilt: "#B59A3C",
+  fallenLeaf: "#A8843E",
   petal: "#F8B3CB",
   petalCenter: "#FFD66B",
+  /** 열매: 익음 0 (지금의 주홍) → 1 (빨강). */
   fruit: "#E8664F",
+  fruitRipe: "#CF2A24",
 } as const;
 
-/** 처짐 1 일 때 잎이 더 숙여지는 각도(라디안). */
-const DROOP_PITCH = 0.85;
+/** 늘어짐 1 일 때 잎이 더 숙여지는 각도(라디안). */
+const SAG_PITCH = 0.85;
+/** 익음 1 일 때 열매 크기 배율. */
+const RIPE_FRUIT_SCALE = 1.55;
+
+/**
+ * 바람: 1 일 때 흔들림 폭·속도 배율, 잎 떨림, 한쪽으로 눕는 각도(라디안). 화면 데이터의 바람은 0.5 까지라
+ * 실제로는 이 값의 절반까지 쓴다.
+ */
+const WIND_SWAY_GAIN = 8;
+const WIND_SPEED_GAIN = 1.8;
+const WIND_FLUTTER = 0.3;
+const WIND_FLUTTER_SPEED = 3.5;
+const WIND_LEAN = 0.16;
+
 /** 리밸런싱이 필요할 때 몸통이 기우는 각도(라디안, 약 18°). */
 const TILT_ANGLE = 0.32;
 
@@ -140,9 +164,9 @@ function track<T extends THREE.BufferGeometry>(ctx: BuildContext, geometry: T): 
   return geometry;
 }
 
-/** 처질수록 노란 올리브 쪽으로 바랜다. */
+/** 시들수록 누렇게 바랜다. */
 function leafColor(ctx: BuildContext, base: string): THREE.Color {
-  return mixColor(base, COLORS.droop, ctx.options.droop * 0.65);
+  return mixColor(base, COLORS.wilt, ctx.options.wilt * 0.7);
 }
 
 function addLeaf(
@@ -158,7 +182,7 @@ function addLeaf(
   pivot.position.copy(at);
   pivot.rotation.y = azimuth;
   const leaf = new THREE.Group();
-  const basePitch = pitch + ctx.options.droop * DROOP_PITCH;
+  const basePitch = pitch + wiltSag(ctx.options.wilt) * SAG_PITCH;
   leaf.rotation.x = basePitch;
   leaf.scale.setScalar(size);
   leaf.add(new THREE.Mesh(ctx.leafGeo, ctx.kit.get(color, { doubleSide: true })));
@@ -168,14 +192,14 @@ function addLeaf(
   ctx.leaves.push({ mesh: leaf, basePitch, phase: ctx.rand() * Math.PI * 2 });
 }
 
-/** 줄기. 처지면 끝이 옆으로 휘며 내려온다. */
+/** 줄기. 시들어 늘어지면 끝이 옆으로 휘며 내려온다. */
 function stemTube(ctx: BuildContext, height: number, radius: number, lean: number) {
-  const droopBend = ctx.options.droop * 0.18 * height;
+  const sagBend = wiltSag(ctx.options.wilt) * 0.18 * height;
   const curve = new THREE.CatmullRomCurve3([
     new THREE.Vector3(0, 0, 0),
     new THREE.Vector3(lean * 0.4, height * 0.45, 0),
-    new THREE.Vector3(lean + droopBend * 0.6, height * 0.85, 0),
-    new THREE.Vector3(lean + droopBend, height - droopBend * 0.5, 0),
+    new THREE.Vector3(lean + sagBend * 0.6, height * 0.85, 0),
+    new THREE.Vector3(lean + sagBend, height - sagBend * 0.5, 0),
   ]);
   // 관 끝이 뚫려 보이지 않게 끝을 둥글게 막는다 (같은 mesh 라 draw call 은 그대로).
   const tube = new THREE.TubeGeometry(curve, 12, radius, 8, false);
@@ -189,7 +213,7 @@ function stemTube(ctx: BuildContext, height: number, radius: number, lean: numbe
 }
 
 function buildSeed(ctx: BuildContext, body: THREE.Group) {
-  const color = mixColor(COLORS.seed, "#8E7A63", ctx.options.droop * 0.6);
+  const color = mixColor(COLORS.seed, "#8E7A63", ctx.options.wilt * 0.6);
   const seed = new THREE.Mesh(track(ctx, blobGeometry(0.16)), ctx.kit.get(color));
   seed.scale.set(1.25, 0.95, 0.95);
   seed.position.set(0, 0.075, 0);
@@ -232,7 +256,7 @@ function buildSapling(ctx: BuildContext, body: THREE.Group) {
 type CanopySpot = { center: THREE.Vector3; radius: number; branch: boolean };
 
 function buildTree(ctx: BuildContext, body: THREE.Group): CanopySpot[] {
-  const { droop } = ctx.options;
+  const sag = wiltSag(ctx.options.wilt);
   const trunkHeight = 1.15;
   const trunk = new THREE.Mesh(
     track(ctx, new THREE.CylinderGeometry(0.06, 0.11, trunkHeight, 12, 3)),
@@ -286,16 +310,16 @@ function buildTree(ctx: BuildContext, body: THREE.Group): CanopySpot[] {
       track(ctx, blobGeometry(spec.radius)),
       ctx.kit.get(leafColor(ctx, spec.color))
     );
-    // 처지면 잎 뭉치가 아래로 내려앉고 납작해진다.
-    const sag = droop * (0.08 + (spec.center.y - trunkHeight) * 0.12);
-    blob.position.copy(spec.center).add(new THREE.Vector3(0, -sag, 0));
-    blob.scale.set(1 + droop * 0.06, 1 - droop * 0.2, 1 + droop * 0.06);
+    // 늘어지면 잎 뭉치가 아래로 내려앉고 납작해진다.
+    const drop = sag * (0.08 + (spec.center.y - trunkHeight) * 0.12);
+    blob.position.copy(spec.center).add(new THREE.Vector3(0, -drop, 0));
+    blob.scale.set(1 + sag * 0.06, 1 - sag * 0.2, 1 + sag * 0.06);
     blob.rotation.set(ctx.rand() * 3, ctx.rand() * 3, ctx.rand() * 3);
     body.add(blob);
     spots.push({ center: blob.position.clone(), radius: spec.radius, branch: spec.branch });
   }
-  // 많이 처지면 아래로 늘어진 잎 몇 장
-  if (droop > 0.25) {
+  // 많이 늘어지면 아래로 처진 잎 몇 장
+  if (sag > 0.25) {
     spots.slice(0, 4).forEach((spot, i) => {
       const at = spot.center.clone().add(new THREE.Vector3(0, -spot.radius * 0.7, 0));
       addLeaf(ctx, body, at, i * 1.7, 2.2, 0.18, leafColor(ctx, COLORS.leaf));
@@ -331,13 +355,18 @@ function fruitsPerSpot(ctx: BuildContext, spots: CanopySpot[]): number[] {
 
 function buildBloom(ctx: BuildContext, body: THREE.Group) {
   const spots = buildTree(ctx, body);
-  const { droop } = ctx.options;
+  const { wilt } = ctx.options;
+  const ripe = THREE.MathUtils.clamp(ctx.options.ripe, 0, 1);
+  const fruitScale = 1 + ripe * (RIPE_FRUIT_SCALE - 1);
+  const fruitRadius = FRUIT_RADIUS * fruitScale;
   const petalGeo = track(ctx, blobGeometry(0.075));
   const centerGeo = track(ctx, blobGeometry(0.05));
   const fruitGeo = track(ctx, blobGeometry(FRUIT_RADIUS));
-  const petalMat = ctx.kit.get(mixColor(COLORS.petal, "#C9B6A6", droop * 0.6));
+  const petalMat = ctx.kit.get(mixColor(COLORS.petal, "#C9B6A6", wilt * 0.6));
   const centerMat = ctx.kit.get(COLORS.petalCenter);
-  const fruitMat = ctx.kit.get(mixColor(COLORS.fruit, "#B07A5E", droop * 0.5));
+  const fruitMat = ctx.kit.get(
+    mixColor(COLORS.fruit, COLORS.fruitRipe, ripe).lerp(new THREE.Color("#B07A5E"), wilt * 0.5)
+  );
 
   const fruitCounts = fruitsPerSpot(ctx, spots);
   const up = new THREE.Vector3(0, 1, 0);
@@ -365,7 +394,7 @@ function buildBloom(ctx: BuildContext, body: THREE.Group) {
       const center = new THREE.Mesh(centerGeo, centerMat);
       center.position.y = 0.02;
       flower.add(center);
-      flower.scale.setScalar(1 - droop * 0.25);
+      flower.scale.setScalar(1 - wiltSag(wilt) * 0.25);
       body.add(flower);
     }
     const fruitCount = fruitCounts[i] ?? 0;
@@ -384,17 +413,18 @@ function buildBloom(ctx: BuildContext, body: THREE.Group) {
               -Math.sin(FRUIT_HANG),
               Math.sin(azimuth) * Math.cos(FRUIT_HANG)
             ),
-            spot.radius + FRUIT_RADIUS * 0.35
+            spot.radius + fruitRadius * 0.35
           );
         const buried = spots.some(
           (other) =>
-            other !== spot && at.distanceTo(other.center) < other.radius + FRUIT_RADIUS * 0.35
+            other !== spot && at.distanceTo(other.center) < other.radius + fruitRadius * 0.35
         );
-        const crowded = placed.some((p) => p.distanceTo(at) < FRUIT_RADIUS * 2.2);
+        const crowded = placed.some((p) => p.distanceTo(at) < fruitRadius * 2.2);
         if (buried || crowded) continue;
         placed.push(at);
         const fruit = new THREE.Mesh(fruitGeo, fruitMat);
-        fruit.position.copy(at).add(new THREE.Vector3(0, -droop * 0.05, 0));
+        fruit.position.copy(at).add(new THREE.Vector3(0, -wiltSag(wilt) * 0.05, 0));
+        fruit.scale.setScalar(fruitScale);
         body.add(fruit);
       }
     }
@@ -479,6 +509,37 @@ function buildShadow(ctx: BuildContext, root: THREE.Group) {
   };
 }
 
+/**
+ * 많이 시들면 (`WILT_SHED_FROM` 이상) 잎(`ctx.leaves`)의 `WILT_SHED_SHARE` 를 시드로 골라 숨기고, 그만큼
+ * (최대 3장) 흙 위에 떨어진 잎을 눕힌다. 잎 고르기는 따로 만든 난수를 써서 나머지 배치에 영향이 없다.
+ */
+function shedLeaves(ctx: BuildContext, root: THREE.Group) {
+  if (ctx.options.wilt < WILT_SHED_FROM || ctx.leaves.length === 0) return;
+  const rand = mulberry32(ctx.options.seed ^ 0x5eed);
+  const order = ctx.leaves.map((leaf) => ({ leaf, key: rand() }));
+  order.sort((a, b) => a.key - b.key);
+  const count = Math.round(ctx.leaves.length * WILT_SHED_SHARE);
+  const shed = new Set(order.slice(0, count).map(({ leaf }) => leaf));
+  for (const leaf of shed) leaf.mesh.visible = false;
+  // 숨긴 잎은 흔들 필요가 없다.
+  ctx.leaves = ctx.leaves.filter((leaf) => !shed.has(leaf));
+
+  const material = ctx.kit.get(COLORS.fallenLeaf, { doubleSide: true });
+  const fallen = Math.min(count, 3);
+  for (let i = 0; i < fallen; i++) {
+    const pivot = new THREE.Group();
+    const angle = rand() * Math.PI * 2;
+    const r = 0.12 + rand() * 0.22;
+    pivot.position.set(Math.cos(angle) * r, SOIL_Y - 0.02, Math.sin(angle) * r);
+    pivot.rotation.y = rand() * Math.PI * 2;
+    const leaf = new THREE.Mesh(ctx.leafGeo, material);
+    leaf.rotation.x = -Math.PI / 2 + 0.08;
+    leaf.scale.setScalar(0.2 + rand() * 0.06);
+    pivot.add(leaf);
+    root.add(pivot);
+  }
+}
+
 // ---------------------------------------------------------------------------
 
 export function buildPlant(options: PlantOptions): BuiltPlant {
@@ -505,6 +566,7 @@ export function buildPlant(options: PlantOptions): BuiltPlant {
   const fern = options.kind === "fern" ? buildFernBody(ctx, body) : null;
   if (fern) disposers.push(fern.dispose);
   else STAGE_BUILDERS[options.stage](ctx, body);
+  shedLeaves(ctx, root);
 
   const baseTilt = options.needsRebalance ? -TILT_ANGLE : 0;
   const badge = options.needsRebalance
@@ -517,18 +579,30 @@ export function buildPlant(options: PlantOptions): BuiltPlant {
   }
 
   const stageIndex = PLANT_STAGES.indexOf(options.stage);
-  // 처질수록 흔들림이 느리고 작다 (기운 없는 느낌).
-  const swayAmp = (0.012 + stageIndex * 0.004) * (1 - options.droop * 0.6);
-  const swaySpeed = 1.2 - options.droop * 0.5;
+  const wind = THREE.MathUtils.clamp(options.wind, 0, 1);
+  const sag = wiltSag(options.wilt);
+  // 바람이 불면 크고 빠르게 흔들리고, 시들면 작고 느리게 흔들린다 (기운 없는 느낌).
+  const swayAmp = (0.012 + stageIndex * 0.004) * (1 + wind * WIND_SWAY_GAIN) * (1 - sag * 0.5);
+  const swaySpeed = 1.2 + wind * WIND_SPEED_GAIN - sag * 0.4;
+  // 돌풍: 바람이 셀수록 빠른 떨림을 더 섞는다.
+  const gust = wind * 0.45;
+  const lean = wind * WIND_LEAN;
+  const flutterAmp = 0.05 + wind * WIND_FLUTTER;
+  const flutterSpeed = 2.1 + wind * WIND_FLUTTER_SPEED;
   const phase = options.seed * 1.3;
 
   return {
     root,
     update(time, pxToScale) {
-      body.rotation.z = baseTilt + Math.sin(time * swaySpeed + phase) * swayAmp;
+      const t = time * swaySpeed + phase;
+      const sway = Math.sin(t) + gust * Math.sin(t * 2.7 + 1.3);
+      // 바람 쪽으로 눕는 정도도 천천히 오르내린다.
+      const leanNow = lean * (0.8 + 0.2 * Math.sin(time * 0.5 + phase));
+      body.rotation.z = baseTilt + leanNow + sway * swayAmp;
       body.rotation.x = Math.sin(time * swaySpeed * 0.7 + phase) * swayAmp * 0.6;
       for (const leaf of ctx.leaves) {
-        leaf.mesh.rotation.x = leaf.basePitch + Math.sin(time * 2.1 + leaf.phase) * 0.05;
+        leaf.mesh.rotation.x =
+          leaf.basePitch + Math.sin(time * flutterSpeed + leaf.phase) * flutterAmp;
       }
       fern?.update(time);
       badge?.update(time, pxToScale);

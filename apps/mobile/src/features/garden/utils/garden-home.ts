@@ -16,7 +16,7 @@ import {
  * 정원 홈의 순수 계산: 포트폴리오 식물 → 3D 옵션·목록 행, 포커스 상태 전환, 성장 감지.
  */
 
-/** 마지막으로 달성한 목표보다 이만큼(비율) 내려가면 가장 많이 처진다. */
+/** 마지막으로 달성한 목표보다 이만큼(비율) 내려가면 바람이 가장 세다. */
 export const FULL_DROOP_DROP = 0.2;
 
 /** 문자열 → 32비트 해시 (FNV-1a). 포트폴리오마다 화분 색·잎 배치를 고정하는 데 쓴다. */
@@ -43,19 +43,41 @@ export function kindForPortfolio(portfolioId: string): PlantKind {
   return PLANT_KINDS[hashString(`kind:${portfolioId}`) % PLANT_KINDS.length] ?? "tree";
 }
 
+/** 마지막으로 달성한 목표보다 이만큼(비율) 아래까지는 바람이 없다. */
+export const WIND_CALM_DROP = 0.05;
+/** 바람 세기 상한 (예전 처짐의 절반). */
+export const WIND_MAX = 0.5;
+
 /**
- * 처짐 정도 (0~1). 마지막으로 달성한 목표보다 금액이 내려간 비율을 `FULL_DROOP_DROP` 기준으로 편다.
+ * 바람 세기 (0~`WIND_MAX`). 시장 하락을 뜻한다 — 사용자가 할 일은 기다리는 것이라 잎 색은 바꾸지 않는다.
+ * 마지막으로 달성한 목표보다 `WIND_CALM_DROP` 넘게 내려가면 불기 시작해 `FULL_DROOP_DROP` 에서 가장 세다.
  * 시세가 다 오기 전이나 달성한 목표가 없으면 0.
  */
-export function plantDroop(
+export function plantWind(
   value: number,
   lastGoalAmount: number | null,
   pricesComplete: boolean
 ): number {
   if (!pricesComplete || lastGoalAmount === null || lastGoalAmount <= 0) return 0;
   const drop = (lastGoalAmount - value) / lastGoalAmount;
-  if (drop <= 0) return 0;
-  return Math.min(1, drop / FULL_DROOP_DROP);
+  const strength = (drop - WIND_CALM_DROP) / (FULL_DROOP_DROP - WIND_CALM_DROP);
+  return Math.min(1, Math.max(0, strength)) * WIND_MAX;
+}
+
+/** 비중 이탈 기간(일)별 시듦. 앞에서부터 처음으로 `days` 이상인 단계. 첫 주는 기울기·배지만. */
+const WILT_STEPS: readonly { days: number; wilt: number }[] = [
+  { days: 28, wilt: 1 },
+  { days: 14, wilt: 0.7 },
+  { days: 7, wilt: 0.35 },
+];
+
+/**
+ * 시듦 (0·0.35·0.7·1). 비중 이탈 기간으로만 정한다 — 평가금액 하락은 시들게 하지 않는다.
+ * `driftDays` 는 이탈을 처음 본 날부터 지난 일수, 이탈이 아니면 null. 단계(크기)는 내려가지 않는다.
+ */
+export function plantWilt(driftDays: number | null): number {
+  if (driftDays === null) return 0;
+  return WILT_STEPS.find((step) => driftDays >= step.days)?.wilt ?? 0;
 }
 
 /** 3D 식물 옵션. */
@@ -65,11 +87,10 @@ export function gardenPlantOptions(
 ): PlantOptions {
   return {
     stage: PLANT_STAGES[plant.stage],
-    droop: plantDroop(
-      plant.value,
-      lastReachedGoal(portfolio)?.amount ?? null,
-      plant.pricesComplete
-    ),
+    wind: plantWind(plant.value, lastReachedGoal(portfolio)?.amount ?? null, plant.pricesComplete),
+    // 이탈 기간(`driftSince`)·열매 목표(`fruitGoal`)는 식물 규칙·레코드 태스크가 넣는다.
+    wilt: 0,
+    ripe: 0,
     needsRebalance: plant.rebalancing === "needs-rebalancing",
     pot: potForPortfolio(plant.portfolioId),
     seed: hashString(plant.portfolioId) % 1000,

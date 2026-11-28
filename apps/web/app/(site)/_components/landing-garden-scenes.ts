@@ -9,14 +9,22 @@ import type { PlantSlot } from "@mobile/features/garden/plant-3d/plant-renderer"
 export const LANDING_GARDEN_PLANTS = {
   /** 히어로: 다 자란 나무, 리밸런싱이 필요해 기운 나무, 자라는 중인 묘목. */
   garden: [
-    { stage: "sapling", droop: 0, needsRebalance: false, pot: "lavender", seed: 11 },
-    { stage: "bloom", droop: 0, needsRebalance: false, pot: "sun", seed: 7 },
-    { stage: "tree", droop: 0, needsRebalance: true, pot: "sky", seed: 3 },
+    {
+      stage: "sapling",
+      wind: 0,
+      wilt: 0,
+      ripe: 0,
+      needsRebalance: false,
+      pot: "lavender",
+      seed: 11,
+    },
+    { stage: "bloom", wind: 0, wilt: 0, ripe: 0, needsRebalance: false, pot: "sun", seed: 7 },
+    { stage: "tree", wind: 0, wilt: 0, ripe: 0, needsRebalance: true, pot: "sky", seed: 3 },
   ],
   /** 리밸런싱: 목표 비중 안의 나무와 벗어나 기운 나무. */
   rebalance: [
-    { stage: "tree", droop: 0, needsRebalance: false, pot: "terracotta", seed: 5 },
-    { stage: "tree", droop: 0, needsRebalance: true, pot: "cream", seed: 5 },
+    { stage: "tree", wind: 0, wilt: 0, ripe: 0, needsRebalance: false, pot: "terracotta", seed: 5 },
+    { stage: "tree", wind: 0, wilt: 0, ripe: 0, needsRebalance: true, pot: "cream", seed: 5 },
   ],
 } as const satisfies Record<string, readonly PlantOptions[]>;
 

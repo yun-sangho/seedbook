@@ -10,12 +10,14 @@ import {
   PLANT_KINDS,
   PLANT_STAGE_LABELS,
   PLANT_STAGES,
+  type PlantKind,
   type PlantOptions,
   POT_COLOR_IDS,
   POT_COLORS,
   type PotColor,
 } from "@mobile/features/garden/plant-3d/plant-options";
 import type { PlantSceneMetrics, PlantSlot } from "@mobile/features/garden/plant-3d/plant-renderer";
+import { plantWilt, plantWind } from "@mobile/features/garden/utils/garden-home";
 import { GardenCanvas } from "@web/app/(site)/_components/garden-canvas";
 import { FernCompare } from "./fern-compare";
 
@@ -98,26 +100,113 @@ export function Segmented<T extends string>({
 
 export const ON_OFF = { off: "아니요", on: "필요" } as const;
 
-export function DroopSlider({
+/** 식물 상태 조절 값: 데이터 쪽 입력(하락률·이탈 기간)을 넣으면 매핑 함수로 3D 옵션을 만든다. */
+export interface PlantCondition {
+  /** 마지막으로 달성한 목표 대비 하락 (%). */
+  dropPercent: number;
+  /** 비중 이탈 기간 (일). 0 이면 이탈 아님. */
+  driftDays: number;
+  ripe: number;
+}
+
+export const CALM_CONDITION: PlantCondition = { dropPercent: 0, driftDays: 0, ripe: 0 };
+
+export function conditionOptions(
+  condition: PlantCondition
+): Pick<PlantOptions, "wind" | "wilt" | "ripe"> {
+  return {
+    wind: plantWind(1 - condition.dropPercent / 100, 1, true),
+    wilt: plantWilt(condition.driftDays > 0 ? condition.driftDays : null),
+    ripe: condition.ripe,
+  };
+}
+
+function Slider({
+  label,
   value,
+  min,
+  max,
+  step,
+  accent,
   onChange,
 }: {
+  label: string;
   value: number;
+  min: number;
+  max: number;
+  step: number;
+  accent: string;
   onChange: (value: number) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-xs font-semibold text-neutral-500">
-        처짐 (도달한 목표보다 금액이 내려간 정도) · {Math.round(value * 100)}%
-      </span>
+    <label className="flex flex-col gap-1">
+      <span className="text-xs font-semibold text-neutral-500">{label}</span>
       <input
         type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        style={{ accentColor: accent }}
+      />
+    </label>
+  );
+}
+
+/** 바람(시장 하락)·시듦(비중 이탈 기간)·익음 조절. 리밸런싱 기울기는 따로 고른다. */
+export function ConditionControls({
+  value,
+  onChange,
+}: {
+  value: PlantCondition;
+  onChange: (value: PlantCondition) => void;
+}) {
+  const { wind, wilt, ripe } = conditionOptions(value);
+  const set = <K extends keyof PlantCondition>(key: K, next: PlantCondition[K]) =>
+    onChange({ ...value, [key]: next });
+  return (
+    <div className="flex flex-col gap-3">
+      <Slider
+        label={`바람 · 마지막 목표 대비 하락 ${value.dropPercent}% → wind ${wind.toFixed(2)}`}
+        value={value.dropPercent}
+        min={0}
+        max={30}
+        step={1}
+        accent="#4F7BA8"
+        onChange={(v) => set("dropPercent", v)}
+      />
+      <Slider
+        label={`시듦 · 비중 이탈 ${value.driftDays}일 → wilt ${wilt.toFixed(2)}`}
+        value={value.driftDays}
+        min={0}
+        max={40}
+        step={1}
+        accent="#B08A2E"
+        onChange={(v) => set("driftDays", v)}
+      />
+      <div className="flex flex-wrap gap-1">
+        {[0, 7, 14, 28].map((days) => (
+          <button
+            key={days}
+            type="button"
+            onClick={() => set("driftDays", days)}
+            className={`rounded-full px-2.5 py-1 text-[12px] font-medium ${
+              value.driftDays === days ? "bg-[#B08A2E] text-white" : "bg-black/5 text-neutral-700"
+            }`}
+          >
+            {days === 0 ? "이탈 없음" : `${days}일`}
+          </button>
+        ))}
+      </div>
+      <Slider
+        label={`익음 (꽃·열매 단계) · ripe ${ripe.toFixed(2)}`}
+        value={value.ripe}
         min={0}
         max={1}
         step={0.05}
-        value={value}
-        onChange={(event) => onChange(Number(event.target.value))}
-        className="accent-[#2F8A40]"
+        accent="#D9532F"
+        onChange={(v) => set("ripe", v)}
       />
     </div>
   );
@@ -151,8 +240,12 @@ export function PotPicker({
 
 function SinglePlant() {
   const [options, setOptions] = useState<PlantOptions>(DEFAULT_PLANT_OPTIONS);
+  const [condition, setCondition] = useState<PlantCondition>(CALM_CONDITION);
   const { metrics, onMetrics } = useMetrics();
-  const slots = useMemo<PlantSlot[]>(() => [{ options, x: 0, z: 0 }], [options]);
+  const slots = useMemo<PlantSlot[]>(
+    () => [{ options: { ...options, ...conditionOptions(condition) }, x: 0, z: 0 }],
+    [options, condition]
+  );
   const set = <K extends keyof PlantOptions>(key: K, value: PlantOptions[K]) =>
     setOptions((prev) => ({ ...prev, [key]: value }));
 
@@ -182,7 +275,7 @@ function SinglePlant() {
         labels={options.kind === "fern" ? FERN_STAGE_LABELS : PLANT_STAGE_LABELS}
         onChange={(v) => set("stage", v)}
       />
-      <DroopSlider value={options.droop} onChange={(v) => set("droop", v)} />
+      <ConditionControls value={condition} onChange={setCondition} />
       <Segmented
         label="리밸런싱"
         value={options.needsRebalance ? "on" : "off"}
@@ -196,7 +289,8 @@ function SinglePlant() {
 }
 
 function Stages() {
-  const [droop, setDroop] = useState(0);
+  const [kind, setKind] = useState<PlantKind>("tree");
+  const [condition, setCondition] = useState<PlantCondition>(CALM_CONDITION);
   const [rebalance, setRebalance] = useState(false);
   const { metrics, onMetrics } = useMetrics();
   const slots = useMemo<PlantSlot[]>(
@@ -204,29 +298,37 @@ function Stages() {
       PLANT_STAGES.map((stage, i) => ({
         options: {
           ...DEFAULT_PLANT_OPTIONS,
+          ...conditionOptions(condition),
+          kind,
           stage,
-          droop,
           needsRebalance: rebalance,
           seed: 11 + i,
         },
-        x: (i - 2) * 1.6,
+        x: (i - 2) * (kind === "fern" ? 2.2 : 1.6),
         z: 0,
       })),
-    [droop, rebalance]
+    [kind, condition, rebalance]
   );
   return (
     <div className="flex flex-col gap-4">
       <div className="relative h-[300px] overflow-hidden rounded-3xl bg-gradient-to-b from-[#FFF8EC] to-[#E8F3DF]">
         <GardenCanvas
           slots={slots}
-          layoutWidth={6.4}
+          layoutWidth={kind === "fern" ? 8.8 : 6.4}
           garden
           onMetrics={onMetrics}
           className="h-full w-full"
         />
         <MetricsBadge metrics={metrics} />
       </div>
-      <DroopSlider value={droop} onChange={setDroop} />
+      <Segmented
+        label="종류"
+        value={kind}
+        options={PLANT_KINDS}
+        labels={PLANT_KIND_LABELS}
+        onChange={setKind}
+      />
+      <ConditionControls value={condition} onChange={setCondition} />
       <Segmented
         label="리밸런싱"
         value={rebalance ? "on" : "off"}
@@ -240,14 +342,52 @@ function Stages() {
 
 /** 정원 데모용 식물 (데이터 연결 없음). */
 const DEMO_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
-  { name: "A", options: { stage: "tree", droop: 0, needsRebalance: false, pot: "terracotta" } },
-  { name: "B", options: { stage: "sapling", droop: 0.45, needsRebalance: true, pot: "sky" } },
-  { name: "C", options: { stage: "sprout", droop: 0, needsRebalance: false, pot: "sun" } },
-  { name: "D", options: { stage: "bloom", droop: 0, needsRebalance: true, pot: "lavender" } },
-  { name: "E", options: { stage: "seed", droop: 0, needsRebalance: false, pot: "cream" } },
-  { name: "F", options: { stage: "tree", droop: 0.2, needsRebalance: false, pot: "cream" } },
-  { name: "G", options: { stage: "sapling", droop: 0.8, needsRebalance: true, pot: "terracotta" } },
-  { name: "H", options: { stage: "sprout", droop: 0, needsRebalance: false, pot: "sky" } },
+  {
+    name: "A",
+    options: { stage: "tree", wind: 0, wilt: 0, ripe: 0, needsRebalance: false, pot: "terracotta" },
+  },
+  {
+    name: "B",
+    options: {
+      stage: "sapling",
+      wind: 0.25,
+      wilt: 0.35,
+      ripe: 0,
+      needsRebalance: true,
+      pot: "sky",
+    },
+  },
+  {
+    name: "C",
+    options: { stage: "sprout", wind: 0, wilt: 0, ripe: 0, needsRebalance: false, pot: "sun" },
+  },
+  {
+    name: "D",
+    options: { stage: "bloom", wind: 0, wilt: 0, ripe: 1, needsRebalance: true, pot: "lavender" },
+  },
+  {
+    name: "E",
+    options: { stage: "seed", wind: 0, wilt: 0, ripe: 0, needsRebalance: false, pot: "cream" },
+  },
+  {
+    name: "F",
+    options: { stage: "tree", wind: 0.5, wilt: 0, ripe: 0, needsRebalance: false, pot: "cream" },
+  },
+  {
+    name: "G",
+    options: {
+      stage: "sapling",
+      wind: 0,
+      wilt: 1,
+      ripe: 0,
+      needsRebalance: true,
+      pot: "terracotta",
+    },
+  },
+  {
+    name: "H",
+    options: { stage: "sprout", wind: 0, wilt: 0, ripe: 0, needsRebalance: false, pot: "sky" },
+  },
 ];
 
 function Garden() {
