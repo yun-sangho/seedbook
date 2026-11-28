@@ -1,4 +1,5 @@
 import * as cron from "node-cron";
+import { notifyGoals } from "./jobs/notify-goals.js";
 import { snapshotAccounts } from "./jobs/record-account-snapshots.js";
 import { syncStockList } from "./jobs/sync-stock-list.js";
 import { syncStockPrices } from "./jobs/sync-stock-prices.js";
@@ -8,7 +9,7 @@ const TIMEZONE = "Asia/Seoul";
 
 // 하루 2회 실행 스케줄
 // 1) 06:00 KST — 종목 목록 동기화 (장 시작 전)
-// 2) 16:30 KST — 종목 목록 + 일봉 시세 수집 (장 마감 후), 이어서 계좌별 평가 기록
+// 2) 16:30 KST — 종목 목록 + 일봉 시세 수집 (장 마감 후), 이어서 계좌별 평가 기록과 목표 도달 알림
 const SCHEDULE_MORNING = process.env.CRON_MORNING ?? "0 6 * * 1-5";
 const SCHEDULE_AFTERNOON = process.env.CRON_AFTERNOON ?? "30 16 * * 1-5";
 
@@ -66,7 +67,9 @@ export function startScheduler() {
       void runJob("오후 전체 크롤링", async () => {
         await syncStockList();
         await syncStockPrices();
-        await snapshotAccounts();
+        const recorded = await snapshotAccounts();
+        // 목표 도달 알림은 그 날 시세로 판단한다 — 기록이 실패한 날(시세 문제일 수 있다)은 보내지 않는다.
+        if (recorded) await notifyGoals();
       });
     },
     { timezone: TIMEZONE }

@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => {
     syncStockList: vi.fn(),
     syncStockPrices: vi.fn(),
     snapshotAccounts: vi.fn(),
+    notifyGoals: vi.fn(),
   };
 });
 
@@ -50,6 +51,10 @@ vi.mock("./jobs/record-account-snapshots.js", () => ({
   snapshotAccounts: mocks.snapshotAccounts,
 }));
 
+vi.mock("./jobs/notify-goals.js", () => ({
+  notifyGoals: mocks.notifyGoals,
+}));
+
 const { isJobRunning, runJob, startScheduler } = await import("./scheduler.js");
 
 describe("scheduler", () => {
@@ -58,20 +63,36 @@ describe("scheduler", () => {
     mocks.syncStockList.mockReset();
     mocks.syncStockPrices.mockReset();
     mocks.snapshotAccounts.mockReset().mockResolvedValue(true);
+    mocks.notifyGoals.mockReset().mockResolvedValue(true);
   });
 
   it("오후 job: 시세 수집 뒤 계좌 평가를 기록", async () => {
     const order: string[] = [];
     mocks.syncStockList.mockImplementation(async () => order.push("list"));
     mocks.syncStockPrices.mockImplementation(async () => order.push("prices"));
-    mocks.snapshotAccounts.mockImplementation(async () => order.push("snapshots"));
+    mocks.snapshotAccounts.mockImplementation(async () => {
+      order.push("snapshots");
+      return true;
+    });
+    mocks.notifyGoals.mockImplementation(async () => order.push("goals"));
 
     startScheduler();
     const afternoonHandler = mocks.cronSchedule.mock.calls[1]![1] as () => void;
     afternoonHandler();
     await vi.waitFor(() => expect(isJobRunning()).toBe(false));
 
-    expect(order).toEqual(["list", "prices", "snapshots"]);
+    expect(order).toEqual(["list", "prices", "snapshots", "goals"]);
+  });
+
+  it("오후 job: 계좌 평가 기록이 실패하면 목표 도달 알림을 보내지 않음", async () => {
+    mocks.snapshotAccounts.mockResolvedValue(false);
+
+    startScheduler();
+    const afternoonHandler = mocks.cronSchedule.mock.calls[1]![1] as () => void;
+    afternoonHandler();
+    await vi.waitFor(() => expect(isJobRunning()).toBe(false));
+
+    expect(mocks.notifyGoals).not.toHaveBeenCalled();
   });
 
   it("오후 job: 시세 수집이 실패하면 계좌 평가를 기록하지 않음 (옛 종가로 남기지 않는다)", async () => {

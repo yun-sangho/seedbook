@@ -171,6 +171,7 @@ describe("decideMobileRoute", () => {
     "/assets/settings/profile",
     "/assets/settings/storage",
     "/assets/settings/data",
+    "/assets/settings/notifications",
     "/assets/settings/delete-account",
     "/assets/settings/terms",
     "/assets/settings/privacy",

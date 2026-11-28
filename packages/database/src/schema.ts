@@ -222,6 +222,56 @@ export const deviceCredential = seedbook.table(
 );
 
 /**
+ * 푸시 알림을 받을 기기 (네이티브 앱, `apps/web/server/push/`). 앱이 로그인한 세션으로 등록하고, 그 세션이
+ * 끝나면(로그아웃·만료·탈퇴) 행도 지워진다. 같은 토큰을 다른 계정이 등록하면 그 계정으로 옮긴다.
+ * `kinds` 는 서버가 보내는 종류 중 이 기기에서 켠 것 (`@seedbook/domain/notifications`).
+ */
+export const pushDevice = seedbook.table(
+  "push_device",
+  {
+    token: text("token").primaryKey(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    sessionId: text("sessionId")
+      .notNull()
+      .references(() => session.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    // "ios" | "android"
+    platform: text("platform").notNull(),
+    // 앱 번들 ID (APNs topic). 운영 앱 `ing.boogie.seedbook`, 개발용 앱 `ing.boogie.seedbook.dev`.
+    appId: text("appId").notNull(),
+    // APNs 환경: "production" | "sandbox" (개발용 앱).
+    environment: text("environment").notNull(),
+    kinds: text("kinds").array().notNull().default(sql`ARRAY[]::text[]`),
+    createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [index("push_device_userId_idx").on(t.userId)]
+);
+
+/**
+ * 보낸 푸시 알림 기록 — 같은 알림을 두 번 보내지 않고(`key`), 사용자당 하루 1건을 넘기지 않는다(`date`).
+ */
+export const pushNotificationLog = seedbook.table(
+  "push_notification_log",
+  {
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    // 중복 방지 키 (예: `goal:<portfolioId>:<season>:<stage>`).
+    key: text("key").notNull(),
+    kind: text("kind").notNull(),
+    // 보낸 KST 날짜.
+    date: date("date", { mode: "string" }).notNull(),
+    createdAt: timestamp("createdAt", { precision: 3, mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.key], name: "push_notification_log_pkey" }),
+    index("push_notification_log_userId_date_idx").on(t.userId, t.date),
+  ]
+);
+
+/**
  * 약관·개인정보 동의 기록. 문서의 버전마다 한 행이라 개정 뒤 다시 동의해도 이전 기록이 남는다.
  * 버전은 `legal_document` 의 (document, version). IP·기기 정보는 두지 않는다.
  */

@@ -131,7 +131,7 @@ function selectCloudAccounts(db: Database, cursor: string | null, limit: number)
 }
 
 /** 아직 캐시에 없는 종목의 `date` 까지 가장 최근 종가를 읽어 캐시에 넣는다 (없으면 null). */
-async function loadPrices(
+export async function loadPrices(
   db: Database,
   date: string,
   holdings: SnapshotHolding[],

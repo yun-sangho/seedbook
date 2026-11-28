@@ -1,6 +1,7 @@
 import { authClient, currentSessionId } from "./auth-client";
 import { reloadApp } from "./device-storage";
 import { markSignedOut } from "./native/biometric-login";
+import { stopNotificationsOnSignOut } from "./native/notifications";
 import { nativeSessionToken, type SessionTokenStore } from "./native/session-token";
 import { type OfflineSession, offlineSession } from "./offline-session";
 import { type PendingSignOut, pendingSignOut } from "./pending-sign-out";
@@ -76,6 +77,11 @@ export async function signOutAndReload(): Promise<void> {
   } catch {
     // sessionStorage 를 쓸 수 없으면 프롬프트가 한 번 더 뜰 뿐이다.
   }
+  // 세션이 살아 있을 때 알림 등록부터 끊는다 — 서버에 닿지 못해도 오래 기다리지 않는다.
+  await Promise.race([
+    stopNotificationsOnSignOut(),
+    new Promise((resolve) => setTimeout(resolve, SIGN_OUT_TIMEOUT_MS)),
+  ]);
   await signOutOnDevice().catch(() => undefined);
   await reloadApp();
 }
