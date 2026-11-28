@@ -37,7 +37,7 @@ export const LANDING_GARDEN_PLANTS = {
   /** 목표에 가까워질수록 자라는 모습: 같은 식물의 다섯 모습을 한 줄로 (마지막은 열매). */
   growth: PLANT_STAGES.map((stage) => ({
     stage,
-    wind: 0,
+    rain: 0,
     wilt: 0,
     ripe: stage === "bloom",
     needsRebalance: false,
