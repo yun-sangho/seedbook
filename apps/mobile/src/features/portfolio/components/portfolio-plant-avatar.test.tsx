@@ -35,11 +35,11 @@ describe("PortfolioPlantAvatar", () => {
 
   it("marks a portfolio that needs rebalancing with the garden's ! badge", () => {
     render(<PortfolioPlantAvatar portfolioId="p1" stage={2} size={40} needsRebalance />);
-    expect(screen.getByRole("img", { name: "리밸런싱 필요" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "이격 초과" })).toBeTruthy();
   });
 
   it("shows no badge otherwise", () => {
     render(<PortfolioPlantAvatar portfolioId="p1" stage={2} size={40} />);
-    expect(screen.queryByRole("img", { name: "리밸런싱 필요" })).toBeNull();
+    expect(screen.queryByRole("img", { name: "이격 초과" })).toBeNull();
   });
 });
