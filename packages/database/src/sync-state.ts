@@ -30,3 +30,27 @@ export async function reserveChangeSeqs(
   const last = Number(row.seq);
   return { first: last - count + 1, last };
 }
+
+/**
+ * 사용자의 `user_sync_state` 행을 잠그고 지금 번호를 돌려준다 (번호는 올리지 않는다). push 처럼
+ * 읽고 판단한 뒤 쓰는 트랜잭션이 맨 앞에서 불러, 판단에 쓴 읽기까지 같은 사용자의 다른 쓰기와
+ * 직렬화한다. 실제로 쓰는 레코드의 번호는 그 뒤 `reserveChangeSeqs` 로 받는다 — 바뀐 것이 없으면
+ * 번호를 쓰지 않으니 `changeSeq` 에 빈틈이 생기지 않는다.
+ */
+export async function lockChangeSeqs(tx: SqlExecutor, userId: string): Promise<number> {
+  const rows = (await tx.execute(sql`
+    INSERT INTO "seedbook"."user_sync_state" ("userId", "seq")
+    VALUES (${userId}, 0)
+    ON CONFLICT ("userId") DO UPDATE SET "seq" = "user_sync_state"."seq"
+    RETURNING "seq"
+  `)) as Array<{ seq: string | number }>;
+  return Number(rows[0]?.seq ?? 0);
+}
+
+/** 사용자의 지금 번호 (커밋된 값). 행이 없으면 0. 잠그지 않는다. */
+export async function currentChangeSeq(tx: SqlExecutor, userId: string): Promise<number> {
+  const rows = (await tx.execute(sql`
+    SELECT "seq" FROM "seedbook"."user_sync_state" WHERE "userId" = ${userId}
+  `)) as Array<{ seq: string | number }>;
+  return Number(rows[0]?.seq ?? 0);
+}
