@@ -38,7 +38,10 @@ export interface AccountPreferences {
   accountSortOption?: AccountSortOption;
   /** 포트폴리오 현황 "종목별" 정렬. */
   portfolioStockSortOption?: PortfolioStockSortOption;
-  /** 투자 추이 차트 기간. */
+  /**
+   * 투자 추이 차트 기간. 차트를 지워 화면에서는 쓰지 않는다 — 계정 설정 정의(`settings`)와
+   * 맞추려 남긴다 (동기화 v2-5 에서 제거).
+   */
   investmentTrendRange?: TimeRange;
   /** 보유 종목 정렬 — 계좌 상세의 보유 종목과 "종목" 탭이 같이 쓴다. */
   holdingsSortOption?: HoldingsSortOption;

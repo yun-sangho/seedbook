@@ -10,7 +10,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 /**
- * 화면 설정 (정렬·접힘·차트 기간, `AccountPreferences`). 기준값은 계정(`/api/me/preferences`)이고,
+ * 화면 설정 (정렬·접힘, `AccountPreferences`). 기준값은 계정(`/api/me/preferences`)이고,
  * 이 기기에는 첫 화면을 바로 그리기 위한 캐시로만 남긴다 — 로그인하면 `PreferencesSync` 가 계정
  * 값으로 맞춘다. 바꿀 때는 `savePreferences` (`lib/preferences.ts`) 로 캐시와 계정에 함께 저장한다.
  *
