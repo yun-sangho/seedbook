@@ -51,12 +51,28 @@ function account(accountName: string): InvestmentItem {
     cashItems: [],
     note: "",
     color: "#000000",
-    sellCostPercent: 0,
   };
 }
 
-const envelope = (...names: string[]) =>
-  JSON.stringify({ state: { investments: names.map(account) }, version: 6 });
+/**
+ * 계정 표시가 생기기 전 버전이 기기 기본 자리에 남긴 자산 레코드 (`seedbook.records`, 접두사 없음).
+ */
+async function seedBaseSlotRecords(...names: string[]) {
+  const { createKvRecordStore } = await import("@web/lib/sync/v2/device-record-store");
+  const store = createKvRecordStore(
+    {
+      getItem: (key) => localStorage.getItem(key),
+      setItem: (key, value) => localStorage.setItem(key, value),
+    },
+    "seedbook.records"
+  );
+  await store.apply(
+    names.map((name) => {
+      const { id, records: _r, holdings: _h, cashItems: _c, ...fields } = account(name);
+      return { op: "put" as const, type: "account", id, parentId: null, sortKey: null, fields };
+    })
+  );
+}
 
 /** 사용자별 데이터를 가진 서버. `cookie` 는 지금 브라우저의 세션 쿠키가 가리키는 사용자. */
 function fakeServer() {
@@ -95,14 +111,7 @@ function fakeServer() {
       return json({
         protocol: 2,
         records: [...user.accounts].map(([id, data], i) => {
-          const {
-            id: _id,
-            records,
-            holdings,
-            cashItems,
-            sellCostPercent,
-            ...fields
-          } = data as InvestmentItem;
+          const { id: _id, records, holdings, cashItems, ...fields } = data as InvestmentItem;
           return {
             type: "account",
             id,
@@ -327,7 +336,7 @@ describe("switching accounts on one device", () => {
 
 describe("before the session is known", () => {
   it("does not hydrate any account's data while the session is loading", async () => {
-    localStorage.setItem("investment-storage", envelope("A의 계좌"));
+    await seedBaseSlotRecords("A의 계좌");
     const page = await openPage(PENDING);
 
     expect(page.store.getState().investments).toEqual([]);
@@ -335,12 +344,13 @@ describe("before the session is known", () => {
   });
 
   it("shows the login screen without loading data when signed out", async () => {
-    localStorage.setItem("investment-storage", envelope("A의 계좌"));
+    await seedBaseSlotRecords("A의 계좌");
+    const saved = localStorage.getItem("seedbook.records");
     const page = await openPage(SIGNED_OUT);
 
     expect(page.text()).toContain("Seedbook 로그인");
     expect(page.store.getState().investments).toEqual([]);
-    expect(localStorage.getItem("investment-storage")).toBe(envelope("A의 계좌"));
+    expect(localStorage.getItem("seedbook.records")).toBe(saved);
   });
 
   it("loads the account's data once the pending session resolves", async () => {
@@ -421,7 +431,7 @@ describe("an account change while a page is open", () => {
 
 describe("device data saved before ownership was tracked", () => {
   it("stays visible to the first account that signs in after the update", async () => {
-    localStorage.setItem("investment-storage", envelope("A의 계좌"));
+    await seedBaseSlotRecords("A의 계좌");
 
     const a = await openAs("user-a");
 
@@ -429,7 +439,7 @@ describe("device data saved before ownership was tracked", () => {
   });
 
   it("belongs to the account recorded in the sync queue, not to whoever signs in first", async () => {
-    localStorage.setItem("investment-storage", envelope("A의 계좌"));
+    await seedBaseSlotRecords("A의 계좌");
     localStorage.setItem(
       "seedbook.sync.investment",
       JSON.stringify({

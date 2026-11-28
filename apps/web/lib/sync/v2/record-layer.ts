@@ -36,8 +36,6 @@ export interface RecordLayerDeps {
   store: () => DeviceRecordStore;
   /** 계정 자리의 작은 값 (동기화 상태·격리 기록). */
   kv: KeyValue & { removeItem(key: string): void };
-  /** 레코드로 옮기기 전의 store envelope (처음 한 번 레코드로 옮긴다). */
-  legacyEnvelope?: (key: RecordStoreKey) => Promise<string | null> | string | null;
   isCloud: () => boolean;
   now?: () => string;
 }
@@ -118,18 +116,6 @@ export function createRecordLayer(deps: RecordLayerDeps) {
     return [...keys];
   }
 
-  async function importLegacy(key: RecordStoreKey, store: DeviceRecordStore) {
-    const legacy = await deps.legacyEnvelope?.(key);
-    const state = legacy ? envelopeState(legacy) : null;
-    if (!state) return;
-    const current = await store.load();
-    const plan = decomposeStore(key, state, current);
-    if (!plan) return;
-    // 옮기기는 동기화 변경이 아니다 — cloud 면 다음 전체 pull 이 서버와 맞춘다.
-    const changes = planStoreChanges(key, plan, current, pendingLinks);
-    if (changes.length > 0) addQuarantine((await store.apply(changes)).quarantined);
-  }
-
   return {
     withLock,
     loadState,
@@ -142,10 +128,7 @@ export function createRecordLayer(deps: RecordLayerDeps) {
       return withLock(async () => {
         const store = deps.store();
         const types = STORE_SHAPES[key].types;
-        if (!(await store.everStored(types))) {
-          await importLegacy(key, store);
-          if (!(await store.everStored(types))) return null;
-        }
+        if (!(await store.everStored(types))) return null;
         return composeEnvelope(key, await store.load());
       });
     },

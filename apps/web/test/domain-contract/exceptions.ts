@@ -5,7 +5,7 @@ import type { RecordType } from "@seedbook/domain";
  *
  * - `PLANNED`: 정의(설계)에는 있지만 아직 코드에 없는 것. 그 단계 PR 이 코드를 추가하면 대조 테스트가
  *   "이미 있다" 로 실패하니 여기서 지운다.
- * - `LEGACY`: 코드에는 있지만 정의에 넣지 않는 것. v2-5 (contract) 에서 지운다.
+ * - `LEGACY`: 코드에는 있지만 정의에 넣지 않는 것 (이유를 적는다).
  */
 
 /** 아직 서버 테이블이 없는 레코드 → 만들 단계. */
@@ -16,15 +16,14 @@ export const PLANNED_SERVER_COLUMNS: Partial<Record<RecordType, Record<string, s
 
 /** 서버에 있지만 정의에 넣지 않는 컬럼 (레코드 → 컬럼 → 이유). */
 export const LEGACY_SERVER_COLUMNS: Partial<Record<RecordType, Record<string, string>>> = {
-  account: {
-    sellCostPercent: "계산에 쓰지 않는 옛 매도 제비용률 — v2-5 에서 컬럼 제거 (사용자 결정)",
-  },
+  account: { sellCostPercent: "v2-5 다음 PR 에서 컬럼 제거 (배포 순서 때문에 분리)" },
   portfolio: {
-    accountIds: "연결의 원본은 account.portfolioId — v2-5 에서 제거 (설계 §2.4)",
-    description: "클라이언트에 없는 옛 컬럼 — v2-5 에서 제거",
+    accountIds: "v2-5 다음 PR 에서 컬럼 제거 (배포 순서 때문에 분리)",
+    description: "v2-5 다음 PR 에서 컬럼 제거 (배포 순서 때문에 분리)",
   },
-  rebalancing: { tasks: "rebalancingTask 레코드로 옮긴다 — v2-5 에서 제거 (설계 §2.4)" },
+  rebalancing: { tasks: "v2-5 다음 PR 에서 컬럼 제거 (배포 순서 때문에 분리)" },
   settings: {
+    investmentTrendRange: "v2-5 다음 PR 에서 컬럼 제거 (배포 순서 때문에 분리)",
     storageMode: "저장 모드는 동기화 밖 계정 상태 (사용자 결정)",
     storageModeChosenAt: "저장 모드는 동기화 밖 계정 상태 (사용자 결정)",
   },

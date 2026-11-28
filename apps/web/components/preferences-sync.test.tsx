@@ -26,7 +26,6 @@ describe("PreferencesSync", () => {
       rebalancingCollapsedSections: [],
       accountSortOption: "evalDesc",
       portfolioStockSortOption: "driftDesc",
-      investmentTrendRange: "3months" as never,
     });
     mockUseSession.mockReturnValue({ data: { user: { id: "u1" } }, isPending: false });
   });
@@ -71,7 +70,6 @@ describe("PreferencesSync", () => {
           JSON.stringify({
             accountSortOption: "evalAsc",
             portfolioStockSortOption: "nameAsc",
-            investmentTrendRange: "1year",
           }),
           { status: 200 }
         )
@@ -83,7 +81,6 @@ describe("PreferencesSync", () => {
       expect(usePreferencesStore.getState()).toMatchObject({
         accountSortOption: "evalAsc",
         portfolioStockSortOption: "nameAsc",
-        investmentTrendRange: "1year",
       })
     );
   });

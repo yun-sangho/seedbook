@@ -19,7 +19,7 @@ import {
 import { getActiveAccount } from "@web/lib/account-storage";
 import { flushDeviceStorage } from "@web/lib/device-storage";
 import { fetchCloudItemIds } from "@web/lib/storage-migration";
-import { ensureRecordsImported, getRecordLayer } from "@web/lib/sync/record-sync";
+import { getRecordLayer } from "@web/lib/sync/record-sync";
 import { buildRecordBackup } from "@web/lib/sync/v2/backup";
 import { ActionButton } from "@web/seed-design/ui/action-button";
 import {
@@ -55,7 +55,6 @@ export function DataBackupMobile() {
     try {
       const userId = getActiveAccount();
       if (!userId) throw new Error("no active account");
-      await ensureRecordsImported();
       const prepared = await prepareBackupImport(raw, {
         userId,
         current: await getRecordLayer().loadRecords(),
@@ -79,7 +78,6 @@ export function DataBackupMobile() {
   const exportData = async () => {
     const userId = getActiveAccount();
     if (!userId) return;
-    await ensureRecordsImported();
     const backup = buildRecordBackup(
       await getRecordLayer().loadRecords(),
       await backupAccountTag(userId)

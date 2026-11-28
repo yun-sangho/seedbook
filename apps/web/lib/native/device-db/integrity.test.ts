@@ -126,7 +126,7 @@ describe("migrateDeviceDatabase beforeMigrate", () => {
       },
     });
 
-    expect(order).toEqual(["before 7 records=0"]);
+    expect(order).toEqual(["before 7,8 records=0"]);
   });
 
   it("does not run on a brand-new database or when nothing is pending", async () => {

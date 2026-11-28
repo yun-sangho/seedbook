@@ -48,9 +48,4 @@ export interface InvestmentItem {
   cashItems: CashItem[]; // 현금성 자산 목록
   note: string;
   color: string; // 차트 표시 색상
-  /**
-   * 옛 매도 제비용률 (%). 더 이상 계산에 쓰지 않는다 — 세금·수수료는 리밸런싱 때 거래 가능 금액을
-   * 줄여 감안한다. 서버 컬럼과 함께 삭제 예정.
-   */
-  sellCostPercent?: number;
 }

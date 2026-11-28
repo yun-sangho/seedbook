@@ -272,7 +272,7 @@ function historyStatements(row: RecordRowColumns, savedAt: string): SqlStatement
 
 /**
  * 쓰기를 검증·직렬화해 한 트랜잭션에 넣을 문장으로 만든다. 같은 레코드를 여러 번 넘기면 마지막
- * 것만 쓴다. `writeRecords` 와 레코드 이전(`records-migration.ts`) 이 함께 쓴다.
+ * 것만 쓴다. `writeRecords` 가 쓴다.
  */
 export async function prepareRecordWrites(
   driver: SqlDriver,

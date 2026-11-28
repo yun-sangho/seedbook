@@ -1,4 +1,3 @@
-import type { ManagedStoreConfig } from "@web/lib/sync/managed-store-config";
 import {
   listOf,
   finiteNumberOrNull as nullableNum,
@@ -61,8 +60,8 @@ function toResult(value: unknown): RebalancingResult | null {
   };
 }
 
-/** 저장 전 값 정리 — 서버 검증(parseRebalancingFields)이 받는 값으로. 모르는 필드는 남긴다. */
-function normalizeSession(item: RebalancingSession): RebalancingSession {
+/** 저장 전 값 정리 — 레코드 정의가 받는 값으로. 모르는 필드는 남긴다. */
+export function normalizeSession(item: RebalancingSession): RebalancingSession {
   const result = toResult(item.result);
   return {
     ...item,
@@ -82,43 +81,3 @@ function normalizeSession(item: RebalancingSession): RebalancingSession {
         : result,
   };
 }
-
-/**
- * 리밸런싱 store (`rebalancing-storage`) 의 엔티티 동기화 설정. store 를 import 하지
- * 않는다 — hybrid-storage 가 store 보다 먼저 이 설정을 읽는다.
- */
-export const rebalancingSyncConfig: ManagedStoreConfig<RebalancingSession> = {
-  storageKey: "rebalancing-storage",
-  entity: "rebalancing",
-  listOrderDomain: "rebalancings",
-  metaKey: "seedbook.sync.rebalancing",
-  persistVersion: 1,
-  itemsField: "sessions",
-  normalizeItem: normalizeSession,
-  toData: (raw) => {
-    const item = normalizeSession(raw);
-    return {
-      accountId: item.accountId,
-      accountName: item.accountName,
-      portfolioId: item.portfolioId,
-      portfolioName: item.portfolioName,
-      cashDelta: item.cashDelta,
-      tasks: item.tasks.map(toTask),
-      startedAt: item.startedAt,
-      completedAt: item.completedAt,
-      result: toResult(item.result),
-    };
-  },
-  fromData: (id, data) => ({
-    id,
-    accountId: text(data.accountId),
-    accountName: text(data.accountName),
-    portfolioId: text(data.portfolioId),
-    portfolioName: text(data.portfolioName),
-    cashDelta: num(data.cashDelta),
-    tasks: Array.isArray(data.tasks) ? data.tasks.map(toTask) : [],
-    startedAt: text(data.startedAt),
-    completedAt: typeof data.completedAt === "string" ? data.completedAt : null,
-    result: toResult(data.result),
-  }),
-};

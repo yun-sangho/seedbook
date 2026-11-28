@@ -6,9 +6,8 @@ import {
   SYNC_PROTOCOL,
   type SyncOpResult,
 } from "@seedbook/domain";
-import type { Tx } from "../entity-repo";
 import { checkSyncHeaders, hashUserId, type SyncDeps, writeLog } from "./http";
-import { type AppliedOp, applyOp } from "./record-repo";
+import { type AppliedOp, applyOp, type Tx } from "./record-repo";
 
 /**
  * `POST /api/sync/v2/push` (설계 §4.2). body `{ ops: SyncOp[] }` 를 한 트랜잭션에서 순서대로
@@ -62,17 +61,45 @@ export async function handlePush(request: Request, deps: SyncDeps): Promise<Resp
   return Response.json({ results } satisfies PushResponse);
 }
 
+/** PostgreSQL 오류 코드 (drizzle 이 감싼 경우 `cause` 에 있다). */
+function pgErrorCode(error: unknown): string | null {
+  const direct = (error as { code?: unknown } | null)?.code;
+  if (typeof direct === "string") return direct;
+  const cause = (error as { cause?: { code?: unknown } } | null)?.cause?.code;
+  return typeof cause === "string" ? cause : null;
+}
+
 /**
- * op 하나를 savepoint 안에서 적용한다. DB 가 거절한 op (가리키는 포트폴리오가 없는 연결 같은 외래 키
- * 위반) 는 그 op 만 되돌리고 `invalid` 로 답한다 — 한 op 때문에 요청 전체가 실패하면 기기의 outbox 가
- * 같은 묶음을 끝없이 다시 보낸다.
+ * DB 가 이 op 의 값 때문에 거절했는지 — 다시 보내도 같은 결과라 `invalid` 로 답할 오류다.
+ * - 22xxx (값 오류: 범위 밖 숫자 등), 23503 (외래 키 위반: 없는 포트폴리오를 가리키는 연결),
+ *   23505 (고유 제약), 23514 (CHECK).
+ *
+ * 그 밖(없는 컬럼 42703, NOT NULL 23502, 연결·직렬화 오류 …)은 서버 쪽 문제다 — 배포 중 스키마와
+ * 코드가 잠깐 어긋난 경우 등. `invalid` 로 답하면 기기가 그 편집을 격리하고 서버 값으로 되돌리므로,
+ * 요청 전체를 실패(500)시켜 기기가 나중에 다시 보내게 한다.
+ */
+export function isOpRefusedByDatabase(error: unknown): boolean {
+  const code = pgErrorCode(error);
+  if (code === null) return false;
+  return code.startsWith("22") || code === "23503" || code === "23505" || code === "23514";
+}
+
+/**
+ * op 하나를 savepoint 안에서 적용한다. DB 가 op 의 값 때문에 거절한 op 는 그 op 만 되돌리고
+ * `invalid` 로 답한다 — 한 op 때문에 요청 전체가 실패하면 기기의 outbox 가 같은 묶음을 끝없이 다시
+ * 보낸다. 서버 쪽 오류는 다시 던져 요청 전체를 실패시킨다 (`isOpRefusedByDatabase`).
  */
 async function applyOpInSavepoint(tx: Tx, userId: string, op: unknown): Promise<AppliedOp> {
   try {
     return await tx.transaction((savepoint) => applyOp(savepoint as Tx, userId, op));
   } catch (error) {
+    const code = pgErrorCode(error);
+    if (!isOpRefusedByDatabase(error)) {
+      console.error("[sync] push failed on a server error", code);
+      throw error;
+    }
     const type = (op as { type?: unknown } | null)?.type;
-    console.warn("[sync] push op refused by the database", (error as { code?: string }).code);
+    console.warn("[sync] push op refused by the database", code);
     return {
       type: typeof type === "string" ? type : null,
       result: { status: "rejected", code: "invalid" },

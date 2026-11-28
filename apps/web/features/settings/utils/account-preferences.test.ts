@@ -12,7 +12,6 @@ describe("parseAccountPreferences", () => {
       rebalancingCollapsedSections: ["filled"],
       accountSortOption: "evalAsc",
       portfolioStockSortOption: "nameAsc",
-      investmentTrendRange: "1year",
       holdingsSortOption: "priceAsc",
     };
 
@@ -24,16 +23,19 @@ describe("parseAccountPreferences", () => {
       parseAccountPreferences({
         accountSortOption: "default",
         portfolioStockSortOption: "priceDesc",
-        investmentTrendRange: "2years",
         rebalancingTaskSort: 3,
         holdingsSortOption: "default",
       })
     ).toEqual({});
   });
 
-  it("drops unknown keys", () => {
+  it("drops unknown keys, including the removed chart range an old client may still send", () => {
     expect(
-      parseAccountPreferences({ storageMode: "cloud", accountSortOption: "evalDesc" })
+      parseAccountPreferences({
+        storageMode: "cloud",
+        investmentTrendRange: "1year",
+        accountSortOption: "evalDesc",
+      })
     ).toEqual({ accountSortOption: "evalDesc" });
   });
 
@@ -55,9 +57,9 @@ describe("invalidPreferenceKeys", () => {
       invalidPreferenceKeys({
         accountSortOption: "evalAsc",
         portfolioStockSortOption: "nope",
-        investmentTrendRange: null,
+        rebalancingTaskSort: null,
       })
-    ).toEqual(["portfolioStockSortOption", "investmentTrendRange"]);
+    ).toEqual(["rebalancingTaskSort", "portfolioStockSortOption"]);
   });
 
   it("accepts a collapsed-section list with unknown names (they are dropped, not rejected)", () => {
@@ -72,7 +74,6 @@ describe("DEFAULT_ACCOUNT_PREFERENCES", () => {
       rebalancingCollapsedSections: [],
       accountSortOption: "evalDesc",
       portfolioStockSortOption: "driftDesc",
-      investmentTrendRange: "3months",
       holdingsSortOption: "evalDesc",
     });
   });

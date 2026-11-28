@@ -49,8 +49,6 @@ describe("hybrid storage for record stores in cloud mode", () => {
 
   beforeEach(() => {
     localStorage.clear();
-    // 레거시 number id 일회성 업그레이드는 이미 끝난 상태로 둔다 (실사용자와 같은 조건).
-    localStorage.setItem("seedbook.localIdUpgraded.v1", "1");
     fetchMock.mockReset();
     vi.stubGlobal("fetch", fetchMock);
   });
@@ -70,7 +68,7 @@ describe("hybrid storage for record stores in cloud mode", () => {
     );
     expect(JSON.parse(raw as string)).toEqual({
       state: { sessions: [{ id: SESSION, ...sessionRecord.fields, tasks: [] }] },
-      version: 1,
+      version: 0,
     });
     expect(syncState()).toMatchObject({ cursor: "c1" });
   });
@@ -87,14 +85,13 @@ describe("hybrid storage for record stores in cloud mode", () => {
       currentValue: 0,
       note: "",
       color: "#000000",
-      sellCostPercent: 0,
       records: [],
       holdings: [],
       cashItems: [],
     };
     await storage.setItem(
       "investment-storage",
-      JSON.stringify({ state: { investments: [item] }, version: 6 })
+      JSON.stringify({ state: { investments: [item] }, version: 0 })
     );
 
     const raw = await storage.getItem("investment-storage");
@@ -123,7 +120,7 @@ describe("hybrid storage for record stores in cloud mode", () => {
             },
           ],
         },
-        version: 6,
+        version: 0,
       })
     );
 
@@ -132,55 +129,5 @@ describe("hybrid storage for record stores in cloud mode", () => {
       // NaN 은 저장 전에 0 으로 정리된다.
       fields: expect.objectContaining({ accountName: "연금", currentValue: 0 }),
     });
-  });
-
-  it("carries over the edits the v1 engine had not sent yet", async () => {
-    localStorage.setItem(
-      "investment-storage",
-      JSON.stringify({
-        state: {
-          investments: [
-            {
-              id: ACCOUNT,
-              accountName: "보내지 못한 이름",
-              accountType: "연금",
-              currency: "KRW",
-              initialInvestment: 0,
-              currentValue: 0,
-              color: "#000000",
-            },
-          ],
-        },
-        version: 6,
-      })
-    );
-    localStorage.setItem(
-      "seedbook.sync.investment",
-      JSON.stringify({ userId: "u1", meta: { outbox: { [ACCOUNT]: { op: "upsert", seq: 1 } } } })
-    );
-    const pushed: unknown[] = [];
-    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
-      if (url.includes("/push")) {
-        const { ops } = JSON.parse(String(init?.body)) as { ops: unknown[] };
-        pushed.push(...ops);
-        return new Response(
-          JSON.stringify({ results: ops.map(() => ({ status: "ok", version: 1, changeSeq: "1" })) })
-        );
-      }
-      return pullResponse([]);
-    });
-    const storage = (await loadCloudStorage())("investment-storage");
-
-    await storage.getItem("investment-storage");
-
-    expect(pushed).toEqual([
-      expect.objectContaining({
-        type: "account",
-        id: ACCOUNT,
-        op: "create",
-        fields: expect.objectContaining({ accountName: "보내지 못한 이름" }),
-      }),
-    ]);
-    expect(localStorage.getItem("seedbook.sync.investment")).toBeNull();
   });
 });

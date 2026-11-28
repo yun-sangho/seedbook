@@ -23,7 +23,6 @@ export function accountItem(id: string, name: string, extra: Record<string, unkn
     currentValue: 1_200_000,
     note: "",
     color: "#ff0000",
-    sellCostPercent: 0.2,
     records: [] as unknown[],
     holdings: [] as unknown[],
     cashItems: [] as unknown[],
@@ -126,6 +125,5 @@ export const preferencesState = () => ({
   rebalancingCollapsedSections: ["filled"],
   accountSortOption: "evalAsc",
   portfolioStockSortOption: "nameAsc",
-  investmentTrendRange: "1year",
   holdingsSortOption: "nameAsc",
 });
