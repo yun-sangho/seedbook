@@ -109,6 +109,9 @@ importers:
       '@seedbook/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@seedbook/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@serwist/next':
         specifier: 9.5.13
         version: 9.5.13(@serwist/cli@9.5.13)(next@16.4.6)(react@19.3.1)(typescript@7.0.2)
