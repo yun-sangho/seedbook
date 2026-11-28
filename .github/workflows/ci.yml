@@ -65,7 +65,7 @@ jobs:
           pattern+='|^apps/web/lib/(auth|apple-auth|storage-|account-header|login-flow)'
           pattern+='|^apps/web/lib/(sync|legal|seed-identity|stock-quotes)/'
           pattern+='|^apps/web/features/[^/]+/(types|sync)/'
-          pattern+='|^apps/web/features/settings/utils/(data-backup|demo-data|backup-ids|reassign-ids)'
+          pattern+='|^apps/web/features/settings/utils/(data-backup|backup-ids|reassign-ids)'
           pattern+='|^apps/web/features/portfolio/utils/portfolio-links'
           pattern+='|^apps/web/features/rebalancing/utils/(collapsed-sections|sort-rebalancing-tasks)'
           pattern+='|^apps/web/(vitest\.db\.config\.ts|package\.json|tsconfig\.json)$'

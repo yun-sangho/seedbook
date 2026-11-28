@@ -198,10 +198,10 @@ export function StorageModeActivity() {
   );
 }
 
-/** 설정 → 백업·데모 데이터. */
+/** 설정 → 백업. */
 export function DataBackupActivity() {
   return (
-    <DetailScreen title="백업·데모 데이터">
+    <DetailScreen title="백업">
       <DataBackupMobile />
     </DetailScreen>
   );

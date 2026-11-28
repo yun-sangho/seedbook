@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import {
   IconDocumentArrowLeftLine,
   IconDocumentPlusLine,
-  IconSparkle2Line,
 } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
 import { useInvestmentStore } from "@web/features/investments/stores/investment-store";
@@ -17,7 +16,6 @@ import {
   buildBackup,
   parseBackup,
 } from "@web/features/settings/utils/data-backup";
-import { assignDemoDataIds } from "@web/features/settings/utils/demo-data";
 import { restoreBackupSections } from "@web/features/settings/utils/restore-backup";
 import { getActiveAccount } from "@web/lib/account-storage";
 import { flushDeviceStorage } from "@web/lib/device-storage";
@@ -34,20 +32,17 @@ import {
 } from "@web/seed-design/ui/alert-dialog";
 import { List, ListButtonItem } from "@web/seed-design/ui/list";
 
-const DEMO_DATA_URL = "/seed-data/user-data.json";
-
-/** 데이터 가져오기·데모 데이터의 확인과 결과 안내. */
+/** 데이터 가져오기의 확인과 결과 안내. */
 type DataDialog =
   | { kind: "closed" }
   | {
       kind: "confirm-restore";
-      source: "file" | "demo";
       data: Partial<BackupSections>;
       newIds?: ReadonlyMap<string, string>;
     }
   | { kind: "message"; title: string; description: string; reloadOnClose?: boolean };
 
-/** 설정 → 백업·데모 데이터. 내보내기·가져오기와 데모 데이터 불러오기. */
+/** 설정 → 백업. 내보내기·가져오기. */
 export function DataBackupMobile() {
   const [dataDialog, setDataDialog] = useState<DataDialog>({ kind: "closed" });
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -71,7 +66,7 @@ export function DataBackupMobile() {
       const { data, newIds } = await resolveBackupIds(parsed, userId, {
         fetchOwnIds: fetchCloudItemIds,
       });
-      setDataDialog({ kind: "confirm-restore", source: "file", data, newIds });
+      setDataDialog({ kind: "confirm-restore", data, newIds });
     } catch (error) {
       console.error(error);
       showError("파일을 확인하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.");
@@ -108,22 +103,6 @@ export function DataBackupMobile() {
         console.error(error);
         showError("파일을 읽지 못했어요. 내보낸 JSON 파일인지 확인해 주세요.");
       });
-  };
-
-  const loadDemoData = async () => {
-    try {
-      const res = await fetch(DEMO_DATA_URL, { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const parsed = parseBackup(await res.json());
-      if (!parsed.ok) throw new Error("invalid demo data file");
-      const userId = getActiveAccount();
-      if (!userId) throw new Error("no active account");
-      const data = await assignDemoDataIds(parsed.data, userId);
-      setDataDialog({ kind: "confirm-restore", source: "demo", data });
-    } catch (error) {
-      console.error(error);
-      showError("데모 데이터를 받지 못했어요. 잠시 뒤 다시 시도해 주세요.");
-    }
   };
 
   const confirmRestore = (data: Partial<BackupSections>, newIds?: ReadonlyMap<string, string>) => {
@@ -163,12 +142,6 @@ export function DataBackupMobile() {
           detail="내보낸 JSON 파일의 항목으로 지금 데이터를 바꿔요"
           onClick={() => fileInputRef.current?.click()}
         />
-        <ListButtonItem
-          prefix={<Icon svg={<IconSparkle2Line />} />}
-          title="데모 데이터 불러오기"
-          detail="샘플 계좌·포트폴리오로 둘러볼 수 있어요"
-          onClick={loadDemoData}
-        />
       </List>
       <input
         ref={fileInputRef}
@@ -190,11 +163,7 @@ export function DataBackupMobile() {
           {dataDialog.kind === "confirm-restore" && (
             <>
               <AlertDialogHeader>
-                <AlertDialogTitle>
-                  {dataDialog.source === "demo"
-                    ? "데모 데이터를 불러올까요?"
-                    : "데이터를 가져올까요?"}
-                </AlertDialogTitle>
+                <AlertDialogTitle>데이터를 가져올까요?</AlertDialogTitle>
                 <AlertDialogDescription>
                   파일에 담긴 항목은 지금 데이터를 덮어써요. 필요하면 먼저 내보내기로 백업해 두세요.
                 </AlertDialogDescription>

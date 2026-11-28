@@ -184,14 +184,6 @@ export function GardenOverviewList({
           title="첫 씨앗을 심어 보세요"
           description="포트폴리오를 만들면 정원에 씨앗이 심겨요. 목표 금액을 정하면 자라기 시작해요."
           primaryActionProps={{ children: "첫 씨앗 심기", onClick: onPlantFirstSeed }}
-          secondaryActionProps={
-            investments.length === 0
-              ? {
-                  children: "설정에서 데모 데이터 불러오기",
-                  onClick: () => push("Settings", {}),
-                }
-              : undefined
-          }
         />
       ) : (
         <>

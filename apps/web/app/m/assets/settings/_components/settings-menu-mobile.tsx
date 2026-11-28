@@ -106,8 +106,8 @@ export function SettingsMenuMobile() {
         />
         <ListButtonItem
           prefix={<Icon svg={<IconDocumentTrayLine />} />}
-          title="백업·데모 데이터"
-          detail="내보내기, 가져오기, 데모 데이터 불러오기"
+          title="백업"
+          detail="내보내기, 가져오기"
           suffix={chevron}
           onClick={() => push("DataBackup", {})}
         />

@@ -4,7 +4,7 @@ import { useRebalancingStore } from "@web/features/rebalancing/stores/rebalancin
 import type { BackupSections } from "./data-backup";
 
 /**
- * 백업(또는 데모 데이터)을 store 에 반영한다. 파일에 있는 항목만 바꾼다 — 예전 백업에는
+ * 백업을 store 에 반영한다. 파일에 있는 항목만 바꾼다 — 예전 백업에는
  * 포트폴리오·리밸런싱이 없을 수 있다. 저장(·cloud 모드 동기화)은 각 store 의 persist 가 한다.
  *
  * `newIds`: 가져오며 바꾼 id (원래 → 새 id). 파일에 없어 그대로 두는 포트폴리오·리밸런싱이 복원한

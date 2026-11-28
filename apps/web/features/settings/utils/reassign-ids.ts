@@ -1,6 +1,6 @@
 import type { BackupSections } from "./data-backup";
 
-// 데모 데이터 id 도 이 값으로 만들었다 — 바꾸면 이미 올린 데모 데이터와 중복된다.
+// 바꾸면 같은 백업을 다시 가져올 때 전과 다른 id 가 나와 중복된다.
 const ID_NAMESPACE = "seedbook-demo-data";
 
 const NO_IDS: ReadonlySet<string> = new Set();
