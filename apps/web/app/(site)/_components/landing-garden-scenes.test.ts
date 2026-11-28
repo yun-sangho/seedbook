@@ -43,6 +43,20 @@ describe("landingGardenSlots", () => {
   });
 });
 
+describe("hero garden", () => {
+  it("has no leaning plant", () => {
+    expect(LANDING_GARDEN_PLANTS.garden.some((plant) => plant.needsRebalance)).toBe(false);
+  });
+
+  it("includes a fern sprout", () => {
+    expect(
+      LANDING_GARDEN_PLANTS.garden.some(
+        (plant) => "kind" in plant && plant.kind === "fern" && plant.stage === "sprout"
+      )
+    ).toBe(true);
+  });
+});
+
 describe("growth scene", () => {
   it("shows the same plant at every stage from seed to fruit, in order", () => {
     const plants = LANDING_GARDEN_PLANTS.growth;

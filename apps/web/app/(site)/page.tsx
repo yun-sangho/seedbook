@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import { userAgent } from "next/server";
-import { REBALANCE_BADGE_COLOR } from "@mobile/features/garden/plant-3d/plant-options";
+import { PlantAvatar } from "@mobile/features/garden/components/plant-avatar";
 import { resolveDeviceKind, VIEW_OVERRIDE_COOKIE } from "@mobile/lib/device";
 import { Badge } from "@mobile/seed-design/ui/badge";
 import { Divider, HStack, Text } from "@seed-design/react";
@@ -26,8 +26,8 @@ export const metadata: Metadata = {
 };
 
 /**
- * 목표 예시 — 자산마다 목표·기준·지금까지 온 정도(%). 저축·대출은 아직 없는 기능이라 그림 설명에 "예시" 와
- * "준비 중" 을 함께 적는다.
+ * 목표 예시 — 자산마다 목표·기준·지금까지 온 정도(%). 저축·대출은 아직 없는 기능이라 그림 설명에 "준비 중" 을
+ * 적는다.
  */
 const exampleGoals = [
   {
@@ -42,7 +42,7 @@ const exampleGoals = [
 
 /**
  * 기준 확인 예시 — 자산마다 정한 기준과 지금 상태, 맞추려면 할 일. 저축·대출은 아직 없는 기능이라 그림 설명에
- * "예시" 와 "준비 중" 을 함께 적는다. 종목 이름은 쓰지 않는다 (투자 권유로 읽히지 않게).
+ * "준비 중" 을 적는다. 종목 이름은 쓰지 않는다 (투자 권유로 읽히지 않게).
  */
 const exampleChecks = [
   {
@@ -61,6 +61,29 @@ const exampleChecks = [
     off: false,
   },
 ];
+
+/**
+ * 이룬 목표 예시 — 이룬 목표(주), 어느 자산에서 얼마나 걸렸는지, 이루면 하고 싶었던 일(부). 지금 있는 기능인
+ * 투자 포트폴리오만 쓴다. 앱의 바구니 카드에서 왔지만 화면 문구에는 "수확"·"바구니" 같은 낯선 말을 쓰지 않는다.
+ */
+const exampleHarvests = [
+  {
+    goal: "3,000만원 모으기",
+    source: "투자 포트폴리오 · 2년 2개월",
+    wish: "가족과 제주도 여행 가기",
+    done: true,
+    kind: "tree",
+    pot: "sun",
+  },
+  {
+    goal: "1,000만원 모으기",
+    source: "투자 포트폴리오 · 1년 9개월",
+    wish: "부모님 새 냉장고 사 드리기",
+    done: false,
+    kind: "fern",
+    pot: "sky",
+  },
+] as const;
 
 /** 다루는 자산과 각각의 목표·기준. 아직 없는 것은 `ready: false` 로 "준비 중" 을 붙인다. */
 const assetKinds = [
@@ -96,23 +119,23 @@ const assetKinds = [
 
 const facts = [
   {
-    title: "주문을 대신 넣지 않아요",
+    title: "자산 관리를 대신하지 않아요",
     description:
-      "증권사 계좌에 연결하지 않고 종목을 추천하지도 않아요. 계산 결과는 내가 정한 목표 비중으로 낸 값이에요. 보유 수량은 직접 입력하고, 매매는 직접 판단해 쓰던 증권사에서 해요.",
+      "증권사 계좌에 연결하거나 종목을 추천하지 않아요. 사고파는 건 내가 판단해서 내 증권사 앱에서 해요.",
   },
   {
-    title: "개인정보 없이 로그인해요",
+    title: "개인을 특정할 수 있는 정보를 활용하지 않아요",
     description:
-      "카카오·Apple 로그인에서 이름·이메일·프로필 사진을 받지 않아요. 로그인을 확인하는 번호만 저장해요.",
+      "카카오·Apple 로그인에서 이름·이메일·프로필 사진을 받지 않고, 접속 IP와 기기 정보도 저장하지 않아요.",
   },
   {
-    title: "어디에 저장할지 직접 골라요",
+    title: "자산 정보를 내 스마트폰에만 둘 수 있어요",
     description:
-      "이 기기에만 두거나, 클라우드에 저장해 같은 계정의 다른 기기에서도 볼 수 있어요. 저장 위치를 바꿔도 양쪽 데이터를 합쳐요.",
+      "내 스마트폰에만 저장하면 자산 정보가 스마트폰 밖으로 나가지 않아요. 다른 기기에서도 보려면 클라우드 저장을 고르면 돼요.",
   },
   {
-    title: "언제든 파일로 꺼낼 수 있어요",
-    description: "계좌와 목표, 매매 기록을 JSON 파일로 내보내고 다시 가져와요.",
+    title: "자산 정보를 다른 곳에 쓰지 않아요",
+    description: "내 자산 정보를 광고에 쓰지 않고, 다른 회사에 팔거나 넘기지 않아요.",
   },
 ];
 
@@ -161,7 +184,7 @@ function Step({
   return (
     <li className="grid items-center gap-x10 md:grid-cols-2 md:gap-x16">
       <div className={reverse ? "md:order-last" : undefined}>
-        <span className="landing-mint landing-leaf t5-bold flex size-x8 items-center justify-center rounded-full">
+        <span className="bg-bg-neutral-inverted text-fg-neutral-inverted t6-bold flex size-x10 items-center justify-center rounded-full tabular-nums">
           {step}
         </span>
         <p className="t5-medium text-fg-neutral-subtle mt-x4">{before}</p>
@@ -228,15 +251,34 @@ function StandardCheckExample({ className }: { className?: string }) {
   );
 }
 
-function RebalanceBadge() {
+/** 이룬 목표 예시. 이룬 목표가 크게, 그때 하고 싶었던 일이 그 아래 작게 남는 모습. */
+function HarvestExample() {
   return (
-    <span
-      aria-hidden
-      className="inline-flex size-[1.4em] items-center justify-center rounded-full align-[-0.2em] text-[0.8em] font-bold text-white"
-      style={{ backgroundColor: REBALANCE_BADGE_COLOR }}
-    >
-      !
-    </span>
+    <ul className="mx-auto flex w-full max-w-[420px] flex-col gap-x3">
+      {exampleHarvests.map((item) => (
+        <li
+          key={item.goal}
+          className="bg-bg-layer-default border-stroke-neutral-subtle rounded-r5 flex gap-x4 border p-x5 shadow-[0_16px_32px_-24px_rgba(0,0,0,0.35)]"
+        >
+          <span className="shrink-0">
+            <PlantAvatar stage="bloom" kind={item.kind} pot={item.pot} ripe size={56} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="t3-bold landing-leaf">목표 달성</p>
+            <p className="t7-bold mt-x0_5 tabular-nums">{item.goal}</p>
+            <p className="t3-regular text-fg-neutral-subtle mt-x0_5 tabular-nums">{item.source}</p>
+            <div className="bg-bg-neutral-weak rounded-r2 mt-x3 flex items-center justify-between gap-x2 px-x3 py-x2">
+              <p className="t4-regular min-w-0 text-fg-neutral-muted">{item.wish}</p>
+              <span
+                className={`t3-bold shrink-0 ${item.done ? "text-fg-neutral" : "text-fg-neutral-subtle"}`}
+              >
+                {item.done ? "✓ 했어요" : "아직"}
+              </span>
+            </div>
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -258,8 +300,7 @@ export default async function HomePage() {
               <span className="landing-leaf">내 기준대로 이뤄 가요</span>
             </h1>
             <p className="t5-regular md:t7-regular text-fg-neutral-muted mt-x5 max-w-xl">
-              투자 포트폴리오, 저축, 적금, 대출처럼 자산마다 목표와 지킬 기준을 정해요. 지금
-              어디쯤인지 보여 주고, 기준에서 벗어나면 알려 주고, 이룬 목표는 눈에 보이게 쌓여요.
+              자산마다 목표와 기준을 정하면, 지금 어디쯤인지 보여 주고 이룬 목표는 쌓여 가요.
             </p>
             <div className="mt-x10">
               <StartAction desktop={desktop} host={host} />
@@ -271,20 +312,93 @@ export default async function HomePage() {
           <figure>
             <LandingGarden
               scene="garden"
-              alt="화분 세 개가 놓인 앱 첫 화면. 꽃이 핀 나무, 기울어진 채 ! 표시가 뜬 나무, 어린 묘목이 있다"
+              alt="화분 세 개가 놓인 정원. 어린 묘목, 꽃이 피고 열매 맺은 나무, 막 돋은 고사리 새순이 있다"
               priority
               className="rounded-r6"
             />
             <figcaption className="t3-regular text-fg-neutral-subtle mt-x3 text-center">
-              목표에 가까워질수록 식물이 자라요 · 데모 데이터예요
+              목표에 가까워질수록 식물이 자라요
             </figcaption>
           </figure>
         </section>
 
-        {/* 2. 다루는 자산 — 자산마다 목표와 기준. 아직 없는 것은 준비 중 */}
-        <section className={`${SECTION} pb-x16 md:pb-24`}>
-          <h2 className="t10-bold">자산마다 목표와 기준을 정해요</h2>
-          <ul className="mt-x8 grid gap-x4 md:grid-cols-2 lg:grid-cols-4">
+        {/* 2. 목표를 이뤄 가는 네 걸음 — 번거롭던 일 → 얻는 것 */}
+        <section className="bg-bg-neutral-weak">
+          <div className={`${SECTION} py-x12 md:py-20`}>
+            <h2 className="sr-only">목표를 이뤄 가는 네 걸음</h2>
+            <ol className="flex flex-col gap-x16 md:gap-20">
+              <Step
+                step={1}
+                before="어떻게 모아야 할지 막막했다면"
+                title="목표와 기준부터 정해요"
+                description="이루고 싶은 목표를 정하고, 거기까지 가는 동안 지킬 기준을 함께 정해요. 여러 계좌에 나뉜 자산도 한 화면에 모아 봐요."
+              >
+                <figure>
+                  <GoalExample />
+                  <figcaption className="t3-regular text-fg-neutral-subtle mt-x3 text-center">
+                    저축·대출은 준비 중이에요
+                  </figcaption>
+                </figure>
+              </Step>
+
+              <Step
+                step={2}
+                reverse
+                before="정해 둔 기준을 지키기 어려웠다면"
+                title="기준에서 벗어나면 알려 줘요"
+                description="비중이 한쪽으로 쏠리거나 매달 넣기로 한 금액이 모자라면 바로 알 수 있어요. 기준으로 돌아가려면 무엇을 얼마나 하면 되는지도 계산해 보여 줘요."
+              >
+                <figure>
+                  <div className="relative">
+                    <LandingGarden
+                      scene="rebalance"
+                      alt="같은 크기의 나무 두 그루. 왼쪽은 똑바로 서 있고, 오른쪽은 기울어진 채 ! 표시가 떠 있다"
+                      className="rounded-r6"
+                    />
+                    <StandardCheckExample className="mx-auto -mt-x10 w-[88%] max-w-[340px] md:absolute md:right-[-16px] md:bottom-[-40px] md:mt-0 md:w-[300px]" />
+                  </div>
+                  <figcaption className="t3-regular text-fg-neutral-subtle mt-x3 text-center md:mt-x12">
+                    기준에서 벗어나면 기울고 ! 표시가 떠요 · 저축·대출은 준비 중이에요
+                  </figcaption>
+                </figure>
+              </Step>
+
+              <Step
+                step={3}
+                before="꾸준히 모아도 티가 나지 않았다면"
+                title="목표에 가까워질수록 식물이 자라요"
+                description="목표에 다가간 만큼 씨앗이 새싹이 되고, 나무가 돼요."
+              >
+                <figure>
+                  <LandingGarden
+                    scene="growth"
+                    alt="같은 식물의 다섯 모습이 한 줄로 서 있다. 왼쪽 씨앗부터 새싹, 묘목, 나무, 열매 맺은 나무까지"
+                    className="rounded-r6"
+                  />
+                  <div className="text-fg-neutral-subtle t3-regular mt-x3 flex justify-between px-x2">
+                    <span>목표를 정했을 때</span>
+                    <span>목표를 이뤘을 때</span>
+                  </div>
+                </figure>
+              </Step>
+
+              <Step
+                step={4}
+                reverse
+                before="목표를 이루고도 그냥 지나쳤다면"
+                title="이룬 목표는 기록으로 남아요"
+                description="목표를 이루면 그 순간을 기념하고, 하고 싶었던 일을 해 보세요."
+              >
+                <HarvestExample />
+              </Step>
+            </ol>
+          </div>
+        </section>
+
+        {/* 3. 다루는 자산 — 자산마다 목표와 기준. 아직 없는 것은 준비 중 */}
+        <section className={`${SECTION} py-x12 md:py-16`}>
+          <h2 className="t6-bold text-fg-neutral-muted">자산마다 목표와 기준을 정해요</h2>
+          <ul className="mt-x4 grid gap-x4 md:grid-cols-2 lg:grid-cols-4">
             {assetKinds.map((kind) => (
               <li
                 key={kind.name}
@@ -312,80 +426,13 @@ export default async function HomePage() {
           </ul>
         </section>
 
-        {/* 3. 목표를 이뤄 가는 세 걸음 — 번거롭던 일 → 얻는 것 */}
-        <section className="bg-bg-neutral-weak">
-          <div className={`${SECTION} py-x16 md:py-28`}>
-            <h2 className="t10-bold">목표를 이뤄 가는 세 걸음</h2>
-            <ol className="mt-x12 flex flex-col gap-x16 md:mt-x16 md:gap-28">
-              <Step
-                step={1}
-                before="모으고는 있는데 어디까지 가야 할지 모르겠다면"
-                title="목표와 기준부터 정해요"
-                description="모을 금액, 다 갚을 날처럼 이루고 싶은 목표를 정하고, 그 목표로 가는 동안 지킬 기준을 함께 정해요. 여러 곳에 흩어진 자산을 모아 지금 어디쯤인지 한 화면에서 봐요."
-              >
-                <figure>
-                  <GoalExample />
-                  <figcaption className="t3-regular text-fg-neutral-subtle mt-x3 text-center">
-                    예시예요 · 저축·대출은 준비 중이에요
-                  </figcaption>
-                </figure>
-              </Step>
-
-              <Step
-                step={2}
-                reverse
-                before="정해 둔 기준을 잊고 지내고 있다면"
-                title="기준에서 벗어나면 알려 주고, 맞출 방법을 계산해요"
-                description={
-                  <>
-                    자산을 나눌 비중이든 매달 넣을 금액이든, 정해 둔 기준에서 벗어나면{" "}
-                    <RebalanceBadge /> 표시로 알려 줘요. 다시 맞추려면 무엇을 얼마나 하면 되는지
-                    계산해 드려요. 실제 거래와 이체는 쓰던 금융사에서 직접 해요.
-                  </>
-                }
-              >
-                <figure>
-                  <div className="relative">
-                    <LandingGarden
-                      scene="rebalance"
-                      alt="같은 크기의 나무 두 그루. 왼쪽은 똑바로 서 있고, 오른쪽은 기울어진 채 ! 표시가 떠 있다"
-                      className="rounded-r6"
-                    />
-                    <StandardCheckExample className="mx-auto -mt-x10 w-[88%] max-w-[340px] md:absolute md:right-[-16px] md:bottom-[-40px] md:mt-0 md:w-[300px]" />
-                  </div>
-                  <figcaption className="t3-regular text-fg-neutral-subtle mt-x3 text-center md:mt-x12">
-                    기준에서 벗어나면 기울고 ! 표시가 떠요 · 카드는 예시예요 (저축·대출은 준비 중)
-                  </figcaption>
-                </figure>
-              </Step>
-
-              <Step
-                step={3}
-                before="꾸준히 해도 티가 나지 않았다면"
-                title="이룬 목표가 눈에 보이게 쌓여요"
-                description="목표에 가까워질수록 식물이 자라요. 목표를 이루면 걸린 기간과 처음에 적어 둔 하고 싶은 일이 기록으로 남고, 다음 목표로 이어 가요."
-              >
-                <figure>
-                  <LandingGarden
-                    scene="growth"
-                    alt="같은 식물의 다섯 모습이 한 줄로 서 있다. 왼쪽 씨앗부터 새싹, 묘목, 나무, 열매 맺은 나무까지"
-                    className="rounded-r6"
-                  />
-                  <div className="text-fg-neutral-subtle t3-regular mt-x3 flex justify-between px-x2">
-                    <span>목표를 정했을 때</span>
-                    <span>목표를 이뤘을 때</span>
-                  </div>
-                </figure>
-              </Step>
-            </ol>
-          </div>
-        </section>
-
         {/* 4. 믿고 쓸 수 있는 이유 */}
         <section className="landing-mint">
-          <div className={`${SECTION} py-x16 md:py-24`}>
-            <h2 className="t10-bold">내 돈은 쓰던 증권사에 그대로 있어요</h2>
-            <dl className="mt-x8 grid gap-x8 md:grid-cols-2 md:gap-x-x12">
+          <div className={`${SECTION} py-x12 md:py-16`}>
+            <h2 className="sr-only">
+              자산 관리를 대신하지 않고, 자산 정보를 다른 곳에 쓰지 않아요
+            </h2>
+            <dl className="grid gap-x8 md:grid-cols-2 md:gap-x-x12">
               {facts.map((fact) => (
                 <div key={fact.title}>
                   <dt className="t6-bold">{fact.title}</dt>
