@@ -139,7 +139,7 @@ describe("advancePlant", () => {
     expect(advancePlant(p, evaluation(1_000_000), NOW)).toBe(p);
   });
 
-  it("ripens the fruit at flowers and fruit without changing the stage", () => {
+  it("bears fruit at the flower stage without changing the stage", () => {
     const p = progress({ growthStage: 4, goalHistory: FOUR_GOALS, goalAmount: 500_000 });
 
     const ripe = advancePlant(p, evaluation(500_000), NOW);
@@ -192,7 +192,7 @@ describe("seasonGoalState", () => {
     expect(seasonGoalState(p, evaluation(0))).toBe("needs-fruit-goal");
   });
 
-  it("is ripe once the fruit goal is reached, even while drifting", () => {
+  it("is ripe (fruit on the plant) once the fruit goal is reached, even while drifting", () => {
     const p = progress({ growthStage: 4, goalHistory: FOUR_GOALS, fruitGoal: reached(500_000) });
 
     expect(seasonGoalState(p, evaluation(0, { drifting: true }))).toBe("ripe");
@@ -349,6 +349,18 @@ describe("harvestPlant", () => {
 
     expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-/);
     expect(harvestPlant(legacy, "tree", NOW)?.harvest.id).toBe(id);
+  });
+
+  it("can harvest right after the fruit goal is reached (no ripening step)", () => {
+    const flowers = {
+      ...progress({ growthStage: 4, goalHistory: FOUR_GOALS, goalAmount: 500_000 }),
+      id: PORTFOLIO_ID,
+      name: "안정형",
+    };
+
+    const fruit = advancePlant(flowers, evaluation(500_000), NOW);
+
+    expect(harvestPlant(fruit, "tree", NOW)?.harvest.goals).toHaveLength(5);
   });
 
   it("cannot harvest before the fruit is ripe", () => {

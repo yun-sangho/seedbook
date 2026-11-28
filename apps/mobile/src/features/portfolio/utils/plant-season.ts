@@ -16,7 +16,7 @@ import { lastReachedGoal, type PortfolioValuation } from "./portfolio-plant";
  *
  * - 목표는 지금 평가금액과 이번 계절 마지막 달성 목표 중 큰 값의 +10% 이상이어야 한다 (정할 때만).
  * - 금액이 목표에 닿고 **비중이 기준 안** 이어야 한 단계 자란다. 4단계에서 다섯 번째(열매) 목표를
- *   이루면 열매가 익고, 수확하면 수확 기록을 남기고 다음 계절이 씨앗부터 시작한다.
+ *   이루면 열매가 열리고 바로 수확할 수 있다 (익어 가는 단계는 없다). 수확하면 수확 기록을 남기고 다음 계절이 씨앗부터 시작한다.
  * - 비중 이탈을 처음 본 날(`driftSince`)부터 센 기간으로 시든다. 시듦은 보이기만 한다.
  *
  * 화면 연결은 다음 태스크(씨앗 심기·수확 화면)에서 한다 — 그때 `growPlant`·`plantGoalError` 를 대신한다.
@@ -57,7 +57,7 @@ export type NextGoalError = "invalid" | "ripe" | "prices-loading" | "below-floor
 
 export const NEXT_GOAL_ERROR_MESSAGES: Record<NextGoalError, (floor: number | null) => string> = {
   invalid: () => "목표 금액을 1원 이상으로 입력해 주세요",
-  ripe: () => "열매가 익었어요 — 수확한 뒤 새 목표를 정해요",
+  ripe: () => "열매가 열렸어요 — 수확한 뒤 새 목표를 정해요",
   "prices-loading": () => "시세를 불러오는 중이에요",
   "below-floor": (floor) =>
     `목표는 ${numberToKorean(floor ?? 0)} 이상이어야 해요 (지금보다 10% 이상)`,
@@ -94,7 +94,7 @@ function reachesGoal(progress: PlantProgress, evaluation: PlantEvaluation): bool
 }
 
 /**
- * 목표를 이뤘으면 한 단계 자란 진행 (목표는 비우고 이력에 남긴다). 4단계에서는 열매가 익는다
+ * 목표를 이뤘으면 한 단계 자란 진행 (목표는 비우고 이력에 남긴다). 4단계(꽃)에서는 열매가 열린다
  * (`fruitGoal`, 단계는 그대로). 그대로면 같은 참조를 돌려준다. 한 평가에 한 단계만 자란다.
  */
 export function advancePlant<T extends PlantProgress>(
@@ -121,7 +121,7 @@ export function advancePlant<T extends PlantProgress>(
  * - `set`: 목표를 향해 자라는 중
  * - `blocked-by-drift`: 금액은 목표에 닿았는데 비중이 기준 밖 — 비중을 맞추면 자란다
  * - `needs-fruit-goal`: 꽃까지 자랐다 — 열매 목표를 정한다
- * - `ripe`: 열매가 익었다 — 수확할 수 있다 (시듦·바람과 상관없이)
+ * - `ripe`: 열매가 열렸다 — 바로 수확할 수 있다 (시듦·바람과 상관없이)
  */
 export type SeasonGoalState =
   | "needs-goal"
@@ -219,8 +219,8 @@ function seasonHarvestId(portfolioId: string, season: number): string {
 export type HarvestItem = { id: string } & RecordValues<typeof harvestRecord>;
 
 /**
- * 익은 식물을 수확한다 — 수확 기록과 다음 계절의 씨앗 (`season + 1`, 단계·목표·열매·소원을 비운다.
- * 이탈 시작일은 계절과 무관해 그대로). 열매가 익지 않았으면 null. `shownKind` 는 종류를 고른 적
+ * 열매가 열린 식물을 수확한다 — 수확 기록과 다음 계절의 씨앗 (`season + 1`, 단계·목표·열매·소원을 비운다.
+ * 이탈 시작일은 계절과 무관해 그대로). 열매가 열리지 않았으면 null. `shownKind` 는 종류를 고른 적
  * 없을 때 화면에 보이던 종류 (`kindForPortfolio`).
  */
 export function harvestPlant<T extends PlantProgress & { id: string; name: string }>(

@@ -3,10 +3,10 @@ import { f, shape } from "../fields";
 
 export const DRIFT_MODES = ["relative", "absolute"] as const;
 
-/** 포트폴리오 식물의 마지막 성장 단계 (씨앗 0 → 꽃·열매 4). */
+/** 포트폴리오 식물의 마지막 성장 단계 (씨앗 0 → 꽃 4). 열매는 단계가 아니라 `fruitGoal` 이다. */
 export const MAX_PLANT_STAGE = 4;
 
-/** 식물 종류. `tree` 는 씨앗 → 나무 → 꽃·열매, `fern` 은 보스턴고사리. 값 추가는 확장 (open enum). */
+/** 식물 종류. `tree` 는 나무, `fern` 은 보스턴고사리 (둘 다 4단계 꽃 → 열매). 값 추가는 확장 (open enum). */
 export const PLANT_KINDS = ["tree", "fern"] as const;
 
 /** 달성한 목표 하나 (`goalHistory` 항목·`fruitGoal`·수확 기록의 목표). */

@@ -1,7 +1,7 @@
 import type { RecordValues } from "../define-record";
 import type { PLANT_KINDS, portfolio } from "../records/portfolio";
 
-/** 포트폴리오 식물의 성장 단계: 씨앗 0 → 새싹 1 → 묘목 2 → 나무 3 → 꽃·열매 4. */
+/** 포트폴리오 식물의 성장 단계: 씨앗 0 → 새싹 1 → 묘목 2 → 나무 3 → 꽃 4. */
 export type PlantStage = 0 | 1 | 2 | 3 | 4;
 
 /** 식물 종류 (`PLANT_KINDS`). */
@@ -26,5 +26,5 @@ export interface PlantProgress
   growthStage: PlantStage;
 }
 
-/** 꽃·열매 — 단계 목표로 자랄 수 있는 마지막 단계. 그 뒤는 열매 목표다. */
+/** 꽃 — 단계 목표로 자랄 수 있는 마지막 단계. 그 뒤는 열매 목표다 (이루면 열매가 열리고 바로 수확). */
 export const MAX_PLANT_STAGE: PlantStage = 4;

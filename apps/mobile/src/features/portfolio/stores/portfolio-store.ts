@@ -74,7 +74,7 @@ interface PortfolioState {
   /** 이번 계절의 소원을 고친다. 규칙에 어긋나면 false. */
   setPlantWish: (portfolioId: string, wish: string) => boolean;
   /**
-   * 익은 식물을 수확한다 — 수확 기록을 바구니(`useHarvestStore`)에 남기고 다음 계절 씨앗으로
+   * 열매가 열린 식물을 수확한다 — 수확 기록을 바구니(`useHarvestStore`)에 남기고 다음 계절 씨앗으로
    * 되돌린다. 수확 기록 id 를 돌려주고, 익지 않았으면 아무것도 바꾸지 않고 null.
    */
   harvestPlant: (portfolioId: string) => string | null;
