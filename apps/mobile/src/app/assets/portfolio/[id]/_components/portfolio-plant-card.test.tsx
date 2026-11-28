@@ -98,6 +98,19 @@ describe("PortfolioPlantRow", () => {
     expect(onAction).toHaveBeenCalledWith("harvest");
   });
 
+  it("shows only the ripe fruit and the harvest button once ripe", () => {
+    render(
+      <PortfolioPlantRow
+        plant={plant({ stage: 4, goalState: "ripe", goalAmount: null, ripe: true, wish: "여행" })}
+        onAction={vi.fn()}
+      />
+    );
+    expect(screen.getByText("열매가 열렸어요")).toBeTruthy();
+    expect(screen.queryByText("꽃·열매")).toBeNull();
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(screen.queryByRole("button", { name: /이루면/ })).toBeNull();
+  });
+
   it("names wilting and wind", () => {
     render(<PortfolioPlantRow plant={plant({ wilt: 0.7, wind: 0.2 })} onAction={vi.fn()} />);
     expect(screen.getByText(/시들해요 · 바람이 불어요/)).toBeTruthy();

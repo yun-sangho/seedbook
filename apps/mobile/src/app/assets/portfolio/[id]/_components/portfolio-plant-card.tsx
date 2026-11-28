@@ -61,6 +61,22 @@ export function PortfolioPlantRow({
 }) {
   const condition = plantConditionLabel(plant);
   const button = rowButton(plant);
+  // 수확할 수 있으면 그것만 — 단계·막대·소원은 수확 뒤 새 계절에서 다시 보인다.
+  if (plant.ripe) {
+    return (
+      <div className="flex min-h-x12 items-center gap-x3 py-x2">
+        <span className="t4-bold min-w-0 flex-1">열매가 열렸어요</span>
+        <ActionButton
+          variant="neutralSolid"
+          size="xsmall"
+          onClick={() => onAction("harvest")}
+          aria-label="식물 수확하기"
+        >
+          수확하기
+        </ActionButton>
+      </div>
+    );
+  }
   return (
     <div className="py-x2">
       <div className="flex min-h-x10 items-center gap-x3">
@@ -85,7 +101,7 @@ export function PortfolioPlantRow({
           ariaLabel="식물 목표 도달"
         />
         <ActionButton
-          variant={plant.goalState === "ripe" ? "neutralSolid" : "neutralWeak"}
+          variant="neutralWeak"
           size="xsmall"
           onClick={() => onAction(button.action)}
           aria-label={`식물 ${button.label}`}
