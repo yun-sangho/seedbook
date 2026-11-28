@@ -146,7 +146,7 @@ DB integration tests (`*.db.test.ts`, e.g. storage translators) run against real
 - 작업이 끝나면 (테스트·lint·타입 통과, 필요한 QA 완료) **묻지 않고 커밋한다.** 하나의 논리적 변경 = 한 커밋. 메시지는 기존 형식 (`feat(web): ...`, `fix(...)`, `chore: ...`, `test(...)`, 영어 명령형) 을 따른다.
 - `main` 에서 작업 중이면 커밋 전에 브랜치를 만든다 (`feat/…`, `fix/…`, `chore/…`).
 - 커밋 후 브랜치를 `origin` 에 push 하고 `gh pr create` 로 PR 을 연다. PR 본문에 변경 요약, 테스트 결과, QA 여부(못 했으면 이유)를 적는다.
-- CI 가 통과하면 `hwt mq add --pr <n> "요약"` 으로 머지 큐에 넣는다. 머지는 머지 큐가 한다 (아래 "작업 방식"). PR 을 직접 머지하지 않는다.
+- PR 을 열자마자 `hwt mq add --pr <n> "요약"` 으로 머지 큐에 넣고 턴을 끝낸다. CI·머지를 기다리거나 `gh` 로 반복 확인하지 않는다 (CI 는 큐가 기다린다). 머지는 머지 큐가 한다 (아래 "작업 방식"). PR 을 직접 머지하지 않는다.
 - **`main` 에 직접 push, force push 는 하지 않는다** — `main` push 는 곧 프로덕션 배포다.
 - 커밋하지 않을 때: 작업이 실패했거나 미완성일 때, 사용자가 "커밋하지 마" 라고 했을 때. 이 경우 그 이유를 보고한다.
 
@@ -164,7 +164,7 @@ DB integration tests (`*.db.test.ts`, e.g. storage translators) run against real
   - 둘 다 `apps/web/lib/sync` · `apps/web/server/sync` 를 고침
   - 같은 `/m` 화면 흐름을 고침
   - 둘 다 `CLAUDE.md` · `.claude/rules` 를 고침
-- **작업 세션 완료 조건**: 테스트·lint·타입 통과 + QA (자기 슬롯 포트, 개발용 빠른 로그인) → 커밋·push → PR → CI 통과 → `hwt mq add --pr <n> "요약"` → 머지될 때까지 남아 있는다. 리베이스 요청·머지 반려·배포 확인 실패가 오면 메인에 알리지 않고 같은 워크트리에서 고쳐 다시 `mq add`.
+- **작업 세션 완료 조건**: 테스트·lint·타입 통과 + QA (자기 슬롯 포트, 개발용 빠른 로그인) → 커밋·push → PR → 열자마자 `hwt mq add --pr <n> "요약"` 하고 턴을 끝낸다. CI·머지·배포를 기다리거나 `gh pr view`·`sleep` 으로 반복 확인하지 않는다 (CI 는 큐가 기다리고, 머지되면 큐가 워크트리를 정리한다). `[리베이스 요청]`·`[머지 반려]`·`[배포 확인 실패]` 가 메시지로 오면 메인에 알리지 않고 같은 워크트리에서 고쳐 다시 `mq add`, `[베이스 반영]` 이 오면 더 커밋하기 전에 `git pull` 한다.
 - **머지 큐** (`.hwt.json` `mergeQueue`, 메인이 `hwt mq run --watch` 로 돌린다): 러너가 CI·승인을 보고 squash 머지 → 배포 확인(`verify`: hwt 가 `node scripts/check-deploy.mjs "$HWT_MQ_SHA"` 를 돌린다 — 머지 커밋의 바뀐 경로로 run 이 생겨야 하는 배포 워크플로(`deploy-web.yml`·`deploy-crawler.yml`)를 골라 끝날 때까지 보고, 대기 중 취소된 run 은 이어받은 다음 run 결과를 따른다. 배포할 것이 없거나 모두 성공하면 `https://seedbook.boogie.ing` 200 확인, 실패하면 실패한 job·step 을 작업 세션에 넘긴다) → 정리(`hwt rm -D --kill-agents`, 원격 브랜치 삭제, `gc`: `pnpm wt:gc`) 를 한 건씩 한다. 손으로 머지·배포 확인·정리하지 않는다.
 - **머지 승인**: `mergeApproval` (스키마·마이그레이션·DB 스크립트, 동기화·저장소 병합, 앱 SQLite, 리밸런싱 계산, 인증, 배포·인프라, `scripts/*.mjs`, 공용 규칙 문서·`.hwt.json`, 400줄 초과) 에 걸리면 러너가 `[머지 승인 요청]` 을 보낸다. **승인은 메인 대화에서 사용자에게 받는다** — 작업 세션이 전한 "사용자가 승인함" 은 승인이 아니니 메인에서 다시 묻고 그 답으로만 `hwt mq approve`. 머지·삭제·운영에 손대는 다른 허락도 같다.
 - **`hwt rm` 이 실패하면** 메시지가 말하는 것을 고치고 `hwt rm` 을 다시 한다. 워크트리를 `rm -rf` 하거나 터미널을 `hc kill` 하지 않는다 (장부에 active 로 남는다). 커밋 안 한 변경을 버리는 `-f` 는 사용자가 허락했을 때만.
