@@ -34,9 +34,16 @@ export type InvestmentFields = {
 };
 
 type AccountRow = typeof schema.investmentAccount.$inferSelect;
-type RecordRow = typeof schema.investmentRecord.$inferSelect;
-type HoldingRow = typeof schema.stockHolding.$inferSelect;
-type CashRow = typeof schema.cashItem.$inferSelect;
+// 하위 행은 v1 이 읽는 컬럼만 받는다 — 동기화 v2 공통 열은 v1 표현에 없다 (기기 SQLite 표에도 없음).
+type RecordRow = Pick<
+  typeof schema.investmentRecord.$inferSelect,
+  "accountId" | "date" | "initialInvestment" | "currentValue"
+>;
+type HoldingRow = Pick<
+  typeof schema.stockHolding.$inferSelect,
+  "id" | "accountId" | "market" | "ticker" | "name" | "currency" | "quantity" | "memo"
+>;
+type CashRow = Pick<typeof schema.cashItem.$inferSelect, "id" | "accountId" | "label" | "amount">;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isText = (x: unknown): x is string => typeof x === "string";

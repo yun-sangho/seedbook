@@ -34,7 +34,11 @@ export type PortfolioData = Omit<PortfolioFields, "plant"> &
   PlantProgress & { createdAt: string; updatedAt: string };
 
 type PortfolioRow = typeof schema.portfolio.$inferSelect;
-type AllocationRow = typeof schema.portfolioAllocation.$inferSelect;
+// 하위 행은 v1 이 읽는 컬럼만 받는다 — 동기화 v2 공통 열은 v1 표현에 없다 (기기 SQLite 표에도 없음).
+type AllocationRow = Pick<
+  typeof schema.portfolioAllocation.$inferSelect,
+  "id" | "portfolioId" | "market" | "ticker" | "name" | "currency" | "targetPercent"
+>;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isText = (x: unknown): x is string => typeof x === "string";
