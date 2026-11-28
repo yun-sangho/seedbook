@@ -127,6 +127,16 @@ describe("sortRebalancingTasks", () => {
     }
   });
 
+  it("매도를 먼저 묶지 않으면 매도·매수를 섞어 옵션대로만 정렬한다", () => {
+    const mixed = [task("B매도", "매도"), task("A매수", "매수"), task("C매수", "매수")];
+
+    expect(names(sortRebalancingTasks(mixed, "nameAsc", holding, { sellFirst: false }))).toEqual([
+      "A매수",
+      "B매도",
+      "C매수",
+    ]);
+  });
+
   it("기준 가격을 모르면 평가액을 0 으로 본다", () => {
     const unpriced = [task("A", "매수", { price: null }), task("B", "매수")];
 

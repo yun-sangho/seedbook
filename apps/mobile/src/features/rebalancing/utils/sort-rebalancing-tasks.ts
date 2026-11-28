@@ -21,12 +21,14 @@ const ACTION_RANK: Record<RebalancingTask["action"], number> = { 매도: 0, 매�
 
 /**
  * 매도 → 매수로 묶고 그 안에서 옵션대로 정렬한다. 값이 같으면 원래 순서를 지킨다.
+ * `sellFirst: false` 면 묶지 않고 옵션대로만 (목록 — 종목마다 팔기·사기 배지로 구분한다).
  * `holdingQuantity` 는 그 종목의 지금 보유 수량. 원래 배열은 바꾸지 않는다.
  */
 export function sortRebalancingTasks(
   tasks: RebalancingTask[],
   option: RebalancingTaskSort,
-  holdingQuantity: (task: RebalancingTask) => number
+  holdingQuantity: (task: RebalancingTask) => number,
+  { sellFirst = true }: { sellFirst?: boolean } = {}
 ): RebalancingTask[] {
   const order = new Map(tasks.map((t, i) => [t.id, i]));
   const evaluation = (t: RebalancingTask) => holdingQuantity(t) * (t.price ?? 0);
@@ -44,7 +46,7 @@ export function sortRebalancingTasks(
   };
   return [...tasks].sort(
     (a, b) =>
-      ACTION_RANK[a.action] - ACTION_RANK[b.action] ||
+      (sellFirst ? ACTION_RANK[a.action] - ACTION_RANK[b.action] : 0) ||
       compare(a, b) ||
       (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0)
   );

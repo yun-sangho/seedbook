@@ -92,15 +92,24 @@ export function RebalancingDetailActivity({ params }: DetailActivityProps) {
   );
 }
 
+/** 리밸런싱 2단계: 거래 가능 금액과 권장 매매. 1단계(`RebalancingDetail`) 위에 쌓인다. */
+export function RebalancingPlanActivity({ params }: DetailActivityProps) {
+  return (
+    <AccountScreen id={params.id}>
+      <RebalancingDetailMobile id={params.id} step="plan" />
+    </AccountScreen>
+  );
+}
+
 export function RebalancingSessionActivity({ params }: DetailActivityProps) {
   const session = useRebalancingStore((s) => s.sessions.find((x) => x.id === params.id));
   const account = useInvestmentStore((s) =>
     session ? s.investments.find((inv) => inv.id === session.accountId) : undefined
   );
   return (
+    // 작업 화면에서는 포트폴리오 이름 없이 계좌만 — 할 일에 집중한다.
     <DetailScreen
       title={account?.accountName || session?.accountName || "리밸런싱"}
-      subtitle={session?.portfolioName}
       dotColor={account?.color}
     >
       <RebalancingSessionMobile id={params.id} />
