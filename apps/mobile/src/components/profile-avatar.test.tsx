@@ -28,6 +28,7 @@ describe("ProfileAvatarImage", () => {
           stage: 3,
           plantKind: kind,
           ripe: false,
+          empty: false,
           chosen: true,
         }}
         size={48}

@@ -233,6 +233,11 @@ export function evaluatePlant<T extends PlantProgress>(
 export interface PlantStatus {
   /** 지금 단계 (이번 평가로 목표를 이뤘으면 자란 뒤의 단계). */
   stage: PlantStage;
+  /**
+   * 빈 화분 — 목표가 없는 포트폴리오 (씨앗 단계에서 목표가 없음). 목표를 더하면 씨앗이 심긴다.
+   * 포트폴리오가 꼭 목표를 가질 필요는 없다.
+   */
+  empty: boolean;
   goalState: SeasonGoalState;
   /** 향하는 목표 (원). `set`·`blocked-by-drift` 일 때만. */
   goalAmount: number | null;
@@ -265,6 +270,7 @@ export function computePlantStatus(
   const lastGoal = next.fruitGoal ?? lastReachedGoal(next);
   return {
     stage: next.growthStage,
+    empty: next.growthStage === 0 && next.goalAmount === null,
     goalState,
     goalAmount,
     remainingToNextStage: goalAmount === null ? null : Math.max(0, goalAmount - evaluation.value),

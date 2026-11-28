@@ -10,7 +10,7 @@ const BADGE_RATIO = 16 / 44;
 /** 2D 식물을 그리는 데 필요한 포트폴리오 값. */
 export type PortfolioPlantLook = Pick<
   PortfolioItem,
-  "id" | "growthStage" | "plantKind" | "fruitGoal"
+  "id" | "growthStage" | "goalAmount" | "plantKind" | "fruitGoal"
 >;
 
 /**
@@ -34,6 +34,7 @@ export function PortfolioPlantAvatar({
         pot={potForPortfolio(portfolio.id)}
         kind={plantKindOf(portfolio)}
         ripe={portfolio.fruitGoal !== null}
+        empty={portfolio.growthStage === 0 && portfolio.goalAmount === null}
         size={size}
       />
       {needsRebalance && (

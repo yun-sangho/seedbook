@@ -84,7 +84,7 @@ export function PortfolioPlantRow({
     <div className="py-x2">
       <div className="flex min-h-x10 items-center gap-x3">
         <span className="t4-bold shrink-0">
-          {plantStageLabel(plant.kind, plant.stage)}
+          {plantStageLabel(plant.kind, plant.stage, plant.empty)}
           {condition && (
             <span
               className={`t3-regular ${plant.wilt > 0 && !plant.ripe ? "text-fg-warning" : ""}`}
@@ -182,8 +182,8 @@ export function EditPlantGoalSheet({
         </BottomSheetBody>
         <BottomSheetFooter>
           <div className="flex w-full gap-x2">
-            {/* 씨앗의 목표는 심을 때 정한 첫 목표라 지우지 않는다 (바꿀 수는 있다). */}
-            {progress.goalAmount !== null && progress.growthStage > 0 && (
+            {/* 씨앗의 목표를 지우면 빈 화분으로 돌아간다. */}
+            {progress.goalAmount !== null && (
               <ActionButton
                 variant="neutralWeak"
                 size="large"

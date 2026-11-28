@@ -57,7 +57,7 @@ export function PlantAvatarPicker({
             <PickerOption
               key={plant.portfolioId}
               label={plant.name}
-              detail={plantStageLabel(plant.kind, plant.stage)}
+              detail={plantStageLabel(plant.kind, plant.stage, plant.empty)}
               checked={picked?.portfolioId === plant.portfolioId}
               onSelect={() => draft.choosePlant(plant.portfolioId)}
               avatar={<PlantOptionAvatar plant={plant} />}
@@ -79,6 +79,7 @@ function PlantOptionAvatar({ plant }: { plant: PortfolioPlantView }) {
         stage: plant.stage,
         plantKind: plant.kind,
         ripe: plant.ripe,
+        empty: plant.empty,
         chosen: false,
       }}
       size={OPTION_AVATAR_SIZE}

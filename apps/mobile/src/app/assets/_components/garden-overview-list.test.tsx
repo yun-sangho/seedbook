@@ -29,6 +29,7 @@ function plant(partial: Partial<PortfolioPlantView>): PortfolioPlantView {
     wilt: 0,
     wind: 0,
     ripe: false,
+    empty: false,
     changed: false,
     ...partial,
   };
@@ -62,7 +63,7 @@ describe("GardenOverviewList", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "첫 씨앗 심기" }));
+    fireEvent.click(screen.getByRole("button", { name: "포트폴리오 만들기" }));
 
     expect(onPlantFirstSeed).toHaveBeenCalled();
   });
@@ -99,10 +100,17 @@ describe("GardenOverviewList", () => {
   }
 
   it("shows the growth stage next to the name", () => {
-    renderRow({ stage: 0, goalState: "needs-goal", goalAmount: null });
+    renderRow({ stage: 0, goalAmount: 1_000_000 });
 
     const row = screen.getByRole("button", { name: "안정형 포트폴리오 보기" });
     expect(row.textContent).toContain("안정형씨앗");
+  });
+
+  it("shows an empty pot for a portfolio without a goal", () => {
+    renderRow({ stage: 0, goalState: "needs-goal", goalAmount: null, empty: true });
+
+    const row = screen.getByRole("button", { name: "안정형 포트폴리오 보기" });
+    expect(row.textContent).toContain("안정형빈 화분");
   });
 
   it("fills the goal bar with the progress toward the goal", () => {
@@ -117,7 +125,7 @@ describe("GardenOverviewList", () => {
     renderRow({ stage: 0, goalState: "needs-goal", goalAmount: null });
 
     expect(screen.queryByRole("progressbar")).toBeNull();
-    expect(screen.getByText("목표를 정하면 자라요")).toBeTruthy();
+    expect(screen.getByText("목표를 더하면 씨앗을 심어요")).toBeTruthy();
   });
 
   it("fills the bar when the goal was just reached", () => {

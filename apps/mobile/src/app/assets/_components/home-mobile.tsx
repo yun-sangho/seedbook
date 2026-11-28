@@ -179,7 +179,7 @@ export function HomeMobile() {
         />
         {plants.length === 0 && (
           <p className="t4-medium text-fg-neutral-muted pointer-events-none absolute inset-x-0 top-[var(--seed-dimension-x6)] text-center">
-            아직 심은 씨앗이 없어요
+            아직 화분이 없어요
           </p>
         )}
         {celebration && (

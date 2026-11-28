@@ -28,6 +28,14 @@ describe("PlantAvatar", () => {
     expect(shapes(true)).toBeGreaterThan(shapes(false));
   });
 
+  it.each(["tree", "fern"] as const)("draws an empty pot without the seed (%s)", (kind) => {
+    const shapes = (empty: boolean) =>
+      render(
+        <PlantAvatar stage="seed" kind={kind} empty={empty} size={48} />
+      ).container.querySelectorAll("path, circle, ellipse, line").length;
+    expect(shapes(true)).toBeLessThan(shapes(false));
+  });
+
   it("paints the pot in the portfolio's color", () => {
     const { container } = render(<PlantAvatar stage="seed" pot="sky" size={48} />);
     expect(container.innerHTML).toContain("#86B4E3");

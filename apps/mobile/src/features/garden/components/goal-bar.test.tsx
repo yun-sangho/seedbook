@@ -16,7 +16,7 @@ describe("goalBarState", () => {
   it("shows only a hint for a seed without a goal", () => {
     expect(
       goalBarState({ stage: 0, goalState: "needs-goal", goalPercent: null, ...calm })
-    ).toMatchObject({ percent: null, label: "목표를 정하면 자라요" });
+    ).toMatchObject({ percent: null, label: "목표를 더하면 씨앗을 심어요" });
   });
 
   it("is full with a cheer right after a goal is reached", () => {

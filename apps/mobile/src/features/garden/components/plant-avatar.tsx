@@ -170,6 +170,7 @@ export function PlantAvatar({
   size,
   kind = "tree",
   ripe = false,
+  empty = false,
 }: {
   stage: PlantStage;
   pot?: PotColor;
@@ -178,8 +179,11 @@ export function PlantAvatar({
   kind?: PlantKind;
   /** 열매가 열림 — 꽃·열매 단계에서 열매를 단다 (없으면 꽃만). */
   ripe?: boolean;
+  /** 빈 화분 — 씨앗 단계에서 씨앗을 그리지 않는다. */
+  empty?: boolean;
 }) {
   const fern = kind === "fern";
+  const plantShown = !(empty && stage === "seed");
   const clipId = useId();
   return (
     <svg viewBox="0 0 64 64" width={size} height={size} aria-hidden focusable="false">
@@ -190,9 +194,10 @@ export function PlantAvatar({
       </defs>
       <g clipPath={`url(#${clipId})`}>
         <rect width="64" height="64" fill={BG} />
-        {fern ? <FernArt stage={stage} layer="back" /> : <StageArt stage={stage} ripe={ripe} />}
+        {plantShown &&
+          (fern ? <FernArt stage={stage} layer="back" /> : <StageArt stage={stage} ripe={ripe} />)}
         <Pot pot={pot} />
-        {fern && <FernArt stage={stage} layer="front" ripe={ripe} />}
+        {plantShown && fern && <FernArt stage={stage} layer="front" ripe={ripe} />}
       </g>
     </svg>
   );

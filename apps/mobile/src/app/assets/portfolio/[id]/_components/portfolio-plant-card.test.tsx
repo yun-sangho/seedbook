@@ -28,6 +28,7 @@ function plant(partial: Partial<PortfolioPlantView> = {}): PortfolioPlantView {
     wilt: 0,
     wind: 0,
     ripe: false,
+    empty: false,
     changed: false,
     rebalancing: "ok",
     ...partial,
@@ -125,10 +126,11 @@ describe("PortfolioPlantRow", () => {
     const onAction = vi.fn();
     render(
       <PortfolioPlantRow
-        plant={plant({ stage: 0, goalState: "needs-goal", goalAmount: null })}
+        plant={plant({ stage: 0, goalState: "needs-goal", goalAmount: null, empty: true })}
         onAction={onAction}
       />
     );
+    expect(screen.getByText("빈 화분")).toBeTruthy();
     fireEvent.click(actionButton());
     expect(actionButton().textContent).toBe("씨앗 심기");
     expect(onAction).toHaveBeenCalledWith("season");

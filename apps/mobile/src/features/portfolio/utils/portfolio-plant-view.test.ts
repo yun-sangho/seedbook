@@ -118,6 +118,7 @@ describe("portfolioPlantView", () => {
       wilt: 0,
       wind: 0,
       ripe: false,
+      empty: false,
       changed: false,
       rebalancing: "ok",
     });

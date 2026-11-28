@@ -16,6 +16,7 @@ export function ProfileAvatarImage({ avatar, size }: { avatar: ProfileAvatar; si
           stage={PLANT_STAGES[avatar.stage]}
           kind={avatar.plantKind}
           ripe={avatar.ripe}
+          empty={avatar.empty}
           size={size}
         />
       </span>

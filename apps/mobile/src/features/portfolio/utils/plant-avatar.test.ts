@@ -12,7 +12,16 @@ const B = "22222222-2222-4222-8222-222222222222";
 const GONE = "33333333-3333-4333-8333-333333333333";
 
 function plant(portfolioId: string, stage: PlantStage, value: number, season = 1) {
-  return { portfolioId, color: "#111", stage, value, season, kind: "tree" as const, ripe: false };
+  return {
+    portfolioId,
+    color: "#111",
+    stage,
+    value,
+    season,
+    kind: "tree" as const,
+    ripe: false,
+    empty: false,
+  };
 }
 
 describe("defaultAvatarPlant", () => {
@@ -44,6 +53,7 @@ describe("resolveProfileAvatar", () => {
       stage: 1,
       plantKind: "tree",
       ripe: false,
+      empty: false,
       chosen: true,
     });
   });

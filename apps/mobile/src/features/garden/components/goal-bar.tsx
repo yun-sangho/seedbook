@@ -45,7 +45,7 @@ export function goalBarState({ stage, goalState, goalPercent, wilt, wind }: Goal
       return { percent: 100, label: "꽃이 피었어요", tone };
     case "needs-goal":
       return stage === 0
-        ? { percent: null, label: "목표를 정하면 자라요", tone }
+        ? { percent: null, label: "목표를 더하면 씨앗을 심어요", tone }
         : { percent: 100, label: "목표 달성!", tone };
     case "blocked-by-drift":
       return { percent: 100, label: "비중을 맞추면 자라요", tone };

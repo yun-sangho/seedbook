@@ -5,7 +5,7 @@ import type { PortfolioPlantView } from "./portfolio-plant-view";
 
 type AvatarPlant = Pick<
   PortfolioPlantView,
-  "portfolioId" | "color" | "stage" | "season" | "kind" | "ripe" | "value"
+  "portfolioId" | "color" | "stage" | "season" | "kind" | "ripe" | "empty" | "value"
 >;
 
 /** 프로필 아바타로 그릴 것. */
@@ -18,6 +18,8 @@ export type ProfileAvatar =
       plantKind: PlantKind;
       /** 열매가 열렸다. */
       ripe: boolean;
+      /** 빈 화분 (목표 없는 포트폴리오). */
+      empty: boolean;
       /** 사용자가 고른 식물인지 (false 면 기본값 — 가장 크게 자란 식물). */
       chosen: boolean;
     }
@@ -70,6 +72,7 @@ export function resolveAvatar(
     stage: plant.stage,
     plantKind: plant.kind,
     ripe: plant.ripe,
+    empty: plant.empty,
     chosen: chosen !== null,
   };
 }

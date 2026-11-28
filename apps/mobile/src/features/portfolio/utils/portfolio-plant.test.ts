@@ -195,6 +195,7 @@ describe("computePlantStatus", () => {
   it("is a seed that needs a goal when no goal is set", () => {
     expect(computePlantStatus(progress(), evaluation(50000), NOW)).toEqual({
       stage: 0,
+      empty: true,
       goalState: "needs-goal",
       goalAmount: null,
       remainingToNextStage: null,
@@ -205,6 +206,19 @@ describe("computePlantStatus", () => {
       ripe: false,
       changed: false,
     });
+  });
+
+  it("is an empty pot until a goal is added, and a seed once it has one", () => {
+    expect(computePlantStatus(progress(), evaluation(0), NOW).empty).toBe(true);
+    expect(computePlantStatus(progress({ goalAmount: 10000 }), evaluation(0), NOW).empty).toBe(
+      false
+    );
+  });
+
+  it("is not empty after growing, even without the next goal", () => {
+    const p = progress({ growthStage: 1, goalHistory: [reached(1)] });
+
+    expect(computePlantStatus(p, evaluation(0), NOW).empty).toBe(false);
   });
 
   it("reports the amount left to the next stage", () => {

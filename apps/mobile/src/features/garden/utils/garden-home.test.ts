@@ -141,6 +141,7 @@ describe("gardenPlantOptions", () => {
       wind: expect.closeTo((10_000 / 110_000 - 0.05) / 0.15 / 2, 6),
       wilt: 0.7,
       ripe: false,
+      empty: false,
       needsRebalance: true,
       pot: potForPortfolio("p"),
       seed: expect.any(Number),
@@ -183,6 +184,12 @@ describe("plantStageLabel", () => {
       "고사리",
       "꽃·열매",
     ]);
+  });
+});
+
+describe("plantStageLabel (empty pot)", () => {
+  it("names a portfolio without a goal an empty pot", () => {
+    expect(plantStageLabel("fern", 0, true)).toBe("빈 화분");
   });
 });
 
@@ -233,6 +240,7 @@ describe("gardenRows", () => {
         wilt: 0,
         wind: 0,
         ripe: false,
+        empty: false,
         goalState: "set",
         goalAmount: 500_000,
         goalPercent: 20,

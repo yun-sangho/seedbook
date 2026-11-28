@@ -38,7 +38,7 @@ import { useFlow } from "@stackflow/react";
 
 /** 이름 옆 단계 + 상태 (시듦·바람·열매). */
 function stageLabel(row: GardenRow): string {
-  const stage = plantStageLabel(row.kind, row.stage);
+  const stage = plantStageLabel(row.kind, row.stage, row.empty);
   const condition = plantConditionLabel(row);
   return condition ? `${stage} · ${condition}` : stage;
 }
@@ -69,7 +69,7 @@ export function GardenTotalHeader({ investments }: { investments: InvestmentItem
 
 /**
  * 정원 전체일 때의 목록: 총 평가금액·리밸런싱 이어하기, 그리고 포트폴리오 식물마다 한 행.
- * 행을 누르면 포트폴리오 상세로 간다. 포트폴리오가 없으면 첫 씨앗 심기.
+ * 행을 누르면 포트폴리오 상세로 간다. 포트폴리오가 없으면 포트폴리오 만들기.
  */
 export function GardenOverviewList({
   plants,
@@ -131,9 +131,9 @@ export function GardenOverviewList({
 
       {rows.length === 0 ? (
         <ResultSection
-          title="첫 씨앗을 심어 보세요"
-          description="포트폴리오를 만들면 정원에 씨앗이 심겨요. 목표 금액을 정하면 자라기 시작해요."
-          primaryActionProps={{ children: "첫 씨앗 심기", onClick: onPlantFirstSeed }}
+          title="첫 포트폴리오를 만들어 보세요"
+          description="포트폴리오를 만들면 정원에 빈 화분이 놓여요. 목표를 더하면 씨앗이 심기고 자라기 시작해요."
+          primaryActionProps={{ children: "포트폴리오 만들기", onClick: onPlantFirstSeed }}
         />
       ) : (
         <>
@@ -155,6 +155,7 @@ export function GardenOverviewList({
                     pot={row.pot}
                     kind={row.kind}
                     ripe={row.ripe}
+                    empty={row.empty}
                     size={44}
                   />
                   {row.needsRebalance && (
@@ -207,7 +208,7 @@ export function GardenOverviewList({
           <div className="flex flex-wrap justify-center gap-x2 pt-x4">
             <ActionButton variant="ghost" size="medium" onClick={onPlantFirstSeed}>
               <Icon svg={<IconPlusLine />} />
-              씨앗 심기 (포트폴리오 추가)
+              포트폴리오 추가
             </ActionButton>
             {harvestCount > 0 && (
               <ActionButton variant="ghost" size="medium" onClick={() => setBasketOpen(true)}>

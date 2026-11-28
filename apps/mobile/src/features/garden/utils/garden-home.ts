@@ -53,6 +53,7 @@ export function gardenPlantOptions(plant: PortfolioPlantView): PlantOptions {
     wind: plant.wind,
     wilt: plant.wilt,
     ripe: plant.ripe,
+    empty: plant.empty,
     needsRebalance: plant.rebalancing === "needs-rebalancing",
     pot: potForPortfolio(plant.portfolioId),
     seed: hashString(plant.portfolioId) % 1000,
@@ -60,8 +61,16 @@ export function gardenPlantOptions(plant: PortfolioPlantView): PlantOptions {
   };
 }
 
-/** 단계 이름 — 나무는 씨앗·새싹·묘목·나무, 고사리는 씨앗·새순·어린 잎·고사리, 4단계는 둘 다 꽃·열매. */
-export function plantStageLabel(kind: PlantKind, stage: PortfolioPlantView["stage"]): string {
+/**
+ * 단계 이름 — 나무는 씨앗·새싹·묘목·나무, 고사리는 씨앗·새순·어린 잎·고사리, 4단계는 둘 다 꽃·열매.
+ * 목표가 없는 포트폴리오(`empty`)는 빈 화분.
+ */
+export function plantStageLabel(
+  kind: PlantKind,
+  stage: PortfolioPlantView["stage"],
+  empty = false
+): string {
+  if (empty) return "빈 화분";
   const labels = kind === "fern" ? FERN_STAGE_LABELS : PLANT_STAGE_LABELS;
   return labels[PLANT_STAGES[stage]];
 }
@@ -104,6 +113,8 @@ export interface GardenRow {
   wind: number;
   /** 열매가 열렸다 (수확할 수 있다). */
   ripe: boolean;
+  /** 빈 화분 (목표 없는 포트폴리오). */
+  empty: boolean;
   /** 목표 상태 (`seasonGoalState`). */
   goalState: PortfolioPlantView["goalState"];
   /** 지금 목표 금액 (원). 목표가 없으면 null. */
@@ -136,6 +147,7 @@ function gardenRow(plant: PortfolioPlantView, accounts: readonly RowAccount[]): 
     wilt: plant.wilt,
     wind: plant.wind,
     ripe: plant.ripe,
+    empty: plant.empty,
     goalState: plant.goalState,
     goalAmount: plant.goalAmount,
     goalPercent:
