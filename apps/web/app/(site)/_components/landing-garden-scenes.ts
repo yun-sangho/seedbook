@@ -7,7 +7,7 @@ import type { PlantSlot } from "@mobile/features/garden/plant-3d/plant-renderer"
  * 2배율로 캡처해 1000×770 으로 줄인 것이라, 식물을 바꾸면 라이트·다크 이미지를 다시 캡처한다.
  */
 export const LANDING_GARDEN_PLANTS = {
-  /** 히어로: 다 자란 나무, 리밸런싱이 필요해 기운 나무, 자라는 중인 묘목. */
+  /** 히어로: 자라는 중인 묘목, 열매 맺은 나무, 막 돋은 고사리 새순. */
   garden: [
     {
       stage: "sapling",
@@ -19,7 +19,16 @@ export const LANDING_GARDEN_PLANTS = {
       seed: 11,
     },
     { stage: "bloom", rain: 0, wilt: 0, ripe: true, needsRebalance: false, pot: "sun", seed: 7 },
-    { stage: "tree", rain: 0, wilt: 0, ripe: false, needsRebalance: true, pot: "sky", seed: 3 },
+    {
+      stage: "sprout",
+      rain: 0,
+      wilt: 0,
+      ripe: false,
+      needsRebalance: false,
+      pot: "sky",
+      seed: 3,
+      kind: "fern",
+    },
   ],
   /** 리밸런싱: 목표 비중 안의 나무와 벗어나 기운 나무. */
   rebalance: [
