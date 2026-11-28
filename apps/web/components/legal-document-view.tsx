@@ -3,6 +3,7 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import type { LegalDocumentId } from "@seedbook/database/legal";
 import { LegalDocumentContent } from "@web/components/legal-document-content";
+import { apiFetch } from "@web/lib/api-client";
 import type { DocumentPage } from "@web/lib/legal/catalog";
 import type { LegalDocumentTarget } from "@web/lib/legal-documents";
 import { ActionButton } from "@web/seed-design/ui/action-button";
@@ -25,7 +26,7 @@ async function fetchLegalDocument(
 ): Promise<LoadedDocument | null> {
   const query = version ? `?version=${encodeURIComponent(version)}` : "";
   try {
-    const response = await fetch(`/api/legal/${document}${query}`);
+    const response = await apiFetch(`/api/legal/${document}${query}`);
     if (!response.ok) return null;
     return (await response.json()) as LoadedDocument;
   } catch {
