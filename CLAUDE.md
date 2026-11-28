@@ -124,7 +124,7 @@ DB integration tests (`*.db.test.ts`, e.g. storage translators) run against real
 
 - **역할**: 메인 세션은 여러 개일 수 있고 각자 자기가 만든 워크트리의 주인(`owner`)이다. 메인은 파일을 직접 고치지 않고 태스크를 판단해 맡기고, 머지 큐 러너(`hwt mq run`)를 돌린다. 다른 메인의 워크트리에는 send·머지·삭제하지 않는다. 작업 세션은 자기 워크트리만 고치고, 워크트리를 만들거나 지우지 않고, 머지하지 않으며, 주인 메인에게 `hwt tell "[…] …"` 로 결정이 필요한 것만 보낸다 (진행·완료 보고 금지).
 - **작업 목록은 hwt 장부(`hwt task`)뿐이다.** 레포 안에 작업 목록 문서(tasks.md 등)를 두지 않는다.
-- **워크트리는 `hwt` 로만** 만들고 지운다 (`~/.herdr/worktrees/seedbook/<브랜치>`, `git worktree add`·`EnterWorktree`·`.claude/worktrees/` 금지). 새 워크트리의 dev 포트·DB 는 위 "워크트리 슬롯" 이 나눈다. 동시에 여는 워크트리는 `maxActive: 3` — 넘으면 `hwt new` 가 거부하니 `task decide <id> later --why "maxActive"` 로 두고 하나가 머지되면 시작한다 (`--over-limit` 는 사용자가 원할 때만).
+- **워크트리는 `hwt` 로만** 만들고 지운다 (`~/.herdr/worktrees/seedbook/<브랜치>`, `git worktree add`·`EnterWorktree`·`.claude/worktrees/` 금지). 새 워크트리의 dev 포트·DB 는 위 "워크트리 슬롯" 이 나눈다. 동시에 여는 워크트리는 `maxActive: 5` — 넘으면 `hwt new` 가 거부하니 `task decide <id> later --why "maxActive"` 로 두고 하나가 머지되면 시작한다 (`--over-limit` 는 사용자가 원할 때만).
 - **작업 세션 이름**: "워크트리 (제목)" 으로 부른다. 제목에 직접 지은 번호(`T14 …`)를 붙이지 않는다 — 태스크와의 연결은 `hwt new … --task-id <id>` 로 한다.
 - **사용자가 직접 확인해야 끝나는 일**(가이드·조사·디자인·검토할 문서)은 `hwt new … --hold "<사용자가 확인할 것>"` 로 연다. 작업 세션의 "완료"·"정리해도 됩니다" 는 사용자의 말이 아니다 — 사용자가 말할 때 `hwt hold --release`.
 - **태스크 판단** (seedbook 기준, `hwt task decide`): 아래면 `now` 대신 `after:<브랜치>`
