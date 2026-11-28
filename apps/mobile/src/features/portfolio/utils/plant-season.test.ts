@@ -15,6 +15,7 @@ import {
   plantNameError,
   plantWilt,
   plantWind,
+  seasonGoalPercent,
   seasonGoalState,
   setSeasonGoal,
   startPlantSeason,
@@ -256,10 +257,37 @@ describe("setSeasonGoal", () => {
     expect(next.goalAmount).toBe(1_100_000);
   });
 
-  it("clears the goals", () => {
-    const next = setSeasonGoal(progress({ goalAmount: 5, stageGoals: [1, 2, 3, 4, 5] }), null, 0);
+  it("remembers the amount the stages start from", () => {
+    expect(setSeasonGoal(progress(), 2_000_000, 1_000_000).stageBase).toBe(1_000_000);
+  });
 
-    expect(next).toMatchObject({ goalAmount: null, stageGoals: [] });
+  it("clears the goals", () => {
+    const next = setSeasonGoal(
+      progress({ goalAmount: 5, stageGoals: [1, 2, 3, 4, 5], stageBase: 0 }),
+      null,
+      0
+    );
+
+    expect(next).toMatchObject({ goalAmount: null, stageGoals: [], stageBase: null });
+  });
+});
+
+describe("seasonGoalPercent", () => {
+  it("counts the growth since planting toward the final goal", () => {
+    const planted = progress({ stageBase: 1_000_000, stageGoals: [1, 2, 3, 4, 2_000_000] });
+
+    expect(seasonGoalPercent(planted, 1_000_000)).toBe(0);
+    expect(seasonGoalPercent(planted, 1_250_000)).toBe(25);
+    expect(seasonGoalPercent(planted, 2_500_000)).toBe(100);
+    expect(seasonGoalPercent(planted, 900_000)).toBe(0);
+  });
+
+  it("measures from zero for a plant set before stages existed", () => {
+    expect(seasonGoalPercent(progress({ goalAmount: 1_000_000 }), 750_000)).toBe(75);
+  });
+
+  it("is null without a goal", () => {
+    expect(seasonGoalPercent(progress(), 750_000)).toBeNull();
   });
 });
 
@@ -430,6 +458,7 @@ describe("harvestPlant", () => {
       plantName: "",
       wishHistory: [],
       stageGoals: [],
+      stageBase: null,
       plantKind: "fern",
       driftSince: KST_TODAY,
       id: PORTFOLIO_ID,

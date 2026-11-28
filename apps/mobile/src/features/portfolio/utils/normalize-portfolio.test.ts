@@ -29,6 +29,7 @@ const item: PortfolioItem = {
   wishHistory: [{ wish: "부모님과 제주 여행", at: "2026-10-01T00:00:00.000Z" }],
   fruitGoal: null,
   stageGoals: [3_100_000, 3_250_000, 3_450_000, 3_700_000, 4_000_000],
+  stageBase: 3_000_000,
   driftSince: "2026-11-20T15:00:00.000Z",
   note: "",
   createdAt: "2026-10-01T00:00:00.000Z",

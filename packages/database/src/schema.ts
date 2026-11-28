@@ -444,6 +444,8 @@ export const portfolio = seedbook.table(
     fruitGoal: jsonb("fruitGoal").$type<{ amount: number; reachedAt: string }>(),
     // 최종 목표까지의 단계 목표 다섯 개 (원, 새싹·묘목·나무·꽃·열매). 비어 있으면 단계마다 목표를 정하던 식물.
     stageGoals: jsonb("stageGoals").$type<number[]>().notNull().default([]),
+    // 단계 목표를 나눈 출발 금액 (원, 심을 때의 평가금액). 단계와 막대는 이 금액 뒤로 늘어난 만큼.
+    stageBase: bigint("stageBase", { mode: "number" }),
     // 비중 이탈을 처음 본 시각 (KST 날짜 시작). 기준 안으로 돌아오면 null.
     driftSince: timestamp("driftSince", { precision: 3, mode: "date" }),
     ...syncColumns(),

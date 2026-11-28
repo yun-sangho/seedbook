@@ -47,7 +47,8 @@ export const plantWishHistoryShape = shape.list(plantWishShape, {
  * - `stageGoals` 는 씨앗을 심을 때 정한 최종 목표까지의 단계 목표 다섯 개 (새싹·묘목·나무·꽃·열매, 마지막이
  *   최종 목표). 처음엔 간격이 좁고 갈수록 넓다. `goalAmount` 는 그대로 "다음 단계 목표" 라 옛 앱도 그 뜻으로
  *   자라게 한다 — 새 앱은 비워진 `goalAmount` 를 `stageGoals[growthStage]` 로 다시 채운다. 비어 있으면 단계마다
- *   목표를 정하던 예전 식물이다.
+ *   목표를 정하던 예전 식물이다. `stageBase` 는 단계 목표를 나눈 출발 금액 (심을 때의 평가금액) — 단계와 막대는
+ *   이 금액 뒤로 늘어난 만큼이다.
  * - `driftSince` 는 비중 이탈을 처음 본 시각 (KST 날짜 시작). 수확과 무관하다.
  */
 export const portfolio = defineRecord({
@@ -75,6 +76,7 @@ export const portfolio = defineRecord({
     stageGoals: f.json(shape.list(f.money({ min: 1 }), { maxItems: MAX_PLANT_STAGE + 1 }), {
       default: [],
     }),
+    stageBase: f.money({ nullable: true, default: null, min: 0 }),
     driftSince: f.timestamp({ nullable: true, default: null }),
   },
 });

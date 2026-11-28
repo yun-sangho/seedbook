@@ -26,6 +26,7 @@ function plant(partial: Partial<PortfolioPlantView> = {}): PortfolioPlantView {
     goalState: "set",
     goalAmount: 10_000_000,
     finalGoalAmount: 10_000_000,
+    goalPercent: 80,
     remainingToNextStage: 2_000_000,
     drifting: false,
     driftDays: 0,

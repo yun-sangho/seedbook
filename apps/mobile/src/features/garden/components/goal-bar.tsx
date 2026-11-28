@@ -21,12 +21,6 @@ const TONE_CLASS: Record<GoalBarTone, string> = {
   warning: "bg-bg-warning-solid",
 };
 
-/** 목표 대비 % (0~100, 소수 버림). 목표가 없으면 null. 정원 목록 행과 같은 계산. */
-export function goalPercentOf(value: number, goalAmount: number | null): number | null {
-  if (goalAmount === null || goalAmount <= 0) return null;
-  return Math.min(100, Math.floor((Math.max(0, value) / goalAmount) * 100));
-}
-
 /**
  * 목표 도달 막대: 채울 비율(%, 막대 없으면 null), 옆 문구, 색. 목표를 향해 자라는 중이면 막대만(바람이면
  * "바람이 불어요"), 목표가 없는 씨앗은 막대 없이 문구만, 방금 달성했거나 꽃이 피었거나 열매가 열렸으면

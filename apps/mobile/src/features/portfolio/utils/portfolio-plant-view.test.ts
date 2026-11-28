@@ -115,6 +115,7 @@ describe("portfolioPlantView", () => {
       goalState: "set",
       goalAmount: 150_000,
       finalGoalAmount: 150_000,
+      goalPercent: 66,
       remainingToNextStage: 50_000,
       drifting: false,
       driftDays: 0,

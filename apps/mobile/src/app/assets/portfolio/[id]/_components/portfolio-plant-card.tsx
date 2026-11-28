@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { formatMoneyDraft } from "@mobile/components/mobile/input-format";
 import { MoneyField } from "@mobile/components/mobile/money-field";
-import { GoalBar, goalPercentOf } from "@mobile/features/garden/components/goal-bar";
+import { GoalBar } from "@mobile/features/garden/components/goal-bar";
 import { PlantAvatar } from "@mobile/features/garden/components/plant-avatar";
 import { PLANT_KIND_LABELS, PLANT_KINDS } from "@mobile/features/garden/plant-3d/plant-options";
 import { kstDay } from "@mobile/features/garden/utils/basket";
@@ -107,7 +107,7 @@ export function PortfolioPlantRow({
           className="min-w-0 flex-1"
           stage={plant.stage}
           goalState={plant.goalState}
-          goalPercent={goalPercentOf(plant.value, plant.finalGoalAmount)}
+          goalPercent={plant.goalPercent}
           wilt={plant.wilt}
           wind={plant.wind}
           ariaLabel="식물 목표 도달"

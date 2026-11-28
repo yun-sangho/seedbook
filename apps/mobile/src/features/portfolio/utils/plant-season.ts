@@ -123,7 +123,7 @@ export function planStageGoals(
   value: number
 ): number[] {
   const reached = progress.goalHistory.slice(0, progress.growthStage).map((g) => g.amount);
-  const base = Math.max(0, value, reached.at(-1) ?? 0);
+  const base = stageGoalBase(progress, value);
   const weights = stageStepWeights(progress.plantKind).slice(progress.growthStage);
   const total = weights.reduce((sum, w) => sum + w, 0);
   const goals: number[] = [];
@@ -141,6 +141,30 @@ export function planStageGoals(
   return [...reached, ...goals];
 }
 
+/** 단계 목표를 나누는 출발 금액 — 지금 평가금액과 마지막 달성 목표 중 큰 값. */
+function stageGoalBase(
+  progress: Pick<PlantProgress, "growthStage" | "goalHistory">,
+  value: number
+): number {
+  const lastReached = progress.goalHistory.slice(0, progress.growthStage).at(-1)?.amount ?? 0;
+  return Math.max(0, Math.round(value), lastReached);
+}
+
+/**
+ * 막대 — 출발 금액(심을 때) 뒤로 늘어난 금액이 최종 목표까지의 몇 % 인지 (0~100, 소수 버림). 출발 금액이 없는
+ * 예전 식물은 0원부터. 목표가 없으면 null.
+ */
+export function seasonGoalPercent(
+  progress: Pick<PlantProgress, "stageGoals" | "stageBase" | "goalAmount">,
+  value: number
+): number | null {
+  const final = finalGoalOf(progress);
+  if (final === null || final <= 0) return null;
+  const base = progress.stageBase !== null && progress.stageBase < final ? progress.stageBase : 0;
+  const ratio = (value - base) / (final - base);
+  return Math.min(100, Math.max(0, Math.floor(ratio * 100)));
+}
+
 /**
  * 최종 목표를 정한다 (null 이면 지운다 — 씨앗이면 빈 화분으로). 단계 목표를 다시 나누고 다음 단계 목표를
  * 향한다. 열매가 열린 식물은 부르지 않는다 (`nextGoalError`).
@@ -150,9 +174,14 @@ export function setSeasonGoal<T extends PlantProgress>(
   finalGoal: number | null,
   value: number
 ): T {
-  if (finalGoal === null) return { ...progress, goalAmount: null, stageGoals: [] };
+  if (finalGoal === null) return { ...progress, goalAmount: null, stageGoals: [], stageBase: null };
   const stageGoals = planStageGoals(progress, finalGoal, value);
-  return { ...progress, stageGoals, goalAmount: stageGoals[progress.growthStage] ?? null };
+  return {
+    ...progress,
+    stageGoals,
+    stageBase: stageGoalBase(progress, value),
+    goalAmount: stageGoals[progress.growthStage] ?? null,
+  };
 }
 
 /** 이번 수확 주기의 최종 목표 (단계 목표가 없는 예전 식물은 지금 목표). */
@@ -337,6 +366,8 @@ export interface PlantStatus {
   goalAmount: number | null;
   /** 이번 수확 주기의 최종 목표 (원, 막대가 향하는 곳). `set`·`blocked-by-drift` 일 때만. */
   finalGoalAmount: number | null;
+  /** 막대 — 심은 뒤 늘어난 금액이 최종 목표까지의 몇 % 인지 (`seasonGoalPercent`). 목표가 없으면 null. */
+  goalPercent: number | null;
   /** 목표까지 남은 금액 (원). 목표가 없으면 null. */
   remainingToNextStage: number | null;
   /** 비중이 기준 밖이다 (연결 계좌·목표 비중이 없으면 false). */
@@ -370,6 +401,7 @@ export function computePlantStatus(
     goalState,
     goalAmount,
     finalGoalAmount: goalAmount === null ? null : finalGoalOf(next),
+    goalPercent: goalAmount === null ? null : seasonGoalPercent(next, evaluation.value),
     remainingToNextStage: goalAmount === null ? null : Math.max(0, goalAmount - evaluation.value),
     drifting: evaluation.drifting,
     driftDays: days,
@@ -433,6 +465,7 @@ export function harvestPlant<T extends PlantProgress & { id: string; name: strin
       goalHistory: [],
       fruitGoal: null,
       stageGoals: [],
+      stageBase: null,
       wish: "",
       plantName: "",
       wishHistory: [],

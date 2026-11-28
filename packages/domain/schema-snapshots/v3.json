@@ -420,6 +420,14 @@
           "min": 1,
           "nullable": false
         },
+        "stageBase": {
+          "default": {
+            "value": null
+          },
+          "kind": "money",
+          "min": 0,
+          "nullable": true
+        },
         "stageGoals": {
           "default": {
             "value": []
