@@ -42,7 +42,8 @@ export function useDeleteAccount() {
       if (ownsBiometricLogin) await biometric?.vault.remove();
       // 서버의 기기 등록은 계정과 함께 지워졌다 — 이 기기의 푸시 등록과 예약한 알림을 끊는다.
       await stopNotificationsOnSignOut();
-      window.location.href = "/";
+      // 떠난 화면(탈퇴)을 history 에 남기지 않는다 — 뒤로가기로 지운 계정의 화면이 돌아오지 않게.
+      window.location.replace("/");
       return;
     }
     setOutcome(result);

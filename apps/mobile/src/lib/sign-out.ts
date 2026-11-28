@@ -1,6 +1,8 @@
 import { authClient, currentSessionId } from "./auth-client";
-import { reloadApp } from "./device-storage";
+import { APP_HOME } from "./device";
+import { restartAppAt } from "./device-storage";
 import { markSignedOut } from "./native/biometric-login";
+import { isBundledApp } from "./native/bundled-app";
 import { stopNotificationsOnSignOut } from "./native/notifications";
 import { nativeSessionToken, type SessionTokenStore } from "./native/session-token";
 import { type OfflineSession, offlineSession } from "./offline-session";
@@ -68,8 +70,18 @@ export const signOutOnDevice: () => Promise<void> = createSignOut({
 });
 
 /**
- * 화면의 로그아웃 (설정·로그인 수단·탈퇴 재로그인·약관 거부). 무엇이 실패해도 새로고침해 로그인 화면으로
- * 간다. 로그인 화면이 생체 인증 프롬프트를 곧바로 다시 띄우지 않게 먼저 표시한다.
+ * 로그아웃 뒤 새로 시작할 주소 — 앱 홈. 번들 앱은 셸 루트(`/`)로 열어 홈으로 옮긴다 (`main.tsx`).
+ * 떠난 화면(설정 등)에서 다시 열면 로그인 화면이 그 주소를 복귀 경로로 잡아(`login-flow.ts`) 다음
+ * 로그인이 거기로 돌아간다.
+ */
+export function signedOutStartPath(): string {
+  return isBundledApp() ? "/" : APP_HOME;
+}
+
+/**
+ * 화면의 로그아웃 (설정·로그인 수단·탈퇴 재로그인·약관 거부). 무엇이 실패해도 앱 홈에서 새로 시작해
+ * 로그인 화면으로 간다 — history 항목을 바꿔 써 뒤로가기로 떠난 화면에 돌아가지 않는다. 로그인 화면이
+ * 생체 인증 프롬프트를 곧바로 다시 띄우지 않게 먼저 표시한다.
  */
 export async function signOutAndReload(): Promise<void> {
   try {
@@ -83,5 +95,5 @@ export async function signOutAndReload(): Promise<void> {
     new Promise((resolve) => setTimeout(resolve, SIGN_OUT_TIMEOUT_MS)),
   ]);
   await signOutOnDevice().catch(() => undefined);
-  await reloadApp();
+  await restartAppAt(signedOutStartPath());
 }
