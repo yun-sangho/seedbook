@@ -18,6 +18,7 @@ import {
   loginErrorMessage,
   resolveReturnPath,
 } from "@mobile/lib/login-flow";
+import { noteSignedInForAppLock } from "@mobile/lib/native/app-lock";
 import { canSignInWith } from "@mobile/lib/native/social-login";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
 import { Callout } from "@mobile/seed-design/ui/callout";
@@ -62,6 +63,7 @@ export function LoginScreen() {
     setDevFailed(false);
     const response = await apiFetch("/api/auth/dev-login", { method: "POST" }).catch(() => null);
     if (response?.ok) {
+      noteSignedInForAppLock();
       window.location.href = returnPath;
       return;
     }

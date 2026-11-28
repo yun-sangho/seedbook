@@ -5,6 +5,8 @@ import { accountStorage, getActiveAccount } from "@mobile/lib/account-storage";
 import { authClient } from "@mobile/lib/auth-client";
 import { type DeleteAccountResult, deleteAccount } from "@mobile/lib/delete-account";
 import { reloadApp } from "@mobile/lib/device-storage";
+import { isBiometricLoginEnrolledFor } from "@mobile/lib/native/biometric-login";
+import { getBiometricLoginDeps } from "@mobile/lib/native/biometric-login-client";
 
 /**
  * 회원 탈퇴 흐름 (모바일·데스크탑 공통). 성공하면 랜딩으로 이동하고, 세션이 오래돼
@@ -23,9 +25,19 @@ export function useDeleteAccount() {
       await reloadApp();
       return;
     }
+    // 이 계정으로 켠 생체 인증 로그인 토큰은 금고(Keychain/Keystore)에 남는다 — 기기 데이터를 비우면
+    // 누구 것인지 알 수 없으므로 먼저 확인해 두고, 탈퇴하면 지운다 (남기면 로그인 화면이 없는 계정으로
+    // 생체 인증을 묻는다).
+    const biometric = await getBiometricLoginDeps().catch(() => null);
+    const me = getActiveAccount();
+    const ownsBiometricLogin =
+      biometric !== null &&
+      typeof me === "string" &&
+      isBiometricLoginEnrolledFor(biometric.storage, me);
     // 이 계정의 기기 데이터 (브라우저 localStorage, 앱 SQLite) 를 비운다.
     const result = await deleteAccount(authClient, accountStorage);
     if (result === "deleted") {
+      if (ownsBiometricLogin) await biometric?.vault.remove();
       window.location.href = "/";
       return;
     }

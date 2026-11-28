@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { authClient } from "@mobile/lib/auth-client";
 import { type SocialProvider, signInCallbackURL } from "@mobile/lib/last-login-method";
+import { noteSignedInForAppLock } from "@mobile/lib/native/app-lock";
 import { nativeSessionToken } from "@mobile/lib/native/session-token";
 import { hasNativeLoginPlugin, signInNatively } from "@mobile/lib/native/social-login";
 
@@ -43,6 +44,7 @@ export function useSocialSignIn(returnPath: string) {
       if (native?.status === "ok") {
         const { error } = await authClient.signIn.social({ provider, idToken: native.idToken });
         if (!error) {
+          noteSignedInForAppLock();
           window.location.replace(signInCallbackURL(returnPath, provider));
           return;
         }
