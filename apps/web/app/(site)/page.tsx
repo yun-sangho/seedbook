@@ -2,18 +2,13 @@ import { Fragment } from "react";
 import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import { userAgent } from "next/server";
-import { PlantAvatar } from "@mobile/features/garden/components/plant-avatar";
-import {
-  PLANT_STAGES,
-  REBALANCE_BADGE_COLOR,
-} from "@mobile/features/garden/plant-3d/plant-options";
+import { REBALANCE_BADGE_COLOR } from "@mobile/features/garden/plant-3d/plant-options";
 import { resolveDeviceKind, VIEW_OVERRIDE_COOKIE } from "@mobile/lib/device";
 import { Badge } from "@mobile/seed-design/ui/badge";
 import { Divider, HStack, Text } from "@seed-design/react";
 import { LandingCta } from "@web/components/landing-cta";
 import { LandingMobileOnly } from "@web/components/landing-mobile-only";
 import { COMPANY } from "@web/lib/company";
-import { AppScreen } from "./_components/app-screen";
 import { FooterLink } from "./_components/footer-link";
 import { LandingGarden } from "./_components/landing-garden";
 import { SiteBrand } from "./_components/site-brand";
@@ -30,11 +25,41 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
-/** 계산 결과 예시 — 종목 대신 자산군 이름만 써서 특정 종목을 권하는 것으로 읽히지 않게 한다. */
-const exampleTrades = [
-  { name: "국내 주식 ETF", side: "매수", quantity: "12주", amount: "약 41만원" },
-  { name: "미국 주식 ETF", side: "매수", quantity: "3주", amount: "약 52만원" },
-  { name: "채권 ETF", side: "매도", quantity: "8주", amount: "약 85만원" },
+/**
+ * 목표 예시 — 자산마다 목표·기준·지금까지 온 정도(%). 저축·대출은 아직 없는 기능이라 그림 설명에 "예시" 와
+ * "준비 중" 을 함께 적는다.
+ */
+const exampleGoals = [
+  {
+    asset: "투자 포트폴리오",
+    goal: "노후 자금 3억원",
+    standard: "주식 60% · 채권 40%",
+    progress: 42,
+  },
+  { asset: "저축", goal: "여행 자금 500만원", standard: "매달 50만원 모으기", progress: 60 },
+  { asset: "대출", goal: "전세 대출 다 갚기", standard: "매달 80만원 갚기", progress: 35 },
+];
+
+/**
+ * 기준 확인 예시 — 자산마다 정한 기준과 지금 상태, 맞추려면 할 일. 저축·대출은 아직 없는 기능이라 그림 설명에
+ * "예시" 와 "준비 중" 을 함께 적는다. 종목 이름은 쓰지 않는다 (투자 권유로 읽히지 않게).
+ */
+const exampleChecks = [
+  {
+    asset: "투자 포트폴리오",
+    now: "주식 비중 68%",
+    standard: "기준 60%",
+    action: "다시 맞추기",
+    off: true,
+  },
+  { asset: "저축", now: "이번 달 40만원", standard: "기준 50만원", action: "10만원 더", off: true },
+  {
+    asset: "대출",
+    now: "이번 달 80만원 상환",
+    standard: "기준 80만원",
+    action: "기준 안",
+    off: false,
+  },
 ];
 
 /** 다루는 자산과 각각의 목표·기준. 아직 없는 것은 `ready: false` 로 "준비 중" 을 붙인다. */
@@ -148,27 +173,53 @@ function Step({
   );
 }
 
-/** 리밸런싱 계산 결과 예시 카드. 실제 앱 화면이 아니라 계산이 무엇을 내는지 보여 주는 예시다. */
-function TradeExample({ className }: { className?: string }) {
+/** 목표 예시 카드. 실제 앱 화면이 아니라 자산마다 목표와 기준을 정한 모습을 보여 주는 예시다. */
+function GoalExample() {
+  return (
+    <ul className="mx-auto flex w-full max-w-[420px] flex-col gap-x3">
+      {exampleGoals.map((item) => (
+        <li
+          key={item.asset}
+          className="bg-bg-layer-default border-stroke-neutral-subtle rounded-r5 border p-x5 shadow-[0_16px_32px_-24px_rgba(0,0,0,0.35)]"
+        >
+          <p className="t3-medium text-fg-neutral-subtle">{item.asset}</p>
+          <p className="t6-bold mt-x1">{item.goal}</p>
+          <p className="t4-regular text-fg-neutral-muted mt-x1">기준 {item.standard}</p>
+          <div className="mt-x3 flex items-center gap-x3">
+            <div className="bg-bg-neutral-weak h-x1_5 flex-1 overflow-hidden rounded-full">
+              <div
+                className="bg-bg-brand-solid h-full rounded-full"
+                style={{ width: `${item.progress}%` }}
+              />
+            </div>
+            <span className="t4-bold shrink-0 tabular-nums">{item.progress}%</span>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** 기준 확인 예시 카드. 실제 앱 화면이 아니라 기준에서 벗어난 것과 할 일을 보여 주는 예시다. */
+function StandardCheckExample({ className }: { className?: string }) {
   return (
     <div
       className={`bg-bg-layer-default border-stroke-neutral-subtle rounded-r5 border p-x5 shadow-[0_24px_48px_-28px_rgba(0,0,0,0.4)] ${className ?? ""}`}
     >
-      <div className="flex items-baseline justify-between gap-x4">
-        <span className="t4-medium text-fg-neutral-muted">거래 가능 금액</span>
-        <span className="t5-bold tabular-nums">300만원</span>
-      </div>
+      <p className="t4-medium text-fg-neutral-muted">이번 달 기준 확인</p>
       <ul className="border-stroke-neutral-subtle mt-x3 flex flex-col gap-x3 border-t pt-x3">
-        {exampleTrades.map((trade) => (
-          <li key={trade.name} className="flex items-center justify-between gap-x4">
+        {exampleChecks.map((check) => (
+          <li key={check.asset} className="flex items-center justify-between gap-x4">
             <div className="min-w-0">
-              <p className="t4-bold">{trade.name}</p>
-              <p className="t3-regular text-fg-neutral-muted tabular-nums">{trade.amount}</p>
+              <p className="t4-bold">{check.asset}</p>
+              <p className="t3-regular text-fg-neutral-muted tabular-nums">
+                {check.now} · {check.standard}
+              </p>
             </div>
             <span
-              className={`t4-bold shrink-0 tabular-nums ${trade.side === "매수" ? "text-fg-critical" : "text-fg-informative"}`}
+              className={`t4-bold shrink-0 tabular-nums ${check.off ? "text-fg-critical" : "text-fg-positive"}`}
             >
-              {trade.side} {trade.quantity}
+              {check.action}
             </span>
           </li>
         ))}
@@ -264,23 +315,18 @@ export default async function HomePage() {
         {/* 3. 목표를 이뤄 가는 세 걸음 — 번거롭던 일 → 얻는 것 */}
         <section className="bg-bg-neutral-weak">
           <div className={`${SECTION} py-x16 md:py-28`}>
-            <h2 className="t10-bold">투자 포트폴리오로 보면 이렇게 이뤄 가요</h2>
+            <h2 className="t10-bold">목표를 이뤄 가는 세 걸음</h2>
             <ol className="mt-x12 flex flex-col gap-x16 md:mt-x16 md:gap-28">
               <Step
                 step={1}
                 before="모으고는 있는데 어디까지 가야 할지 모르겠다면"
                 title="목표와 기준부터 정해요"
-                description="모을 금액과 자산을 나눌 비중을 정해요. ISA, 연금저축, IRP, 일반 계좌의 보유 종목과 현금을 모아 지금 어디쯤인지 한 화면에서 봐요."
+                description="모을 금액, 다 갚을 날처럼 이루고 싶은 목표를 정하고, 그 목표로 가는 동안 지킬 기준을 함께 정해요. 여러 곳에 흩어진 자산을 모아 지금 어디쯤인지 한 화면에서 봐요."
               >
-                <figure className="mx-auto w-full max-w-[300px]">
-                  <div className="border-stroke-neutral-muted overflow-hidden rounded-r6 border-[6px]">
-                    <AppScreen
-                      name="garden-home"
-                      alt="총 평가금액과 목표별 평가금액·수익률 목록이 보이는 앱 홈 화면"
-                    />
-                  </div>
+                <figure>
+                  <GoalExample />
                   <figcaption className="t3-regular text-fg-neutral-subtle mt-x3 text-center">
-                    데모 데이터로 찍은 앱 화면이에요
+                    예시예요 · 저축·대출은 준비 중이에요
                   </figcaption>
                 </figure>
               </Step>
@@ -288,13 +334,13 @@ export default async function HomePage() {
               <Step
                 step={2}
                 reverse
-                before="정해 둔 비중을 잊고 지내고 있다면"
+                before="정해 둔 기준을 잊고 지내고 있다면"
                 title="기준에서 벗어나면 알려 주고, 맞출 방법을 계산해요"
                 description={
                   <>
-                    실제 비중이 직접 정한 기준보다 목표에서 벗어나면 <RebalanceBadge /> 표시로 알려
-                    줘요. 거래 가능 금액만 넣으면 기준까지 종목별 매수·매도 수량과 금액을 계산해요.
-                    매매는 직접 판단해 쓰던 증권사에서 해요.
+                    자산을 나눌 비중이든 매달 넣을 금액이든, 정해 둔 기준에서 벗어나면{" "}
+                    <RebalanceBadge /> 표시로 알려 줘요. 다시 맞추려면 무엇을 얼마나 하면 되는지
+                    계산해 드려요. 실제 거래와 이체는 쓰던 금융사에서 직접 해요.
                   </>
                 }
               >
@@ -305,10 +351,10 @@ export default async function HomePage() {
                       alt="같은 크기의 나무 두 그루. 왼쪽은 똑바로 서 있고, 오른쪽은 기울어진 채 ! 표시가 떠 있다"
                       className="rounded-r6"
                     />
-                    <TradeExample className="mx-auto -mt-x10 w-[88%] max-w-[340px] md:absolute md:right-[-16px] md:bottom-[-40px] md:mt-0 md:w-[300px]" />
+                    <StandardCheckExample className="mx-auto -mt-x10 w-[88%] max-w-[340px] md:absolute md:right-[-16px] md:bottom-[-40px] md:mt-0 md:w-[300px]" />
                   </div>
                   <figcaption className="t3-regular text-fg-neutral-subtle mt-x3 text-center md:mt-x12">
-                    기준에서 벗어나면 기울고 ! 표시가 떠요 · 계산 결과는 예시예요
+                    기준에서 벗어나면 기울고 ! 표시가 떠요 · 카드는 예시예요 (저축·대출은 준비 중)
                   </figcaption>
                 </figure>
               </Step>
@@ -319,20 +365,13 @@ export default async function HomePage() {
                 title="이룬 목표가 눈에 보이게 쌓여요"
                 description="목표에 가까워질수록 식물이 자라요. 목표를 이루면 걸린 기간과 처음에 적어 둔 하고 싶은 일이 기록으로 남고, 다음 목표로 이어 가요."
               >
-                <figure aria-label="목표에 가까워질수록 자라는 식물 다섯 모습">
-                  <ol className="grid grid-cols-5 items-end gap-x2 md:gap-x4">
-                    {PLANT_STAGES.map((stage) => (
-                      <li key={stage} className="[&>svg]:size-full">
-                        <PlantAvatar
-                          stage={stage}
-                          pot="terracotta"
-                          size={96}
-                          ripe={stage === "bloom"}
-                        />
-                      </li>
-                    ))}
-                  </ol>
-                  <div className="text-fg-neutral-subtle t3-regular mt-x3 flex justify-between">
+                <figure>
+                  <LandingGarden
+                    scene="growth"
+                    alt="같은 식물의 다섯 모습이 한 줄로 서 있다. 왼쪽 씨앗부터 새싹, 묘목, 나무, 열매 맺은 나무까지"
+                    className="rounded-r6"
+                  />
+                  <div className="text-fg-neutral-subtle t3-regular mt-x3 flex justify-between px-x2">
                     <span>목표를 정했을 때</span>
                     <span>목표를 이뤘을 때</span>
                   </div>

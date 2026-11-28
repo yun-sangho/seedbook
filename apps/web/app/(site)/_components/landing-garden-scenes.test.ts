@@ -43,6 +43,27 @@ describe("landingGardenSlots", () => {
   });
 });
 
+describe("growth scene", () => {
+  it("shows the same plant at every stage from seed to fruit, in order", () => {
+    const plants = LANDING_GARDEN_PLANTS.growth;
+    expect(plants.map((plant) => plant.stage)).toEqual([
+      "seed",
+      "sprout",
+      "sapling",
+      "tree",
+      "bloom",
+    ]);
+    expect(plants.map((plant) => plant.ripe)).toEqual([false, false, false, false, true]);
+  });
+
+  it("stands the five plants in one row, left to right", () => {
+    const { slots } = landingGardenSlots("growth");
+    expect(new Set(slots.map((slot) => slot.z)).size).toBe(1);
+    const xs = slots.map((slot) => slot.x);
+    expect(xs).toEqual([...xs].sort((a, b) => a - b));
+  });
+});
+
 describe("landing images", () => {
   it.each(Object.keys(LANDING_GARDEN_PLANTS))(
     "has light and dark stills for the %s scene",
