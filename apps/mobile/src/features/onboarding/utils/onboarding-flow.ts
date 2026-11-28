@@ -1,51 +1,75 @@
+import {
+  FERN_STAGE_LABELS,
+  PLANT_STAGE_LABELS,
+  type PlantKind,
+} from "@mobile/features/garden/plant-3d/plant-options";
 import type { Stock } from "@mobile/features/investments/types/stock";
+import { INITIAL_PLANT_PROGRESS } from "@mobile/features/portfolio/types/constants";
 import type { PortfolioAllocation } from "@mobile/features/portfolio/types/types";
+import { planStageGoals } from "@mobile/features/portfolio/utils/plant-season";
 import { findSeedPreset } from "../types/seed-presets";
 
 /**
- * 첫 가입 흐름 (약관 동의 뒤): 닉네임 → 첫 씨앗 고르기 → 이름·첫 목표 → 종목 담기·비중 → 씨앗 심기
- * 연출 → 저장 방식 → 홈. 화면은 `components/onboarding-flow.tsx`, 여기는 상태 전환과 계산만 둔다.
+ * 첫 가입 흐름 (약관 동의 뒤): 닉네임 → 화분 고르기(추천 구성·직접, 이름) → 종목·비중 담기(여기서 화분 =
+ * 포트폴리오를 만든다) → 씨앗 심기(목표 금액 하나) → 심기 연출(목표를 미루면 빈 화분) → 저장 방식 → 홈.
+ * 화분을 먼저 만들고 씨앗은 그다음이다 (사용자 결정 2026-11-28). 화면은 `components/onboarding-flow.tsx`,
+ * 여기는 상태 전환과 계산만 둔다.
  */
-export type OnboardingStep = "nickname" | "seed" | "goal" | "stocks" | "planting" | "storage";
+export type OnboardingStep = "nickname" | "pot" | "stocks" | "seed" | "planting" | "storage";
 
-const NEXT_STEP: Record<OnboardingStep, OnboardingStep | "done"> = {
-  nickname: "seed",
-  seed: "goal",
-  goal: "stocks",
-  stocks: "planting",
-  planting: "storage",
-  storage: "done",
-};
+const STEP_ORDER = [
+  "nickname",
+  "pot",
+  "stocks",
+  "seed",
+  "planting",
+  "storage",
+] as const satisfies readonly OnboardingStep[];
+
+/** 진행 표시 칸 수 — 모든 단계가 한 칸씩. */
+export const ONBOARDING_PROGRESS_STEPS = STEP_ORDER.length;
+
+/** 진행 표시에서 이 단계의 칸 (1부터). */
+export function onboardingProgressIndex(step: OnboardingStep): number {
+  return STEP_ORDER.indexOf(step) + 1;
+}
 
 /** "다음" 으로 넘어갈 단계. */
 export function nextOnboardingStep(step: OnboardingStep): OnboardingStep | "done" {
-  return NEXT_STEP[step];
+  return STEP_ORDER[STEP_ORDER.indexOf(step) + 1] ?? "done";
 }
 
 /**
- * "나중에 하기" 로 넘어갈 단계. 씨앗 단계부터는 남은 포트폴리오 단계를 건너뛰고 저장 방식으로 간다 —
- * 심은 씨앗은 그대로 씨앗으로 남아 정원에서 이어서 가꾼다.
+ * "나중에 하기" 로 넘어갈 단계. 화분을 만들기 전(화분 고르기·종목)에 미루면 저장 방식으로 간다. 씨앗(목표)을
+ * 미루면 만든 화분은 빈 화분으로 남고, 그 모습을 보여 준 뒤 저장 방식으로 간다.
  */
 export function skipOnboardingStep(step: OnboardingStep): OnboardingStep | "done" {
-  if (step === "nickname") return "seed";
+  if (step === "nickname") return "pot";
+  if (step === "seed") return "planting";
   if (step === "storage") return "done";
   return "storage";
 }
 
 /**
- * 앱을 껐다 켜도 이어서 하도록 남겨 두는 진행 (계정별 기기 저장소). 포트폴리오를 만든 뒤 단계만
- * 남긴다 — 그 전 단계는 처음부터 다시 해도 잃는 것이 없다.
+ * 앱을 껐다 켜도 이어서 하도록 남겨 두는 진행 (계정별 기기 저장소). 화분(포트폴리오)을 만든 뒤 단계만
+ * 남긴다 — 그 전 단계는 처음부터 다시 해도 잃는 것이 없다. `stocks` 는 이전 앱(씨앗을 먼저 심던 흐름)이
+ * 남긴 값 — 그때는 종목 단계 전에 포트폴리오가 있었다.
  */
 export interface OnboardingProgress {
-  step: "stocks" | "planting" | "storage";
-  /** 이 흐름이 심은 포트폴리오. 씨앗 고르기를 건너뛰었으면 null. */
+  step: "stocks" | "seed" | "planting" | "storage";
+  /** 이 흐름이 만든 포트폴리오. 화분 고르기를 건너뛰었으면 null. */
   portfolioId: string | null;
   presetId: string | null;
 }
 
 export const ONBOARDING_PROGRESS_KEY = "seedbook.onboarding";
 
-const RESUMABLE_STEPS = new Set<OnboardingProgress["step"]>(["stocks", "planting", "storage"]);
+const RESUMABLE_STEPS = new Set<OnboardingProgress["step"]>([
+  "stocks",
+  "seed",
+  "planting",
+  "storage",
+]);
 
 export function parseOnboardingProgress(raw: string | null): OnboardingProgress | null {
   if (raw === null) return null;
@@ -78,9 +102,26 @@ export function initialOnboardingStep({
   portfolioIds: readonly string[];
 }): OnboardingStep {
   if (needsProfile) return "nickname";
-  if (!progress) return "seed";
-  if (progress.portfolioId !== null && !portfolioIds.includes(progress.portfolioId)) return "seed";
+  if (!progress) return "pot";
+  if (progress.portfolioId !== null && !portfolioIds.includes(progress.portfolioId)) return "pot";
   return progress.step;
+}
+
+/** 씨앗 심기 화면의 단계 미리보기 한 줄: 이 금액에 닿으면 이 단계가 된다. */
+export interface SeedStagePreview {
+  label: string;
+  amount: number;
+}
+
+/**
+ * 목표 금액 하나를 식물이 지나갈 단계(새싹 … 꽃, 마지막 열매)로 나눈 미리보기. 온보딩의 화분은 아직
+ * 연결 계좌가 없어 0원에서 출발한다 — 저장하는 단계 목표(`setPlantGoal` → `planStageGoals`)와 같은 계산.
+ */
+export function seedStagePreview(kind: PlantKind, finalGoal: number): SeedStagePreview[] {
+  const goals = planStageGoals({ ...INITIAL_PLANT_PROGRESS, plantKind: kind }, finalGoal, 0);
+  const labels = kind === "fern" ? FERN_STAGE_LABELS : PLANT_STAGE_LABELS;
+  const stageNames = [labels.sprout, labels.sapling, labels.tree, "꽃", "열매"];
+  return goals.map((amount, i) => ({ label: stageNames[i] ?? "열매", amount }));
 }
 
 /**

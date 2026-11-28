@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { reloadApp } from "@mobile/lib/device-storage";
 import { applyStorageChoice } from "@mobile/lib/storage-choice";
 import type { StorageMode } from "@mobile/lib/storage-mode";
@@ -18,13 +18,13 @@ const OPTIONS: ReadonlyArray<{ mode: StorageMode; title: string; description: st
     mode: "local",
     title: "이 기기에만 저장",
     description:
-      "자산 정보를 서버로 보내지 않아요. 앱이나 브라우저 데이터를 지우거나 기기를 바꾸면 되살릴 수 없어요.",
+      "Seedbook 서버로 보내지 않아요. 앱이나 브라우저 데이터를 지우거나 기기를 바꾸면 되살릴 수 없으니, 설정 → 백업으로 파일을 내보내 두세요.",
   },
   {
     mode: "cloud",
     title: "클라우드에 저장",
     description:
-      "자산 정보를 서버에 저장해요. 같은 계정으로 로그인하면 어느 기기에서든 같은 데이터를 봐요.",
+      "Seedbook 서버에 저장해요. 같은 계정으로 로그인하면 다른 기기에서도 같은 정보를 보고, 기기를 바꿔도 남아 있어요.",
   },
 ];
 
@@ -45,6 +45,8 @@ interface StorageChoiceScreenProps {
    * 설정에서 바꿀 수 있다.
    */
   allowLater?: boolean;
+  /** 맨 위에 그리는 것 (첫 가입 흐름의 진행 표시). */
+  header?: ReactNode;
 }
 
 /** 저장 방식 선택 화면. 계정마다 한 번, 약관 동의 다음에 보여 준다. */
@@ -52,6 +54,7 @@ export function StorageChoiceScreen({
   current,
   onDone,
   allowLater = false,
+  header,
 }: StorageChoiceScreenProps) {
   const [selected, setSelected] = useState<StorageMode | null>(current);
   const [pending, setPending] = useState<"submit" | "later" | null>(null);
@@ -77,14 +80,17 @@ export function StorageChoiceScreen({
 
   return (
     <main className="bg-bg-layer-default text-fg-neutral flex h-dvh w-full flex-col overflow-y-auto px-x6 pt-[env(safe-area-inset-top)] pb-[calc(env(safe-area-inset-bottom)+24px)]">
-      <div className="mx-auto flex w-full max-w-sm flex-1 flex-col gap-x8 pt-x16">
+      {header && <div className="mx-auto flex h-x12 w-full max-w-sm items-center">{header}</div>}
+      <div
+        className={`mx-auto flex w-full max-w-sm flex-1 flex-col gap-x8 ${header ? "pt-x4" : "pt-x16"}`}
+      >
         <div className="flex flex-col gap-x2">
           <h1 className="t8-bold break-keep">
-            {current === null ? "어디에 저장할까요?" : "저장 방식을 확인해 주세요"}
+            {current === null ? "자산 정보를 어디에 저장할까요?" : "저장 방식을 확인해 주세요"}
           </h1>
           <p className="t5-regular text-fg-neutral-muted break-keep">
             {current === null
-              ? "계좌와 포트폴리오를 저장할 곳을 골라 주세요. 나중에 설정에서 바꿀 수 있어요."
+              ? "계좌·보유 종목·포트폴리오를 저장할 곳이에요. 설정에서 언제든 바꿀 수 있어요."
               : "지금 방식을 그대로 쓰거나 바꿀 수 있어요. 나중에 설정에서도 바꿀 수 있어요."}
           </p>
         </div>

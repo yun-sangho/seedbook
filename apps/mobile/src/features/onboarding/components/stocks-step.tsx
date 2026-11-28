@@ -189,7 +189,7 @@ export function StocksStep({
 
   return (
     <OnboardingStepLayout
-      progress={4}
+      step="stocks"
       title={custom ? "종목을 담고 비중을 정해 주세요" : "자산군마다 종목을 담아 주세요"}
       description={
         custom
@@ -197,7 +197,7 @@ export function StocksStep({
           : "비중은 자산군 단위예요. 한 자산군에 종목을 여럿 담으면 똑같이 나눠요."
       }
       onBack={onBack}
-      primary={{ label: "씨앗 심기", disabled: status.issue !== null, onClick: onNext }}
+      primary={{ label: "화분 만들기", disabled: status.issue !== null, onClick: onNext }}
       onLater={onLater}
       footerNote={
         <p

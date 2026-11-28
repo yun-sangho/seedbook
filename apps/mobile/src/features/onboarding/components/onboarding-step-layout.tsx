@@ -4,13 +4,42 @@ import type { ReactNode } from "react";
 import { IconChevronLeftLine } from "@karrotmarket/react-monochrome-icon";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
 import { Callout } from "@mobile/seed-design/ui/callout";
+import {
+  ONBOARDING_PROGRESS_STEPS,
+  type OnboardingStep,
+  onboardingProgressIndex,
+} from "../utils/onboarding-flow";
 
-/** 진행 표시에 세는 단계 (심기 연출은 세지 않는다). */
-export const PROGRESS_STEPS = 5;
+/** 가입 진행 표시 (위쪽 칸). 저장 방식 화면(공용 컴포넌트)도 이것을 받아 같은 모양으로 그린다. */
+export function OnboardingProgressBar({ step }: { step: OnboardingStep }) {
+  const current = onboardingProgressIndex(step);
+  return (
+    <div
+      role="progressbar"
+      aria-label="가입 진행"
+      aria-valuemin={1}
+      aria-valuemax={ONBOARDING_PROGRESS_STEPS}
+      aria-valuenow={current}
+      className="flex flex-1 gap-x1"
+    >
+      {Array.from({ length: ONBOARDING_PROGRESS_STEPS }, (_, i) => (
+        <span
+          // biome-ignore lint/suspicious/noArrayIndexKey: 고정 개수의 진행 칸
+          key={i}
+          className={`h-[3px] flex-1 rounded-full ${
+            i < current ? "bg-bg-brand-solid" : "bg-bg-neutral-weak"
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
 
 interface OnboardingStepLayoutProps {
-  /** 1부터. 없으면 진행 표시를 그리지 않는다. */
-  progress?: number;
+  /** 이 화면의 단계 (진행 표시). 없으면 진행 표시를 그리지 않는다. */
+  step?: OnboardingStep;
+  /** 제목 위에 꽉 차게 그리는 그림 (정원판 등). */
+  hero?: ReactNode;
   title: string;
   description?: ReactNode;
   onBack?: () => void;
@@ -25,9 +54,10 @@ interface OnboardingStepLayoutProps {
   footerNote?: ReactNode;
 }
 
-/** 첫 가입 흐름의 한 단계 화면: 위 진행 표시, 제목, 스크롤 내용, 아래 고정 버튼. */
+/** 첫 가입 흐름의 한 단계 화면: 위 진행 표시, (그림), 제목, 스크롤 내용, 아래 고정 버튼. */
 export function OnboardingStepLayout({
-  progress,
+  step,
+  hero,
   title,
   description,
   onBack,
@@ -55,30 +85,12 @@ export function OnboardingStepLayout({
         ) : (
           <span className="size-x10 -ml-x2" aria-hidden />
         )}
-        {progress !== undefined && (
-          <div
-            role="progressbar"
-            aria-label="가입 진행"
-            aria-valuemin={1}
-            aria-valuemax={PROGRESS_STEPS}
-            aria-valuenow={progress}
-            className="flex flex-1 gap-x1"
-          >
-            {Array.from({ length: PROGRESS_STEPS }, (_, i) => (
-              <span
-                // biome-ignore lint/suspicious/noArrayIndexKey: 고정 개수의 진행 칸
-                key={i}
-                className={`h-[3px] flex-1 rounded-full ${
-                  i < progress ? "bg-bg-brand-solid" : "bg-bg-neutral-weak"
-                }`}
-              />
-            ))}
-          </div>
-        )}
+        {step !== undefined && <OnboardingProgressBar step={step} />}
       </div>
 
       <div className="flex-1 overflow-y-auto px-x6">
         <div className="mx-auto flex w-full max-w-sm flex-col gap-x6 pt-x4 pb-x6">
+          {hero}
           <div className="flex flex-col gap-x2">
             <h1 className="t8-bold break-keep">{title}</h1>
             {description && (

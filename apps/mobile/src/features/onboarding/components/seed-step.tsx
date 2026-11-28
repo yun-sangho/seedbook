@@ -1,76 +1,111 @@
 "use client";
 
-import { useState } from "react";
-import { Callout } from "@mobile/seed-design/ui/callout";
+import { useMemo, useState } from "react";
+import { formatMoneyDraft } from "@mobile/components/mobile/input-format";
+import { MoneyField } from "@mobile/components/mobile/money-field";
+import type { PlantKind } from "@mobile/features/garden/plant-3d/plant-options";
+import { INITIAL_PLANT_PROGRESS } from "@mobile/features/portfolio/types/constants";
 import {
-  RadioSelectBoxItem,
-  RadioSelectBoxRadiomark,
-  RadioSelectBoxRoot,
-} from "@mobile/seed-design/ui/select-box";
-import { SEED_PRESET_DISCLAIMER, SEED_PRESETS } from "../types/seed-presets";
+  NEXT_GOAL_ERROR_MESSAGES,
+  nextGoalError,
+} from "@mobile/features/portfolio/utils/plant-season";
+import { numberToKorean, parseNumericString } from "@mobile/utils/number-format";
+import { seedStagePreview } from "../utils/onboarding-flow";
 import { OnboardingStepLayout } from "./onboarding-step-layout";
 
-const CUSTOM = "custom";
+/** 새 화분의 평가 — 아직 연결 계좌가 없어 0원이다 (목표의 하한이 없다). */
+const NEW_POT_VALUATION = { value: 0, pricesComplete: true };
 
-const classSummary = (classes: (typeof SEED_PRESETS)[number]["classes"]) =>
-  classes.map((c) => `${c.label} ${c.percent}`).join(" · ");
+/** 입력한 목표 → 금액. 비었으면 null, 규칙에 어긋나면 오류 문구. */
+function readGoal(draft: string): { amount: number | null } | { error: string } {
+  if (draft.trim() === "") return { amount: null };
+  const amount = parseNumericString(draft);
+  const invalid = nextGoalError(INITIAL_PLANT_PROGRESS, amount, NEW_POT_VALUATION);
+  return invalid ? { error: NEXT_GOAL_ERROR_MESSAGES[invalid](null) } : { amount };
+}
 
-/** 첫 씨앗 고르기: 널리 알려진 포트폴리오 카드 또는 직접 만들기. */
+/**
+ * 씨앗 심기: 화분에 목표 금액 하나를 정한다. 단계(새싹 … 열매)는 금액에 따라 저절로 오르고, 그 금액을
+ * 미리 보여 준다. 목표를 미루면 화분은 빈 화분으로 남는다.
+ */
 export function SeedStep({
-  initial,
-  onChoose,
+  kind,
+  initialGoal,
+  onBack,
+  onPlant,
   onLater,
 }: {
-  /** 이전 단계에서 돌아왔을 때 고른 카드 (직접 만들기는 null). */
-  initial: string | null | undefined;
-  onChoose: (presetId: string | null) => void;
+  kind: PlantKind;
+  initialGoal: number | null;
+  onBack: () => void;
+  onPlant: (goalAmount: number) => void;
+  /** 목표 없이 빈 화분으로 둔다. */
   onLater: () => void;
 }) {
-  const [selected, setSelected] = useState<string | null>(
-    initial === undefined ? null : (initial ?? CUSTOM)
+  const [goal, setGoal] = useState(
+    initialGoal === null ? "" : formatMoneyDraft(String(initialGoal))
   );
+  const [goalError, setGoalError] = useState<string | undefined>();
+  const read = readGoal(goal);
+  const amount = "amount" in read ? read.amount : null;
+  const preview = useMemo(
+    () => (amount === null ? [] : seedStagePreview(kind, amount)),
+    [kind, amount]
+  );
+
+  const plant = () => {
+    if ("error" in read) {
+      setGoalError(read.error);
+      return;
+    }
+    if (read.amount === null) {
+      setGoalError("목표 금액을 입력해 주세요");
+      return;
+    }
+    onPlant(read.amount);
+  };
 
   return (
     <OnboardingStepLayout
-      progress={2}
-      title="첫 씨앗을 골라 주세요"
-      description="씨앗 하나가 포트폴리오 하나예요. 목표 금액에 닿을 때마다 한 단계씩 자라요."
-      primary={{
-        label: "이 씨앗으로 시작",
-        disabled: selected === null,
-        onClick: () => onChoose(selected === CUSTOM ? null : selected),
-      }}
+      step="seed"
+      title="목표를 정하고 씨앗을 심어요"
+      description="포트폴리오 금액이 목표에 가까워질수록 식물이 자라고, 목표에 닿으면 수확해요."
+      onBack={onBack}
+      primary={{ label: "씨앗 심기", onClick: plant }}
       onLater={onLater}
+      laterLabel="목표는 나중에 (빈 화분으로 두기)"
     >
-      <Callout tone="neutral" description={SEED_PRESET_DISCLAIMER} />
-      <RadioSelectBoxRoot
-        aria-label="첫 씨앗"
-        value={selected ?? ""}
-        onValueChange={(value) => setSelected(value)}
-      >
-        {SEED_PRESETS.map((preset) => (
-          <RadioSelectBoxItem
-            key={preset.id}
-            value={preset.id}
-            label={preset.name}
-            description={
-              <span className="flex flex-col gap-x1">
-                <span>{preset.description}</span>
-                <span className="t3-medium text-fg-neutral-subtle">
-                  {classSummary(preset.classes)} (%)
-                </span>
-              </span>
-            }
-            suffix={<RadioSelectBoxRadiomark />}
-          />
-        ))}
-        <RadioSelectBoxItem
-          value={CUSTOM}
-          label="직접 만들기"
-          description="종목과 비중을 처음부터 정해요"
-          suffix={<RadioSelectBoxRadiomark />}
-        />
-      </RadioSelectBoxRoot>
+      <MoneyField
+        label="목표 금액"
+        value={goal}
+        onValueChange={(next) => {
+          setGoal(next);
+          setGoalError(undefined);
+        }}
+        placeholder="예: 10,000,000"
+        errorMessage={goalError}
+        clearable
+      />
+      {preview.length > 0 && (
+        <section aria-label="단계별 금액" className="bg-bg-neutral-weak rounded-r3 p-x4">
+          <p className="t3-medium text-fg-neutral-muted pb-x2">
+            금액에 따라 단계가 저절로 올라가요
+          </p>
+          <ul className="flex flex-col gap-x1">
+            {preview.map(({ label, amount: stageAmount }, i) => (
+              <li
+                key={label}
+                className={`t4-regular flex justify-between ${
+                  i === preview.length - 1 ? "t4-bold text-fg-neutral" : "text-fg-neutral-muted"
+                }`}
+              >
+                <span>{i === preview.length - 1 ? `${label} (수확)` : label}</span>
+                <span>{numberToKorean(stageAmount)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </OnboardingStepLayout>
   );
 }
