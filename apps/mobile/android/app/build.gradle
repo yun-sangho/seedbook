@@ -35,6 +35,15 @@ android {
         }
     }
     buildTypes {
+        // 개발용 앱 Seedbook Dev — 출시 앱과 나란히 설치되고 (`ing.boogie.seedbook.dev`) 로컬 dev 서버에 붙는다.
+        // 이름·DEV 아이콘·cleartext(http) 허용은 src/dev 에만 있다. 디버그 키로 서명한다 (카카오 콘솔에 디버그 키 해시).
+        // 빌드: `pnpm --filter @seedbook/mobile dev:android-device` (apps/mobile/README.md "Seedbook Dev").
+        dev {
+            initWith debug
+            applicationIdSuffix ".dev"
+            versionNameSuffix "-dev"
+            matchingFallbacks = ['debug']
+        }
         release {
             if (uploadStoreFile) {
                 signingConfig signingConfigs.upload

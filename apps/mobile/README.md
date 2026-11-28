@@ -54,11 +54,50 @@ pnpm --filter @seedbook/mobile open:ios    # Xcode 로 열어 시뮬레이터/�
 pnpm --filter @seedbook/mobile open:android
 ```
 
-번들이 로컬 API 서버를 부르게 하려면 빌드 값을 준다 (dev 빌드라 "개발용 빠른 로그인" 이 보인다):
+## Seedbook Dev (개발용 앱, 앱 QA 는 이것으로)
+
+출시 앱과 **나란히 설치되는** 개발용 앱이다. 운영이 아니라 이 맥의 dev 서버(같은 Wi-Fi, `http://<맥 LAN IP>:<슬롯 web 포트>`,
+슬롯 DB)에 붙어 실제 데이터와 완전히 나뉜다. 앱 QA 는 Seedbook Dev 를 사용자 아이폰에 깔아서 한다 — 시뮬레이터·에뮬레이터는
+띄우지 않는다 (리소스 절약).
 
 ```bash
-SEEDBOOK_API_BASE_URL=http://<맥 LAN IP>:<API 포트> npx vite build --mode development && npx cap sync ios
+pnpm dev                                            # 이 체크아웃의 dev 서버 (먼저)
+pnpm --filter @seedbook/mobile dev:ios-device       # 빌드 → 연결된 아이폰에 설치·실행
+pnpm --filter @seedbook/mobile dev:android-device   # adb 로 연결된 Android 기기 (dev 빌드 타입)
 ```
+
+루트 `scripts/dev-app.mjs` 가 슬롯 web 포트(`pnpm wt:info`)와 맥 LAN IP(en0)를 찾아 dev 서버가 응답하는지 보고,
+`vite build --mode development` (`SEEDBOOK_API_BASE_URL` = 그 주소, "개발용 빠른 로그인" 이 보인다) → `cap sync`
+(`SEEDBOOK_DEV_APP=1`) → fastlane `dev` lane (xcodebuild `-configuration Dev -destination id=<아이폰>` + `devicectl install`)
+을 돌린다. 기기·팀 ID 는 자동으로 찾고 `SEEDBOOK_IOS_DEVICE`·`APPLE_TEAM_ID`·`SEEDBOOK_DEV_HOST` 로 바꿀 수 있다.
+처음에는 아이폰에 "로컬 네트워크" 권한을 허용한다. 출시 빌드용 번들로 되돌릴 때는 env 없이 `pnpm sync` 한다.
+
+|             | 출시 앱                | Seedbook Dev                                                                                   |
+| ----------- | ---------------------- | ---------------------------------------------------------------------------------------------- |
+| 번들 ID     | `ing.boogie.seedbook`  | `ing.boogie.seedbook.dev` (Android `applicationIdSuffix ".dev"`)                               |
+| 구성        | iOS Debug·Release      | iOS `Dev` 빌드 구성 (`Info-Dev.plist`, `AppIconDev`), Android `dev` 빌드 타입 (`src/dev`)      |
+| 이름·아이콘 | Seedbook               | Seedbook Dev, 아이콘에 DEV (`pnpm brand:icons` 가 같이 만든다)                                 |
+| API 서버    | 운영                   | 맥 dev 서버 (http) — ATS `NSAllowsLocalNetworking`·Android cleartext·mixed content 는 Dev 에만 |
+| 서명        | 배포 (fastlane `beta`) | 개발 서명 (iOS 자동 서명, Android 디버그 키)                                                   |
+
+`src/lib/native/dev-app-config.test.ts` 가 Dev 의 예외가 출시 구성에 새지 않고 `Info-Dev.plist` 가 `Info.plist` 와
+이름·Dev 블록 말고는 같은지 확인한다 — `Info.plist` 를 고치면 `Info-Dev.plist` 도 같이 고친다.
+
+dev 서버의 Vite 는 CORS 를 Next 에 맡긴다 (`vite.config.ts` `server.cors: false`) — Vite 기본 CORS 는 앱 origin
+(`capacitor://localhost`) 의 preflight 를 막는다.
+
+로그인:
+
+- **개발용 빠른 로그인**: 바로 된다 (`/api/auth/dev-login` 의 `set-auth-token`).
+- **카카오**: 로컬 `.env.local` 에 `KAKAO_NATIVE_APP_KEY` (스크립트가 빌드에도 넣는다) + 카카오 콘솔 플랫폼에 iOS 번들
+  `ing.boogie.seedbook.dev`, Android 패키지 `ing.boogie.seedbook.dev` 와 디버그 키 해시
+  (`keytool -exportcert -alias androiddebugkey -keystore ~/.android/debug.keystore -storepass android | openssl sha1 -binary | openssl base64`).
+  출시 앱과 같은 카카오 URL 스킴(`kakao<키>`)을 쓰므로 둘 다 깔린 iOS 에서 "카카오톡으로 로그인" 은 다른 앱으로 돌아올 수
+  있다 — 카카오 계정(ID/비밀번호) 로그인으로 확인한다.
+- **Apple**: 로컬 `.env.local` 에 `APPLE_*` 네 값. 개발 서버는 Dev 번들 ID 토큰도 받는다 (`apps/web/lib/apple-auth.ts`).
+  App ID 는 처음 빌드 때 Xcode 자동 서명이 만든다 (Sign in with Apple entitlement 포함).
+
+화면만 빨리 고칠 때는 아래 live-reload 도 쓸 수 있다.
 
 화면을 다시 빌드하지 않고 고치려면 live-reload 로 로컬 앱 dev 서버를 띄운다 — 기기에서 본 호스트 주소를 쓴다 (4001 은 메인 체크아웃의 앱 dev 서버(Vite). 워크트리는
 `pnpm wt:info` 의 web 포트):

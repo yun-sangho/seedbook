@@ -60,9 +60,7 @@ export const auth = betterAuth({
             clientId: appleConfig.clientId,
             clientSecret: createAppleClientSecret(appleConfig),
             // 웹(Services ID)과 네이티브 앱(번들 ID)이 받은 id token 을 모두 받는다.
-            audience: [appleConfig.clientId, appleConfig.appBundleIdentifier].filter(
-              (value): value is string => Boolean(value)
-            ),
+            audience: [appleConfig.clientId, ...appleConfig.appBundleIdentifiers],
           }),
         }
       : {}),

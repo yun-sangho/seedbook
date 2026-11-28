@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Seedbook Dev 전용: 로컬 dev 서버는 http 라 cleartext 를 허용한다. 출시 앱(main)에는 이 설정이 없다. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

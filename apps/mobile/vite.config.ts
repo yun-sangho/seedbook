@@ -119,6 +119,11 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       // 네이티브 셸(에뮬레이터 10.0.2.2·실기기 LAN IP)이 붙을 수 있게 모든 주소에서 듣는다 (Next dev 와 같다).
       host: true,
+      // CORS 는 Next(`apps/web/proxy.ts`, 앱 origin 만 허용)가 정한다. Vite 기본 CORS 는 localhost origin 만 받아
+      // 개발용 앱(Seedbook Dev, origin `capacitor://localhost`)의 `/api` preflight 를 Next 에 넘기기 전에 막는다.
+      cors: false,
+      // 네이티브 빌드 산출물(fastlane `build/`, cap sync 가 복사한 번들)이 바뀔 때 페이지를 새로 고치지 않는다.
+      watch: { ignored: ["**/build/**", "**/ios/**", "**/android/**"] },
       // 앱 경로 밖(소개·약관·`/dev/*`·`/_next/*`·`/api` 등)과 Next dev HMR websocket 을 Next 로.
       proxy: devProxyRoutes(apiTarget),
     },

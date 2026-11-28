@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   APPLE_CLIENT_SECRET_TTL_SECONDS,
   createAppleClientSecret,
+  DEV_APP_BUNDLE_ID,
   readAppleConfig,
 } from "./apple-auth";
 
@@ -46,7 +47,47 @@ describe("readAppleConfig", () => {
 
   it("passes the iOS bundle id through when set", () => {
     const config = readAppleConfig({ ...COMPLETE_ENV, APPLE_APP_BUNDLE_ID: "ing.boogie.seedbook" });
-    expect(config?.appBundleIdentifier).toBe("ing.boogie.seedbook");
+    expect(config?.appBundleIdentifiers).toEqual(["ing.boogie.seedbook"]);
+  });
+
+  it("has no app bundle ids when none is set outside development", () => {
+    const config = readAppleConfig({ ...COMPLETE_ENV, NODE_ENV: "production" });
+    expect(config?.appBundleIdentifiers).toEqual([]);
+  });
+
+  it("accepts a comma-separated list of bundle ids", () => {
+    const config = readAppleConfig({
+      ...COMPLETE_ENV,
+      APPLE_APP_BUNDLE_ID: "ing.boogie.seedbook, ing.boogie.other ,",
+    });
+    expect(config?.appBundleIdentifiers).toEqual(["ing.boogie.seedbook", "ing.boogie.other"]);
+  });
+
+  it("keeps production audiences to the configured bundle ids (no dev app)", () => {
+    const config = readAppleConfig({
+      ...COMPLETE_ENV,
+      NODE_ENV: "production",
+      APPLE_APP_BUNDLE_ID: "ing.boogie.seedbook",
+    });
+    expect(config?.appBundleIdentifiers).not.toContain(DEV_APP_BUNDLE_ID);
+  });
+
+  it("adds the Seedbook Dev bundle id on the development server", () => {
+    const config = readAppleConfig({
+      ...COMPLETE_ENV,
+      NODE_ENV: "development",
+      APPLE_APP_BUNDLE_ID: "ing.boogie.seedbook",
+    });
+    expect(config?.appBundleIdentifiers).toEqual(["ing.boogie.seedbook", DEV_APP_BUNDLE_ID]);
+  });
+
+  it("does not list the dev bundle id twice", () => {
+    const config = readAppleConfig({
+      ...COMPLETE_ENV,
+      NODE_ENV: "development",
+      APPLE_APP_BUNDLE_ID: DEV_APP_BUNDLE_ID,
+    });
+    expect(config?.appBundleIdentifiers).toEqual([DEV_APP_BUNDLE_ID]);
   });
 });
 

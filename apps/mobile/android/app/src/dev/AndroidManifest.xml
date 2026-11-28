@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Seedbook Dev 전용 (dev 빌드 타입): 같은 Wi-Fi 의 맥 dev 서버(http://<LAN IP>:<포트>)에 붙도록 http 를 허용한다. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application
+        android:networkSecurityConfig="@xml/network_security_config"
+        tools:ignore="UnusedAttribute" />
+</manifest>

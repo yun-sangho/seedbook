@@ -5,6 +5,9 @@
  *
  *   pnpm brand:icons
  *
+ * 개발용 앱 Seedbook Dev 의 아이콘(같은 그림 + "DEV" 표시)도 만든다 — iOS `AppIconDev` (Dev 빌드 구성),
+ * Android `src/dev/res` (dev 빌드 타입).
+ *
  * 같은 원본이면 같은 파일이 나온다. sharp 는 web 의 next 의존성으로 들어와 있어 그 기준으로
  * resolve 한다. (@capacitor/assets 는 쓰지 않는다 — 출력 경로·비율을 웹과 함께 맞추기 어렵고
  * 의존성만 늘어서.)
@@ -13,7 +16,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { BRAND_BACKGROUND, composeSvg, encodeIco } from "./brand-icons-lib.mjs";
+import { BRAND_BACKGROUND, composeSvg, encodeIco, withDevBadge } from "./brand-icons-lib.mjs";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const webDir = path.join(rootDir, "apps/web");
@@ -123,6 +126,15 @@ write(
   path.join(IOS_ASSETS, "AppIcon.appiconset/AppIcon-512@2x.png"),
   await rasterize(tile, 1024, { opaque: true })
 );
+// Seedbook Dev (Dev 빌드 구성의 ASSETCATALOG_COMPILER_APPICON_NAME).
+write(
+  path.join(IOS_ASSETS, "AppIconDev.appiconset/AppIcon-512@2x.png"),
+  await rasterize(withDevBadge(tile, { centerY: 80, scale: 1 }), 1024, { opaque: true })
+);
+write(
+  path.join(IOS_ASSETS, "AppIconDev.appiconset/Contents.json"),
+  readFileSync(path.join(IOS_ASSETS, "AppIcon.appiconset/Contents.json"))
+);
 // LaunchScreen: 정사각 2732 를 화면 높이에 맞춰 자르므로 30% 상자 (폰에서 그림 ~170pt).
 for (const name of ["splash-2732x2732", "splash-2732x2732-1", "splash-2732x2732-2"]) {
   write(
@@ -156,6 +168,24 @@ for (const { name, launcher, foreground } of DENSITIES) {
   write(
     path.join(RES, `mipmap-${name}/ic_launcher_foreground.png`),
     await rasterize(adaptiveForeground, foreground)
+  );
+}
+// Seedbook Dev (dev 빌드 타입): 같은 이름의 런처 아이콘을 src/dev/res 가 덮는다. 적응형 전경은 보이는 원
+// (반지름 ~30) 안에 들도록 표시를 줄여 얹는다.
+const DEV_RES = path.join(mobileDir, "android/app/src/dev/res");
+const devBadge = { centerY: 80, scale: 1 };
+for (const { name, launcher, foreground } of DENSITIES) {
+  write(
+    path.join(DEV_RES, `mipmap-${name}/ic_launcher.png`),
+    await rasterize(withDevBadge(roundedTile, devBadge), launcher)
+  );
+  write(
+    path.join(DEV_RES, `mipmap-${name}/ic_launcher_round.png`),
+    await rasterize(withDevBadge(circleTile, devBadge), launcher)
+  );
+  write(
+    path.join(DEV_RES, `mipmap-${name}/ic_launcher_foreground.png`),
+    await rasterize(withDevBadge(adaptiveForeground, { centerY: 70, scale: 0.6 }), foreground)
   );
 }
 write(
