@@ -1,8 +1,8 @@
+import { kstDateString } from "@seedbook/domain/kst";
+import type { LegalDocumentVersion } from "@seedbook/domain/legal/types";
 import { inArray } from "drizzle-orm";
 import type { Database } from "../client";
-import { kstDateString } from "../kst";
 import { legalDocument } from "../schema";
-import type { LegalDocumentVersion } from "./types";
 import { findVersionProblems } from "./validate";
 
 /** 재동의가 필요한 개정은 시행일 이만큼 전에 공개해 앱 안에서 안내한다. */

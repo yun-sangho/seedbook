@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
+import type { StockPriceKind } from "@seedbook/domain/v1/rebalancing-types";
 import { useStockPriceStore } from "../stores/stock-price-store";
 import type { StockHolding } from "../types/types";
 import { isPriceFresh, PRICE_CACHE_TTL_MS } from "./stock-price-cache";
 
-/** `realtime` = 장중 현재가, `close` = 해당 거래일 종가. */
-export type StockPriceKind = "realtime" | "close";
+export type { StockPriceKind };
 
 export interface StockPricePoint {
   close: number;

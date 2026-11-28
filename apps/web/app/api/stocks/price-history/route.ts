@@ -1,6 +1,6 @@
 import { db } from "@seedbook/database";
+import { isDateString } from "@seedbook/domain/v1/account-snapshot-record";
 import { resolveUserId } from "@web/lib/auth-server";
-import { isDateString } from "@web/server/account-snapshots/account-snapshot-record";
 import {
   loadDailyCloses,
   MAX_PRICE_HISTORY_DAYS,

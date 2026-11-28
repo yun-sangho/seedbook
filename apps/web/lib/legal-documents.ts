@@ -1,9 +1,9 @@
-import type { LegalDocumentId } from "@seedbook/database/legal";
+import type { LegalDocumentId } from "@seedbook/domain/legal";
 
 export type { LegalDocumentId };
 
 /**
- * 동의를 받는 문서와 공개 주소. 버전·본문은 `legal_document` (레포 `packages/database/src/legal/`)
+ * 동의를 받는 문서와 공개 주소. 버전·본문은 `legal_document` (레포 `packages/domain/src/legal/`)
  * 에 있고, 서버는 `server/legal/legal-versions.ts` 로 읽는다.
  */
 export const LEGAL_DOCUMENTS = [

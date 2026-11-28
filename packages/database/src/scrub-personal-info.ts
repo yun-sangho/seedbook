@@ -1,5 +1,5 @@
+import { ANONYMOUS_EMAIL_DOMAIN, ANONYMOUS_USER_NAME } from "@seedbook/domain/anonymous-identity";
 import { sql } from "drizzle-orm";
-import { ANONYMOUS_EMAIL_DOMAIN, ANONYMOUS_USER_NAME } from "./anonymous-identity";
 import type { Database } from "./client";
 
 export interface ScrubResult {

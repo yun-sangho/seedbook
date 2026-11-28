@@ -1,5 +1,5 @@
 import { type Database, schema } from "@seedbook/database";
-import { LEGAL_DOCUMENT_VERSIONS } from "@seedbook/database/legal";
+import { LEGAL_DOCUMENT_VERSIONS } from "@seedbook/domain/legal";
 import { openTestDb } from "@web/test/db/test-db";
 import { TransactionRollbackError } from "drizzle-orm";
 import { afterAll, describe, expect, it, vi } from "vitest";

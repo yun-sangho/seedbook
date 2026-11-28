@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ANONYMOUS_USER_NAME } from "@seedbook/database/anonymous-identity";
+import { ANONYMOUS_USER_NAME } from "@seedbook/domain/anonymous-identity";
 import { BottomAction } from "@web/components/mobile/bottom-action";
 import { PlantAvatarPicker } from "@web/components/mobile/plant-avatar-picker";
 import { ProfileAvatarImage } from "@web/components/profile-avatar";

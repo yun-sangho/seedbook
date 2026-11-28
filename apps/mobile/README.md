@@ -76,7 +76,7 @@ Android Studio 에서는 Settings → Build Tools → Gradle → Gradle JDK 를 
   (`investment_account`, `stock_holding`, `cash_item`, `investment_record`, `portfolio`,
   `portfolio_allocation`, `rebalancing`, `user_preference`, `user_list_order`) 에 저장한다. 기기에는
   한 사람의 데이터만 있어 `userId`·`version`·`deletedAt` 은 없다. 행 변환은 서버와 같은 함수
-  (`apps/web/server/<domain>/*-record.ts`) 를 쓴다 — `lib/native/device-db/table-envelopes.ts`.
+  (`packages/domain/src/v1/<domain>-record.ts`) 를 쓴다 — `lib/native/device-db/table-envelopes.ts`.
 - 서버에 없는 기기 상태(시세 캐시, 동기화 대기열, 앱 잠금, 화면 설정)는 `device_kv`. 저장소 모드는
   서버처럼 `user_preference.storageMode`.
 - 스키마는 `lib/native/device-db/migrations.ts` 의 버전 목록으로 올린다. **서버 스키마가 바뀌면

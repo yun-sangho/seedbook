@@ -1,5 +1,5 @@
-import { findMarkdownProblems } from "./markdown";
-import { LEGAL_DOCUMENT_IDS, type LegalDocumentVersion } from "./types";
+import { findMarkdownProblems } from "@seedbook/domain/legal/markdown";
+import { LEGAL_DOCUMENT_IDS, type LegalDocumentVersion } from "@seedbook/domain/legal/types";
 
 const VERSION_NAME = /^[0-9A-Za-z][0-9A-Za-z.-]*$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;

@@ -20,7 +20,7 @@ import { reserveChangeSeqs } from "./sync-state";
  * 루트 테이블의 `updatedAt` 은 바꾸지 않는다 — v1 pull 커서라 바꾸면 모든 기기가 전부 다시 받는다.
  */
 
-/** 정의(`@seedbook/domain`)에서 오는 키 함수. database 패키지는 domain 을 import 하지 않는다. */
+/** 정의(`@seedbook/domain`)에서 오는 키 함수. database src 는 import 없는 domain 모듈만 쓴다 (`packages/domain/src/database-imports.test.ts`) — 레코드 정의는 여러 파일이라 스크립트가 넘긴다. */
 export interface SyncV2Keys {
   /** uuidv5(accountId, "YYYY-MM-DD"). */
   accountRecordId(accountId: string, date: string): string;

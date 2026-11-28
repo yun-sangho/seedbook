@@ -23,7 +23,6 @@ FROM deps AS build
 COPY packages/typescript-config/ ./packages/typescript-config/
 COPY packages/tailwind-config/ ./packages/tailwind-config/
 COPY packages/database/ ./packages/database/
-# 레코드 정의·동기화 프로토콜 (동기화 v2 라우트가 쓴다).
 COPY packages/domain/ ./packages/domain/
 COPY apps/web/ ./apps/web/
 

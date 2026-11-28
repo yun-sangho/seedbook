@@ -1,4 +1,4 @@
-import { ANONYMOUS_USER_NAME, anonymousEmail } from "./anonymous-identity";
+import { ANONYMOUS_USER_NAME, anonymousEmail } from "@seedbook/domain/anonymous-identity";
 
 /**
  * 개발 환경 전용 dev 계정/세션 상수.

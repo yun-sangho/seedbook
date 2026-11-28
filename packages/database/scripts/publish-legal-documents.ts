@@ -8,8 +8,8 @@
  * 배포 뒤 서버에서: docker compose exec stock-crawler pnpm --filter @seedbook/database db:legal:publish
  */
 
+import { LEGAL_DOCUMENT_VERSIONS } from "@seedbook/domain/legal";
 import { db } from "../src/client";
-import { LEGAL_DOCUMENT_VERSIONS } from "../src/legal";
 import { LegalPublishError, publishLegalDocuments } from "../src/legal/publish";
 
 async function main() {

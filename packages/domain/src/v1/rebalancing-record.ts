@@ -1,19 +1,17 @@
-import type { schema } from "@seedbook/database";
-import { bigIntToNumber, toBigInt } from "@web/app/api/storage/_translators/types";
+import { bigIntToNumber, toBigInt } from "./convert";
 import type {
   RebalancingResult,
   RebalancingResultHolding,
   RebalancingSession,
   RebalancingTask,
-} from "@web/features/rebalancing/types/types";
+} from "./rebalancing-types";
+import type { RebalancingRow } from "./rows";
 
 /**
  * 리밸런싱 한 건의 클라이언트 표현 (`features/rebalancing` 의 `RebalancingSession`).
  * envelope translator 와 엔티티 동기화 API 가 같은 변환을 쓴다.
  */
 export type RebalancingPayload = RebalancingSession;
-
-type RebalancingRow = typeof schema.rebalancing.$inferSelect;
 
 /** 한 리밸런싱에 담을 수 있는 할 일 수. 포트폴리오 종목 수보다 넉넉하게. */
 export const MAX_REBALANCING_TASKS = 200;

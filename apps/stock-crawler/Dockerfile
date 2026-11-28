@@ -41,6 +41,7 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/packages/database/node_modules ./packages/database/node_modules
 COPY --from=build /app/apps/stock-crawler/node_modules ./apps/stock-crawler/node_modules
 COPY --from=build /app/packages/database/ ./packages/database/
+# database dist 가 런타임에 domain 의 .ts 모듈을 불러온다 (node 가 타입을 지우고 읽는다).
 COPY --from=build /app/packages/domain/ ./packages/domain/
 COPY --from=build /app/apps/stock-crawler/ ./apps/stock-crawler/
 COPY --from=build /app/packages/typescript-config/ ./packages/typescript-config/

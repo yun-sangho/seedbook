@@ -1,8 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { schema } from "@seedbook/database";
+import {
+  type AccountSnapshotPayload,
+  parseSnapshotPayloads,
+} from "@seedbook/domain/v1/account-snapshot-record";
 import { openTestDb } from "@web/test/db/test-db";
 import { afterAll, describe, expect, it } from "vitest";
-import { type AccountSnapshotPayload, parseSnapshotPayloads } from "./account-snapshot-record";
 import { listAccountSnapshots, saveAccountSnapshots } from "./account-snapshot-transfer";
 
 const { db, createTestUser, close } = openTestDb();

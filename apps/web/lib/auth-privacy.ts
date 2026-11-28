@@ -1,4 +1,5 @@
-import { ANONYMOUS_USER_NAME, anonymousEmail, type Database, schema } from "@seedbook/database";
+import { type Database, schema } from "@seedbook/database";
+import { ANONYMOUS_USER_NAME, anonymousEmail } from "@seedbook/domain/anonymous-identity";
 import {
   nicknameError,
   normalizeNickname,

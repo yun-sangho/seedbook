@@ -39,8 +39,7 @@ export const DEFAULT_DRIFT_MODE: DriftMode = "relative";
  */
 export const LEGACY_DRIFT_MODE: DriftMode = "absolute";
 
-/** 꽃·열매 — 식물이 다 자란 단계. 목표는 이만큼 달성할 수 있다. */
-export const MAX_PLANT_STAGE: PlantStage = 4;
+export { MAX_PLANT_STAGE } from "@seedbook/domain/v1/portfolio-types";
 
 /** 식물 단계 표시 이름. */
 export const PLANT_STAGE_LABELS: Record<PlantStage, string> = {

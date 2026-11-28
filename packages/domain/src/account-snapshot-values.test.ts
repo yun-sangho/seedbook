@@ -1,5 +1,9 @@
-import { computeAccountSnapshot, type SnapshotPrice, snapshotPriceKey } from "@seedbook/database";
 import { describe, expect, it } from "vitest";
+import {
+  computeAccountSnapshot,
+  type SnapshotPrice,
+  snapshotPriceKey,
+} from "./account-snapshot-values";
 
 const prices = new Map<string, SnapshotPrice>([
   [snapshotPriceKey("KOSPI", "005930"), { close: 70_000, date: "2026-11-27" }],
