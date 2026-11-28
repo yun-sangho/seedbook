@@ -17,7 +17,7 @@ import {
   type PotColor,
 } from "@mobile/features/garden/plant-3d/plant-options";
 import type { PlantSceneMetrics, PlantSlot } from "@mobile/features/garden/plant-3d/plant-renderer";
-import { plantWilt, plantWind } from "@mobile/features/portfolio/utils/plant-season";
+import { plantRain, plantWilt } from "@mobile/features/portfolio/utils/plant-season";
 import { GardenCanvas } from "@web/app/(site)/_components/garden-canvas";
 import { FernCompare } from "./fern-compare";
 
@@ -114,9 +114,9 @@ export const CALM_CONDITION: PlantCondition = { dropPercent: 0, driftDays: 0, ri
 
 export function conditionOptions(
   condition: PlantCondition
-): Pick<PlantOptions, "wind" | "wilt" | "ripe"> {
+): Pick<PlantOptions, "rain" | "wilt" | "ripe"> {
   return {
-    wind: plantWind(1 - condition.dropPercent / 100, 1, true),
+    rain: plantRain(1 - condition.dropPercent / 100, 1, true),
     wilt: plantWilt(condition.driftDays),
     ripe: condition.ripe,
   };
@@ -155,7 +155,7 @@ function Slider({
   );
 }
 
-/** 바람(시장 하락)·시듦(비중 이탈 기간)·익음 조절. 리밸런싱 기울기는 따로 고른다. */
+/** 비(시장 하락)·시듦(비중 이탈 기간)·익음 조절. 리밸런싱 기울기는 따로 고른다. */
 export function ConditionControls({
   value,
   onChange,
@@ -163,13 +163,13 @@ export function ConditionControls({
   value: PlantCondition;
   onChange: (value: PlantCondition) => void;
 }) {
-  const { wind, wilt, ripe } = conditionOptions(value);
+  const { rain, wilt, ripe } = conditionOptions(value);
   const set = <K extends keyof PlantCondition>(key: K, next: PlantCondition[K]) =>
     onChange({ ...value, [key]: next });
   return (
     <div className="flex flex-col gap-3">
       <Slider
-        label={`바람 · 마지막 목표 대비 하락 ${value.dropPercent}% → wind ${wind.toFixed(2)}`}
+        label={`비 · 마지막 목표 대비 하락 ${value.dropPercent}% → rain ${rain.toFixed(2)}`}
         value={value.dropPercent}
         min={0}
         max={30}
@@ -345,7 +345,7 @@ const DEMO_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
     name: "A",
     options: {
       stage: "tree",
-      wind: 0,
+      rain: 0,
       wilt: 0,
       ripe: false,
       needsRebalance: false,
@@ -356,7 +356,7 @@ const DEMO_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
     name: "B",
     options: {
       stage: "sapling",
-      wind: 0.25,
+      rain: 0.25,
       wilt: 0.35,
       ripe: false,
       needsRebalance: true,
@@ -365,13 +365,13 @@ const DEMO_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
   },
   {
     name: "C",
-    options: { stage: "sprout", wind: 0, wilt: 0, ripe: false, needsRebalance: false, pot: "sun" },
+    options: { stage: "sprout", rain: 0, wilt: 0, ripe: false, needsRebalance: false, pot: "sun" },
   },
   {
     name: "D",
     options: {
       stage: "bloom",
-      wind: 0,
+      rain: 0,
       wilt: 0,
       ripe: true,
       needsRebalance: true,
@@ -380,13 +380,13 @@ const DEMO_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
   },
   {
     name: "E",
-    options: { stage: "seed", wind: 0, wilt: 0, ripe: false, needsRebalance: false, pot: "cream" },
+    options: { stage: "seed", rain: 0, wilt: 0, ripe: false, needsRebalance: false, pot: "cream" },
   },
   {
     name: "F",
     options: {
       stage: "tree",
-      wind: 0.5,
+      rain: 0.5,
       wilt: 0,
       ripe: false,
       needsRebalance: false,
@@ -397,7 +397,7 @@ const DEMO_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
     name: "G",
     options: {
       stage: "sapling",
-      wind: 0,
+      rain: 0,
       wilt: 1,
       ripe: false,
       needsRebalance: true,
@@ -406,7 +406,7 @@ const DEMO_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
   },
   {
     name: "H",
-    options: { stage: "sprout", wind: 0, wilt: 0, ripe: false, needsRebalance: false, pot: "sky" },
+    options: { stage: "sprout", rain: 0, wilt: 0, ripe: false, needsRebalance: false, pot: "sky" },
   },
 ];
 

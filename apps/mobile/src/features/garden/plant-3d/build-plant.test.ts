@@ -2,8 +2,8 @@ import * as THREE from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildPlant } from "./build-plant";
 import { DEFAULT_PLANT_OPTIONS, type PlantOptions } from "./plant-options";
+import { RAIN_KEY } from "./rain";
 import { REBALANCE_BADGE_KEY } from "./rebalance-badge";
-import { WIND_STREAK_KEY } from "./wind-streaks";
 
 // jsdom 에는 2D 캔버스가 없다 (그림자·배지 텍스처는 빈 캔버스로 만들어진다).
 beforeEach(() => {
@@ -44,10 +44,16 @@ function hidden(root: THREE.Object3D): number {
   return count;
 }
 
+/** 비(구름·빗줄기) 안에 있는 노드인가. */
+function inRain(node: THREE.Object3D | null): boolean {
+  for (let n = node; n; n = n.parent) if (n.userData[RAIN_KEY]) return true;
+  return false;
+}
+
 function materialColors(root: THREE.Object3D): THREE.Color[] {
   const found: THREE.Color[] = [];
   root.traverseVisible((node) => {
-    if (!(node instanceof THREE.Mesh) || node.userData[WIND_STREAK_KEY]) return;
+    if (!(node instanceof THREE.Mesh) || inRain(node)) return;
     const color = (node.material as THREE.Material & { color?: THREE.Color }).color;
     if (color) found.push(color);
   });
@@ -64,10 +70,11 @@ function meanRed(root: THREE.Object3D): number {
   return all.reduce((sum, c) => sum + c.r, 0) / all.length;
 }
 
-function streaks(root: THREE.Object3D): THREE.Mesh[] {
-  const found: THREE.Mesh[] = [];
+/** 빗줄기 (InstancedMesh 하나). 비가 없으면 null. */
+function raindrops(root: THREE.Object3D): THREE.InstancedMesh | null {
+  let found: THREE.InstancedMesh | null = null;
   root.traverse((node) => {
-    if (node instanceof THREE.Mesh && node.userData[WIND_STREAK_KEY]) found.push(node);
+    if (node instanceof THREE.InstancedMesh && inRain(node)) found = node;
   });
   return found;
 }
@@ -211,22 +218,13 @@ describe("buildPlant", () => {
     );
   });
 
-  it("sways wider and faster in the wind", () => {
-    const calm = swing(plant({ stage: "tree", wind: 0 }));
-    const windy = swing(plant({ stage: "tree", wind: 0.5 }));
-    expect(windy.range).toBeGreaterThan(calm.range * 2);
-    expect(windy.crossings).toBeGreaterThan(calm.crossings);
+  it("sways the same in the rain (only the weather changes)", () => {
+    expect(swing(plant({ stage: "tree", rain: 1 }))).toEqual(swing(plant({ stage: "tree" })));
   });
 
-  it("leans a little to one side in the wind", () => {
-    const calm = swing(plant({ stage: "tree", wind: 0 }));
-    const windy = swing(plant({ stage: "tree", wind: 0.5 }));
-    expect(Math.abs(windy.mean)).toBeGreaterThan(Math.abs(calm.mean) + 0.03);
-  });
-
-  it("keeps the colors in the wind (a market drop is not the plant's fault)", () => {
+  it("keeps the colors in the rain (a market drop is not the plant's fault)", () => {
     for (const stage of ["sapling", "bloom"] as const) {
-      expect(colors(plant({ stage, wind: 0.5 }).root)).toEqual(colors(plant({ stage }).root));
+      expect(colors(plant({ stage, rain: 1 }).root)).toEqual(colors(plant({ stage }).root));
     }
   });
 
@@ -253,26 +251,36 @@ describe("buildPlant", () => {
     );
   });
 
-  it("blows wind streaks past the plant only in the wind", () => {
-    expect(streaks(plant({ stage: "tree" }).root)).toHaveLength(0);
-    const built = plant({ stage: "tree", wind: 0.5 });
-    const found = streaks(built.root);
-    expect(found.length).toBeGreaterThan(0);
+  it("rains over the plant only after a market drop", () => {
+    expect(raindrops(plant({ stage: "tree" }).root)).toBeNull();
+    const built = plant({ stage: "tree", rain: 0.5 });
+    const drops = raindrops(built.root);
+    if (!drops) throw new Error("expected rain");
     const frame = (time: number) => {
       built.update(time, PX);
-      return found
-        .map(
-          (s) => `${s.position.x.toFixed(3)}:${(s.material as THREE.Material).opacity.toFixed(3)}`
-        )
-        .join(",");
+      return Array.from(drops.instanceMatrix.array.slice(0, 16)).join(",");
     };
-    expect(frame(0.3)).not.toBe(frame(0.9));
+    expect(frame(0.3)).not.toBe(frame(0.6));
   });
 
-  it("blows more streaks in a stronger wind", () => {
-    expect(streaks(plant({ stage: "tree", wind: 0.5 }).root).length).toBeGreaterThan(
-      streaks(plant({ stage: "tree", wind: 0.1 }).root).length
+  it("pours more drops in a heavier rain", () => {
+    expect(raindrops(plant({ stage: "tree", rain: 1 }).root)?.count).toBeGreaterThan(
+      raindrops(plant({ stage: "tree", rain: 0.1 }).root)?.count ?? 0
     );
+  });
+
+  it("floats the rain cloud above the plant top", () => {
+    for (const stage of ["seed", "tree"] as const) {
+      const built = plant({ stage, rain: 1 });
+      built.root.updateMatrixWorld(true);
+      const plantOnly = new THREE.Box3();
+      const cloud = new THREE.Box3();
+      built.root.traverse((node) => {
+        if (!(node instanceof THREE.Mesh) || node instanceof THREE.InstancedMesh) return;
+        (inRain(node) ? cloud : plantOnly).expandByObject(node);
+      });
+      expect(cloud.min.y).toBeGreaterThan(plantOnly.max.y);
+    }
   });
 
   it("releases its geometry and materials on dispose", () => {

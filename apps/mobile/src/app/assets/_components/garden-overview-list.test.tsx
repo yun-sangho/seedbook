@@ -31,7 +31,7 @@ function plant(partial: Partial<PortfolioPlantView>): PortfolioPlantView {
     drifting: false,
     driftDays: 0,
     wilt: 0,
-    wind: 0,
+    rain: 0,
     ripe: false,
     empty: false,
     changed: false,
@@ -143,11 +143,26 @@ describe("GardenOverviewList", () => {
     expect(screen.getByText("목표 달성!")).toBeTruthy();
   });
 
-  it("names a wilting plant and the wind next to the stage", () => {
-    renderRow({ wilt: 0.7, wind: 0.2 });
+  it("names a wilting plant and the rain next to the stage", () => {
+    renderRow({ wilt: 0.7, rain: 0.2 });
 
     const row = screen.getByRole("button", { name: "안정형 포트폴리오 보기" });
-    expect(row.textContent).toContain("새싹 · 시들해요 · 바람이 불어요");
+    expect(row.textContent).toContain("새싹 · 시들해요 · 비가 와요");
+  });
+
+  it("names the rain once, not again beside the bar", () => {
+    renderRow({ rain: 0.2 });
+
+    const row = screen.getByRole("button", { name: "안정형 포트폴리오 보기" });
+    expect(row.textContent?.match(/비가 와요/g)).toHaveLength(1);
+  });
+
+  it("gives the plant name and portfolio name their own line, apart from the stage", () => {
+    renderRow({ plantName: "몽글이", rain: 1, wilt: 1 });
+
+    const title = screen.getByText("몽글이 · 안정형");
+    expect(title.textContent).toBe("몽글이 · 안정형");
+    expect(title.parentElement?.textContent).toBe("몽글이 · 안정형");
   });
 
   it("names a ferns' stages", () => {

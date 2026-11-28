@@ -26,7 +26,8 @@ import { lastReachedGoal, type PortfolioValuation } from "./portfolio-plant";
  * - `season` 은 수확할 때마다 +1 되는 수확 주기 번호다. 화면에는 보이지 않고 수확 기록 id·병합·아바타
  *   비교에만 쓴다.
  * - 비중 이탈을 처음 본 날(`driftSince`)부터 센 기간으로 시든다. 시듦은 보이기만 한다.
- * - 시장 하락은 바람으로만 보인다 (마지막 달성 목표보다 5% 넘게 낮을 때).
+ * - 시장 하락은 비로만 보인다 (마지막 달성 목표보다 5% 넘게 낮거나, 연결 계좌 하나라도 원금 아래일 때 —
+ *   `accountLossRain`). 회복하면 그친다.
  *
  * 배포 전에 저장된 식물(이전 규칙)은 그대로 읽힌다: 단계·목표·이력은 그대로, 이미 정해 둔 목표는 하한과
  * 상관없이 유효, 다 자란(4단계) 식물은 열매 목표를 정할 수 있게 되고, 이탈 기간은 배포 뒤 첫 평가부터 센다.
@@ -246,7 +247,7 @@ export function advancePlant<T extends PlantProgress>(
  * - `set`: 목표를 향해 자라는 중
  * - `blocked-by-drift`: 금액은 목표에 닿았는데 비중이 기준 밖 — 비중을 맞추면 자란다
  * - `needs-fruit-goal`: 꽃까지 자랐다 — 열매 목표를 정한다
- * - `ripe`: 열매가 열렸다 — 바로 수확할 수 있다 (시듦·바람과 상관없이)
+ * - `ripe`: 열매가 열렸다 — 바로 수확할 수 있다 (시듦·비와 상관없이)
  */
 export type SeasonGoalState =
   | "needs-goal"
@@ -314,27 +315,39 @@ export function plantWilt(days: number): number {
   return 0;
 }
 
-/** 마지막으로 달성한 목표보다 이만큼(비율) 아래까지는 바람이 없다. */
-export const WIND_CALM_DROP = 0.05;
-/** 마지막으로 달성한 목표보다 이만큼(비율) 내려가면 바람이 가장 세다. */
-export const FULL_WIND_DROP = 0.2;
-/** 바람 세기 상한 (예전 처짐의 절반). */
-export const WIND_MAX = 0.5;
+/** 마지막으로 달성한 목표보다 이만큼(비율) 아래까지는 비가 오지 않는다. */
+export const RAIN_START_DROP = 0.05;
+/** 마지막으로 달성한 목표보다 이만큼(비율) 내려가면 비가 가장 많이 온다. */
+export const FULL_RAIN_DROP = 0.2;
 
 /**
- * 바람 세기 (0~`WIND_MAX`). 시장 하락을 뜻한다 — 사용자가 할 일은 기다리는 것이라 잎 색은 바꾸지 않는다.
- * 마지막으로 달성한 목표보다 `WIND_CALM_DROP` 넘게 내려가면 불기 시작해 `FULL_WIND_DROP` 에서 가장 세다.
- * 시세가 다 오기 전이나 달성한 목표가 없으면 0.
+ * 비 세기 (0~1). 시장 하락을 뜻한다 — 사용자가 할 일은 기다리는 것이라 식물(잎 색·처짐)은 바꾸지 않는다.
+ * 마지막으로 달성한 목표(한 목표 성장에서는 마지막으로 이룬 단계 목표)보다 `RAIN_START_DROP` 넘게 내려가면
+ * 오기 시작해 `FULL_RAIN_DROP` 에서 가장 많이 온다. 다시 오르면 그친다. 시세가 다 오기 전이나 달성한 목표가
+ * 없으면 0.
  */
-export function plantWind(
+export function plantRain(
   value: number,
   lastGoalAmount: number | null,
   pricesComplete: boolean
 ): number {
   if (!pricesComplete || lastGoalAmount === null || lastGoalAmount <= 0) return 0;
   const drop = (lastGoalAmount - value) / lastGoalAmount;
-  const strength = (drop - WIND_CALM_DROP) / (FULL_WIND_DROP - WIND_CALM_DROP);
-  return Math.min(1, Math.max(0, strength)) * WIND_MAX;
+  const strength = (drop - RAIN_START_DROP) / (FULL_RAIN_DROP - RAIN_START_DROP);
+  return Math.min(1, Math.max(0, strength));
+}
+
+/** 연결 계좌 하나가 원금보다 이만큼(%) 손실이면 비가 가장 많이 온다. */
+export const FULL_RAIN_LOSS_PERCENT = 20;
+
+/**
+ * 계좌 손실의 비 세기 (0~1). 포트폴리오 전체가 내리지 않았어도 연결 계좌 하나라도 원금 아래(수익률 < 0)면
+ * 비가 오기 시작해, 가장 큰 손실이 `FULL_RAIN_LOSS_PERCENT` 일 때 가장 많이 온다 (사용자 결정 2026-11-28).
+ * `worstReturnRate` 는 연결 계좌 중 가장 낮은 수익률 (%), 판정할 계좌가 없으면 null.
+ */
+export function accountLossRain(worstReturnRate: number | null): number {
+  if (worstReturnRate === null || !(worstReturnRate < 0)) return 0;
+  return Math.min(1, -worstReturnRate / FULL_RAIN_LOSS_PERCENT);
 }
 
 // ─── 한 평가 ────────────────────────────────────────────────────────────────
@@ -376,8 +389,8 @@ export interface PlantStatus {
   driftDays: number;
   /** 시듦 (0·0.35·0.7·1) — 이탈 기간으로만. */
   wilt: number;
-  /** 바람 (0~0.5) — 시장 하락. */
-  wind: number;
+  /** 비 (0~1) — 시장 하락. */
+  rain: number;
   /** 열매가 열렸다 (바로 수확할 수 있다). */
   ripe: boolean;
   /** 이번 평가로 저장할 진행이 바뀌었다 — 호출측이 `evaluatePlant` 결과를 저장해야 한다. */
@@ -406,7 +419,7 @@ export function computePlantStatus(
     drifting: evaluation.drifting,
     driftDays: days,
     wilt: plantWilt(days),
-    wind: plantWind(evaluation.value, lastGoal?.amount ?? null, evaluation.pricesComplete),
+    rain: plantRain(evaluation.value, lastGoal?.amount ?? null, evaluation.pricesComplete),
     ripe: next.fruitGoal !== null,
     changed: next !== progress,
   };

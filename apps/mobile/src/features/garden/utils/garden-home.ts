@@ -50,7 +50,7 @@ export function plantKindOf(portfolio: Pick<PortfolioItem, "id" | "plantKind">):
 export function gardenPlantOptions(plant: PortfolioPlantView): PlantOptions {
   return {
     stage: PLANT_STAGES[plant.stage],
-    wind: plant.wind,
+    rain: plant.rain,
     wilt: plant.wilt,
     ripe: plant.ripe,
     empty: plant.empty,
@@ -82,18 +82,23 @@ const WILT_LABELS: readonly { wilt: number; label: string }[] = [
   { wilt: 0.35, label: "시들기 시작했어요" },
 ];
 
+/** 비 세기가 이만큼이면 (마지막 달성 목표보다 20% 아래) "많이" 온다. */
+const HEAVY_RAIN = 1;
+
 /**
- * 식물 상태 문구 — 시듦(비중 이탈 기간)과 바람(시장 하락). 아무 일 없으면 null. 열매가 열렸으면 null —
- * 이룬 것은 시듦·바람과 상관없이 그대로이고, 목표 막대가 "열매가 열렸어요" 라고 말한다.
+ * 식물 상태 문구 — 시듦(비중 이탈 기간)과 비(시장 하락). 아무 일 없으면 null. 열매가 열렸으면 null —
+ * 이룬 것은 시듦·비와 상관없이 그대로이고, 목표 막대가 "열매가 열렸어요" 라고 말한다. 화면마다 한 번만
+ * 보인다 (막대는 비를 색으로만 나타낸다).
  */
 export function plantConditionLabel(
-  plant: Pick<PortfolioPlantView, "wilt" | "wind" | "ripe">
+  plant: Pick<PortfolioPlantView, "wilt" | "rain" | "ripe">
 ): string | null {
   if (plant.ripe) return null;
   const parts: string[] = [];
   const wilt = WILT_LABELS.find((step) => plant.wilt >= step.wilt);
   if (wilt) parts.push(wilt.label);
-  if (plant.wind > 0) parts.push("바람이 불어요");
+  if (plant.rain >= HEAVY_RAIN) parts.push("비가 많이 와요");
+  else if (plant.rain > 0) parts.push("비가 와요");
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
@@ -116,8 +121,8 @@ export interface GardenRow {
   needsRebalance: boolean;
   /** 시듦 (비중 이탈 기간, `plantWilt`). */
   wilt: number;
-  /** 바람 (시장 하락, `plantWind`). */
-  wind: number;
+  /** 비 (시장 하락, `plantRain`). */
+  rain: number;
   /** 열매가 열렸다 (수확할 수 있다). */
   ripe: boolean;
   /** 빈 화분 (목표 없는 포트폴리오). */
@@ -153,7 +158,7 @@ function gardenRow(plant: PortfolioPlantView, accounts: readonly RowAccount[]): 
     value: accounts.length > 0 ? plant.value : null,
     needsRebalance: plant.rebalancing === "needs-rebalancing",
     wilt: plant.wilt,
-    wind: plant.wind,
+    rain: plant.rain,
     ripe: plant.ripe,
     empty: plant.empty,
     goalState: plant.goalState,

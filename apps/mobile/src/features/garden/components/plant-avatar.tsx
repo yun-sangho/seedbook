@@ -164,6 +164,34 @@ function StageArt({ stage, ripe }: { stage: PlantStage; ripe: boolean }) {
   }
 }
 
+const RAIN = "#6F9FCC";
+/** 빗줄기 자리 (위 끝 x, y, 길이) — 식물 뒤 하늘에 고르게. 약한 비는 앞의 몇 개만. */
+const RAIN_DROPS: ReadonlyArray<readonly [number, number, number]> = [
+  [12, 8, 8],
+  [50, 12, 8],
+  [20, 30, 7],
+  [46, 34, 7],
+  [30, 2, 6],
+  [8, 22, 7],
+  [56, 26, 6],
+  [38, 44, 5],
+];
+const LIGHT_RAIN_DROPS = 3;
+
+/** 시장 하락의 비 (식물 뒤, `plantRain` 0~1). 셀수록 빗줄기가 많고 굵다. */
+function RainArt({ rain }: { rain: number }) {
+  const s = Math.min(1, rain);
+  const count = Math.round(LIGHT_RAIN_DROPS + (RAIN_DROPS.length - LIGHT_RAIN_DROPS) * s);
+  const width = 1.2 + 1 * s;
+  return (
+    <g data-rain stroke={RAIN} strokeWidth={width} strokeLinecap="round" opacity={0.55 + 0.3 * s}>
+      {RAIN_DROPS.slice(0, count).map(([x, y, length]) => (
+        <line key={`${x}-${y}`} x1={x} y1={y} x2={x - length * 0.25} y2={y + length} />
+      ))}
+    </g>
+  );
+}
+
 export function PlantAvatar({
   stage,
   pot = "terracotta",
@@ -171,6 +199,7 @@ export function PlantAvatar({
   kind = "tree",
   ripe = false,
   empty = false,
+  rain = 0,
 }: {
   stage: PlantStage;
   pot?: PotColor;
@@ -181,6 +210,8 @@ export function PlantAvatar({
   ripe?: boolean;
   /** 빈 화분 — 씨앗 단계에서 씨앗을 그리지 않는다. */
   empty?: boolean;
+  /** 비 (시장 하락, `plantRain` 0~1). 있으면 식물 뒤로 빗줄기가 내린다. */
+  rain?: number;
 }) {
   const fern = kind === "fern";
   const plantShown = !(empty && stage === "seed");
@@ -194,6 +225,7 @@ export function PlantAvatar({
       </defs>
       <g clipPath={`url(#${clipId})`}>
         <rect width="64" height="64" fill={BG} />
+        {rain > 0 && <RainArt rain={rain} />}
         {plantShown &&
           (fern ? <FernArt stage={stage} layer="back" /> : <StageArt stage={stage} ripe={ripe} />)}
         <Pot pot={pot} />

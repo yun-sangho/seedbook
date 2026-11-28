@@ -36,6 +36,22 @@ describe("PlantAvatar", () => {
     expect(shapes(true)).toBeLessThan(shapes(false));
   });
 
+  it("rains behind the plant only after a market drop, heavier with a deeper drop", () => {
+    const drops = (rain?: number) =>
+      render(<PlantAvatar stage="tree" size={48} rain={rain} />).container.querySelectorAll(
+        "[data-rain] line"
+      );
+    expect(drops()).toHaveLength(0);
+    expect(drops(0).length).toBe(0);
+    const light = drops(0.2);
+    const heavy = drops(1);
+    expect(light.length).toBeGreaterThan(0);
+    expect(heavy.length).toBeGreaterThan(light.length);
+    const width = (line: Element | undefined) =>
+      Number(line?.closest("[data-rain]")?.getAttribute("stroke-width"));
+    expect(width(heavy[0])).toBeGreaterThan(width(light[0]));
+  });
+
   it("paints the pot in the portfolio's color", () => {
     const { container } = render(<PlantAvatar stage="seed" pot="sky" size={48} />);
     expect(container.innerHTML).toContain("#86B4E3");

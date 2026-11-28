@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { GoalBar, goalBarState } from "./goal-bar";
 
-const calm = { wilt: 0, wind: 0 };
+const calm = { wilt: 0, rain: 0 };
 
 describe("goalBarState", () => {
   it("fills to the goal progress while growing, without a caption", () => {
@@ -39,19 +39,19 @@ describe("goalBarState", () => {
 
   it("is full when the fruit is ripe", () => {
     expect(
-      goalBarState({ stage: 4, goalState: "ripe", goalPercent: null, wilt: 1, wind: 0.5 })
+      goalBarState({ stage: 4, goalState: "ripe", goalPercent: null, wilt: 1, rain: 0.5 })
     ).toEqual({ percent: 100, label: "열매가 열렸어요", tone: "brand" });
   });
 
-  it("turns to a neutral bar and names the wind on a market drop", () => {
+  it("turns to a neutral bar on a market drop, leaving the rain to the plant's condition", () => {
     expect(
-      goalBarState({ stage: 1, goalState: "set", goalPercent: 40, wilt: 0, wind: 0.2 })
-    ).toEqual({ percent: 40, label: "바람이 불어요", tone: "neutral" });
+      goalBarState({ stage: 1, goalState: "set", goalPercent: 40, wilt: 0, rain: 0.2 })
+    ).toEqual({ percent: 40, label: null, tone: "neutral" });
   });
 
   it("turns to a warning bar while wilting", () => {
     expect(
-      goalBarState({ stage: 1, goalState: "set", goalPercent: 40, wilt: 0.35, wind: 0.2 }).tone
+      goalBarState({ stage: 1, goalState: "set", goalPercent: 40, wilt: 0.35, rain: 0.2 }).tone
     ).toBe("warning");
   });
 });
@@ -64,7 +64,7 @@ describe("GoalBar", () => {
         goalState="set"
         goalPercent={30}
         wilt={0}
-        wind={0}
+        rain={0}
         ariaLabel="안정형 목표 도달"
       />
     );

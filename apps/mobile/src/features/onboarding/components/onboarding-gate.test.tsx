@@ -174,6 +174,7 @@ describe("OnboardingGate", () => {
         await new Promise((resolve) => setTimeout(resolve, 800));
       });
       expect(heading()).toBe("'미국 지수' 씨앗을 심었어요");
+      expect(screen.getByText(/시세가 내려가면 비가 오고, 다시 오르면 그쳐요/)).toBeInTheDocument();
       await click("다음");
 
       fireEvent.click(screen.getByRole("radio", { name: /이 기기에만 저장/ }));

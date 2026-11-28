@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { INITIAL_PLANT_PROGRESS } from "../types/constants";
 import type { PlantProgress } from "../types/types";
 import {
+  accountLossRain,
   advancePlant,
   changePlantWish,
   driftDays,
@@ -13,14 +14,13 @@ import {
   PLANT_NAME_MAX_LENGTH,
   planStageGoals,
   plantNameError,
+  plantRain,
   plantWilt,
-  plantWind,
   seasonGoalPercent,
   seasonGoalState,
   setSeasonGoal,
   startPlantSeason,
   trackDriftSince,
-  WIND_MAX,
   WISH_MAX_LENGTH,
   wishError,
   wishHistoryNewestFirst,
@@ -627,29 +627,43 @@ describe("wishError", () => {
   });
 });
 
-describe("plantWind", () => {
+describe("accountLossRain", () => {
+  it("is 0 when no account is below its principal", () => {
+    expect(accountLossRain(null)).toBe(0);
+    expect(accountLossRain(0)).toBe(0);
+    expect(accountLossRain(12)).toBe(0);
+  });
+
+  it("starts with any loss and is heaviest at -20%", () => {
+    expect(accountLossRain(-0.5)).toBeGreaterThan(0);
+    expect(accountLossRain(-10)).toBeCloseTo(0.5);
+    expect(accountLossRain(-20)).toBe(1);
+    expect(accountLossRain(-60)).toBe(1);
+  });
+});
+
+describe("plantRain", () => {
   it("is 0 without a reached goal", () => {
-    expect(plantWind(10, null, true)).toBe(0);
+    expect(plantRain(10, null, true)).toBe(0);
   });
 
   it("is 0 when the value is at or above the last reached goal", () => {
-    expect(plantWind(1000, 1000, true)).toBe(0);
-    expect(plantWind(1200, 1000, true)).toBe(0);
+    expect(plantRain(1000, 1000, true)).toBe(0);
+    expect(plantRain(1200, 1000, true)).toBe(0);
   });
 
   it("ignores a drop of 5% or less", () => {
-    expect(plantWind(960, 1000, true)).toBe(0);
-    expect(plantWind(950, 1000, true)).toBe(0);
+    expect(plantRain(960, 1000, true)).toBe(0);
+    expect(plantRain(950, 1000, true)).toBe(0);
   });
 
-  it("grows from 5% to 20% below the last goal, up to half of the old full droop", () => {
-    expect(plantWind(875, 1000, true)).toBeCloseTo(0.25);
-    expect(plantWind(800, 1000, true)).toBe(WIND_MAX);
-    expect(plantWind(100, 1000, true)).toBe(WIND_MAX);
-    expect(WIND_MAX).toBe(0.5);
+  it("gets heavier from 5% to 20% below the last goal", () => {
+    expect(plantRain(875, 1000, true)).toBeCloseTo(0.5);
+    expect(plantRain(800, 1000, true)).toBe(1);
+    expect(plantRain(100, 1000, true)).toBe(1);
   });
 
   it("is 0 before every price has arrived", () => {
-    expect(plantWind(500, 1000, false)).toBe(0);
+    expect(plantRain(500, 1000, false)).toBe(0);
   });
 });

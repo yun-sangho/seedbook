@@ -12,8 +12,8 @@ import {
   WILT_SHED_SHARE,
   wiltSag,
 } from "./plant-options";
+import { createRain } from "./rain";
 import { createRebalanceBadge } from "./rebalance-badge";
-import { createWindStreaks } from "./wind-streaks";
 
 /**
  * 코드로 만드는(procedural) 포트폴리오 식물. 이미지·모델 파일 없이 three 기본 도형만 쓴다.
@@ -40,16 +40,6 @@ const COLORS = {
 
 /** 늘어짐 1 일 때 잎이 더 숙여지는 각도(라디안). */
 const SAG_PITCH = 0.85;
-
-/**
- * 바람: 1 일 때 흔들림 폭·속도 배율, 잎 떨림, 한쪽으로 눕는 각도(라디안). 화면 데이터의 바람은 0.5 까지라
- * 실제로는 이 값의 절반까지 쓴다.
- */
-const WIND_SWAY_GAIN = 8;
-const WIND_SPEED_GAIN = 1.8;
-const WIND_FLUTTER = 0.3;
-const WIND_FLUTTER_SPEED = 3.5;
-const WIND_LEAN = 0.16;
 
 /** 리밸런싱이 필요할 때 몸통이 기우는 각도(라디안, 약 18°). */
 const TILT_ANGLE = 0.32;
@@ -554,40 +544,34 @@ export function buildPlant(options: PlantOptions): BuiltPlant {
     disposers.push(badge.dispose);
   }
 
-  const streaks = createWindStreaks(options.wind, badgeHeight, options.seed);
-  if (streaks) {
-    root.add(streaks.object);
-    disposers.push(streaks.dispose);
+  // 비는 식물 위에만 내린다 — 식물(잎 색·처짐·흔들림)은 그대로다.
+  const rain = createRain(options.rain, badgeHeight, options.seed, (color) => kit.get(color));
+  if (rain) {
+    root.add(rain.object);
+    disposers.push(rain.dispose);
   }
 
   const stageIndex = PLANT_STAGES.indexOf(options.stage);
-  const wind = THREE.MathUtils.clamp(options.wind, 0, 1);
   const sag = wiltSag(options.wilt);
-  // 바람이 불면 크고 빠르게 흔들리고, 시들면 작고 느리게 흔들린다 (기운 없는 느낌).
-  const swayAmp = (0.012 + stageIndex * 0.004) * (1 + wind * WIND_SWAY_GAIN) * (1 - sag * 0.5);
-  const swaySpeed = 1.2 + wind * WIND_SPEED_GAIN - sag * 0.4;
-  // 돌풍: 바람이 셀수록 빠른 떨림을 더 섞는다.
-  const gust = wind * 0.45;
-  const lean = wind * WIND_LEAN;
-  const flutterAmp = 0.05 + wind * WIND_FLUTTER;
-  const flutterSpeed = 2.1 + wind * WIND_FLUTTER_SPEED;
+  // 시들면 작고 느리게 흔들린다 (기운 없는 느낌).
+  const swayAmp = (0.012 + stageIndex * 0.004) * (1 - sag * 0.5);
+  const swaySpeed = 1.2 - sag * 0.4;
+  const flutterAmp = 0.05;
+  const flutterSpeed = 2.1;
   const phase = options.seed * 1.3;
 
   return {
     root,
     update(time, pxToScale) {
       const t = time * swaySpeed + phase;
-      const sway = Math.sin(t) + gust * Math.sin(t * 2.7 + 1.3);
-      // 바람 쪽으로 눕는 정도도 천천히 오르내린다.
-      const leanNow = lean * (0.8 + 0.2 * Math.sin(time * 0.5 + phase));
-      body.rotation.z = baseTilt + leanNow + sway * swayAmp;
+      body.rotation.z = baseTilt + Math.sin(t) * swayAmp;
       body.rotation.x = Math.sin(time * swaySpeed * 0.7 + phase) * swayAmp * 0.6;
       for (const leaf of ctx.leaves) {
         leaf.mesh.rotation.x =
           leaf.basePitch + Math.sin(time * flutterSpeed + leaf.phase) * flutterAmp;
       }
       fern?.update(time);
-      streaks?.update(time);
+      rain?.update(time);
       badge?.update(time, pxToScale);
     },
     dispose() {

@@ -236,6 +236,7 @@ function PortfolioDetailBody({ portfolio }: { portfolio: PortfolioItem }) {
             portfolio={portfolio}
             size={64}
             needsRebalance={plant.rebalancing === "needs-rebalancing"}
+            rain={plant.rain}
           />
           <div className="min-w-0 flex-1">
             {/* 계좌 상세와 같은 모양 (1원 단위 + 만원 단위 보조) — 이 포트폴리오에 연결된 계좌만 합친다. */}

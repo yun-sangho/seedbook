@@ -104,7 +104,7 @@ const MIXED_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
     options: {
       kind: "fern",
       stage: "bloom",
-      wind: 0,
+      rain: 0,
       wilt: 0,
       ripe: true,
       needsRebalance: false,
@@ -116,7 +116,7 @@ const MIXED_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
     options: {
       kind: "tree",
       stage: "bloom",
-      wind: 0,
+      rain: 0,
       wilt: 0,
       ripe: false,
       needsRebalance: true,
@@ -128,7 +128,7 @@ const MIXED_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
     options: {
       kind: "fern",
       stage: "sapling",
-      wind: 0,
+      rain: 0,
       wilt: 0.7,
       ripe: false,
       needsRebalance: true,
@@ -140,7 +140,7 @@ const MIXED_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
     options: {
       kind: "tree",
       stage: "tree",
-      wind: 0,
+      rain: 0,
       wilt: 0,
       ripe: false,
       needsRebalance: false,
@@ -152,7 +152,7 @@ const MIXED_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
     options: {
       kind: "fern",
       stage: "tree",
-      wind: 0,
+      rain: 0,
       wilt: 0,
       ripe: false,
       needsRebalance: false,
@@ -164,7 +164,7 @@ const MIXED_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
     options: {
       kind: "fern",
       stage: "sprout",
-      wind: 0,
+      rain: 0,
       wilt: 0,
       ripe: false,
       needsRebalance: false,
@@ -176,7 +176,7 @@ const MIXED_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
     options: {
       kind: "tree",
       stage: "sapling",
-      wind: 0.5,
+      rain: 0.5,
       wilt: 0,
       ripe: false,
       needsRebalance: false,
@@ -188,7 +188,7 @@ const MIXED_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
     options: {
       kind: "fern",
       stage: "bloom",
-      wind: 0,
+      rain: 0,
       wilt: 0,
       ripe: false,
       needsRebalance: false,
