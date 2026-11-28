@@ -2,6 +2,7 @@ export * from "./compat";
 export * from "./define-record";
 export * from "./fields";
 export * from "./parse-patch";
+export * from "./protocol";
 export * from "./records";
 export * from "./samples";
 export * from "./snapshot";
