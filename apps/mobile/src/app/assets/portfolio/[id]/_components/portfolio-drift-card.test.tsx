@@ -26,7 +26,7 @@ describe("PortfolioDriftRow", () => {
         onEdit={noop}
       />
     );
-    expect(screen.getByText("리밸런싱 필요 2")).toBeTruthy();
+    expect(screen.getByText("이격 초과 2")).toBeTruthy();
   });
 
   it("says all is well when every linked account is within the rule", () => {

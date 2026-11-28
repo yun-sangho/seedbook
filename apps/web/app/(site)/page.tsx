@@ -27,7 +27,7 @@ import { SiteHeader } from "./_components/site-header";
 
 const TITLE = "Seedbook - 포트폴리오가 자라는 투자 정원";
 const DESCRIPTION =
-  "포트폴리오마다 식물이 하나씩 자라요. 목표 금액을 이룰 때마다 한 단계씩 크고, 목표 비중에서 벗어나면 기울어 리밸런싱할 때를 알려줘요.";
+  "포트폴리오마다 식물이 하나씩 자라요. 목표 금액을 이룰 때마다 한 단계씩 크고, 내가 정한 목표 비중에서 벗어나면 기울어 알려줘요.";
 
 export const metadata: Metadata = {
   title: TITLE,
@@ -45,12 +45,12 @@ const rebalanceSteps = [
   {
     title: "사고팔 수량을 계산해요",
     description:
-      "거래 가능 금액을 넣으면 목표에서 벗어난 종목을 골라 매수·매도 권장 수량과 금액을 알려줘요.",
+      "거래 가능 금액을 넣으면 내가 정한 목표 비중과의 차이를 종목별 매수·매도 수량과 금액으로 계산해요.",
   },
   {
-    title: "매매를 하나씩 끝내요",
+    title: "매매한 내용을 기록해요",
     description:
-      "권장 매매가 할 일 목록이 돼요. 증권사에서 주문한 뒤 체결 수량과 가격을 기록하면 식물이 다시 똑바로 서요.",
+      "계산 결과가 할 일 목록이 돼요. 매매는 직접 판단해 증권사에서 하고, 체결 수량과 가격을 기록하면 식물이 다시 똑바로 서요.",
   },
 ];
 
@@ -72,7 +72,7 @@ const facts = [
   {
     title: "주문은 대신 넣지 않아요",
     description:
-      "증권사 계좌에 연결하지 않고 종목을 추천하지도 않아요. 보유 수량은 직접 입력하고, 실제 매매는 쓰던 증권사에서 해요.",
+      "증권사 계좌에 연결하지 않고 종목을 추천하지도 않아요. 리밸런싱 계산은 내가 정한 목표 비중으로 낸 결과예요. 보유 수량은 직접 입력하고, 매매는 직접 판단해 쓰던 증권사에서 해요.",
   },
 ];
 
@@ -161,8 +161,8 @@ export default async function HomePage() {
               <span className="landing-leaf">식물이 하나씩 자라요</span>
             </h1>
             <p className="t5-regular md:t7-regular text-fg-neutral-muted mt-x5 max-w-xl">
-              목표 비중과 목표 금액을 정하면, 목표를 이룰 때마다 식물이 한 단계씩 자라요. 목표
-              비중에서 벗어나면 식물이 기울어 리밸런싱할 때를 알려줘요.
+              목표 비중과 목표 금액을 정하면, 목표를 이룰 때마다 식물이 한 단계씩 자라요. 실제
+              비중이 내가 정한 목표 비중에서 벗어나면 식물이 기울어 알려줘요.
             </p>
             <div className="mt-x10">
               <StartAction desktop={desktop} host={host} />
@@ -205,7 +205,7 @@ export default async function HomePage() {
           </p>
         </section>
 
-        {/* 3. 기울면 리밸런싱 */}
+        {/* 3. 기울면 목표 비중에서 벗어난 것 */}
         <section className="bg-bg-neutral-weak">
           <div
             className={`${SECTION} grid items-center gap-x10 py-x16 md:grid-cols-[minmax(0,460px)_1fr] md:py-24`}
@@ -219,7 +219,7 @@ export default async function HomePage() {
               <h2 className="t10-bold">
                 기울어지면
                 <br />
-                리밸런싱할 때예요
+                목표 비중에서 벗어난 거예요
               </h2>
               <p className="t5-regular text-fg-neutral-muted mt-x3">
                 실제 비중이 직접 정한 기준보다 목표에서 벗어나면 식물이 기울고 <RebalanceBadge />{" "}
@@ -250,7 +250,7 @@ export default async function HomePage() {
             <h2 className="t10-bold">내 포트폴리오를 한 정원에서</h2>
             <p className="t5-regular text-fg-neutral-muted mt-x3 max-w-xl">
               앱을 열면 내 식물이 한 정원에 모여 있어요. 식물을 누르면 그 포트폴리오의 평가금액,
-              다음 목표까지 남은 금액, 리밸런싱이 필요한지를 보여줘요.
+              다음 목표까지 남은 금액, 목표 비중에서 벗어났는지를 보여줘요.
             </p>
           </div>
           <figure className="mx-auto w-full max-w-[320px]">

@@ -72,7 +72,7 @@ export function LinkedPortfolioChip({
         <PortfolioPlantAvatar portfolioId={status.portfolioId} stage={stage} size={20} />
         <span className="truncate">{status.name}</span>
         {tone === "progress" && <span className="shrink-0">· 리밸런싱 진행 중</span>}
-        {tone === "alert" && <span className="shrink-0">· 리밸런싱 필요</span>}
+        {tone === "alert" && <span className="shrink-0">· 이격 초과</span>}
         {tone === "neutral" && status.state === "ok" && (
           <span className="text-fg-neutral-subtle shrink-0">· 정상</span>
         )}

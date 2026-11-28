@@ -60,7 +60,7 @@ describe("GardenOverviewList", () => {
     fireEvent.click(screen.getByRole("button", { name: "안정형 포트폴리오 보기" }));
 
     expect(onOpenPortfolio).toHaveBeenCalledWith("p1");
-    expect(screen.getByRole("img", { name: "리밸런싱 필요" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "이격 초과" })).toBeTruthy();
     expect(screen.getByText("연결 계좌 없음")).toBeTruthy();
   });
 
