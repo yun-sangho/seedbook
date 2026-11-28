@@ -36,7 +36,6 @@ describe("RECORD_TABLES", () => {
         ...(t.parent ? [t.parent.name] : []),
         ...(t.sortKey ? ["sortKey"] : []),
         ...t.fields.map((f) => f.name),
-        ...Object.keys(t.legacyInsert),
       ]);
       const unwritten = getTableConfig(t.table)
         .columns.filter((c) => c.notNull && !c.hasDefault && !written.has(c.name))
@@ -48,12 +47,11 @@ describe("RECORD_TABLES", () => {
 });
 
 describe("RECORD_TABLES selection", () => {
-  it("reads only the definition's fields and the common sync columns (no legacy columns)", () => {
-    const rebalancing = RECORD_TABLES.get("rebalancing");
+  it("reads only the definition's fields and the common sync columns (no other columns)", () => {
+    const settings = RECORD_TABLES.get("settings");
     const account = RECORD_TABLES.get("account");
 
-    expect(Object.keys(rebalancing?.selection ?? {})).not.toContain("tasks");
-    expect(Object.keys(account?.selection ?? {})).not.toContain("sellCostPercent");
+    expect(Object.keys(settings?.selection ?? {})).not.toContain("storageMode");
     expect(Object.keys(account?.selection ?? {})).toEqual(
       expect.arrayContaining(["id", "userId", "version", "changeSeq", "deletedAt", "sortKey"])
     );

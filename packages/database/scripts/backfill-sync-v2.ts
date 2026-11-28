@@ -1,5 +1,5 @@
 /**
- * 동기화 v2 expand (v2-2) backfill — 마이그레이션 0024 가 더한 열·`rebalancing_task` 를 채운다.
+ * 동기화 v2 expand (v2-2) backfill — 마이그레이션 0024 가 더한 열을 채운다.
  * 무엇을 어떻게 채우는지는 `src/sync-v2-backfill.ts`. 멱등이라 여러 번 돌려도 된다 — v1 쓰기가
  * 새 열을 기본값으로 남기므로, v2 엔드포인트로 넘어가기 직전에 한 번 더 돌린다.
  *

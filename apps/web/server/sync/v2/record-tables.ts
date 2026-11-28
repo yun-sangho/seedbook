@@ -30,11 +30,6 @@ export interface RecordTable {
   updatedAt: PgColumn;
   sortKey: PgColumn | null;
   fields: FieldColumn[];
-  /**
-   * 정의에 없는 옛 NOT NULL 컬럼 중 DB 기본값이 없는 것의 생성 값 (v2-5 에서 컬럼과 함께 지운다).
-   * `rebalancing.tasks` — 할 일은 `rebalancing_task` 레코드다.
-   */
-  legacyInsert: Record<string, unknown>;
   /** 이 레코드를 부모로 갖는 하위 레코드 표 (부모를 지우면 같은 트랜잭션에서 톰스톤). */
   children: RecordTable[];
   /**
@@ -43,10 +38,6 @@ export interface RecordTable {
    */
   selection: Record<string, PgColumn>;
 }
-
-const LEGACY_INSERT: Record<string, Record<string, unknown>> = {
-  rebalancing: { tasks: [] },
-};
 
 const PG_TABLES = new Map<string, PgTable>(
   Object.values(schema)
@@ -86,7 +77,6 @@ function buildTable(definition: RecordDefinition): RecordTable {
       spec: field.spec,
       column: column(table, name),
     })),
-    legacyInsert: LEGACY_INSERT[definition.type] ?? {},
     children: [],
   };
   const common = [rt.key, rt.userId, rt.parent, rt.version, rt.changeSeq, rt.deletedAt]

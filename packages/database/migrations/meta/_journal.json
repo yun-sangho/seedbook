@@ -176,6 +176,13 @@
       "when": 1795829079299,
       "tag": "0024_thankful_serpent_society",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1795847247246,
+      "tag": "0025_tan_stark_industries",
+      "breakpoints": true
     }
   ]
 }

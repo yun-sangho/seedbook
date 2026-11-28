@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import type { Database } from "./client";
 import * as schema from "./schema";
 import { reserveChangeSeqs } from "./sync-state";
@@ -10,14 +10,13 @@ import { reserveChangeSeqs } from "./sync-state";
  * 2. 하위 레코드의 `userId` (부모에서)
  * 3. 부모가 톰스톤인 하위 레코드에 톰스톤 (설계 §2.3 "부모를 지우면 하위도")
  * 4. `investment_record.id` = uuidv5(accountId, date)
- * 5. `rebalancing.tasks` jsonb → `rebalancing_task` (없는 것은 jsonb 순서대로 넣고, 달라진 것은
- *    고치고, jsonb 에서 빠진 것은 톰스톤)
- * 6. 루트 `sortKey`: `user_list_order` 순서 → 없는 것은 만든 순
- * 7. `changeSeq`: 번호가 없는(0) 행에 사용자별로 updatedAt 순 (하위는 부모의 updatedAt)
+ * 5. 루트 `sortKey`: 없는 것은 만든 순으로 뒤에 (옛 `user_list_order` 는 v2-5b 에서 지웠다)
+ * 6. `changeSeq`: 번호가 없는(0) 행에 사용자별로 updatedAt 순 (하위는 부모의 updatedAt)
  *
  * 멱등이다 — 채워진 값은 건드리지 않고, 다시 돌리면 그 사이 v1 쓰기가 만든 빈 칸만 채운다
- * (v1 은 하위 행을 지우고 다시 넣으므로 새 열이 기본값으로 돌아간다). v2 로 쓴 행은 그대로 둔다 —
- * 할 일은 v1 이 세션을 마지막으로 쓴 경우에만 jsonb 를 따른다 (`tasksJsonIsNewer`). 사용자마다 한 트랜잭션.
+ * (v1 은 하위 행을 지우고 다시 넣으므로 새 열이 기본값으로 돌아간다). v2 로 쓴 행은 그대로 둔다.
+ * 사용자마다 한 트랜잭션. 옛 `rebalancing.tasks` jsonb 를 할 일 행으로 펼치던 단계는 jsonb 컬럼과
+ * 함께 v2-5b 에서 지웠다 (운영은 v2-2 배포 때 펼쳤다).
  * 루트 테이블의 `updatedAt` 은 바꾸지 않는다 — v1 pull 커서라 바꾸면 모든 기기가 전부 다시 받는다.
  */
 
@@ -25,8 +24,6 @@ import { reserveChangeSeqs } from "./sync-state";
 export interface SyncV2Keys {
   /** uuidv5(accountId, "YYYY-MM-DD"). */
   accountRecordId(accountId: string, date: string): string;
-  /** uuidv5(rebalancingId, allocationId). */
-  rebalancingTaskId(rebalancingId: string, allocationId: string): string;
   /** `last` 뒤에 붙일 분수 인덱스 키 `count` 개. */
   sortKeysAfter(last: string | null, count: number): string[];
 }
@@ -35,11 +32,6 @@ export interface SyncV2BackfillSummary {
   childUserIds: number;
   childTombstones: number;
   accountRecordIds: number;
-  tasksInserted: number;
-  tasksUpdated: number;
-  tasksTombstoned: number;
-  /** jsonb 에 있지만 모양이 잘못돼 펼치지 못한 할 일 (같은 allocationId 가 또 나온 것 포함). */
-  tasksSkipped: number;
   sortKeys: number;
   changeSeqs: number;
 }
@@ -50,10 +42,6 @@ const emptySummary = (): SyncV2BackfillSummary => ({
   childUserIds: 0,
   childTombstones: 0,
   accountRecordIds: 0,
-  tasksInserted: 0,
-  tasksUpdated: 0,
-  tasksTombstoned: 0,
-  tasksSkipped: 0,
   sortKeys: 0,
   changeSeqs: 0,
 });
@@ -72,12 +60,8 @@ const CHILD_TABLES = [
   { table: "rebalancing_task", parentTable: "rebalancing", column: "rebalancingId", sorted: true },
 ] as const;
 
-/** 루트 테이블 → 지금 순서를 가진 `user_list_order.domain`. */
-const ROOT_TABLES = [
-  { table: "investment_account", listOrderDomain: "investment-accounts" },
-  { table: "portfolio", listOrderDomain: "portfolios" },
-  { table: "rebalancing", listOrderDomain: "rebalancings" },
-] as const;
+/** 목록 순서(`sortKey`)를 가진 루트 테이블. */
+const ROOT_TABLES = ["investment_account", "portfolio", "rebalancing"] as const;
 
 /**
  * changeSeq 를 매길 테이블 (레코드 정의 순서 — 같은 시각이면 부모가 먼저). `parent` 가 있으면 부모의
@@ -128,7 +112,6 @@ export async function backfillUserSyncV2(
   summary.childUserIds = await fillChildUserIds(tx, userId);
   summary.childTombstones = await tombstoneOrphanedChildren(tx, userId);
   summary.accountRecordIds = await fillAccountRecordIds(tx, userId, keys);
-  Object.assign(summary, await expandRebalancingTasks(tx, userId, keys));
   summary.sortKeys += await fillRootSortKeys(tx, userId, keys);
   summary.changeSeqs = await fillChangeSeqs(tx, userId);
   return summary;
@@ -188,202 +171,11 @@ async function fillAccountRecordIds(tx: Tx, userId: string, keys: SyncV2Keys): P
   return missing.length;
 }
 
-// ─── rebalancing.tasks → rebalancing_task ──────────────────────────────────
-
-type TaskColumns = Omit<
-  typeof schema.rebalancingTask.$inferInsert,
-  | "id"
-  | "userId"
-  | "rebalancingId"
-  | "version"
-  | "deletedAt"
-  | "changeSeq"
-  | "sortKey"
-  | "createdAt"
-  | "updatedAt"
->;
-
-const TASK_FIELDS = [
-  "allocationId",
-  "market",
-  "ticker",
-  "name",
-  "action",
-  "amount",
-  "price",
-  "quantity",
-  "priceAsOf",
-  "priceKind",
-  "executedQuantity",
-  "executedPrice",
-  "orderedQuantity",
-  "orderedPrice",
-  "filledQuantity",
-  "filledAmount",
-  "done",
-] as const satisfies ReadonlyArray<keyof TaskColumns>;
-
-const isText = (x: unknown): x is string => typeof x === "string";
-const isNumber = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x);
-const optionalNumber = (x: unknown): number | null | undefined =>
-  x === undefined || x === null ? null : isNumber(x) ? x : undefined;
-
-/**
- * jsonb 의 할 일 하나 → 컬럼 값. 저장 때 v1 검증(`parseRebalancingFields`)을 거친 값이지만, 모양이
- * 다르면 null (건너뛰고 센다). 나중에 추가된 필드는 없으면 null — v1 읽기와 같다.
- */
-export function taskToColumns(value: unknown): TaskColumns | null {
-  if (!value || typeof value !== "object") return null;
-  const v = value as Record<string, unknown>;
-  if (
-    !isText(v.id) ||
-    !isText(v.market) ||
-    !isText(v.ticker) ||
-    !isText(v.name) ||
-    (v.action !== "매수" && v.action !== "매도") ||
-    !isNumber(v.amount) ||
-    typeof v.done !== "boolean"
-  ) {
-    return null;
-  }
-  const price = optionalNumber(v.price);
-  const quantity = optionalNumber(v.quantity);
-  const numbers = {
-    executedQuantity: optionalNumber(v.executedQuantity),
-    executedPrice: optionalNumber(v.executedPrice),
-    orderedQuantity: optionalNumber(v.orderedQuantity),
-    orderedPrice: optionalNumber(v.orderedPrice),
-    filledQuantity: optionalNumber(v.filledQuantity),
-    filledAmount: optionalNumber(v.filledAmount),
-  };
-  if (price === undefined || quantity === undefined) return null;
-  if (Object.values(numbers).some((n) => n === undefined)) return null;
-  const priceAsOf = v.priceAsOf ?? null;
-  if (priceAsOf !== null && (!isText(priceAsOf) || Number.isNaN(Date.parse(priceAsOf)))) {
-    return null;
-  }
-  const priceKind = v.priceKind ?? null;
-  if (priceKind !== null && priceKind !== "realtime" && priceKind !== "close") return null;
-  return {
-    allocationId: v.id,
-    market: v.market,
-    ticker: v.ticker,
-    name: v.name,
-    action: v.action,
-    amount: v.amount,
-    price,
-    quantity,
-    priceAsOf: priceAsOf === null ? null : new Date(priceAsOf),
-    priceKind,
-    ...(numbers as Record<keyof typeof numbers, number | null>),
-    done: v.done,
-  };
-}
-
-const comparable = (value: unknown) => (value instanceof Date ? value.getTime() : (value ?? null));
-
-function sameTask(a: TaskColumns, b: TaskColumns): boolean {
-  return TASK_FIELDS.every((f) => comparable(a[f]) === comparable(b[f]));
-}
-
 const maxKey = (values: Array<string | null>): string | null =>
   values.reduce<string | null>(
     (max, v) => (v !== null && (max === null || v > max) ? v : max),
     null
   );
-
-/**
- * 이미 펼친 세션의 `tasks` jsonb 가 할 일 행보다 새것인지 — v1 이 세션을 마지막으로 썼을 때만이다.
- * v2 는 jsonb 를 쓰지 않으므로 (v2 로 만든 세션은 `[]`) jsonb 를 따르면 v2 로 쓴 할 일을 되돌리거나
- * 지운다. v1 저장은 세션의 `updatedAt` 만 올리고 `changeSeq` 는 그대로 두지만, v2 의 세션 쓰기는
- * 새 번호를 받아 할 일들의 번호보다 커진다. 그래서:
- * - 세션이 모든 할 일 행보다 나중에 쓰였고 (할 일을 v2 로 고친 뒤 v1 이 다시 쓰지 않았으면 아니다)
- * - 세션의 번호가 할 일 번호보다 작다 (그 마지막 쓰기가 v2 였으면 아니다)
- */
-function tasksJsonIsNewer(
-  session: { updatedAt: Date; changeSeq: number },
-  tasks: Array<{ updatedAt: Date; changeSeq: number }>
-): boolean {
-  const lastTaskWrite = Math.max(...tasks.map((r) => r.updatedAt.getTime()));
-  const lastTaskSeq = Math.max(...tasks.map((r) => r.changeSeq));
-  return (
-    session.updatedAt.getTime() > lastTaskWrite &&
-    (session.changeSeq === 0 || session.changeSeq < lastTaskSeq)
-  );
-}
-
-async function expandRebalancingTasks(tx: Tx, userId: string, keys: SyncV2Keys) {
-  const result = { tasksInserted: 0, tasksUpdated: 0, tasksTombstoned: 0, tasksSkipped: 0 };
-  const t = schema.rebalancingTask;
-  const sessions = await tx
-    .select({
-      id: schema.rebalancing.id,
-      tasks: schema.rebalancing.tasks,
-      deletedAt: schema.rebalancing.deletedAt,
-      updatedAt: schema.rebalancing.updatedAt,
-      changeSeq: schema.rebalancing.changeSeq,
-    })
-    .from(schema.rebalancing)
-    .where(eq(schema.rebalancing.userId, userId))
-    .orderBy(schema.rebalancing.id);
-  const existing = await tx.select().from(t).where(eq(t.userId, userId));
-
-  for (const session of sessions) {
-    const current = existing.filter((r) => r.rebalancingId === session.id);
-    if (current.length > 0 && !session.deletedAt && !tasksJsonIsNewer(session, current)) continue;
-    const byId = new Map(current.map((r) => [r.id, r]));
-    const expected = new Map<string, TaskColumns>();
-    for (const raw of Array.isArray(session.tasks) ? session.tasks : []) {
-      const columns = taskToColumns(raw);
-      const id = columns && keys.rebalancingTaskId(session.id, columns.allocationId);
-      if (!columns || !id || expected.has(id)) {
-        result.tasksSkipped += 1;
-        continue;
-      }
-      expected.set(id, columns);
-    }
-
-    // 새 할 일: 처음이면 jsonb 순서대로, 이미 펼친 세션이면 그 뒤에 붙인다.
-    const added = [...expected].filter(([id]) => !byId.has(id));
-    const sortKeys = keys.sortKeysAfter(maxKey(current.map((r) => r.sortKey)), added.length);
-    for (const [i, [id, columns]] of added.entries()) {
-      await tx.insert(t).values({
-        id,
-        userId,
-        rebalancingId: session.id,
-        ...columns,
-        sortKey: sortKeys[i] ?? null,
-        deletedAt: session.deletedAt,
-      });
-      result.tasksInserted += 1;
-    }
-
-    for (const row of current) {
-      // 삭제가 이긴다 — 톰스톤은 되살리지 않는다.
-      if (row.deletedAt) continue;
-      const columns = expected.get(row.id);
-      if (columns && !session.deletedAt) {
-        if (sameTask(row, columns)) continue;
-        await tx
-          .update(t)
-          .set({ ...columns, version: sql`${t.version} + 1`, changeSeq: 0 })
-          .where(and(eq(t.id, row.id), eq(t.userId, userId)));
-        result.tasksUpdated += 1;
-      } else {
-        await tx
-          .update(t)
-          .set({
-            deletedAt: session.deletedAt ?? new Date(),
-            version: sql`${t.version} + 1`,
-            changeSeq: 0,
-          })
-          .where(and(eq(t.id, row.id), eq(t.userId, userId)));
-        result.tasksTombstoned += 1;
-      }
-    }
-  }
-  return result;
-}
 
 // ─── sortKey ────────────────────────────────────────────────────────────────
 
@@ -393,37 +185,25 @@ async function setSortKeys(tx: Tx, tableName: string, ids: string[], keys: strin
   }
 }
 
-/** 루트: `user_list_order` 에 있는 순서 → 없는 것은 만든 순으로 뒤에 (클라이언트 `applyOrder` 와 같다). */
+/** 루트: 키 없는 행을 만든 순으로 기존 키 뒤에 붙인다. */
 async function fillRootSortKeys(tx: Tx, userId: string, keys: SyncV2Keys): Promise<number> {
   let count = 0;
-  for (const root of ROOT_TABLES) {
+  for (const rootTable of ROOT_TABLES) {
     const items = await rows<{ id: string; sortKey: string | null; createdAt: Date }>(
       tx,
-      sql`SELECT "id", "sortKey", "createdAt" FROM ${table(root.table)} WHERE "userId" = ${userId}`
+      sql`SELECT "id", "sortKey", "createdAt" FROM ${table(rootTable)} WHERE "userId" = ${userId}`
     );
     const missing = items.filter((r) => r.sortKey === null);
     if (missing.length === 0) continue;
-    const [listOrder] = await tx
-      .select({ order: schema.userListOrder.order })
-      .from(schema.userListOrder)
-      .where(
-        and(
-          eq(schema.userListOrder.userId, userId),
-          eq(schema.userListOrder.domain, root.listOrderDomain)
-        )
-      );
-    const rank = new Map((listOrder?.order ?? []).map((id, i) => [id, i]));
     missing.sort(
       (a, b) =>
-        (rank.get(a.id) ?? Number.POSITIVE_INFINITY) -
-          (rank.get(b.id) ?? Number.POSITIVE_INFINITY) ||
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
         (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
     );
     const ids = missing.map((r) => r.id);
     await setSortKeys(
       tx,
-      root.table,
+      rootTable,
       ids,
       keys.sortKeysAfter(maxKey(items.map((r) => r.sortKey)), ids.length)
     );
