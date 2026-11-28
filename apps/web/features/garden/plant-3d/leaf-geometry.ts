@@ -19,11 +19,14 @@ const OUTLINE = new THREE.CubicBezierCurve(
 const LEAF_ROWS = 14;
 const LEAF_HALF_COLUMNS = 3;
 
-/** 잎맥 폭·범위와 잎 윗면에서 띄우는 거리 (z-fighting 만 피할 만큼). */
-const VEIN_HALF_WIDTH = 0.0175;
-const VEIN_START = 0.045;
-const VEIN_END = 0.795;
-const VEIN_ROWS = 12;
+/**
+ * 잎맥: 밑동(줄기에 붙는 곳)에서 끝 가까이까지 점점 가늘어진다. 잎 윗면·아랫면에 한 줄씩 깔아
+ * 어느 쪽에서 봐도 보이게 하고, 면에서 띄우는 거리는 z-fighting 만 피할 만큼이다.
+ */
+const VEIN_BASE_HALF_WIDTH = 0.024;
+const VEIN_END = 0.86;
+const VEIN_TAPER = 0.8;
+const VEIN_ROWS = 16;
 const VEIN_LIFT = 0.004;
 
 /** 잎 곡면: 가운데(잎맥)가 접혀 솟고 끝이 아래로 휜다 (+Z 가 기울였을 때 아래쪽). */
@@ -31,10 +34,14 @@ function leafSurfaceZ(x: number, y: number): number {
   return -Math.abs(x) * 0.35 + y * y * 0.28;
 }
 
-/** 줄(row)·열(column) 격자를 삼각형 띠로 잇는다. 정점은 줄마다 `columns` 개씩. */
-function gridGeometry(points: THREE.Vector3[], rows: number, columns: number) {
+/**
+ * 줄(row)·열(column) 격자를 삼각형 띠로 잇는다. 정점은 줄마다 `columns` 개씩.
+ * `rowsPerSheet` 마다 끊어 여러 장(잎맥 윗면·아랫면)을 한 geometry 에 담는다.
+ */
+function gridGeometry(points: THREE.Vector3[], rows: number, columns: number, rowsPerSheet = rows) {
   const indices: number[] = [];
   for (let r = 0; r < rows - 1; r++) {
+    if ((r + 1) % rowsPerSheet === 0) continue;
     for (let c = 0; c < columns - 1; c++) {
       const a = r * columns + c;
       const b = a + columns;
@@ -62,14 +69,17 @@ export function leafGeometry(): THREE.BufferGeometry {
   return gridGeometry(points, LEAF_ROWS + 1, columns);
 }
 
-/** 잎 가운데의 잎맥: 잎 곡면을 그대로 따라 접히고 휘는 가는 띠 (윗면에 살짝 띄운다). */
+/** 잎 가운데의 잎맥: 잎 곡면을 따라 접히고 휘며, 밑동에서 끝으로 가늘어지는 띠 (윗면·아랫면). */
 export function veinGeometry(): THREE.BufferGeometry {
   const points: THREE.Vector3[] = [];
-  for (let r = 0; r <= VEIN_ROWS; r++) {
-    const y = VEIN_START + ((VEIN_END - VEIN_START) * r) / VEIN_ROWS;
-    for (const x of [-VEIN_HALF_WIDTH, 0, VEIN_HALF_WIDTH]) {
-      points.push(new THREE.Vector3(x, y, leafSurfaceZ(x, y) - VEIN_LIFT));
+  for (const lift of [-VEIN_LIFT, VEIN_LIFT]) {
+    for (let r = 0; r <= VEIN_ROWS; r++) {
+      const y = (VEIN_END * r) / VEIN_ROWS;
+      const halfWidth = VEIN_BASE_HALF_WIDTH * (1 - y / VEIN_END) ** VEIN_TAPER;
+      for (const x of [-halfWidth, 0, halfWidth]) {
+        points.push(new THREE.Vector3(x, y, leafSurfaceZ(x, y) + lift));
+      }
     }
   }
-  return gridGeometry(points, VEIN_ROWS + 1, 3);
+  return gridGeometry(points, (VEIN_ROWS + 1) * 2, 3, VEIN_ROWS + 1);
 }

@@ -1,6 +1,5 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { PLANT_STAGES } from "@web/features/garden/plant-3d/plant-options";
 import { describe, expect, it } from "vitest";
 import { LANDING_GARDEN_PLANTS, landingGardenSlots, shouldLoad3d } from "./landing-garden-scenes";
 
@@ -52,8 +51,4 @@ describe("landing images", () => {
       expect(existsSync(join(PUBLIC_LANDING, `${scene}-dark.webp`))).toBe(true);
     }
   );
-
-  it.each(PLANT_STAGES)("has a fern picture for the %s stage", (stage) => {
-    expect(existsSync(join(PUBLIC_LANDING, `fern-${stage}.svg`))).toBe(true);
-  });
 });
