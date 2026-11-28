@@ -17,13 +17,16 @@ export interface ActionButtonProps extends SeedActionButtonProps {}
 /**
  * @see https://seed-design.io/react/components/action-button
  * If `asChild` is enabled, manual handling of `LoadingIndicator` is required.
+ *
+ * Seedbook: 기본 variant 는 SEED 의 brandSolid 대신 neutralSolid 다. 버튼은 브랜드 색을 쓰지 않고
+ * 진하게(neutralSolid) 강조하며, 브랜드 초록은 진행 바·안내 문구·배지에만 쓴다 (`src/seed-brand.css`).
  */
 export const ActionButton = React.forwardRef<
   React.ElementRef<typeof SeedActionButton>,
   ActionButtonProps
->(({ loading = false, children, ...otherProps }, ref) => {
+>(({ loading = false, variant = "neutralSolid", children, ...otherProps }, ref) => {
   return (
-    <SeedActionButton ref={ref} loading={loading} {...otherProps}>
+    <SeedActionButton ref={ref} loading={loading} variant={variant} {...otherProps}>
       {loading && !otherProps.asChild ? <LoadingIndicator>{children}</LoadingIndicator> : children}
     </SeedActionButton>
   );

@@ -1,0 +1,31 @@
+/* Seedbook 브랜드 색: SEED 브랜드 토큰(기본 당근 주황 carrot)을 정원 잎 초록으로 다시 매핑한다.
+   SEED 시맨틱 토큰 이름은 그대로 두고 값만 바꾸므로 `bg-bg-brand-solid`·`text-fg-brand` 와 SEED 컴포넌트의
+   brand tone 이 모두 따라온다. 잎 초록(노란 쪽)은 positive(청록 palette-green)와 색상이 갈린다.
+   버튼은 브랜드 색을 쓰지 않는다 — `seed-design/ui/action-button.tsx` 기본 variant 가 neutralSolid.
+
+   SEED 는 `:root[data-seed-color-mode="system"][data-seed-user-color-scheme=…]` (특이도 0,3,0) 로 라이트/다크를
+   고른다. 불러오는 순서와 상관없이 이기도록 `:root` 를 한 번 더 붙였다 (0,4,0). 앱은 "system" 모드만 쓴다
+   (`components/mobile/seed-color-scheme.tsx`). 모든 브랜드 토큰을 두 모드 다 덮는지는 `seed-brand.test.ts` 가 본다. */
+
+:root:root,
+:root:root[data-seed-color-mode="system"][data-seed-user-color-scheme="light"] {
+  --seed-color-fg-brand: #2f8a40;
+  --seed-color-fg-brand-contrast: #256f33;
+  --seed-color-bg-brand-solid: #2f8a40;
+  --seed-color-bg-brand-solid-pressed: #256f33;
+  --seed-color-bg-brand-weak: #eef8ec;
+  --seed-color-bg-brand-weak-pressed: #e2f4df;
+  --seed-color-stroke-brand-solid: #256f33;
+  --seed-color-stroke-brand-weak: #c3e6bc;
+}
+
+:root:root[data-seed-color-mode="system"][data-seed-user-color-scheme="dark"] {
+  --seed-color-fg-brand: #7cc870;
+  --seed-color-fg-brand-contrast: #a6dc9c;
+  --seed-color-bg-brand-solid: #3e9f4c;
+  --seed-color-bg-brand-solid-pressed: #2f8a40;
+  --seed-color-bg-brand-weak: #1f2b22;
+  --seed-color-bg-brand-weak-pressed: #243328;
+  --seed-color-stroke-brand-solid: #3e9f4c;
+  --seed-color-stroke-brand-weak: #2c4a30;
+}

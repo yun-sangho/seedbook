@@ -113,7 +113,7 @@ export function BiometricLoginOffer() {
             </AlertDialogAction>
             {/* 결과를 보고 닫는다 — 취소·실패면 다이얼로그를 그대로 둔다. */}
             <ActionButton
-              variant="brandSolid"
+              variant="neutralSolid"
               size="large"
               flexGrow
               loading={busy}
