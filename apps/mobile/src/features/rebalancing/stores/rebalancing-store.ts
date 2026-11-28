@@ -5,10 +5,11 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { RebalancingResult, RebalancingSession } from "../types/types";
 import {
-  clearRebalancingFills,
-  closeRebalancingTask,
+  cancelRebalancingTaskOrder,
   completeRebalancing,
-  recordRebalancingFill,
+  completeRebalancingTaskWith,
+  fillRebalancingTaskOrder,
+  orderRebalancingTaskWith,
   toggleRebalancingTask,
 } from "../utils/rebalancing-session";
 
@@ -21,12 +22,26 @@ interface RebalancingState {
   /** 새 리밸런싱을 시작하고 id 를 돌려준다. */
   startRebalancing: (input: StartRebalancingInput) => string;
   toggleTask: (sessionId: string, taskId: string) => void;
-  /** 실제로 거래된 체결 한 건을 기록한다. 목표 수량을 채우면 할 일이 끝난다. */
-  recordFill: (sessionId: string, taskId: string, quantity: number, price: number) => void;
-  /** 남은 수량은 거래하지 않고 할 일을 끝낸다 ("남은 n주는 안 팔래요"). */
-  closeTask: (sessionId: string, taskId: string) => void;
-  /** 열려 있는 할 일의 체결 기록을 지운다. */
-  clearFills: (sessionId: string, taskId: string) => void;
+  /** 실제로 사고판 수량·가격과 함께 완료로 기록한다 (이미 완료했으면 값을 바꾼다). */
+  completeTaskWith: (
+    sessionId: string,
+    taskId: string,
+    executedQuantity: number,
+    executedPrice: number
+  ) => void;
+  /** 증권사에 넣은 주문 수량·가격을 기록한다 (이미 주문했으면 값을 바꾼다). */
+  orderTaskWith: (
+    sessionId: string,
+    taskId: string,
+    orderedQuantity: number,
+    orderedPrice: number
+  ) => void;
+  /**
+   * 주문의 체결을 기록한다. 주문 수량에 못 미치면 부분 체결로 쌓고 잔량은 주문 중으로 둔다.
+   */
+  fillTaskOrder: (sessionId: string, taskId: string, quantity: number, price: number) => void;
+  /** 주문을 취소해 대기로 돌린다. 부분 체결됐으면 잔량만 취소해 체결된 만큼으로 체결을 마친다. */
+  cancelTaskOrder: (sessionId: string, taskId: string) => void;
   /** 완료 기록으로 넘긴다. 계좌에 반영했으면 반영 후 구성을 함께 남긴다. */
   completeRebalancing: (sessionId: string, result?: RebalancingResult | null) => void;
   removeRebalancing: (sessionId: string) => void;
@@ -57,26 +72,38 @@ export const useRebalancingStore = create<RebalancingState>()(
         }));
       },
 
-      recordFill: (sessionId, taskId, quantity, price) => {
+      completeTaskWith: (sessionId, taskId, executedQuantity, executedPrice) => {
         set((state) => ({
           sessions: state.sessions.map((s) =>
-            s.id === sessionId ? recordRebalancingFill(s, taskId, quantity, price) : s
+            s.id === sessionId
+              ? completeRebalancingTaskWith(s, taskId, executedQuantity, executedPrice)
+              : s
           ),
         }));
       },
 
-      closeTask: (sessionId, taskId) => {
+      orderTaskWith: (sessionId, taskId, orderedQuantity, orderedPrice) => {
         set((state) => ({
           sessions: state.sessions.map((s) =>
-            s.id === sessionId ? closeRebalancingTask(s, taskId) : s
+            s.id === sessionId
+              ? orderRebalancingTaskWith(s, taskId, orderedQuantity, orderedPrice)
+              : s
           ),
         }));
       },
 
-      clearFills: (sessionId, taskId) => {
+      fillTaskOrder: (sessionId, taskId, quantity, price) => {
         set((state) => ({
           sessions: state.sessions.map((s) =>
-            s.id === sessionId ? clearRebalancingFills(s, taskId) : s
+            s.id === sessionId ? fillRebalancingTaskOrder(s, taskId, quantity, price) : s
+          ),
+        }));
+      },
+
+      cancelTaskOrder: (sessionId, taskId) => {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? cancelRebalancingTaskOrder(s, taskId) : s
           ),
         }));
       },

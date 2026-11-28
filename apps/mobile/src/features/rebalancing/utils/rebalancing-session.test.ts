@@ -3,8 +3,6 @@ import type { RebalancingSession, RebalancingTask } from "../types/types";
 import {
   canCompleteRebalancing,
   cancelRebalancingTaskOrder,
-  clearRebalancingFills,
-  closeRebalancingTask,
   completeRebalancing,
   completeRebalancingTaskWith,
   executedPriceFor,
@@ -19,9 +17,7 @@ import {
   orderRebalancingTaskWith,
   rebalancingProgress,
   rebalancingTaskStatus,
-  recordRebalancingFill,
   remainingOrderQuantity,
-  remainingQuantityOf,
   toggleRebalancingTask,
   visibleRebalancingTasks,
 } from "./rebalancing-session";
@@ -535,72 +531,5 @@ describe("partial fills (부분 체결)", () => {
   it("has no remainder when the task is not ordered", () => {
     expect(remainingOrderQuantity(task("a"))).toBe(0);
     expect(remainingOrderQuantity(task("a", true))).toBe(0);
-  });
-});
-
-describe("체결 기록 (recordRebalancingFill · closeRebalancingTask · clearRebalancingFills)", () => {
-  // 목표 10주 · 시작 시점 가격 1,000원
-  const planned = (overrides: Partial<RebalancingTask> = {}) =>
-    session({ tasks: [{ ...task("a"), quantity: 10, price: 1_000, ...overrides }] });
-  const only = (s: RebalancingSession) => s.tasks[0]!;
-
-  it("keeps a fill short of the target open with the rest remaining", () => {
-    const result = only(recordRebalancingFill(planned(), "a", 6, 990));
-
-    expect(result).toMatchObject({ done: false, filledQuantity: 6, filledAmount: 5_940 });
-    expect(isPartiallyFilled(result)).toBe(true);
-    expect(remainingQuantityOf(result)).toBe(4);
-  });
-
-  it("finishes the task at the average price once the fills reach the target", () => {
-    const once = recordRebalancingFill(planned(), "a", 6, 990);
-    const result = only(recordRebalancingFill(once, "a", 4, 1_005));
-
-    expect(result.done).toBe(true);
-    expect(executedQuantityOf(result)).toBe(10);
-    expect(executedPriceOf(result)).toBe((6 * 990 + 4 * 1_005) / 10);
-    expect(remainingQuantityOf(result)).toBe(0);
-  });
-
-  it("finishes with one fill when the target quantity is unknown", () => {
-    const result = only(recordRebalancingFill(planned({ quantity: null }), "a", 3, 1_000));
-
-    expect(result).toMatchObject({ done: true, executedQuantity: 3, executedPrice: 1_000 });
-  });
-
-  it("counts an old order's quantity as the target when there was no recommended quantity", () => {
-    const old = planned({ quantity: null, orderedQuantity: 8, orderedPrice: 1_000 });
-
-    expect(remainingQuantityOf(only(recordRebalancingFill(old, "a", 5, 1_000)))).toBe(3);
-  });
-
-  it("closes the rest with what was traded so far", () => {
-    const partial = recordRebalancingFill(planned(), "a", 6, 990);
-    const result = only(closeRebalancingTask(partial, "a"));
-
-    expect(result).toMatchObject({ done: true, executedQuantity: 6, executedPrice: 990 });
-  });
-
-  it("closes an untouched task as not traded", () => {
-    const result = only(closeRebalancingTask(planned(), "a"));
-
-    expect(result.done).toBe(true);
-    expect(executedQuantityOf(result)).toBe(0);
-  });
-
-  it("clears the fills of an open task", () => {
-    const partial = recordRebalancingFill(planned(), "a", 6, 990);
-
-    expect(only(clearRebalancingFills(partial, "a"))).toMatchObject({
-      filledQuantity: 0,
-      filledAmount: 0,
-    });
-  });
-
-  it("does not record on a finished task", () => {
-    const done = planned({ done: true, executedQuantity: 10, executedPrice: 1_000 });
-
-    expect(recordRebalancingFill(done, "a", 1, 1_000)).toBe(done);
-    expect(closeRebalancingTask(done, "a")).toBe(done);
   });
 });
