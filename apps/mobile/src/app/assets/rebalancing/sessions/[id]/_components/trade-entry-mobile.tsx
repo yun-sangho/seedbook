@@ -311,7 +311,7 @@ export function TradeEntryForm({
             />
 
             <dl className="bg-bg-neutral-weak rounded-r3 flex flex-col gap-y-x2 px-x4 py-x3">
-              <SummaryRow label={task.action === "매도" ? "파는 금액" : "사는 금액"}>
+              <SummaryRow label="거래 금액">
                 {amount !== null ? `${formatWithCommas(amount)}원` : "-"}
               </SummaryRow>
               {/* 쓸 수 있는 돈은 목록에서 본다 — 단계 화면은 총 금액만. */}
