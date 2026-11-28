@@ -42,3 +42,29 @@ describe("native biometric wrapper", () => {
     expect(verifyIdentity).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("biometricVaultServer (Keychain key for the login token)", () => {
+  it("keys the bundled app by the API server it talks to, not the app origin", async () => {
+    const { biometricVaultServer } = await import("./biometric");
+
+    expect(
+      biometricVaultServer({ apiBaseUrl: "https://seedbook.boogie.ing", locationHost: "localhost" })
+    ).toBe("seedbook.boogie.ing");
+  });
+
+  it("keeps a dev build on a LAN server apart from the release app", async () => {
+    const { biometricVaultServer } = await import("./biometric");
+
+    expect(
+      biometricVaultServer({ apiBaseUrl: "http://192.168.0.10:4012", locationHost: "localhost" })
+    ).toBe("192.168.0.10:4012");
+  });
+
+  it("uses the page host when the app talks to its own origin (old server.url shell)", async () => {
+    const { biometricVaultServer } = await import("./biometric");
+
+    expect(biometricVaultServer({ apiBaseUrl: "", locationHost: "seedbook.boogie.ing" })).toBe(
+      "seedbook.boogie.ing"
+    );
+  });
+});

@@ -12,8 +12,7 @@ import {
   IconTrashcanLine,
 } from "@karrotmarket/react-monochrome-icon";
 import { useLegalNotices } from "@mobile/components/consent-gate";
-import { AppLockSettingItem } from "@mobile/components/mobile/app-lock";
-import { BiometricLoginSettingItem } from "@mobile/components/mobile/biometric-login";
+import { BiometricSettingItem } from "@mobile/components/mobile/biometric-login";
 import { SessionUserAvatar, useSessionUser } from "@mobile/components/mobile/profile-menu";
 import { separateStorageNotice } from "@mobile/features/settings/utils/storage-notice";
 import { useBiometryLabel } from "@mobile/hooks/use-biometry-label";
@@ -87,8 +86,7 @@ export function SettingsMenuMobile() {
               detail="Safari 하단 공유 버튼 → '홈 화면에 추가'를 눌러주세요"
             />
           )}
-          <AppLockSettingItem />
-          <BiometricLoginSettingItem />
+          <BiometricSettingItem />
         </MenuCard>
       )}
 
