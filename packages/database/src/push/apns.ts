@@ -3,7 +3,7 @@ import http2 from "node:http2";
 
 /**
  * APNs 발송 (HTTP/2 + 토큰 인증 JWT, 의존성 없이 node 내장 모듈로). 키는 Apple Developer 의 APNs 인증 키
- * (.p8) — GitHub Secret `APNS_KEY_ID`·`APNS_PRIVATE_KEY_BASE64` 와 `APPLE_TEAM_ID`. 키가 없으면 발송하지 않는다.
+ * (.p8) — GitHub Secret `APNS_PRIVATE_KEY_BASE64` 와 Variables `APNS_KEY_ID`·`APPLE_TEAM_ID`. 키가 없으면 발송하지 않는다.
  * 하나의 키로 운영 앱·개발용 앱(topic = 번들 ID)에 모두 보낸다.
  */
 

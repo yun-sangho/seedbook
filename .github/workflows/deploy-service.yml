@@ -124,7 +124,8 @@ jobs:
           APPLE_APP_BUNDLE_ID: ${{ vars.APPLE_APP_BUNDLE_ID }}
           APP_BUNDLE_ADMIN_TOKEN: ${{ secrets.APP_BUNDLE_ADMIN_TOKEN }}
           # 푸시 알림 (APNs 인증 키, stock-crawler 가 목표 도달 알림을 보낸다. 없으면 보내지 않는다).
-          APNS_KEY_ID: ${{ secrets.APNS_KEY_ID }}
+          # 키 ID 는 Variable (APPLE_KEY_ID 와 같이), .p8 내용만 Secret.
+          APNS_KEY_ID: ${{ vars.APNS_KEY_ID }}
           APNS_PRIVATE_KEY_BASE64: ${{ secrets.APNS_PRIVATE_KEY_BASE64 }}
           WEB_PORT: ${{ vars.WEB_PORT || '127.0.0.1:3001' }}
           CRON_MORNING: ${{ vars.CRON_MORNING }}
