@@ -109,15 +109,15 @@ describe("OnboardingGate", () => {
         name: suggested,
         image: expect.stringMatching(/^seed:/),
       });
-      expect(heading()).toBe("첫 씨앗을 골라 주세요");
+      expect(heading()).toBe("어떤 화분을 만들까요?");
     });
 
-    it("skipping the seed and storage saves local storage and opens the app without a portfolio", async () => {
+    it("skipping the pot and storage saves local storage and opens the app without a portfolio", async () => {
       session.user.image = "seed:sprout-2-mint";
       await open();
-      expect(heading()).toBe("첫 씨앗을 골라 주세요");
+      expect(heading()).toBe("어떤 화분을 만들까요?");
       await click("나중에 하기");
-      expect(heading()).toBe("어디에 저장할까요?");
+      expect(heading()).toBe("자산 정보를 어디에 저장할까요?");
       await click(/나중에 하기/);
       expect(puts).toEqual([{ storageMode: "local", onlyIfUnchosen: true }]);
       expect(app()).toBeInTheDocument();
@@ -125,55 +125,40 @@ describe("OnboardingGate", () => {
       expect(accountStorage.getItem(ONBOARDING_PROGRESS_KEY)).toBeNull();
     });
 
-    it("skipping the goal plants the card as a seed and remembers to resume at storage", async () => {
-      session.user.image = "seed:sprout-2-mint";
-      await open();
-      fireEvent.click(screen.getByRole("radio", { name: /올웨더/ }));
-      await click("이 씨앗으로 시작");
-      expect(screen.getByRole("textbox", { name: "이름" })).toHaveValue("올웨더");
-      await click("나중에 하기");
-      expect(portfolios()).toMatchObject([
-        { name: "올웨더", goalAmount: null, growthStage: 0, allocations: [] },
-      ]);
-      expect(heading()).toBe("어디에 저장할까요?");
-      expect(JSON.parse(accountStorage.getItem(ONBOARDING_PROGRESS_KEY) ?? "null")).toEqual({
-        step: "storage",
-        portfolioId: portfolios()[0]?.id,
-        presetId: "all-weather",
-      });
-    });
-
-    it("plants a card with a goal and picked stocks, then opens the app", async () => {
+    it("makes the pot when the stocks are in, then plants the seed with one goal", async () => {
       session.user.image = "seed:sprout-2-mint";
       await open();
       fireEvent.click(screen.getByRole("radio", { name: /미국 지수/ }));
-      await click("이 씨앗으로 시작");
-      fireEvent.change(screen.getByRole("textbox", { name: "목표 금액" }), {
-        target: { value: "10000000" },
-      });
-      await click("다음");
+      expect(screen.getByRole("textbox", { name: "화분 이름" })).toHaveValue("미국 지수");
+      await click("이 화분으로");
 
       expect(heading()).toBe("자산군마다 종목을 담아 주세요");
-      expect(screen.getByRole("button", { name: "씨앗 심기" })).toBeDisabled();
+      expect(portfolios()).toEqual([]);
+      expect(screen.getByRole("button", { name: "화분 만들기" })).toBeDisabled();
       await click(/TIGER 미국S&P500/);
       await click(/KODEX 미국S&P500/);
       await click(/TIGER 미국나스닥100/);
-      await click("씨앗 심기");
+      await click("화분 만들기");
 
       expect(portfolios()).toHaveLength(1);
-      expect(portfolios()[0]).toMatchObject({ name: "미국 지수" });
-      expect(portfolios()[0]?.stageGoals.at(-1)).toBe(10_000_000);
+      expect(portfolios()[0]).toMatchObject({ name: "미국 지수", goalAmount: null });
       expect(portfolios()[0]?.allocations.map((a) => [a.name, a.targetPercent])).toEqual([
         ["TIGER 미국S&P500", 25],
         ["KODEX 미국S&P500", 25],
         ["TIGER 미국나스닥100", 50],
       ]);
+      expect(heading()).toBe("목표를 정하고 씨앗을 심어요");
+      fireEvent.change(screen.getByRole("textbox", { name: "목표 금액" }), {
+        target: { value: "10000000" },
+      });
+      expect(screen.getByRole("region", { name: "단계별 금액" })).toHaveTextContent("열매 (수확)");
+      await click("씨앗 심기");
 
-      expect(heading()).toMatch(/씨앗을/);
+      expect(portfolios()[0]?.stageGoals.at(-1)).toBe(10_000_000);
       await act(async () => {
         await new Promise((resolve) => setTimeout(resolve, 800));
       });
-      expect(heading()).toBe("'미국 지수' 씨앗을 심었어요");
+      expect(heading()).toBe("'미국 지수'에 씨앗을 심었어요");
       expect(screen.getByText(/시세가 내려가면 비가 오고, 다시 오르면 그쳐요/)).toBeInTheDocument();
       await click("다음");
 
@@ -181,6 +166,34 @@ describe("OnboardingGate", () => {
       await click("이대로 시작하기");
       expect(app()).toBeInTheDocument();
       expect(window.location.pathname).toBe("/assets");
+    });
+
+    it("leaves an empty pot when the goal is put off, and remembers to resume after it", async () => {
+      session.user.image = "seed:sprout-2-mint";
+      await open();
+      fireEvent.click(screen.getByRole("radio", { name: /미국 지수/ }));
+      fireEvent.change(screen.getByRole("textbox", { name: "화분 이름" }), {
+        target: { value: "노후 화분" },
+      });
+      await click("이 화분으로");
+      await click(/TIGER 미국S&P500/);
+      await click(/TIGER 미국나스닥100/);
+      await click("화분 만들기");
+      await click(/목표는 나중에/);
+
+      expect(portfolios()).toMatchObject([{ name: "노후 화분", goalAmount: null, growthStage: 0 }]);
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 800));
+      });
+      expect(heading()).toBe("빈 화분을 놓았어요");
+      expect(
+        screen.getByText(/'노후 화분'에 목표 금액을 정하면 씨앗을 심어요/)
+      ).toBeInTheDocument();
+      expect(JSON.parse(accountStorage.getItem(ONBOARDING_PROGRESS_KEY) ?? "null")).toEqual({
+        step: "planting",
+        portfolioId: portfolios()[0]?.id,
+        presetId: "us-index",
+      });
     });
 
     it("resumes at the saved step for the portfolio it planted", async () => {

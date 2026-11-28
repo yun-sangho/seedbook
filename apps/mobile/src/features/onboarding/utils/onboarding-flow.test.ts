@@ -5,11 +5,14 @@ import {
   CUSTOM_SEED_NAME,
   initialOnboardingStep,
   nextOnboardingStep,
+  ONBOARDING_PROGRESS_STEPS,
+  onboardingProgressIndex,
   parseOnboardingProgress,
   parsePercentDraft,
   removeSeedStock,
   seedAllocations,
   seedDraftFor,
+  seedStagePreview,
   seedStocksIssue,
   setSeedGroupPercent,
   skipOnboardingStep,
@@ -24,29 +27,42 @@ const stock = (ticker: string, name = ticker): Stock => ({
 });
 
 describe("onboarding steps", () => {
-  it("goes nickname → seed → goal → stocks → planting → storage → done", () => {
+  it("makes the pot first, then plants the seed: nickname → pot → stocks → seed → planting → storage", () => {
     const visited: string[] = [];
     let step: ReturnType<typeof nextOnboardingStep> = "nickname";
     while (step !== "done") {
       visited.push(step);
       step = nextOnboardingStep(step);
     }
-    expect(visited).toEqual(["nickname", "seed", "goal", "stocks", "planting", "storage"]);
+    expect(visited).toEqual(["nickname", "pot", "stocks", "seed", "planting", "storage"]);
   });
 
-  it("skipping the nickname still moves on to picking a seed", () => {
-    expect(skipOnboardingStep("nickname")).toBe("seed");
+  it("skipping the nickname still moves on to making a pot", () => {
+    expect(skipOnboardingStep("nickname")).toBe("pot");
   });
 
-  it.each(["seed", "goal", "stocks", "planting"] as const)(
-    "skipping %s jumps to choosing storage (the seed stays a seed)",
+  it.each(["pot", "stocks"] as const)(
+    "skipping %s jumps to choosing storage (no seed planted)",
     (step) => {
       expect(skipOnboardingStep(step)).toBe("storage");
     }
   );
 
+  it("skipping the seed still shows the pot — it stays an empty pot", () => {
+    expect(skipOnboardingStep("seed")).toBe("planting");
+  });
+
   it("skipping storage finishes onboarding", () => {
     expect(skipOnboardingStep("storage")).toBe("done");
+  });
+
+  it("numbers every step of the progress bar, storage last", () => {
+    expect(
+      (["nickname", "pot", "stocks", "seed", "planting", "storage"] as const).map(
+        onboardingProgressIndex
+      )
+    ).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(ONBOARDING_PROGRESS_STEPS).toBe(6);
   });
 });
 
@@ -57,13 +73,23 @@ describe("initialOnboardingStep", () => {
     );
   });
 
-  it("starts with picking a seed when the profile is set and nothing was saved", () => {
+  it("starts with making a pot when the profile is set and nothing was saved", () => {
     expect(initialOnboardingStep({ needsProfile: false, progress: null, portfolioIds: [] })).toBe(
-      "seed"
+      "pot"
     );
   });
 
-  it("resumes the saved step for the seed this flow planted", () => {
+  it("resumes planting the seed in the pot this flow made", () => {
+    expect(
+      initialOnboardingStep({
+        needsProfile: false,
+        progress: { step: "seed", portfolioId: "p-1", presetId: "us-index" },
+        portfolioIds: ["p-1"],
+      })
+    ).toBe("seed");
+  });
+
+  it("resumes the stocks step saved by the previous app version (its pot already exists)", () => {
     expect(
       initialOnboardingStep({
         needsProfile: false,
@@ -73,17 +99,17 @@ describe("initialOnboardingStep", () => {
     ).toBe("stocks");
   });
 
-  it("starts over at the seed when the saved portfolio is gone", () => {
+  it("starts over at the pot when the saved portfolio is gone", () => {
     expect(
       initialOnboardingStep({
         needsProfile: false,
-        progress: { step: "stocks", portfolioId: "p-1", presetId: null },
+        progress: { step: "seed", portfolioId: "p-1", presetId: null },
         portfolioIds: [],
       })
-    ).toBe("seed");
+    ).toBe("pot");
   });
 
-  it("resumes storage even without a portfolio (seed was skipped)", () => {
+  it("resumes storage even without a portfolio (the pot was skipped)", () => {
     expect(
       initialOnboardingStep({
         needsProfile: false,
@@ -91,6 +117,28 @@ describe("initialOnboardingStep", () => {
         portfolioIds: [],
       })
     ).toBe("storage");
+  });
+});
+
+describe("seedStagePreview", () => {
+  it("splits one final goal into the stages the plant passes on the way to the fruit", () => {
+    expect(seedStagePreview("tree", 10_000_000)).toEqual([
+      { label: "새싹", amount: 1_000_000 },
+      { label: "묘목", amount: 2_500_000 },
+      { label: "나무", amount: 4_500_000 },
+      { label: "꽃", amount: 7_000_000 },
+      { label: "열매", amount: 10_000_000 },
+    ]);
+  });
+
+  it("uses the fern's own stage names", () => {
+    expect(seedStagePreview("fern", 10_000_000).map((s) => s.label)).toEqual([
+      "새순",
+      "어린 잎",
+      "고사리",
+      "꽃",
+      "열매",
+    ]);
   });
 });
 
@@ -104,6 +152,11 @@ describe("parseOnboardingProgress", () => {
     ["nothing", null],
     ["broken json", "{"],
     ["an unknown step", JSON.stringify({ step: "goal", portfolioId: "p", presetId: null })],
+    [
+      "the pot step (nothing to resume before the pot exists)",
+      JSON.stringify({ step: "pot", portfolioId: null, presetId: null }),
+    ],
+    ["the seed step without a portfolio", JSON.stringify({ step: "seed", portfolioId: null })],
     ["stocks without a portfolio", JSON.stringify({ step: "stocks", portfolioId: null })],
   ])("ignores %s", (_, raw) => {
     expect(parseOnboardingProgress(raw)).toBeNull();

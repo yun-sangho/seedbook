@@ -10,6 +10,11 @@ describe("seedSlotFor", () => {
     expect(options.kind).toBe(kindForPortfolio("portfolio-1"));
   });
 
+  it("draws an empty pot (soil only) when no goal was set — the seed is not planted yet", () => {
+    expect(seedSlotFor("portfolio-1", { empty: true }).options.empty).toBe(true);
+    expect(seedSlotFor("portfolio-1").options.empty).toBe(false);
+  });
+
   it("falls back to a plain tree seed before the portfolio exists", () => {
     expect(seedSlotFor(null).options).toMatchObject({ kind: "tree", pot: "terracotta" });
   });

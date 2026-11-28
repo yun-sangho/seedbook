@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { StorageChoiceScreen } from "@mobile/components/storage-choice-screen";
-import { findSeedPreset } from "@mobile/features/onboarding/types/seed-presets";
+import { plantKindOf } from "@mobile/features/garden/utils/garden-home";
 import { usePortfolioStore } from "@mobile/features/portfolio/stores/portfolio-store";
+import type { PortfolioItem } from "@mobile/features/portfolio/types/types";
 import { accountStorage } from "@mobile/lib/account-storage";
 import { useHideSplash } from "@mobile/lib/native/splash";
 import {
@@ -18,9 +19,10 @@ import {
   seedAllocations,
   seedDraftFor,
 } from "../utils/onboarding-flow";
-import { GoalStep, type SeedBasics } from "./goal-step";
 import { NicknameStep } from "./nickname-step";
+import { OnboardingProgressBar } from "./onboarding-step-layout";
 import { PlantingStep } from "./planting-step";
+import { type PotChoice, PotStep } from "./pot-step";
 import { SeedStep } from "./seed-step";
 import { StocksStep } from "./stocks-step";
 
@@ -50,11 +52,20 @@ function replaceAllocations(portfolioId: string, allocations: SeedAllocation[]) 
   for (const allocation of allocations) store.addAllocation(portfolioId, allocation);
 }
 
+/** 포트폴리오의 최종 목표 (수확 목표). 단계 목표가 있으면 그 마지막, 없으면 지금 목표. */
+function finalGoalOf(portfolio: PortfolioItem | undefined): number | null {
+  if (!portfolio) return null;
+  return portfolio.stageGoals.at(-1) ?? portfolio.goalAmount ?? null;
+}
+
+/** 온보딩에서 만든 화분은 아직 연결 계좌가 없다 (0원 — 목표의 하한이 없다). */
+const NEW_POT_VALUATION = { value: 0, pricesComplete: true };
+
 /**
- * 첫 가입 흐름 (약관 동의 뒤, 새 가입자만): 닉네임 → 첫 씨앗 → 이름·목표 → 종목·비중 → 심기 연출 →
- * 저장 방식. 포트폴리오는 이름·목표 단계를 마치면(또는 건너뛰면) 만들고, 이후 단계의 진행을 계정별
- * 기기 저장소에 남겨 앱을 다시 열면 이어서 한다. 저장 방식은 마지막에 고르므로 그 전까지 만든
- * 포트폴리오는 이 기기에 있다가, 클라우드를 고르면 함께 올라간다 (`applyStorageChoice`).
+ * 첫 가입 흐름 (약관 동의 뒤, 새 가입자만): 닉네임 → 화분 고르기 → 종목·비중 (여기서 화분 = 포트폴리오를
+ * 만든다) → 씨앗 심기(목표) → 심기 연출 → 저장 방식. 화분을 만든 뒤 단계의 진행을 계정별 기기 저장소에
+ * 남겨 앱을 다시 열면 이어서 한다. 저장 방식은 마지막에 고르므로 그 전까지 만든 포트폴리오는 이 기기에
+ * 있다가, 클라우드를 고르면 함께 올라간다 (`applyStorageChoice`).
  */
 export function OnboardingFlow({
   needsProfile,
@@ -70,17 +81,19 @@ export function OnboardingFlow({
     const progress = readProgress();
     const portfolioIds = usePortfolioStore.getState().portfolios.map((p) => p.id);
     const step = initialOnboardingStep({ needsProfile: false, progress, portfolioIds });
-    return { step, progress: step === "seed" ? null : progress };
+    return { step, progress: step === "pot" ? null : progress };
   });
   const [step, setStep] = useState<OnboardingStep>(needsProfile ? "nickname" : resume.step);
   const [portfolioId, setPortfolioId] = useState<string | null>(
     resume.progress?.portfolioId ?? null
   );
-  /** 고른 카드. 아직 고르지 않았으면 undefined, 직접 만들기는 null. */
-  const [presetId, setPresetId] = useState<string | null | undefined>(
-    resume.progress ? resume.progress.presetId : undefined
-  );
   const portfolio = usePortfolioStore((s) => s.portfolios.find((p) => p.id === portfolioId));
+  /** 고른 화분 구성·이름. 아직 고르지 않았으면 undefined. */
+  const [pot, setPot] = useState<PotChoice | undefined>(() =>
+    resume.progress
+      ? { presetId: resume.progress.presetId, name: portfolio?.name ?? CUSTOM_SEED_NAME }
+      : undefined
+  );
   const [draft, setDraft] = useState<SeedDraft>(() => {
     const base = seedDraftFor(resume.progress?.presetId ?? null);
     return portfolio ? { ...base, name: portfolio.name } : base;
@@ -94,71 +107,72 @@ export function OnboardingFlow({
   }, [step]);
 
   const goTo = (next: OnboardingStep, id: string | null = portfolioId) => {
-    if (next === "stocks" || next === "planting" || next === "storage") {
-      saveProgress({ step: next, portfolioId: id, presetId: presetId ?? null });
+    if (next === "seed" || next === "planting" || next === "storage") {
+      saveProgress({ step: next, portfolioId: id, presetId: pot?.presetId ?? null });
     }
     setStep(next);
   };
 
-  /** 씨앗(포트폴리오)을 심거나, 이미 심었으면 이름·목표만 고친다. */
-  const plantSeed = ({ name, goalAmount }: SeedBasics): string => {
+  /** 화분(포트폴리오)을 만들거나, 이미 만들었으면 이름·종목만 고친다. */
+  const makePot = (allocations: SeedAllocation[]): string => {
     const store = usePortfolioStore.getState();
+    const name = pot?.name ?? draft.name;
     const existing = store.portfolios.some((p) => p.id === portfolioId);
     const id = existing && portfolioId ? portfolioId : store.addPortfolio(name);
     if (existing) store.updatePortfolio(id, "name", name);
-    // 온보딩에서 만든 씨앗은 아직 연결 계좌가 없다 (0원 — 첫 목표의 하한이 없다).
-    store.setPlantGoal(id, goalAmount, { value: 0, pricesComplete: true });
+    replaceAllocations(id, allocations);
     setPortfolioId(id);
-    setDraft((d) => ({ ...d, name }));
     return id;
+  };
+
+  /** 씨앗 심기 (목표). null 이면 빈 화분으로 둔다. */
+  const plantSeed = (goalAmount: number | null) => {
+    if (portfolioId) {
+      usePortfolioStore.getState().setPlantGoal(portfolioId, goalAmount, NEW_POT_VALUATION);
+    }
+    goTo("planting");
   };
 
   switch (step) {
     case "nickname":
       return <NicknameStep defaultNickname={defaultNickname} onDone={() => goTo(resume.step)} />;
 
-    case "seed":
+    case "pot":
       return (
-        <SeedStep
-          initial={presetId}
-          onChoose={(id) => {
-            if (id !== presetId) setDraft(seedDraftFor(id));
-            setPresetId(id);
-            setStep("goal");
+        <PotStep
+          initial={pot}
+          onChoose={(choice) => {
+            if (choice.presetId !== pot?.presetId) setDraft(seedDraftFor(choice.presetId));
+            setPot(choice);
+            setStep("stocks");
           }}
           onLater={() => goTo("storage")}
         />
       );
-
-    case "goal": {
-      const fallbackName = findSeedPreset(presetId)?.name ?? CUSTOM_SEED_NAME;
-      return (
-        <GoalStep
-          initial={{ name: draft.name, goalAmount: portfolio?.goalAmount ?? null }}
-          fallbackName={fallbackName}
-          onBack={() => setStep("seed")}
-          onNext={(basics) => goTo("stocks", plantSeed(basics))}
-          onLater={(basics) => goTo("storage", plantSeed(basics))}
-        />
-      );
-    }
 
     case "stocks":
       return (
         <StocksStep
           draft={draft}
           onChange={setDraft}
-          onBack={() => setStep("goal")}
-          onNext={() => {
-            if (portfolioId) replaceAllocations(portfolioId, seedAllocations(draft));
-            goTo("planting");
-          }}
+          onBack={() => setStep("pot")}
+          onNext={() => goTo("seed", makePot(seedAllocations(draft)))}
           onLater={() => {
-            // 담은 종목은 남긴다 — 정원에서 이어서 고친다.
+            // 담은 종목이 있으면 화분은 만들어 둔다 — 정원에서 이어서 고친다.
             const picked = seedAllocations(draft);
-            if (portfolioId && picked.length > 0) replaceAllocations(portfolioId, picked);
-            goTo("storage");
+            goTo("storage", picked.length > 0 ? makePot(picked) : portfolioId);
           }}
+        />
+      );
+
+    case "seed":
+      return (
+        <SeedStep
+          kind={portfolio ? plantKindOf(portfolio) : "tree"}
+          initialGoal={finalGoalOf(portfolio)}
+          onBack={() => setStep("stocks")}
+          onPlant={plantSeed}
+          onLater={() => plantSeed(null)}
         />
       );
 
@@ -166,8 +180,8 @@ export function OnboardingFlow({
       return (
         <PlantingStep
           portfolioId={portfolioId}
-          name={portfolio?.name ?? draft.name}
-          goalAmount={portfolio?.goalAmount ?? null}
+          name={portfolio?.name ?? pot?.name ?? draft.name}
+          goalAmount={finalGoalOf(portfolio)}
           onNext={() => goTo("storage")}
         />
       );
@@ -177,6 +191,7 @@ export function OnboardingFlow({
         <StorageChoiceScreen
           current={null}
           allowLater
+          header={<OnboardingProgressBar step="storage" />}
           onDone={() => {
             saveProgress(null);
             onDone();

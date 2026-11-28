@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { IconArrowClockwiseCircularLine } from "@karrotmarket/react-monochrome-icon";
-import { PlantAvatar } from "@mobile/features/garden/components/plant-avatar";
+import { GardenCanvas } from "@mobile/features/garden/components/garden-canvas";
+import { gardenLayout } from "@mobile/features/garden/plant-3d/garden-layout";
 import { authClient } from "@mobile/lib/auth-client";
 import {
   NICKNAME_ERROR_MESSAGES,
@@ -17,6 +18,7 @@ import { ActionButton } from "@mobile/seed-design/ui/action-button";
 import { TextField, TextFieldInput } from "@mobile/seed-design/ui/text-field";
 import { PrefixIcon } from "@seed-design/react";
 import { OnboardingStepLayout } from "./onboarding-step-layout";
+import { seedSlotFor } from "./planting-step";
 
 /**
  * 닉네임과 씨앗 아바타 키를 저장한다. 아바타는 고르지 않는다 — 첫 식물이 아바타가 되고
@@ -70,16 +72,16 @@ export function NicknameStep({
 
   return (
     <OnboardingStepLayout
-      progress={1}
+      step="nickname"
+      hero={<NameTagBoard name={nickname.trim() || "닉네임"} />}
       title="어떻게 불러 드릴까요?"
-      description="실명 대신 쓸 닉네임이에요. 언제든 프로필에서 바꿀 수 있어요."
+      description="정원에 걸리는 이름이에요. 실명은 받지 않고, 프로필에서 언제든 바꿀 수 있어요."
       primary={{ label: "다음", onClick: next, loading: saving === "next" }}
       onLater={() => void save(defaultNickname, "later")}
       busy={saving !== null}
       error={error}
     >
-      <div className="flex flex-col items-center gap-x5 pt-x4">
-        <PlantAvatar stage="seed" size={96} />
+      <div className="flex flex-col items-center gap-x4">
         <div className="w-full">
           <TextField
             label="닉네임"
@@ -108,5 +110,24 @@ export function NicknameStep({
         </ActionButton>
       </div>
     </OnboardingStepLayout>
+  );
+}
+
+/** 정원판 위 빈 화분과 이름표 — 입력하는 닉네임이 바로 이름표에 보인다. */
+function NameTagBoard({ name }: { name: string }) {
+  const slots = useMemo(() => [seedSlotFor(null, { empty: true })], []);
+  return (
+    <div className="relative h-[200px] w-full overflow-hidden rounded-r6 bg-[#F3EFE6] dark:bg-[#26241F]">
+      <GardenCanvas
+        slots={slots}
+        layoutWidth={gardenLayout(1).width}
+        garden
+        focus={0}
+        className="h-full w-full"
+      />
+      <span className="t4-bold bg-bg-layer-default text-fg-neutral absolute bottom-[16px] left-1/2 z-10 max-w-[80%] -translate-x-1/2 truncate rounded-r2 px-x3 py-x1 shadow-sm">
+        {name}
+      </span>
+    </div>
   );
 }
