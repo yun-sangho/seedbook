@@ -20,7 +20,13 @@ const fakes = vi.hoisted(() => {
       },
     };
   };
-  return { investment: make(), portfolio: make(), rebalancing: make(), preferences: make() };
+  return {
+    investment: make(),
+    portfolio: make(),
+    rebalancing: make(),
+    harvest: make(),
+    preferences: make(),
+  };
 });
 
 vi.mock("@mobile/features/investments/stores/investment-store", () => ({
@@ -31,6 +37,9 @@ vi.mock("@mobile/features/portfolio/stores/portfolio-store", () => ({
 }));
 vi.mock("@mobile/features/rebalancing/stores/rebalancing-store", () => ({
   useRebalancingStore: fakes.rebalancing,
+}));
+vi.mock("@mobile/features/garden/stores/harvest-store", () => ({
+  useHarvestStore: fakes.harvest,
 }));
 vi.mock("@mobile/lib/preferences-store", () => ({ usePreferencesStore: fakes.preferences }));
 
@@ -44,6 +53,7 @@ describe("useAllStoresHydrated", () => {
       fakes.investment.finish();
       fakes.portfolio.finish();
       fakes.rebalancing.finish();
+      fakes.harvest.finish();
     });
     expect(result.current).toBe(false);
 

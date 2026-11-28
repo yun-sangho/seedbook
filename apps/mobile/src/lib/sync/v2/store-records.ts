@@ -5,6 +5,7 @@ import {
   allocation,
   assignListSortKeys,
   cash,
+  harvest,
   holding,
   portfolio,
   rebalancing,
@@ -28,8 +29,14 @@ import { knownFields, type LocalRecord, type RecordMap, recordKey } from "./reco
 export const INVESTMENT_STORE = "investment-storage";
 export const PORTFOLIO_STORE = "portfolio-storage";
 export const REBALANCING_STORE = "rebalancing-storage";
+export const HARVEST_STORE = "harvest-storage";
 
-export const RECORD_STORE_KEYS = [INVESTMENT_STORE, PORTFOLIO_STORE, REBALANCING_STORE] as const;
+export const RECORD_STORE_KEYS = [
+  INVESTMENT_STORE,
+  PORTFOLIO_STORE,
+  REBALANCING_STORE,
+  HARVEST_STORE,
+] as const;
 export type RecordStoreKey = (typeof RECORD_STORE_KEYS)[number];
 
 export function isRecordStoreKey(key: string): key is RecordStoreKey {
@@ -55,6 +62,10 @@ export const STORE_SHAPES: Record<RecordStoreKey, StoreShape> = {
   [REBALANCING_STORE]: {
     listField: "sessions",
     types: [rebalancing.type, rebalancingTask.type],
+  },
+  [HARVEST_STORE]: {
+    listField: "harvests",
+    types: [harvest.type],
   },
 };
 
@@ -274,6 +285,24 @@ function decomposeRebalancings(state: State, current: RecordMap): StorePlan | nu
   return { records: out.records, invalid, links: [] };
 }
 
+function decomposeHarvests(state: State, current: RecordMap): StorePlan | null {
+  if (!Array.isArray(state.harvests)) return null;
+  const out = new Collector();
+  out.add(
+    withSortKeys(
+      itemsWithId(state.harvests).map((item) => ({
+        type: harvest.type,
+        id: item.id,
+        parentId: null,
+        sortKey: null,
+        fields: knownFields(harvest.type, item),
+      })),
+      current
+    )
+  );
+  return { records: out.records, invalid: [], links: [] };
+}
+
 /**
  * store 상태 → 이 store 가 저장할 레코드. 목록 필드가 없으면 null (그 상태로는 아무것도 지우지 않는다).
  * `current` 는 지금 기기 레코드 (sortKey 를 남기고, 연결을 비교하는 데 쓴다).
@@ -285,6 +314,7 @@ export function decomposeStore(
 ): StorePlan | null {
   if (key === INVESTMENT_STORE) return decomposeInvestments(state, current);
   if (key === PORTFOLIO_STORE) return decomposePortfolios(state, current);
+  if (key === HARVEST_STORE) return decomposeHarvests(state, current);
   return decomposeRebalancings(state, current);
 }
 
@@ -384,10 +414,19 @@ function composeRebalancings(records: RecordMap): State {
   return { sessions };
 }
 
+function composeHarvests(records: RecordMap): State {
+  const harvests = byType(records, harvest.type).map((r) => ({
+    id: r.id,
+    ...pickKnown(harvest.type, r),
+  }));
+  return { harvests };
+}
+
 /** 레코드 → store 상태 (persist `state`). */
 export function composeStore(key: RecordStoreKey, records: RecordMap): State {
   if (key === INVESTMENT_STORE) return composeInvestments(records);
   if (key === PORTFOLIO_STORE) return composePortfolios(records);
+  if (key === HARVEST_STORE) return composeHarvests(records);
   return composeRebalancings(records);
 }
 

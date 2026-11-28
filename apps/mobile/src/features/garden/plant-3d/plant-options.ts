@@ -1,3 +1,5 @@
+import type { PlantKind } from "@seedbook/domain/v1/portfolio-types";
+
 /**
  * 포트폴리오 식물의 그리기 옵션. three 를 가져오지 않는 순수 모듈이라 화면·컨트롤이 3D 번들 없이 쓴다.
  */
@@ -15,8 +17,8 @@ export const PLANT_STAGE_LABELS: Record<PlantStage, string> = {
 };
 
 /** 식물 종류. `tree` 는 씨앗 → 나무 → 꽃·열매, `fern` 은 보스턴고사리. 포트폴리오마다 정해진다 (`kindForPortfolio`). 없으면 `tree`. */
-export const PLANT_KINDS = ["tree", "fern"] as const;
-export type PlantKind = (typeof PLANT_KINDS)[number];
+export { PLANT_KINDS } from "@seedbook/domain";
+export type { PlantKind };
 
 export const PLANT_KIND_LABELS: Record<PlantKind, string> = {
   tree: "나무",

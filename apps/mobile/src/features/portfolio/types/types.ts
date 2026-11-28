@@ -1,6 +1,11 @@
 import type { PlantProgress } from "@seedbook/domain/v1/portfolio-types";
 
-export type { PlantGoal, PlantProgress, PlantStage } from "@seedbook/domain/v1/portfolio-types";
+export type {
+  PlantGoal,
+  PlantKind,
+  PlantProgress,
+  PlantStage,
+} from "@seedbook/domain/v1/portfolio-types";
 
 /**
  * 포트폴리오 종목 비중 항목.

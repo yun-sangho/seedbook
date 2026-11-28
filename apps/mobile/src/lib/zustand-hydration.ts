@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useHarvestStore } from "@mobile/features/garden/stores/harvest-store";
 import { useInvestmentStore } from "@mobile/features/investments/stores/investment-store";
 import { usePortfolioStore } from "@mobile/features/portfolio/stores/portfolio-store";
 import { useRebalancingStore } from "@mobile/features/rebalancing/stores/rebalancing-store";
@@ -45,7 +46,7 @@ export function useStoreHydrated(store: PersistedStore): boolean {
 }
 
 /**
- * 주요 persist store (투자 · 포트폴리오 · 리밸런싱 · 화면 설정) 가 모두 하이드레이션을 마쳤는지 반환한다.
+ * 주요 persist store (투자 · 포트폴리오 · 리밸런싱 · 수확 기록 · 화면 설정) 가 모두 하이드레이션을 마쳤는지 반환한다.
  *
  * 클라우드 저장(async storage) 까지 포함한 비동기 하이드레이션 경로에서도
  * 개별 컴포넌트가 `length === 0` 같은 동기 전제로 UI 분기를 하지 못하도록
@@ -55,8 +56,15 @@ export function useAllStoresHydrated(): boolean {
   const invHydrated = useStoreHydrated(useInvestmentStore);
   const portfolioHydrated = useStoreHydrated(usePortfolioStore);
   const rebalancingHydrated = useStoreHydrated(useRebalancingStore);
+  const harvestHydrated = useStoreHydrated(useHarvestStore);
   // 화면 설정(정렬 등)도 기다린다 — 아니면 기본 정렬로 먼저 그렸다가 저장된 정렬로 바뀐다.
   const preferencesHydrated = useStoreHydrated(usePreferencesStore);
 
-  return invHydrated && portfolioHydrated && rebalancingHydrated && preferencesHydrated;
+  return (
+    invHydrated &&
+    portfolioHydrated &&
+    rebalancingHydrated &&
+    harvestHydrated &&
+    preferencesHydrated
+  );
 }

@@ -1,5 +1,6 @@
 // @vitest-environment node
 
+import { normalizeHarvest } from "@mobile/features/garden/utils/normalize-harvest";
 import { HOLDINGS_SORT_OPTION_VALUES } from "@mobile/features/investments/types/holdings-sort";
 import type {
   CashItem,
@@ -16,6 +17,7 @@ import {
 } from "@mobile/features/portfolio/types/constants";
 import type { PortfolioAllocation, PortfolioItem } from "@mobile/features/portfolio/types/types";
 import { normalizePortfolio } from "@mobile/features/portfolio/utils/normalize-portfolio";
+import type { HarvestItem } from "@mobile/features/portfolio/utils/plant-season";
 import { PORTFOLIO_STOCK_SORT_OPTION_VALUES } from "@mobile/features/portfolio/utils/sort-portfolio-stock-rows";
 import type { RebalancingSession, RebalancingTask } from "@mobile/features/rebalancing/types/types";
 import { parseCollapsedSections } from "@mobile/features/rebalancing/utils/collapsed-sections";
@@ -36,6 +38,7 @@ import {
   DRIFT_MODES,
   type FieldSpec,
   HOLDINGS_SORT_OPTIONS,
+  harvest,
   holding,
   MAX_PLANT_STAGE,
   PORTFOLIO_STOCK_SORT_OPTIONS,
@@ -117,6 +120,10 @@ describe("client types", () => {
     expectTypeOf<ClientTask>().toEqualTypeOf<Task>();
   });
 
+  it("harvests match harvest", () => {
+    expectTypeOf<Omit<HarvestItem, "id">>().toEqualTypeOf<RecordValues<typeof harvest>>();
+  });
+
   it("account preferences match settings", () => {
     type ClientSettings = Required<AccountPreferences>;
     type Settings = RecordValues<typeof settings>;
@@ -166,6 +173,8 @@ describe("client constants", () => {
 
 interface ClientAdapter {
   definition: RecordDefinition;
+  /** 정의 샘플 대신 쓸 값 (샘플이 화면 규칙의 불변식을 어기는 레코드). */
+  values?: Fields;
   normalize(item: { id: string }): unknown;
   /** 이 레코드의 필드를 `fields` 로 채운 store 항목. */
   item(fields: Fields): { id: string };
@@ -232,6 +241,13 @@ const CLIENT_ADAPTERS: ClientAdapter[] = [
   },
   {
     definition: portfolio,
+    // 식물 불변식: 달성 이력 수 = 단계, 열매는 4단계에서만, 익은 열매 옆에는 목표 없음.
+    values: {
+      ...sample(portfolio),
+      growthStage: MAX_PLANT_STAGE,
+      goalHistory: Array.from({ length: MAX_PLANT_STAGE }, () => sample(portfolio).fruitGoal),
+      goalAmount: null,
+    },
     normalize: portfolioNormalize,
     item: (fields) => portfolioItem(fields),
     read: (value) => pick(value, clientFieldNames(portfolio)),
@@ -257,6 +273,12 @@ const CLIENT_ADAPTERS: ClientAdapter[] = [
     read: (value) =>
       pick(first((value as RebalancingSession).tasks), clientFieldNames(rebalancingTask)),
   },
+  {
+    definition: harvest,
+    normalize: (item) => normalizeHarvest(item as HarvestItem),
+    item: (fields) => ({ id: SAMPLE_UUID, ...fields }),
+    read: (value) => pick(value, clientFieldNames(harvest)),
+  },
 ];
 
 /** 숫자 정리 규칙이 있는 필드 — 클라이언트 normalize 와 같은 값을 내야 한다. */
@@ -268,7 +290,7 @@ const numericNormalized = (definition: RecordDefinition) =>
 describe.each(CLIENT_ADAPTERS.map((a) => [a.definition.type, a] as const))(
   "%s ↔ store normalize",
   (_, adapter) => {
-    const values = sample(adapter.definition);
+    const values = adapter.values ?? sample(adapter.definition);
 
     it("keeps every defined field of a valid item", () => {
       expect(adapter.read(adapter.normalize(adapter.item(values)))).toEqual(values);

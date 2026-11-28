@@ -173,7 +173,13 @@ describe.each(CASES)("old app %s against the current server", (_, snapshot) => {
 
     const pulled = await pullAll(userId, schema);
 
-    expect(new Set(pulled.map((r) => r.type))).toEqual(new Set(types));
+    // 옛 앱은 자기가 아는 타입을 모두 받고, 그 뒤에 생긴 타입(예: v1 앱의 harvest)은 읽지 않고
+    // 기기에 그대로 보관한다 (설계 §7.4, `applyPulled`·`verifyStoredRow`).
+    const pulledTypes = new Set(pulled.map((r) => r.type));
+    expect([...pulledTypes].filter((type) => types.includes(type)).sort()).toEqual(
+      [...types].sort()
+    );
+    expect([...pulledTypes].sort()).toEqual(RECORDS.map((r) => r.type).sort());
     for (const record of pulled) {
       const known = snapshot.records[record.type]?.fields ?? {};
       for (const [name, spec] of Object.entries(known)) {

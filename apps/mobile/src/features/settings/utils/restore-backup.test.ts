@@ -8,9 +8,14 @@ import {
 import { buildRecordBackup } from "@mobile/lib/sync/v2/backup";
 import { applyChangesToMap } from "@mobile/lib/sync/v2/changes";
 import type { RecordMap } from "@mobile/lib/sync/v2/records";
-import { composeStore, INVESTMENT_STORE, PORTFOLIO_STORE } from "@mobile/lib/sync/v2/store-records";
+import {
+  composeStore,
+  HARVEST_STORE,
+  INVESTMENT_STORE,
+  PORTFOLIO_STORE,
+} from "@mobile/lib/sync/v2/store-records";
 import { memoryDevice } from "@mobile/lib/sync/v2/testing";
-import { SCHEMA_VERSION } from "@seedbook/domain";
+import { harvestId, SCHEMA_VERSION } from "@seedbook/domain";
 import { describe, expect, it } from "vitest";
 import { backupAccountTag } from "./backup-ids";
 import { planBackupImport, prepareBackupImport } from "./restore-backup";
@@ -54,6 +59,34 @@ describe("backup import", () => {
     expect(composeStore(PORTFOLIO_STORE, restored).portfolios).toMatchObject([
       { id: PORTFOLIO, accountIds: [ACCOUNT_A] },
     ]);
+  });
+
+  it("keeps record types an older backup could not have (harvests in a v1 file)", async () => {
+    const { layer } = memoryDevice({ cloud: false });
+    await layer.saveStore(PORTFOLIO_STORE, envelope(portfolioState(), 3));
+    const harvest = {
+      id: harvestId(PORTFOLIO, 1),
+      sourceType: "portfolio",
+      sourceId: PORTFOLIO,
+      sourceName: "안정형",
+      season: 1,
+      plantKind: "tree",
+      wish: "",
+      goals: [{ amount: 1_000_000, reachedAt: "2026-11-01T00:00:00.000Z" }],
+      harvestedAt: "2026-11-28T00:00:00.000Z",
+      doneAt: null,
+    };
+    await layer.saveStore(HARVEST_STORE, envelope({ harvests: [harvest] }, 0));
+    const current = await layer.loadRecords();
+    const v1File = {
+      ...JSON.parse(JSON.stringify(buildRecordBackup(current, await backupAccountTag(USER)))),
+      schemaVersion: 1,
+    };
+    v1File.records = v1File.records.filter((r: { type: string }) => r.type !== "harvest");
+
+    const restored = await restore(v1File, current);
+
+    expect(composeStore(HARVEST_STORE, restored).harvests).toEqual([harvest]);
   });
 
   it("refuses a backup from a newer app", async () => {

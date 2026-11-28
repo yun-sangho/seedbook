@@ -1,23 +1,30 @@
-/** 포트폴리오 식물의 성장 단계: 씨앗 0 → 새싹 1 → 묘목 2 → 나무 3 → 꽃·열매 4. */
+import type { RecordValues } from "../define-record";
+import type { PLANT_KINDS, portfolio } from "../records/portfolio";
+
+/** 포트폴리오 식물의 성장 단계: 씨앗 0 → 새싹 1 → 묘목 2 → 나무 3 → 꽃 4. */
 export type PlantStage = 0 | 1 | 2 | 3 | 4;
 
+/** 식물 종류 (`PLANT_KINDS`). */
+export type PlantKind = (typeof PLANT_KINDS)[number];
+
+type PortfolioValues = RecordValues<typeof portfolio>;
+
 /** 달성한 목표 하나. `amount` 는 원, `reachedAt` 은 달성을 기록한 ISO 시각. */
-export interface PlantGoal {
-  amount: number;
-  reachedAt: string;
-}
+export type PlantGoal = NonNullable<PortfolioValues["fruitGoal"]>;
 
 /**
- * 포트폴리오 식물의 진행. 지금 목표(`goalAmount`)를 달성하면 한 단계 자라고 목표는 비워진다 —
- * 사용자가 다음 목표를 새로 정한다 (최대 4번). 도달한 단계는 내려가지 않는다.
+ * 포트폴리오 식물의 진행 (`portfolio` 레코드의 식물 필드). 한 계절은 목표 다섯 개다 — 단계 목표
+ * (`goalAmount`) 를 이룰 때마다 한 단계 자라 `goalHistory` 에 남고, 4단계에서 이룬 다섯 번째(열매)
+ * 목표는 `fruitGoal` 에 남는다 (수확할 수 있다). 수확하면 다음 계절이 씨앗부터 시작한다. 도달한
+ * 단계는 계절 안에서 내려가지 않는다.
  */
-export interface PlantProgress {
-  /** 지금 목표 금액 (원). 정하지 않았거나 방금 달성했으면 null. */
-  goalAmount: number | null;
+export interface PlantProgress
+  extends Pick<
+    PortfolioValues,
+    "goalAmount" | "goalHistory" | "season" | "plantKind" | "wish" | "fruitGoal" | "driftSince"
+  > {
   growthStage: PlantStage;
-  /** 달성한 목표들 (오래된 순). */
-  goalHistory: PlantGoal[];
 }
 
-/** 꽃·열매 — 식물이 다 자란 단계. 목표는 이만큼 달성할 수 있다. */
+/** 꽃 — 단계 목표로 자랄 수 있는 마지막 단계. 그 뒤는 열매 목표다 (이루면 열매가 열리고 바로 수확). */
 export const MAX_PLANT_STAGE: PlantStage = 4;
