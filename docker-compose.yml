@@ -42,6 +42,8 @@ services:
       APPLE_KEY_ID: ${APPLE_KEY_ID:-}
       APPLE_PRIVATE_KEY_BASE64: ${APPLE_PRIVATE_KEY_BASE64:-}
       APPLE_APP_BUNDLE_ID: ${APPLE_APP_BUNDLE_ID:-}
+      # OTA 번들 운영자 API (apps/web/server/app-bundles/admin-token.ts, .github/workflows/app-bundle.yml). 없으면 꺼짐.
+      APP_BUNDLE_ADMIN_TOKEN: ${APP_BUNDLE_ADMIN_TOKEN:-}
       NODE_ENV: production
       DB_POOL_MAX: "8"
       PORT: "3001"

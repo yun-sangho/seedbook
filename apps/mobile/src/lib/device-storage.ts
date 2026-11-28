@@ -11,6 +11,7 @@ import {
   type DeviceSnapshotStore,
   ensureDailySnapshot,
   runQuickCheck,
+  type SnapshotReason,
   takeSnapshot,
 } from "./native/device-db/integrity";
 import { DEVICE_MIGRATIONS, migrateDeviceDatabase } from "./native/device-db/migrations";
@@ -78,6 +79,11 @@ export interface DeviceStorage {
   /** 대기 중인 SQLite 쓰기가 끝날 때까지 기다린다. 모두 저장했으면 true, 남았으면 false. */
   flush: () => Promise<boolean>;
   /**
+   * `records` 스냅샷을 남긴다 (`native/device-db/integrity.ts`). 남긴 이름, 스냅샷을 쓰지 않는 저장소
+   * (브라우저 localStorage·SQLite 를 열지 못함)면 null. 실패하면 던진다.
+   */
+  snapshot: (reason: SnapshotReason) => Promise<string | null>;
+  /**
    * 자산 레코드 저장소 (동기화 v2, `lib/sync/v2`). `prefix` 는 계정 자리 (`account-storage.ts`).
    * 앱의 기본 자리는 SQLite `records`, 그 밖(브라우저·앱의 다른 계정 자리)은 키 하나에 JSON.
    */
@@ -132,6 +138,7 @@ function createBrowserStorage(storage: LegacyStorage): DeviceStorage {
     isReady: () => true,
     whenReady: () => Promise.resolve(),
     flush: () => Promise.resolve(true),
+    snapshot: () => Promise.resolve(null),
     recordStore: (prefix) => kvRecordStore({ getItem, setItem }, prefix),
   };
 }
@@ -230,7 +237,10 @@ export interface NativeStorageOptions {
  * 데이터베이스를 쓸 수 있게 준비한다. 스냅샷·무결성 검사가 실패해도 시작은 계속한다 — 그것 때문에
  * localStorage 로 돌아가면 기기 데이터가 안 보인다.
  */
-async function prepareDatabase(driver: SqlDriver, options: NativeStorageOptions): Promise<void> {
+async function prepareDatabase(
+  driver: SqlDriver,
+  options: NativeStorageOptions
+): Promise<DeviceSnapshotStore | null> {
   const snapshots = await (options.openSnapshots?.() ?? Promise.resolve(null)).catch(
     (error: unknown) => {
       console.warn("[seedbook] snapshot store unavailable", error);
@@ -252,6 +262,7 @@ async function prepareDatabase(driver: SqlDriver, options: NativeStorageOptions)
       console.warn("[seedbook] daily snapshot failed", error)
     );
   }
+  return snapshots;
 }
 
 /** 실패한 쓰기를 다시 시도하기까지 기다리는 시간 (실패할 때마다 두 배, 최대값까지). */
@@ -272,6 +283,7 @@ export function createNativeDeviceStorage(
   const memory = new Map<string, string>();
   const fallback = createBrowserStorage(legacy);
   let driver: SqlDriver | null = null;
+  let snapshots: DeviceSnapshotStore | null = null;
   let usingFallback = false;
   let ready = false;
 
@@ -282,7 +294,7 @@ export function createNativeDeviceStorage(
         usingFallback = true;
         return;
       }
-      await prepareDatabase(opened, options);
+      snapshots = await prepareDatabase(opened, options);
       const saved = await loadDeviceState(opened);
       // 준비 전에 쓴 값이 이긴다 (그 쓰기는 대기열에서 곧 저장된다).
       for (const [key, value] of saved) if (!memory.has(key)) memory.set(key, value);
@@ -419,6 +431,11 @@ export function createNativeDeviceStorage(
       await drain();
       return pending.size === 0;
     },
+    snapshot: async (reason) => {
+      await opened;
+      if (!driver || !snapshots) return null;
+      return takeSnapshot(driver, snapshots, reason);
+    },
     recordStore: (prefix) => {
       if (usingFallback) return fallback.recordStore(prefix);
       // 기본 자리는 레코드 테이블.
@@ -450,6 +467,7 @@ const serverStorage: DeviceStorage = {
   isReady: () => true,
   whenReady: () => Promise.resolve(),
   flush: () => Promise.resolve(true),
+  snapshot: () => Promise.resolve(null),
 };
 
 let current: DeviceStorage | null = null;

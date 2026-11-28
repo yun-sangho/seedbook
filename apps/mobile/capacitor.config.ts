@@ -19,6 +19,17 @@ import type { CapacitorConfig } from "@capacitor/cli";
 const liveReloadUrl = process.env.CAP_SERVER_URL;
 const devApp = process.env.SEEDBOOK_DEV_APP === "1";
 
+/**
+ * OTA 번들 업데이트 (`@capawesome/capacitor-live-update`, `src/lib/native/live-update.ts`). 번들 서명을
+ * 확인할 RSA 공개 키(PEM)는 빌드 env `SEEDBOOK_OTA_PUBLIC_KEY` (GitHub Variable `APP_BUNDLE_PUBLIC_KEY`,
+ * `mobile-release.yml`) 로 넣는다. 키가 없는 빌드는 채널을 두지 않아 OTA 를 쓰지 않는다 — 서명 확인 없이
+ * 번들을 받는 바이너리를 만들지 않는다. 기본 채널은 `SEEDBOOK_OTA_CHANNEL` (Dev 앱·내부 테스트는 `beta`).
+ */
+const otaPublicKey = process.env.SEEDBOOK_OTA_PUBLIC_KEY?.trim();
+const otaChannel = process.env.SEEDBOOK_OTA_CHANNEL === "beta" ? "beta" : "production";
+/** 새 번들이 `ready()` 를 부르기까지 기다리는 시간. 못 부르면 내장 번들로 되돌린다. */
+const OTA_READY_TIMEOUT_MS = 15_000;
+
 const config: CapacitorConfig = {
   appId: "ing.boogie.seedbook",
   appName: "Seedbook",
@@ -42,6 +53,16 @@ const config: CapacitorConfig = {
   plugins: {
     // Android 뒤로가기는 웹이 리스너를 건 뒤에 켠다 (src/lib/native/system-back.ts).
     App: { disableBackButtonHandler: true },
+    LiveUpdate: otaPublicKey
+      ? {
+          publicKey: otaPublicKey,
+          defaultChannel: otaChannel,
+          readyTimeout: OTA_READY_TIMEOUT_MS,
+          // ready() 뒤에 쓰지 않는 번들(지난 번들)을 지운다.
+          autoDeleteBundles: true,
+          autoUpdateStrategy: "none",
+        }
+      : { readyTimeout: 0, autoUpdateStrategy: "none" },
   },
 };
 
