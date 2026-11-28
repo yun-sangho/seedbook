@@ -239,8 +239,9 @@ function stepCopy(
       };
     }
     case "ordered":
+      // 주문한 가격과 남은 수량이 가장 중요하다 — "21,990원에 111주 파는 중".
       return {
-        quantity: `${formatWithCommas(remainingOrderQuantity(task))}주`,
+        quantity: `${formatWithCommas(task.orderedPrice ?? 0)}원에 ${formatWithCommas(remainingOrderQuantity(task))}주`,
         verb: sell ? "파는 중" : "사는 중",
         note: null,
       };

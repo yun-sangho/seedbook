@@ -250,7 +250,7 @@ export function TradeEntryForm({
           <p className="t4-regular text-fg-neutral-muted tabular-nums">{headline(task)}</p>
         )}
 
-        {status === "ordered" && !amending && <OrderLine task={task} />}
+        {status === "ordered" && !amending && <OrderLine task={task} embedded={embedded} />}
 
         {!confirming && (
           <>
@@ -432,22 +432,23 @@ export function TradeEntryForm({
 }
 
 /**
- * 증권사에 넣어 둔 주문을 한 줄로: "주문 111주 · 1주 21,990원 · 총 2,440,890원". 일부만 거래됐으면
- * "60/111주 거래됨 · 남은 51주" 를 더한다. 주문 값은 입력칸에 겹쳐 보이지 않게 여기에만 둔다.
+ * 증권사에 넣어 둔 주문. 단계 화면은 위 큰 글씨에 "가격에 n주" 가 있어 일부만 거래됐을 때만
+ * "주문 111주 중 60주 거래됨" 을 보인다. 매매 입력 화면은 주문 수량·가격을 한 줄로 함께 보인다.
  */
-function OrderLine({ task }: { task: RebalancingTask }) {
+function OrderLine({ task, embedded }: { task: RebalancingTask; embedded: boolean }) {
   const quantity = task.orderedQuantity ?? 0;
-  const price = task.orderedPrice ?? 0;
+  const partial = isPartiallyFilled(task);
+  if (embedded && !partial) return null;
   return (
     <div className="flex flex-col gap-[2px]">
-      <p className="t4-regular text-fg-neutral-muted tabular-nums">
-        주문 {formatWithCommas(quantity)}주 · 1주 {formatWithCommas(price)}원 · 총{" "}
-        {formatWithCommas(Math.round(quantity * price))}원
-      </p>
-      {isPartiallyFilled(task) && (
+      {!embedded && (
+        <p className="t4-regular text-fg-neutral-muted tabular-nums">
+          주문 {formatWithCommas(quantity)}주 · 1주 {formatWithCommas(task.orderedPrice ?? 0)}원
+        </p>
+      )}
+      {partial && (
         <p className="t4-medium tabular-nums">
-          {formatWithCommas(filledQuantityOf(task))}/{formatWithCommas(quantity)}주 거래됨 · 남은{" "}
-          {formatWithCommas(remainingOrderQuantity(task))}주
+          주문 {formatWithCommas(quantity)}주 중 {formatWithCommas(filledQuantityOf(task))}주 거래됨
         </p>
       )}
     </div>
