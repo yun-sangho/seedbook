@@ -236,7 +236,11 @@ export function TradeEntryForm({
   const saveAmend = () => {
     if (!canSave || tradePrice === null) return;
     orderTaskWith(session.id, task.id, quantity, tradePrice);
-    done();
+    // 고친 주문을 저장하면 같은 할 일의 "다 거래됐어요" 확인으로 돌아온다 — 다른 단계로 넘어가지 않는다.
+    setQuantityDraft(draftOf(quantity - filled));
+    setPriceDraft(draftOf(tradePrice));
+    setPartialInput(false);
+    setAmending(false);
   };
 
   return (
