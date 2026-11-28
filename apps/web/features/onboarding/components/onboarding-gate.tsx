@@ -73,7 +73,7 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
       aria-live="polite"
       className="w-screen h-screen flex items-center justify-center"
     >
-      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      <Loader2 className="w-6 h-6 animate-spin text-fg-neutral-subtle" />
       <span className="sr-only">가입 단계를 확인하는 중...</span>
     </div>
   );
