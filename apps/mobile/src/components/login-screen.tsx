@@ -135,9 +135,9 @@ export function LoginScreen() {
         )}
         {/* 로그인에서 신상 정보를 받지 않는다 (`lib/auth-privacy.ts`). */}
         <p className="t3-regular text-fg-neutral-subtle pt-x3 text-center break-keep">
-          이름·이메일·프로필 사진은 받지 않아요.
+          이름·이메일·프로필 사진 등 개인정보는
           <br />
-          로그인을 확인하는 번호만 저장해요.
+          전혀 활용하지 않아요.
         </p>
         <div className="t3-regular text-fg-neutral-subtle flex justify-center gap-x4 pt-x1">
           {LEGAL_DOCUMENTS.map(({ id, title, href }) => (

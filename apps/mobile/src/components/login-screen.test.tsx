@@ -100,7 +100,9 @@ describe("LoginScreen", () => {
 
   it("tells the user that no name, email or photo is collected", () => {
     openAt("/assets");
-    expect(screen.getByText(/이름·이메일·프로필 사진은 받지 않아요/)).toBeInTheDocument();
+    expect(screen.getByText(/이름·이메일·프로필 사진 등 개인정보는/)).toHaveTextContent(
+      "전혀 활용하지 않아요"
+    );
   });
 
   it("links to the privacy policy", () => {
