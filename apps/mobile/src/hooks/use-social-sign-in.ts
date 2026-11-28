@@ -6,6 +6,7 @@ import { type SocialProvider, signInCallbackURL } from "@mobile/lib/last-login-m
 import { noteSignedInForAppLock } from "@mobile/lib/native/app-lock";
 import { nativeSessionToken } from "@mobile/lib/native/session-token";
 import { hasNativeLoginPlugin, signInNatively } from "@mobile/lib/native/social-login";
+import { pendingSignOut } from "@mobile/lib/pending-sign-out";
 
 /**
  * 소셜 로그인 시작. 취소·실패하면 같은 경로로 돌아와 로그인 화면이 안내한다 (`lib/login-flow.ts`).
@@ -36,6 +37,8 @@ export function useSocialSignIn(returnPath: string) {
     try {
       // 만료된 세션의 토큰이 남아 있으면 새 로그인의 쿠키 세션을 가린다 — 로그인 전에 비운다.
       if (nativeSessionToken.enabled()) await nativeSessionToken.clear();
+      // 끝내지 못한 로그아웃 표시가 새 로그인을 가리지 않게 한다 (`lib/pending-sign-out.ts`).
+      void pendingSignOut.clear().catch(() => undefined);
       const native = hasNativeLoginPlugin(provider) ? await signInNatively(provider) : null;
       if (native?.status === "cancelled") {
         setPendingProvider(null);

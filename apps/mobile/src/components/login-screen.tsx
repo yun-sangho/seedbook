@@ -20,6 +20,7 @@ import {
 } from "@mobile/lib/login-flow";
 import { noteSignedInForAppLock } from "@mobile/lib/native/app-lock";
 import { canSignInWith } from "@mobile/lib/native/social-login";
+import { pendingSignOut } from "@mobile/lib/pending-sign-out";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
 import { Callout } from "@mobile/seed-design/ui/callout";
 import { Icon } from "@seed-design/react";
@@ -61,6 +62,7 @@ export function LoginScreen() {
   const signInWithDevBypass = async () => {
     setDevPending(true);
     setDevFailed(false);
+    void pendingSignOut.clear().catch(() => undefined);
     const response = await apiFetch("/api/auth/dev-login", { method: "POST" }).catch(() => null);
     if (response?.ok) {
       noteSignedInForAppLock();
