@@ -92,6 +92,15 @@ export function RebalancingDetailActivity({ params }: DetailActivityProps) {
   );
 }
 
+/** 리밸런싱 2단계: 거래 가능 금액과 권장 매매. 1단계(`RebalancingDetail`) 위에 쌓인다. */
+export function RebalancingPlanActivity({ params }: DetailActivityProps) {
+  return (
+    <AccountScreen id={params.id}>
+      <RebalancingDetailMobile id={params.id} step="plan" />
+    </AccountScreen>
+  );
+}
+
 export function RebalancingSessionActivity({ params }: DetailActivityProps) {
   const session = useRebalancingStore((s) => s.sessions.find((x) => x.id === params.id));
   const account = useInvestmentStore((s) =>
