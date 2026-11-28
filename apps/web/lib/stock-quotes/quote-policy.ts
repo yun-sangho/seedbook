@@ -1,4 +1,4 @@
-import { kstDateString, kstDayOfWeek } from "@seedbook/database";
+import { kstDateString, kstDayOfWeek } from "@seedbook/domain/kst";
 
 /**
  * 시세 응답을 고르는 규칙 (서버 전용).

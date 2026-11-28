@@ -49,7 +49,7 @@ jobs:
       # 이 workflow_call 로 부름) · 수동 실행에서는 항상 돌린다 — 아래 목록이 놓친 간접 의존도
       # 배포 전에는 잡힌다. 건너뛰어도 job (`checks`) 은 성공으로 끝난다.
       # 목록: *.db.test.ts 가 부르는 코드 (server · storage 번역기 · auth · sync) 와 그 코드가
-      # 가져오는 features·lib 모듈, database 패키지, 테스트 설정, 의존성, 이 워크플로.
+      # 가져오는 features·lib 모듈, database·domain 패키지, 테스트 설정, 의존성, 이 워크플로.
       - name: DB 테스트 대상 판단
         id: db
         env:
@@ -60,7 +60,7 @@ jobs:
             exit 0
           fi
           pattern='\.db\.test\.ts$'
-          pattern+='|^packages/database/'
+          pattern+='|^packages/(database|domain)/'
           pattern+='|^apps/web/(server|test/db|app/api)/'
           pattern+='|^apps/web/lib/(auth|apple-auth|storage-|account-header|login-flow)'
           pattern+='|^apps/web/lib/(sync|legal|seed-identity|stock-quotes)/'

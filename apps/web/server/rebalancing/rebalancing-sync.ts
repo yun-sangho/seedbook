@@ -1,12 +1,12 @@
 import { schema } from "@seedbook/database";
-import { createEntityRepo, selectRowsByIds } from "@web/server/sync/entity-repo";
-import type { SyncEntity } from "@web/server/sync/registry";
 import {
   parseRebalancingFields,
   type RebalancingPayload,
   rebalancingPayloadToColumns,
   rebalancingRowToPayload,
-} from "./rebalancing-record";
+} from "@seedbook/domain/v1/rebalancing-record";
+import { createEntityRepo, selectRowsByIds } from "@web/server/sync/entity-repo";
+import type { SyncEntity } from "@web/server/sync/registry";
 
 type RebalancingFields = Omit<RebalancingPayload, "id">;
 type RebalancingRow = typeof schema.rebalancing.$inferSelect;

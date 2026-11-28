@@ -1,4 +1,4 @@
-import type { LegalDocumentVersion } from "@seedbook/database/legal";
+import type { LegalDocumentVersion } from "@seedbook/domain/legal";
 import { describe, expect, it, vi } from "vitest";
 import { GET } from "./route";
 

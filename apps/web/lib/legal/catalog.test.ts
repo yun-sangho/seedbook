@@ -1,4 +1,4 @@
-import type { LegalDocumentVersion } from "@seedbook/database/legal";
+import type { LegalDocumentVersion } from "@seedbook/domain/legal";
 import { describe, expect, it } from "vitest";
 import {
   consentDocuments,

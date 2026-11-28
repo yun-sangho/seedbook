@@ -1,10 +1,10 @@
-import type { schema } from "@seedbook/database";
-import {
-  bigIntToNumber,
-  formatDate,
-  parseDate,
-  toBigInt,
-} from "@web/app/api/storage/_translators/types";
+import { bigIntToNumber, formatDate, parseDate, toBigInt } from "./convert";
+import type {
+  CashItemRow,
+  InvestmentAccountRow,
+  InvestmentRecordRow,
+  StockHoldingRow,
+} from "./rows";
 
 /**
  * 투자 계좌 한 건의 동기화 표현 (`features/investments` 의 `InvestmentItem`, id 제외).
@@ -32,18 +32,6 @@ export type InvestmentFields = {
   }>;
   cashItems: Array<{ id: string; label: string; amount: number }>;
 };
-
-type AccountRow = typeof schema.investmentAccount.$inferSelect;
-// 하위 행은 v1 이 읽는 컬럼만 받는다 — 동기화 v2 공통 열은 v1 표현에 없다 (기기 SQLite 표에도 없음).
-type RecordRow = Pick<
-  typeof schema.investmentRecord.$inferSelect,
-  "accountId" | "date" | "initialInvestment" | "currentValue"
->;
-type HoldingRow = Pick<
-  typeof schema.stockHolding.$inferSelect,
-  "id" | "accountId" | "market" | "ticker" | "name" | "currency" | "quantity" | "memo"
->;
-type CashRow = Pick<typeof schema.cashItem.$inferSelect, "id" | "accountId" | "label" | "amount">;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isText = (x: unknown): x is string => typeof x === "string";
@@ -190,10 +178,10 @@ export function investmentChildRows(accountId: string, fields: InvestmentFields)
 
 /** DB 행 + 하위 행 → 동기화 표현. 기록은 최신 날짜가 먼저. */
 export function investmentRowToFields(
-  row: AccountRow,
-  records: RecordRow[],
-  holdings: HoldingRow[],
-  cashItems: CashRow[]
+  row: InvestmentAccountRow,
+  records: InvestmentRecordRow[],
+  holdings: StockHoldingRow[],
+  cashItems: CashItemRow[]
 ): InvestmentFields {
   return {
     accountName: row.accountName,

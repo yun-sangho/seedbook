@@ -1,12 +1,12 @@
 "use client";
 
-import { snapshotPriceKey } from "@seedbook/database/account-snapshot-values";
-import { kstDateString } from "@seedbook/database/kst";
-import { accountFetch, accountStorage } from "@web/lib/account-storage";
+import { snapshotPriceKey } from "@seedbook/domain/account-snapshot-values";
+import { kstDateString } from "@seedbook/domain/kst";
 import {
   type AccountSnapshotPayload,
   parseSnapshotPayloads,
-} from "@web/server/account-snapshots/account-snapshot-record";
+} from "@seedbook/domain/v1/account-snapshot-record";
+import { accountFetch, accountStorage } from "@web/lib/account-storage";
 import {
   ACCOUNT_SNAPSHOT_STORAGE_KEY,
   type AccountValueSnapshot,

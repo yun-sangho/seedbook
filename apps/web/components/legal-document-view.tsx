@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useCallback, useEffect, useState } from "react";
-import type { LegalDocumentId } from "@seedbook/database/legal";
+import type { LegalDocumentId } from "@seedbook/domain/legal";
 import { LegalDocumentContent } from "@web/components/legal-document-content";
 import { apiFetch } from "@web/lib/api-client";
 import type { DocumentPage } from "@web/lib/legal/catalog";

@@ -7,7 +7,6 @@ import type { LegalDocumentVersion } from "./types";
 
 export * from "./markdown";
 export * from "./types";
-export * from "./validate";
 
 /**
  * 레포에 있는 모든 버전. 새 버전은 `documents/` 에 파일을 추가하고 여기에 넣는다.

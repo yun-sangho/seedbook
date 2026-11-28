@@ -1,14 +1,14 @@
 import { schema, syncAccountPortfolioLinks } from "@seedbook/database";
-import { createEntityRepo, selectRowsByIds, type Tx } from "@web/server/sync/entity-repo";
-import type { SyncEntity } from "@web/server/sync/registry";
-import { eq, inArray } from "drizzle-orm";
 import {
   type InvestmentFields,
   investmentChildRows,
   investmentFieldsToColumns,
   investmentRowToFields,
   parseInvestmentFields,
-} from "./investment-record";
+} from "@seedbook/domain/v1/investment-record";
+import { createEntityRepo, selectRowsByIds, type Tx } from "@web/server/sync/entity-repo";
+import type { SyncEntity } from "@web/server/sync/registry";
+import { eq, inArray } from "drizzle-orm";
 
 type AccountRow = typeof schema.investmentAccount.$inferSelect;
 

@@ -4,7 +4,7 @@ import {
   type SnapshotHolding,
   type SnapshotPrice,
   snapshotPriceKey,
-} from "@seedbook/database/account-snapshot-values";
+} from "@seedbook/domain/account-snapshot-values";
 import type { InvestmentItem } from "../types/types";
 
 /**

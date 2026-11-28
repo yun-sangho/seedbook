@@ -1,5 +1,5 @@
 /**
- * store 항목을 저장·전송하기 전에 값을 정리하는 공용 규칙. 서버 검증(`server/<domain>/*-record.ts`)
+ * store 항목을 저장·전송하기 전에 값을 정리하는 공용 규칙. 서버 검증(`@seedbook/domain/v1/<domain>-record.ts`)
  * 은 유한한 숫자만 받는데, 입력 도중의 값(`parseFloat("")` = NaN 등)이 store 에 들어갈 수 있다.
  * persist 는 NaN·Infinity 를 JSON `null` 로 직렬화하므로 `null` 도 같은 규칙으로 정리한다.
  */

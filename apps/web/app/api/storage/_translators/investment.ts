@@ -2,7 +2,7 @@ import { type Database, schema } from "@seedbook/database";
 import {
   investmentRowToFields,
   parseInvestmentFields,
-} from "@web/server/investments/investment-record";
+} from "@seedbook/domain/v1/investment-record";
 import { investmentRepo } from "@web/server/investments/investment-sync";
 import { and, eq, isNull, notInArray, sql } from "drizzle-orm";
 import { assertNoForeignRows } from "./ownership";

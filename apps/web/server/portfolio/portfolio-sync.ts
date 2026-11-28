@@ -1,8 +1,4 @@
 import { type Database, schema, syncAccountPortfolioLinks } from "@seedbook/database";
-import { createEntityRepo, selectRowsByIds } from "@web/server/sync/entity-repo";
-import type { SyncEntity } from "@web/server/sync/registry";
-import type { MutationResult } from "@web/server/sync/types";
-import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   type PortfolioData,
   type PortfolioFields,
@@ -10,7 +6,11 @@ import {
   portfolioAllocationRows,
   portfolioFieldsToColumns,
   portfolioRowToData,
-} from "./portfolio-record";
+} from "@seedbook/domain/v1/portfolio-record";
+import { createEntityRepo, selectRowsByIds } from "@web/server/sync/entity-repo";
+import type { SyncEntity } from "@web/server/sync/registry";
+import type { MutationResult } from "@web/server/sync/types";
+import { and, eq, inArray, sql } from "drizzle-orm";
 
 type PortfolioRow = typeof schema.portfolio.$inferSelect;
 

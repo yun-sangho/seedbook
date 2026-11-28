@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ANONYMOUS_USER_NAME } from "@seedbook/database/anonymous-identity";
+import { ANONYMOUS_USER_NAME } from "@seedbook/domain/anonymous-identity";
 import { BottomAction } from "@web/components/mobile/bottom-action";
 import { useSessionUser } from "@web/components/mobile/profile-menu";
 import { DELETE_ACCOUNT_COPY, useDeleteAccount } from "@web/hooks/use-delete-account";

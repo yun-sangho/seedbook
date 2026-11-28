@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { schema } from "@seedbook/database";
-import { LEGAL_DOCUMENT_VERSIONS, type LegalDocumentVersion } from "@seedbook/database/legal";
+import { LEGAL_DOCUMENT_VERSIONS, type LegalDocumentVersion } from "@seedbook/domain/legal";
 import { openTestDb } from "@web/test/db/test-db";
 import { eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";

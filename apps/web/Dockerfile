@@ -10,6 +10,7 @@ FROM base AS deps
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/database/package.json ./packages/database/package.json
+COPY packages/domain/package.json ./packages/domain/package.json
 COPY packages/typescript-config/package.json ./packages/typescript-config/package.json
 COPY packages/tailwind-config/package.json ./packages/tailwind-config/package.json
 COPY apps/web/package.json ./apps/web/package.json
@@ -22,6 +23,7 @@ FROM deps AS build
 COPY packages/typescript-config/ ./packages/typescript-config/
 COPY packages/tailwind-config/ ./packages/tailwind-config/
 COPY packages/database/ ./packages/database/
+COPY packages/domain/ ./packages/domain/
 COPY apps/web/ ./apps/web/
 
 # @seedbook/database 의 dist/ 는 Drizzle 만 export 하므로 Prisma generate 가
@@ -66,6 +68,7 @@ WORKDIR /app
 COPY packages/typescript-config/ ./packages/typescript-config/
 COPY packages/tailwind-config/ ./packages/tailwind-config/
 COPY packages/database/ ./packages/database/
+COPY packages/domain/ ./packages/domain/
 
 RUN pnpm --filter @seedbook/database build
 

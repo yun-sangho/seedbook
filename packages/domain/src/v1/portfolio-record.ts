@@ -1,6 +1,5 @@
-import type { schema } from "@seedbook/database";
-import { MAX_PLANT_STAGE } from "@web/features/portfolio/types/constants";
-import type { PlantProgress } from "@web/features/portfolio/types/types";
+import { MAX_PLANT_STAGE, type PlantProgress } from "./portfolio-types";
+import type { PortfolioAllocationRow, PortfolioRow } from "./rows";
 
 /**
  * 포트폴리오 한 건의 동기화 표현 (`features/portfolio` 의 `PortfolioItem`, id 제외).
@@ -32,13 +31,6 @@ export type PortfolioFields = {
 /** pull 로 내려주는 모양 — 식물 진행은 펼쳐서, 서버가 기록한 생성 / 수정 시각이 붙는다. */
 export type PortfolioData = Omit<PortfolioFields, "plant"> &
   PlantProgress & { createdAt: string; updatedAt: string };
-
-type PortfolioRow = typeof schema.portfolio.$inferSelect;
-// 하위 행은 v1 이 읽는 컬럼만 받는다 — 동기화 v2 공통 열은 v1 표현에 없다 (기기 SQLite 표에도 없음).
-type AllocationRow = Pick<
-  typeof schema.portfolioAllocation.$inferSelect,
-  "id" | "portfolioId" | "market" | "ticker" | "name" | "currency" | "targetPercent"
->;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isText = (x: unknown): x is string => typeof x === "string";
@@ -172,7 +164,10 @@ export function portfolioAllocationRows(portfolioId: string, fields: PortfolioFi
   return fields.allocations.map((a) => ({ ...a, portfolioId }));
 }
 
-export function portfolioRowToData(row: PortfolioRow, allocations: AllocationRow[]): PortfolioData {
+export function portfolioRowToData(
+  row: PortfolioRow,
+  allocations: PortfolioAllocationRow[]
+): PortfolioData {
   return {
     name: row.name,
     color: row.color,

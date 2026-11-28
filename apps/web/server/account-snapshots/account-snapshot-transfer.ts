@@ -1,6 +1,6 @@
 import { type Database, schema } from "@seedbook/database";
+import type { AccountSnapshotPayload } from "@seedbook/domain/v1/account-snapshot-record";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
-import type { AccountSnapshotPayload } from "./account-snapshot-record";
 
 /**
  * 저장소 모드를 바꿀 때 계좌 총액 일별 기록을 기기와 서버 사이에서 옮긴다 (`/api/account-snapshots`).

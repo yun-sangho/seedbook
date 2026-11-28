@@ -3,7 +3,7 @@
 import { type TouchEvent, useCallback, useEffect, useRef, useState } from "react";
 import { IconChevronLeftLine } from "@karrotmarket/react-monochrome-icon";
 import { Icon } from "@seed-design/react";
-import type { LegalDocumentId } from "@seedbook/database/legal";
+import type { LegalDocumentId } from "@seedbook/domain/legal";
 import { LegalDocumentView } from "@web/components/legal-document-view";
 import { LEGAL_DOCUMENTS, type LegalDocumentTarget } from "@web/lib/legal-documents";
 

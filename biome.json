@@ -67,5 +67,48 @@
         "useIterableCallbackReturn": "off"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "apps/web/{app,components,features,hooks,lib,types,utils}/**",
+        "!apps/web/app/api/**",
+        "!apps/web/app/(site)/**",
+        "!apps/web/app/layout.tsx",
+        "!apps/web/app/manifest.ts",
+        "!apps/web/app/sw.ts",
+        "!apps/web/lib/auth.ts",
+        "!apps/web/lib/auth-server.ts",
+        "!apps/web/lib/auth-privacy.ts",
+        "!apps/web/lib/apple-auth.ts",
+        "!apps/web/lib/stock-quotes/**",
+        "!apps/web/lib/native/device-db/testing/**",
+        "!**/*.test.ts",
+        "!**/*.test.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": [
+                      "@seedbook/database",
+                      "@seedbook/database/**",
+                      "@web/server/**",
+                      "@web/app/api/**",
+                      "node:*"
+                    ],
+                    "message": "클라이언트 코드(앱 번들)는 서버·DB·node 모듈을 import 하지 않는다. 서버와 같이 쓰는 순수 로직은 @seedbook/domain 에 둔다 (lib/client-imports-guard.test.ts)."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

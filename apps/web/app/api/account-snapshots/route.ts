@@ -1,6 +1,6 @@
 import { db } from "@seedbook/database";
+import { parseSnapshotPayloads } from "@seedbook/domain/v1/account-snapshot-record";
 import { resolveUserId } from "@web/lib/auth-server";
-import { parseSnapshotPayloads } from "@web/server/account-snapshots/account-snapshot-record";
 import {
   listAccountSnapshots,
   MAX_SNAPSHOTS_PER_REQUEST,

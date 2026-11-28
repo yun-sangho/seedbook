@@ -1,6 +1,6 @@
 import { Fragment, type ReactNode } from "react";
 import { Text } from "@seed-design/react";
-import { type LegalInline, parseLegalMarkdown } from "@seedbook/database/legal/markdown";
+import { type LegalInline, parseLegalMarkdown } from "@seedbook/domain/legal/markdown";
 import { type LegalDocumentTarget, parseLegalDocumentHref } from "@web/lib/legal-documents";
 
 /** 본문 안 약관 링크(`/terms`, `/privacy/<버전>`)를 그린다. 앱은 사이트로 나가지 않고 앱 안 화면으로 연다. */

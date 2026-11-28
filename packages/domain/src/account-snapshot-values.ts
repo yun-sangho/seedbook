@@ -1,7 +1,7 @@
 /**
  * 계좌 하루 평가의 순수 계산. 서버 기록(`account-snapshots.ts`)과 기기 기록(local 모드, web
- * `features/investments/utils/account-value-history.ts`)이 같은 식을 쓴다 — 클라이언트 번들이
- * DB 클라이언트를 끌어오지 않게 import 없는 파일로 둔다 (`@seedbook/database/account-snapshot-values`).
+ * `features/investments/utils/account-value-history.ts`)이 같은 식을 쓴다. database 패키지 dist 가
+ * node 로 바로 불러오므로 import 없는 파일로 둔다 (`node-leaf-modules.test.ts`).
  */
 
 export interface SnapshotHolding {
