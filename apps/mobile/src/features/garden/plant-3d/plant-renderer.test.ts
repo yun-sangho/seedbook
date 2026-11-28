@@ -19,7 +19,7 @@ describe("grewAtSlot", () => {
   });
 
   it("is false when only wind, wilt, ripeness or rebalancing changed", () => {
-    const after = slot("a", "tree", { wind: 0.5, wilt: 0.7, ripe: 1, needsRebalance: true });
+    const after = slot("a", "tree", { wind: 0.5, wilt: 0.7, ripe: true, needsRebalance: true });
 
     expect(grewAtSlot(slot("a", "tree"), after)).toBe(false);
   });

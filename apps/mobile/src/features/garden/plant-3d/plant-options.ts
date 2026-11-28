@@ -23,13 +23,13 @@ export const PLANT_KIND_LABELS: Record<PlantKind, string> = {
   fern: "고사리",
 };
 
-/** 고사리 단계 이름. 고사리는 꽃이 없어 4단계는 "풍성" (잎 끝 이슬·반짝임) 이다. */
+/** 고사리 단계 이름. 4단계는 나무처럼 꽃이 피고, 열매 목표를 이루면 열매가 열린다. */
 export const FERN_STAGE_LABELS: Record<PlantStage, string> = {
   seed: "씨앗",
   sprout: "새순",
   sapling: "어린 잎",
   tree: "고사리",
-  bloom: "풍성",
+  bloom: "꽃·열매",
 };
 
 /** 화분 색 (포트폴리오 구분). 씨앗 아바타(`lib/seed-identity/seed-avatar.ts`) 톤에 맞춘 파스텔. */
@@ -73,8 +73,11 @@ export interface PlantOptions {
    * `WILT_SHED_FROM` 이상이면 잎 일부가 떨어진다. 단계(크기)는 그대로다.
    */
   wilt: number;
-  /** 열매 익음 0 ~ 1 (꽃·열매 단계에서만 보인다). 나무는 열매가 커지고 주황 → 빨강, 고사리는 잎 끝이 금빛. */
-  ripe: number;
+  /**
+   * 열매가 열림 (= 수확할 수 있음). 꽃·열매 단계에서만 보인다 — 4단계는 꽃만 피고, 열매 목표를 이루면
+   * 열매가 열린다. 익어 가는 중간 모습은 없다.
+   */
+  ripe: boolean;
   /** 리밸런싱이 필요하면 몸통이 한쪽으로 기울고 옆에 원형 `!` 배지가 뜬다. */
   needsRebalance: boolean;
   pot: PotColor;
@@ -88,7 +91,7 @@ export const DEFAULT_PLANT_OPTIONS: PlantOptions = {
   stage: "sapling",
   wind: 0,
   wilt: 0,
-  ripe: 0,
+  ripe: false,
   needsRebalance: false,
   pot: "terracotta",
   seed: 7,

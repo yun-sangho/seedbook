@@ -22,7 +22,7 @@ export function seedSlotFor(portfolioId: string | null): PlantSlot {
       stage: "seed",
       wind: 0,
       wilt: 0,
-      ripe: 0,
+      ripe: false,
       needsRebalance: false,
       pot: portfolioId ? potForPortfolio(portfolioId) : "terracotta",
       seed: portfolioId ? hashString(portfolioId) % 1000 : 3,

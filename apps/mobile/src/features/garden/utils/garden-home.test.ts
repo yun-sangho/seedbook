@@ -191,7 +191,7 @@ describe("gardenPlantOptions", () => {
       wind: expect.closeTo((10_000 / 110_000 - 0.05) / 0.15 / 2, 6),
       // 이탈 기간·열매 목표는 아직 데이터가 없다 (규칙·레코드 태스크가 넣는다).
       wilt: 0,
-      ripe: 0,
+      ripe: false,
       needsRebalance: true,
       pot: potForPortfolio("p"),
       seed: expect.any(Number),

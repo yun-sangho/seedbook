@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { createBlossoms, FRUIT_RADIUS } from "./blossom";
 import { buildFernBody } from "./build-fern";
 import { leafGeometry, veinGeometry } from "./leaf-geometry";
 import {
@@ -12,6 +13,7 @@ import {
   wiltSag,
 } from "./plant-options";
 import { createRebalanceBadge } from "./rebalance-badge";
+import { createWindStreaks } from "./wind-streaks";
 
 /**
  * 코드로 만드는(procedural) 포트폴리오 식물. 이미지·모델 파일 없이 three 기본 도형만 쓴다.
@@ -34,17 +36,10 @@ const COLORS = {
   soil: "#5E3F2A",
   wilt: "#B59A3C",
   fallenLeaf: "#A8843E",
-  petal: "#F8B3CB",
-  petalCenter: "#FFD66B",
-  /** 열매: 익음 0 (지금의 주홍) → 1 (빨강). */
-  fruit: "#E8664F",
-  fruitRipe: "#CF2A24",
 } as const;
 
 /** 늘어짐 1 일 때 잎이 더 숙여지는 각도(라디안). */
 const SAG_PITCH = 0.85;
-/** 익음 1 일 때 열매 크기 배율. */
-const RIPE_FRUIT_SCALE = 1.55;
 
 /**
  * 바람: 1 일 때 흔들림 폭·속도 배율, 잎 떨림, 한쪽으로 눕는 각도(라디안). 화면 데이터의 바람은 0.5 까지라
@@ -153,6 +148,7 @@ interface BuildContext {
   options: PlantOptions;
   rand: () => number;
   kit: MaterialKit;
+  material(color: THREE.Color): THREE.Material;
   geometries: THREE.BufferGeometry[];
   leaves: LeafRecord[];
   leafGeo: THREE.BufferGeometry;
@@ -328,8 +324,7 @@ function buildTree(ctx: BuildContext, body: THREE.Group): CanopySpot[] {
   return spots;
 }
 
-/** 열매 크기·뭉치 하나에 다는 최대 개수·매달리는 각도(수평에서 아래로, 라디안). */
-const FRUIT_RADIUS = 0.085;
+/** 뭉치 하나에 다는 최대 열매 수·매달리는 각도(수평에서 아래로, 라디안). */
 const MAX_FRUITS_PER_CLUMP = 2;
 /** 나무 한 그루의 열매 수 범위 — 가지 끝 뭉치에 무작위로 나눠 단다. */
 const FRUIT_TOTAL_MIN = 2;
@@ -355,21 +350,13 @@ function fruitsPerSpot(ctx: BuildContext, spots: CanopySpot[]): number[] {
 
 function buildBloom(ctx: BuildContext, body: THREE.Group) {
   const spots = buildTree(ctx, body);
-  const { wilt } = ctx.options;
-  const ripe = THREE.MathUtils.clamp(ctx.options.ripe, 0, 1);
-  const fruitScale = 1 + ripe * (RIPE_FRUIT_SCALE - 1);
-  const fruitRadius = FRUIT_RADIUS * fruitScale;
-  const petalGeo = track(ctx, blobGeometry(0.075));
-  const centerGeo = track(ctx, blobGeometry(0.05));
-  const fruitGeo = track(ctx, blobGeometry(FRUIT_RADIUS));
-  const petalMat = ctx.kit.get(mixColor(COLORS.petal, "#C9B6A6", wilt * 0.6));
-  const centerMat = ctx.kit.get(COLORS.petalCenter);
-  const fruitMat = ctx.kit.get(
-    mixColor(COLORS.fruit, COLORS.fruitRipe, ripe).lerp(new THREE.Color("#B07A5E"), wilt * 0.5)
+  const blossoms = createBlossoms(
+    ctx.options.wilt,
+    (color) => ctx.kit.get(color),
+    (geometry) => track(ctx, geometry)
   );
-
+  // 열매 자리는 열매가 없을 때도 정한다 — 난수를 같은 순서로 써서 열매가 열려도 꽃이 그 자리에 있게.
   const fruitCounts = fruitsPerSpot(ctx, spots);
-  const up = new THREE.Vector3(0, 1, 0);
   spots.forEach((spot, i) => {
     const flowers = i === 0 ? 3 : 2;
     for (let f = 0; f < flowers; f++) {
@@ -381,23 +368,13 @@ function buildBloom(ctx: BuildContext, body: THREE.Group) {
         Math.cos(phi),
         Math.sin(phi) * Math.sin(theta)
       );
-      const flower = new THREE.Group();
-      flower.position.copy(spot.center).addScaledVector(normal, spot.radius * 0.97);
-      flower.quaternion.setFromUnitVectors(up, normal);
-      for (let p = 0; p < 5; p++) {
-        const petal = new THREE.Mesh(petalGeo, petalMat);
-        const a = (p / 5) * Math.PI * 2;
-        petal.position.set(Math.cos(a) * 0.08, 0, Math.sin(a) * 0.08);
-        petal.scale.set(1, 0.45, 1);
-        flower.add(petal);
-      }
-      const center = new THREE.Mesh(centerGeo, centerMat);
-      center.position.y = 0.02;
-      flower.add(center);
-      flower.scale.setScalar(1 - wiltSag(wilt) * 0.25);
-      body.add(flower);
+      blossoms.addFlower(
+        body,
+        spot.center.clone().addScaledVector(normal, spot.radius * 0.97),
+        normal
+      );
     }
-    const fruitCount = fruitCounts[i] ?? 0;
+    const fruitCount = ctx.options.ripe ? (fruitCounts[i] ?? 0) : 0;
     if (fruitCount > 0) {
       // 열매는 가지 끝 뭉치의 바깥 아래쪽 표면에 매달린다 (뭉치 안에 묻히지 않게, 줄기 반대쪽).
       const outward = Math.atan2(spot.center.z, spot.center.x);
@@ -413,19 +390,16 @@ function buildBloom(ctx: BuildContext, body: THREE.Group) {
               -Math.sin(FRUIT_HANG),
               Math.sin(azimuth) * Math.cos(FRUIT_HANG)
             ),
-            spot.radius + fruitRadius * 0.35
+            spot.radius + FRUIT_RADIUS * 0.35
           );
         const buried = spots.some(
           (other) =>
-            other !== spot && at.distanceTo(other.center) < other.radius + fruitRadius * 0.35
+            other !== spot && at.distanceTo(other.center) < other.radius + FRUIT_RADIUS * 0.35
         );
-        const crowded = placed.some((p) => p.distanceTo(at) < fruitRadius * 2.2);
+        const crowded = placed.some((p) => p.distanceTo(at) < FRUIT_RADIUS * 2.2);
         if (buried || crowded) continue;
         placed.push(at);
-        const fruit = new THREE.Mesh(fruitGeo, fruitMat);
-        fruit.position.copy(at).add(new THREE.Vector3(0, -wiltSag(wilt) * 0.05, 0));
-        fruit.scale.setScalar(fruitScale);
-        body.add(fruit);
+        blossoms.addFruit(body, at);
       }
     }
   });
@@ -548,6 +522,7 @@ export function buildPlant(options: PlantOptions): BuiltPlant {
     options,
     rand: mulberry32(options.seed),
     kit,
+    material: (color) => kit.get(color),
     geometries: [],
     leaves: [],
     leafGeo: leafGeometry(),
@@ -568,14 +543,19 @@ export function buildPlant(options: PlantOptions): BuiltPlant {
   else STAGE_BUILDERS[options.stage](ctx, body);
   shedLeaves(ctx, root);
 
+  const badgeHeight = fern?.badgeHeight ?? BADGE_HEIGHT[options.stage];
   const baseTilt = options.needsRebalance ? -TILT_ANGLE : 0;
-  const badge = options.needsRebalance
-    ? createRebalanceBadge(fern?.badgeHeight ?? BADGE_HEIGHT[options.stage])
-    : null;
+  const badge = options.needsRebalance ? createRebalanceBadge(badgeHeight) : null;
   if (badge) {
     // 몸통이 기울어도 배지는 똑바로 서도록 root 에 붙인다.
     root.add(badge.object);
     disposers.push(badge.dispose);
+  }
+
+  const streaks = createWindStreaks(options.wind, badgeHeight, options.seed);
+  if (streaks) {
+    root.add(streaks.object);
+    disposers.push(streaks.dispose);
   }
 
   const stageIndex = PLANT_STAGES.indexOf(options.stage);
@@ -605,6 +585,7 @@ export function buildPlant(options: PlantOptions): BuiltPlant {
           leaf.basePitch + Math.sin(time * flutterSpeed + leaf.phase) * flutterAmp;
       }
       fern?.update(time);
+      streaks?.update(time);
       badge?.update(time, pxToScale);
     },
     dispose() {

@@ -81,7 +81,7 @@ function StageCompare() {
     <section className="flex flex-col gap-3">
       <h2 className="text-base font-bold">단계별 비교</h2>
       <p className="text-[12px] text-neutral-500">
-        고사리: 씨앗(연두) → 새순 → 어린 잎 → 고사리 → 풍성 (잎 끝 이슬·반짝임)
+        고사리: 씨앗(연두) → 새순 → 어린 잎 → 고사리 → 꽃·열매 (나무와 같은 꽃, 열매가 열리면 수확)
       </p>
       <StageRow kind="tree" condition={condition} rebalance={rebalance} />
       <StageRow kind="fern" condition={condition} rebalance={rebalance} />
@@ -106,7 +106,7 @@ const MIXED_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
       stage: "bloom",
       wind: 0,
       wilt: 0,
-      ripe: 1,
+      ripe: true,
       needsRebalance: false,
       pot: "cream",
     },
@@ -118,7 +118,7 @@ const MIXED_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
       stage: "bloom",
       wind: 0,
       wilt: 0,
-      ripe: 0,
+      ripe: false,
       needsRebalance: true,
       pot: "lavender",
     },
@@ -130,7 +130,7 @@ const MIXED_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
       stage: "sapling",
       wind: 0,
       wilt: 0.7,
-      ripe: 0,
+      ripe: false,
       needsRebalance: true,
       pot: "sky",
     },
@@ -142,7 +142,7 @@ const MIXED_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
       stage: "tree",
       wind: 0,
       wilt: 0,
-      ripe: 0,
+      ripe: false,
       needsRebalance: false,
       pot: "terracotta",
     },
@@ -154,7 +154,7 @@ const MIXED_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
       stage: "tree",
       wind: 0,
       wilt: 0,
-      ripe: 0,
+      ripe: false,
       needsRebalance: false,
       pot: "sun",
     },
@@ -166,7 +166,7 @@ const MIXED_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
       stage: "sprout",
       wind: 0,
       wilt: 0,
-      ripe: 0,
+      ripe: false,
       needsRebalance: false,
       pot: "terracotta",
     },
@@ -178,7 +178,7 @@ const MIXED_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
       stage: "sapling",
       wind: 0.5,
       wilt: 0,
-      ripe: 0,
+      ripe: false,
       needsRebalance: false,
       pot: "sky",
     },
@@ -190,7 +190,7 @@ const MIXED_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
       stage: "bloom",
       wind: 0,
       wilt: 0,
-      ripe: 0,
+      ripe: false,
       needsRebalance: false,
       pot: "lavender",
     },

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildPlant } from "./build-plant";
 import { DEFAULT_PLANT_OPTIONS, type PlantOptions } from "./plant-options";
 import { REBALANCE_BADGE_KEY } from "./rebalance-badge";
+import { WIND_STREAK_KEY } from "./wind-streaks";
 
 // jsdom 에는 2D 캔버스가 없다 (그림자·배지 텍스처는 빈 캔버스로 만들어진다).
 beforeEach(() => {
@@ -46,7 +47,7 @@ function hidden(root: THREE.Object3D): number {
 function materialColors(root: THREE.Object3D): THREE.Color[] {
   const found: THREE.Color[] = [];
   root.traverseVisible((node) => {
-    if (!(node instanceof THREE.Mesh)) return;
+    if (!(node instanceof THREE.Mesh) || node.userData[WIND_STREAK_KEY]) return;
     const color = (node.material as THREE.Material & { color?: THREE.Color }).color;
     if (color) found.push(color);
   });
@@ -61,6 +62,23 @@ function colors(root: THREE.Object3D): string[] {
 function meanRed(root: THREE.Object3D): number {
   const all = materialColors(root);
   return all.reduce((sum, c) => sum + c.r, 0) / all.length;
+}
+
+function streaks(root: THREE.Object3D): THREE.Mesh[] {
+  const found: THREE.Mesh[] = [];
+  root.traverse((node) => {
+    if (node instanceof THREE.Mesh && node.userData[WIND_STREAK_KEY]) found.push(node);
+  });
+  return found;
+}
+
+function meshes(root: THREE.Object3D): THREE.Mesh[] {
+  const found: THREE.Mesh[] = [];
+  root.updateMatrixWorld(true);
+  root.traverse((node) => {
+    if (node instanceof THREE.Mesh) found.push(node);
+  });
+  return found;
 }
 
 /** 열매 (반지름 0.085 구). */
@@ -206,16 +224,49 @@ describe("buildPlant", () => {
     }
   });
 
-  it("grows and reddens the fruit as it ripens", () => {
-    const green = fruits(plant({ stage: "bloom", ripe: 0 }).root);
-    const ripe = fruits(plant({ stage: "bloom", ripe: 1 }).root);
-    expect(green.length).toBeGreaterThan(0);
-    expect(ripe).toHaveLength(green.length);
-    const [g, r] = [green[0], ripe[0]];
-    if (!g || !r) throw new Error("no fruit");
-    expect(r.scale.x).toBeGreaterThan(g.scale.x * 1.3);
-    const color = (mesh: THREE.Mesh) => (mesh.material as THREE.MeshToonMaterial).color;
-    expect(color(r).g).toBeLessThan(color(g).g);
+  it("blooms without fruit until the fruit goal is reached", () => {
+    expect(fruits(plant({ stage: "bloom", ripe: false }).root)).toHaveLength(0);
+    expect(fruits(plant({ stage: "bloom", ripe: true }).root).length).toBeGreaterThan(0);
+  });
+
+  it("keeps the flowers in place when the fruit appears", () => {
+    const flowers = (ripe: boolean) =>
+      meshes(plant({ stage: "bloom", ripe }).root)
+        .filter(
+          (mesh) =>
+            mesh.geometry instanceof THREE.SphereGeometry &&
+            mesh.geometry.parameters.radius === 0.075
+        )
+        .map((mesh) => mesh.getWorldPosition(new THREE.Vector3()).toArray().join(","));
+    expect(flowers(true)).toEqual(flowers(false));
+  });
+
+  it("ignores ripeness before the bloom stage", () => {
+    expect(countMeshes(plant({ stage: "tree", ripe: true }).root)).toBe(
+      countMeshes(plant({ stage: "tree", ripe: false }).root)
+    );
+  });
+
+  it("blows wind streaks past the plant only in the wind", () => {
+    expect(streaks(plant({ stage: "tree" }).root)).toHaveLength(0);
+    const built = plant({ stage: "tree", wind: 0.5 });
+    const found = streaks(built.root);
+    expect(found.length).toBeGreaterThan(0);
+    const frame = (time: number) => {
+      built.update(time, PX);
+      return found
+        .map(
+          (s) => `${s.position.x.toFixed(3)}:${(s.material as THREE.Material).opacity.toFixed(3)}`
+        )
+        .join(",");
+    };
+    expect(frame(0.3)).not.toBe(frame(0.9));
+  });
+
+  it("blows more streaks in a stronger wind", () => {
+    expect(streaks(plant({ stage: "tree", wind: 0.5 }).root).length).toBeGreaterThan(
+      streaks(plant({ stage: "tree", wind: 0.1 }).root).length
+    );
   });
 
   it("releases its geometry and materials on dispose", () => {
@@ -266,23 +317,16 @@ describe("stem tip", () => {
 });
 
 describe("bloom fruit", () => {
-  function meshes(root: THREE.Object3D): THREE.Mesh[] {
-    const found: THREE.Mesh[] = [];
-    root.updateMatrixWorld(true);
-    root.traverse((node) => {
-      if (node instanceof THREE.Mesh) found.push(node);
-    });
-    return found;
-  }
-
   it.each([
-    { seed: 7, wilt: 0, ripe: 0 },
-    { seed: 1, wilt: 0, ripe: 1 },
-    { seed: 42, wilt: 0.7, ripe: 1 },
+    { seed: 7, wilt: 0 },
+    { seed: 1, wilt: 0 },
+    { seed: 42, wilt: 0.7 },
   ])(
-    "hangs outside the leaf clumps so it can be seen (seed $seed, wilt $wilt, ripe $ripe)",
-    ({ seed, wilt, ripe }) => {
-      const all = meshes(plant({ stage: "bloom", seed, wilt, ripe, needsRebalance: false }).root);
+    "hangs outside the leaf clumps so it can be seen (seed $seed, wilt $wilt)",
+    ({ seed, wilt }) => {
+      const all = meshes(
+        plant({ stage: "bloom", seed, wilt, ripe: true, needsRebalance: false }).root
+      );
       const radiusOf = (mesh: THREE.Mesh) =>
         mesh.geometry instanceof THREE.SphereGeometry ? mesh.geometry.parameters.radius : 0;
       // 꽃잎(0.075)·꽃 가운데(0.05)보다 크고 잎 뭉치(0.3 이상)보다 작은 구가 열매다.
@@ -302,7 +346,7 @@ describe("bloom fruit", () => {
 
   /** 열매가 매달린 가지 끝 뭉치별 개수 (가장 가까운 뭉치 기준). */
   function fruitsPerClump(seed: number): number[] {
-    const all = meshes(plant({ stage: "bloom", seed, needsRebalance: false }).root);
+    const all = meshes(plant({ stage: "bloom", seed, ripe: true, needsRebalance: false }).root);
     const radiusOf = (mesh: THREE.Mesh) =>
       mesh.geometry instanceof THREE.SphereGeometry ? mesh.geometry.parameters.radius : 0;
     const fruits = all.filter((mesh) => radiusOf(mesh) > 0.08 && radiusOf(mesh) < 0.25);

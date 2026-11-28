@@ -90,7 +90,7 @@ export function gardenPlantOptions(
     wind: plantWind(plant.value, lastReachedGoal(portfolio)?.amount ?? null, plant.pricesComplete),
     // 이탈 기간(`driftSince`)·열매 목표(`fruitGoal`)는 식물 규칙·레코드 태스크가 넣는다.
     wilt: 0,
-    ripe: 0,
+    ripe: false,
     needsRebalance: plant.rebalancing === "needs-rebalancing",
     pot: potForPortfolio(plant.portfolioId),
     seed: hashString(plant.portfolioId) % 1000,

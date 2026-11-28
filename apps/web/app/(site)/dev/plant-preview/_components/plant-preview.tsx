@@ -106,10 +106,11 @@ export interface PlantCondition {
   dropPercent: number;
   /** 비중 이탈 기간 (일). 0 이면 이탈 아님. */
   driftDays: number;
-  ripe: number;
+  /** 열매가 열림 (= 수확할 수 있음). */
+  ripe: boolean;
 }
 
-export const CALM_CONDITION: PlantCondition = { dropPercent: 0, driftDays: 0, ripe: 0 };
+export const CALM_CONDITION: PlantCondition = { dropPercent: 0, driftDays: 0, ripe: false };
 
 export function conditionOptions(
   condition: PlantCondition
@@ -199,14 +200,12 @@ export function ConditionControls({
           </button>
         ))}
       </div>
-      <Slider
-        label={`익음 (꽃·열매 단계) · ripe ${ripe.toFixed(2)}`}
-        value={value.ripe}
-        min={0}
-        max={1}
-        step={0.05}
-        accent="#D9532F"
-        onChange={(v) => set("ripe", v)}
+      <Segmented
+        label="열매 (꽃·열매 단계, 열리면 수확할 수 있음)"
+        value={ripe ? "on" : "off"}
+        options={["off", "on"] as const}
+        labels={{ off: "꽃만", on: "열매 열림" }}
+        onChange={(v) => set("ripe", v === "on")}
       />
     </div>
   );
@@ -344,7 +343,14 @@ function Stages() {
 const DEMO_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
   {
     name: "A",
-    options: { stage: "tree", wind: 0, wilt: 0, ripe: 0, needsRebalance: false, pot: "terracotta" },
+    options: {
+      stage: "tree",
+      wind: 0,
+      wilt: 0,
+      ripe: false,
+      needsRebalance: false,
+      pot: "terracotta",
+    },
   },
   {
     name: "B",
@@ -352,26 +358,40 @@ const DEMO_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
       stage: "sapling",
       wind: 0.25,
       wilt: 0.35,
-      ripe: 0,
+      ripe: false,
       needsRebalance: true,
       pot: "sky",
     },
   },
   {
     name: "C",
-    options: { stage: "sprout", wind: 0, wilt: 0, ripe: 0, needsRebalance: false, pot: "sun" },
+    options: { stage: "sprout", wind: 0, wilt: 0, ripe: false, needsRebalance: false, pot: "sun" },
   },
   {
     name: "D",
-    options: { stage: "bloom", wind: 0, wilt: 0, ripe: 1, needsRebalance: true, pot: "lavender" },
+    options: {
+      stage: "bloom",
+      wind: 0,
+      wilt: 0,
+      ripe: true,
+      needsRebalance: true,
+      pot: "lavender",
+    },
   },
   {
     name: "E",
-    options: { stage: "seed", wind: 0, wilt: 0, ripe: 0, needsRebalance: false, pot: "cream" },
+    options: { stage: "seed", wind: 0, wilt: 0, ripe: false, needsRebalance: false, pot: "cream" },
   },
   {
     name: "F",
-    options: { stage: "tree", wind: 0.5, wilt: 0, ripe: 0, needsRebalance: false, pot: "cream" },
+    options: {
+      stage: "tree",
+      wind: 0.5,
+      wilt: 0,
+      ripe: false,
+      needsRebalance: false,
+      pot: "cream",
+    },
   },
   {
     name: "G",
@@ -379,14 +399,14 @@ const DEMO_PLANTS: { name: string; options: Omit<PlantOptions, "seed"> }[] = [
       stage: "sapling",
       wind: 0,
       wilt: 1,
-      ripe: 0,
+      ripe: false,
       needsRebalance: true,
       pot: "terracotta",
     },
   },
   {
     name: "H",
-    options: { stage: "sprout", wind: 0, wilt: 0, ripe: 0, needsRebalance: false, pot: "sky" },
+    options: { stage: "sprout", wind: 0, wilt: 0, ripe: false, needsRebalance: false, pot: "sky" },
   },
 ];
 
