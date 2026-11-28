@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { PwaInstallContext, usePwaInstall } from "@mobile/hooks/use-pwa-install";
 import { useSession } from "@mobile/lib/auth-client";
+import { useHideSplash } from "@mobile/lib/native/splash";
 import { systemBack } from "@mobile/lib/native/system-back";
 import type { SeedPluginOptions } from "@seed-design/stackflow";
 import { bindStackToAccount, goBack, isStackOfOtherAccount } from "./stack-control";
@@ -12,6 +13,8 @@ function detectTheme(): SeedPluginOptions["theme"] {
 
 export default function MobileStackClient() {
   const [theme] = useState(detectTheme);
+  // 홈(스택)이 첫 화면이면 여기서 스플래시를 닫는다.
+  useHideSplash();
   // Android 시스템 뒤로가기 (lib/native/system-back.ts).
   useEffect(() => systemBack.setScreenBack(goBack), []);
   // `beforeinstallprompt` 는 로드 직후 한 번 오므로 셸에서 받아 설정 메뉴에 내려준다.

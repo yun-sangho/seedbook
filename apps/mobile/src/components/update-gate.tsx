@@ -3,6 +3,7 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { checkUpdateRequired, storeUrlFor } from "@mobile/lib/app-update";
 import { isBundledApp } from "@mobile/lib/native/bundled-app";
+import { useHideSplash } from "@mobile/lib/native/splash";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
 
 /**
@@ -37,6 +38,7 @@ export function UpdateGate({ children }: { children: ReactNode }) {
 }
 
 export function UpdateRequiredScreen({ storeUrl }: { storeUrl: string | null }) {
+  useHideSplash();
   return (
     <main className="bg-bg-layer-default text-fg-neutral flex h-dvh w-full flex-col items-center justify-center gap-x4 p-x6 text-center">
       <h1 className="t7-bold">업데이트가 필요해요</h1>

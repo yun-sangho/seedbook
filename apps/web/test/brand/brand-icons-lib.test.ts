@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   BRAND_BACKGROUND,
+  composeSplashSvg,
   composeSvg,
   encodeIco,
   markInner,
+  SPLASH_MARK_BOX,
   withDevBadge,
 } from "../../../../scripts/brand-icons-lib.mjs";
 
@@ -93,5 +95,48 @@ describe("withDevBadge", () => {
     expect(withDevBadge(svg, { centerY: 70, scale: 0.5 })).toContain(
       'transform="translate(50 70) scale(0.5)"'
     );
+  });
+});
+
+describe("composeSplashSvg", () => {
+  const options = {
+    width: 1170,
+    height: 2532,
+    unit: 1170,
+    background: "#16171b",
+    wordmarkColor: "#f3f4f5",
+  };
+
+  it("fills the whole screen with the splash background", () => {
+    const svg = composeSplashSvg(MARK, options);
+
+    expect(svg).toContain('viewBox="0 0 1170 2532"');
+    expect(svg).toContain('<rect width="1170" height="2532" fill="#16171b"/>');
+  });
+
+  it("draws the mark box at a fixed share of the visible short side, centered horizontally", () => {
+    const svg = composeSplashSvg(MARK, options);
+    const box = Math.round(1170 * SPLASH_MARK_BOX);
+
+    expect(svg).toContain(`width="${box}" height="${box}" viewBox="0 0 100 100"`);
+    expect(svg).toContain(`x="${Math.round((1170 - box) / 2)}"`);
+    expect(svg).toContain('<circle cx="50" cy="50" r="10" fill="#000"/>');
+  });
+
+  it("puts the app name under the mark in the wordmark color", () => {
+    const svg = composeSplashSvg(MARK, options);
+    const markY = Number(svg.match(/<svg x="\d+" y="(\d+)"/)?.[1]);
+    const textY = Number(svg.match(/<text x="585" y="(\d+)"/)?.[1]);
+
+    expect(svg).toContain('fill="#f3f4f5">Seedbook</text>');
+    expect(textY).toBeGreaterThan(markY);
+  });
+
+  it("keeps the mark and name block around the vertical center", () => {
+    const svg = composeSplashSvg(MARK, options);
+    const textY = Number(svg.match(/<text x="585" y="(\d+)"/)?.[1]);
+
+    expect(textY).toBeGreaterThan(2532 / 2);
+    expect(textY).toBeLessThan(2532 / 2 + 1170 * 0.4);
   });
 });

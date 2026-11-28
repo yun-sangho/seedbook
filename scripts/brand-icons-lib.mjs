@@ -77,3 +77,41 @@ export function encodeIco(images) {
   }
   return Buffer.concat([header, ...entries, ...images.map((image) => image.png)]);
 }
+
+/**
+ * 스플래시 마크 상자 크기 (보이는 화면의 짧은 변 대비). 그림 폭은 상자의 ~42% 라 짧은 변의 ~28%
+ * (390pt 폰에서 ~110pt). 로그인 화면 마크(components/brand-mark.tsx)와 비슷한 크기로 이어진다.
+ */
+export const SPLASH_MARK_BOX = 0.67;
+/** 마크 그림의 세로 높이가 상자에서 차지하는 비율 (잎 끝 y≈20 ~ 씨앗 아래 y≈81, 가운데 ≈ 50). */
+const MARK_SPAN = 0.62;
+/** "Seedbook" 글자 크기 (짧은 변 대비, 390pt 폰에서 ~26pt) 와 마크와의 간격. */
+const SPLASH_WORDMARK_SIZE = 0.067;
+const SPLASH_WORDMARK_GAP = 0.05;
+
+/**
+ * 스플래시 한 장(width×height px)의 SVG: 단색 배경 가운데에 마크와 그 아래 "Seedbook". 크기는 `unit`
+ * (그 화면에서 실제로 보이는 짧은 변, px) 기준이다 — iOS LaunchScreen 은 정사각 이미지를 화면 높이에 맞춰
+ * 자르므로 보이는 폭이 이미지 폭보다 좁다.
+ *
+ * @param {string} source 마크 원본 SVG
+ * @param {{ width: number, height: number, unit: number, background: string, wordmarkColor: string }} options
+ */
+export function composeSplashSvg(source, { width, height, unit, background, wordmarkColor }) {
+  const box = Math.round(unit * SPLASH_MARK_BOX);
+  const drawing = box * MARK_SPAN;
+  const fontSize = Math.round(unit * SPLASH_WORDMARK_SIZE);
+  const gap = unit * SPLASH_WORDMARK_GAP;
+  // 그림 + 간격 + 글자 묶음을 세로 가운데에 둔다.
+  const blockTop = height / 2 - (drawing + gap + fontSize) / 2;
+  const markY = Math.round(blockTop + drawing / 2 - box / 2);
+  const markX = Math.round((width - box) / 2);
+  const textY = Math.round(blockTop + drawing + gap + fontSize * 0.8);
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">` +
+    `<rect width="${width}" height="${height}" fill="${background}"/>` +
+    `<svg x="${markX}" y="${markY}" width="${box}" height="${box}" viewBox="0 0 100 100">${markInner(source)}</svg>` +
+    `<text x="${Math.round(width / 2)}" y="${textY}" text-anchor="middle" font-family="Apple SD Gothic Neo, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="${fontSize}" font-weight="700" letter-spacing="${(-fontSize * 0.01).toFixed(1)}" fill="${wordmarkColor}">Seedbook</text>` +
+    "</svg>\n"
+  );
+}

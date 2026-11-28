@@ -5,6 +5,7 @@ import { StorageChoiceScreen } from "@mobile/components/storage-choice-screen";
 import { findSeedPreset } from "@mobile/features/onboarding/types/seed-presets";
 import { usePortfolioStore } from "@mobile/features/portfolio/stores/portfolio-store";
 import { accountStorage } from "@mobile/lib/account-storage";
+import { useHideSplash } from "@mobile/lib/native/splash";
 import {
   CUSTOM_SEED_NAME,
   initialOnboardingStep,
@@ -64,6 +65,7 @@ export function OnboardingFlow({
   defaultNickname: string;
   onDone: () => void;
 }) {
+  useHideSplash();
   const [resume] = useState(() => {
     const progress = readProgress();
     const portfolioIds = usePortfolioStore.getState().portfolios.map((p) => p.id);
