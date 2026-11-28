@@ -1,3 +1,4 @@
+import { NOTIFICATION_SETTINGS_PATH } from "@mobile/features/notifications/utils/notification-links";
 import type { LinkResultParams } from "@mobile/lib/login-methods";
 import { type SeedPluginOptions, seedPlugin } from "@seed-design/stackflow";
 import { defineConfig } from "@stackflow/config";
@@ -9,6 +10,7 @@ import {
   DataBackupActivity,
   DeleteAccountActivity,
   LoginMethodsActivity,
+  NotificationsActivity,
   PortfolioDetailActivity,
   PrivacyActivity,
   ProfileActivity,
@@ -49,6 +51,7 @@ declare module "@stackflow/config" {
     Profile: Record<string, never>;
     StorageMode: Record<string, never>;
     DataBackup: Record<string, never>;
+    Notifications: Record<string, never>;
     DeleteAccount: Record<string, never>;
     /** 버전이 없으면 지금 시행 중인 버전. */
     Terms: { version?: string };
@@ -144,6 +147,10 @@ const config = defineConfig({
       route: { path: "/assets/settings/data", defaultHistory: underSettings },
     },
     {
+      name: "Notifications",
+      route: { path: NOTIFICATION_SETTINGS_PATH, defaultHistory: underSettings },
+    },
+    {
       name: "DeleteAccount",
       route: { path: "/assets/settings/delete-account", defaultHistory: underSettings },
     },
@@ -182,6 +189,7 @@ export const { Stack, actions } = stackflow({
     Profile: ProfileActivity,
     StorageMode: StorageModeActivity,
     DataBackup: DataBackupActivity,
+    Notifications: NotificationsActivity,
     DeleteAccount: DeleteAccountActivity,
     Terms: TermsActivity,
     Privacy: PrivacyActivity,

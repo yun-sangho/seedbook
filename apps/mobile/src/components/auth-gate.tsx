@@ -10,6 +10,7 @@ import { PortfolioPlantGrowthRunner } from "@mobile/components/portfolio-plant-g
 import { PreferencesSync } from "@mobile/components/preferences-sync";
 import { RecordSyncRunner } from "@mobile/components/record-sync-runner";
 import { StorageModeSync } from "@mobile/components/storage-mode-sync";
+import { NotificationRunner } from "@mobile/features/notifications/components/notification-runner";
 import { OnboardingGate } from "@mobile/features/onboarding/components/onboarding-gate";
 import { useSession } from "@mobile/lib/auth-client";
 import { getDeviceStorage } from "@mobile/lib/device-storage";
@@ -86,6 +87,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
           <RecordSyncRunner />
           <AccountValueHistoryRunner />
           <PortfolioPlantGrowthRunner />
+          <NotificationRunner />
           {children}
         </OnboardingGate>
         {/* 네이티브 앱에서 앱 잠금을 켰을 때만 그려진다. */}

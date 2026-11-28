@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useId, useState } from "react";
 import {
   IconArrow2ClockwiseCircularLine,
   IconArrowLeftBracketRightLine,
+  IconBellLine,
   IconChevronRightLine,
   IconDocumentLine,
   IconDocumentTrayLine,
@@ -49,7 +50,10 @@ export function SettingsMenuMobile() {
 
   const storageNotice = storageMode && separateStorageNotice({ isIOS, isNativeApp, storageMode });
   const showAppSection =
-    installMode === "prompt" || installMode === "ios-manual" || biometryLabel !== null;
+    installMode === "prompt" ||
+    installMode === "ios-manual" ||
+    biometryLabel !== null ||
+    isNativeApp;
 
   return (
     <div className="flex flex-col gap-x3 px-x4 pt-x4 pb-x8">
@@ -86,6 +90,20 @@ export function SettingsMenuMobile() {
             />
           )}
           <BiometricSettingItem />
+          {/* 알림은 네이티브 앱에서만 받는다 (클라우드 저장일 때). */}
+          {isNativeApp && (
+            <ListButtonItem
+              prefix={<Icon svg={<IconBellLine />} />}
+              title="알림"
+              detail={
+                storageMode === "local"
+                  ? "클라우드에 저장할 때 받을 수 있어요"
+                  : "목표 도달, 비중 이탈, 리밸런싱"
+              }
+              suffix={chevron}
+              onClick={() => push("Notifications", {})}
+            />
+          )}
         </MenuCard>
       )}
 

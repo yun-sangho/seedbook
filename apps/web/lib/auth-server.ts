@@ -30,3 +30,20 @@ export async function resolveUserId(request: Request): Promise<string | null> {
   const { versions } = await getLegalVersions();
   return (await hasRequiredConsents(db, userId, versions, new Date())) ? userId : null;
 }
+
+/**
+ * `resolveUserId` 와 같은 검사를 하고 세션 id 도 돌려준다 — 세션에 묶이는 기기 등록(푸시 알림)에서 쓴다.
+ */
+export async function resolveUserSession(
+  request: Request
+): Promise<{ userId: string; sessionId: string } | null> {
+  const session = await auth.api.getSession({ headers: request.headers });
+  const userId = session?.user?.id ?? null;
+  const sessionId = session?.session?.id ?? null;
+  const expected = request.headers.get(ACCOUNT_HEADER);
+  if (!userId || !sessionId || (expected !== null && expected !== userId)) return null;
+  const { versions } = await getLegalVersions();
+  return (await hasRequiredConsents(db, userId, versions, new Date()))
+    ? { userId, sessionId }
+    : null;
+}

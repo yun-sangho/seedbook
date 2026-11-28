@@ -12,6 +12,7 @@ import { useSeedColorScheme } from "@mobile/components/mobile/seed-color-scheme"
 import { SystemBackButton } from "@mobile/components/mobile/system-back-button";
 import { ThemeProvider } from "@mobile/components/theme-provider";
 import { UpdateGate } from "@mobile/components/update-gate";
+import { NotificationPrompt } from "@mobile/features/notifications/components/notification-prompt";
 import { bundledAppPath, isBundledApp } from "@mobile/lib/native/bundled-app";
 import { registerServiceWorker } from "@mobile/lib/service-worker";
 import { createRoot } from "react-dom/client";
@@ -36,6 +37,8 @@ function App() {
             </Suspense>
             {/* 로그인 직후 한 번, 생체 인증 로그인을 켤지 묻는다 (네이티브 앱). */}
             <BiometricLoginOffer />
+            {/* 첫 씨앗을 심은 뒤 한 번, 알림을 받을지 묻는다 (네이티브 앱·클라우드 저장). */}
+            <NotificationPrompt />
           </AuthGate>
         </HydrationGate>
       </UpdateGate>

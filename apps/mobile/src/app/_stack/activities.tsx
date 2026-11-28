@@ -22,6 +22,7 @@ import { TradeEntryMobile } from "../assets/rebalancing/sessions/[id]/_component
 import { DataBackupMobile } from "../assets/settings/_components/data-backup-mobile";
 import { DeleteAccountMobile } from "../assets/settings/_components/delete-account-mobile";
 import { LoginMethodsMobile } from "../assets/settings/_components/login-methods-mobile";
+import { NotificationSettingsMobile } from "../assets/settings/_components/notification-settings-mobile";
 import { SettingsMenuMobile } from "../assets/settings/_components/settings-menu-mobile";
 import { StorageModeMobile } from "../assets/settings/_components/storage-mode-mobile";
 import { legalActivityOf } from "./legal-activity";
@@ -212,6 +213,15 @@ export function DataBackupActivity() {
   return (
     <DetailScreen title="백업">
       <DataBackupMobile />
+    </DetailScreen>
+  );
+}
+
+/** 설정 → 알림. */
+export function NotificationsActivity() {
+  return (
+    <DetailScreen title="알림">
+      <NotificationSettingsMobile />
     </DetailScreen>
   );
 }

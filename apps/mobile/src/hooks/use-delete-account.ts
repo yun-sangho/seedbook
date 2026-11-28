@@ -7,6 +7,7 @@ import { type DeleteAccountResult, deleteAccount } from "@mobile/lib/delete-acco
 import { reloadApp } from "@mobile/lib/device-storage";
 import { isBiometricLoginEnrolledFor } from "@mobile/lib/native/biometric-login";
 import { getBiometricLoginDeps } from "@mobile/lib/native/biometric-login-client";
+import { stopNotificationsOnSignOut } from "@mobile/lib/native/notifications";
 import { signOutAndReload } from "@mobile/lib/sign-out";
 
 /**
@@ -39,6 +40,8 @@ export function useDeleteAccount() {
     const result = await deleteAccount(authClient, accountStorage);
     if (result === "deleted") {
       if (ownsBiometricLogin) await biometric?.vault.remove();
+      // 서버의 기기 등록은 계정과 함께 지워졌다 — 이 기기의 푸시 등록과 예약한 알림을 끊는다.
+      await stopNotificationsOnSignOut();
       window.location.href = "/";
       return;
     }

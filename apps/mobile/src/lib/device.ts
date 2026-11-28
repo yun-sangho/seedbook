@@ -45,7 +45,7 @@ const MOBILE_SUPPORTED_PATTERNS = [
   /^\/assets\/rebalancing\/sessions\/[^/]+\/trades\/[^/]+$/,
   /^\/assets\/settings$/,
   // 설정 하위 화면. 로그인 수단 연결은 제공자 화면을 다녀와 이 주소로 돌아온다.
-  /^\/assets\/settings\/(login-methods|profile|storage|data|delete-account|terms|privacy)$/,
+  /^\/assets\/settings\/(login-methods|profile|storage|data|notifications|delete-account|terms|privacy)$/,
   // 이용약관·개인정보처리방침의 한 버전.
   /^\/assets\/settings\/(terms|privacy)\/[^/]+$/,
 ];

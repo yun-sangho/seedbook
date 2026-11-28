@@ -77,6 +77,8 @@ const config: CapacitorConfig = {
           autoUpdateStrategy: "none",
         }
       : { readyTimeout: 0, autoUpdateStrategy: "none" },
+    // 앱을 보고 있을 때 온 푸시도 배너로 보인다 (src/lib/native/notifications.ts).
+    PushNotifications: { presentationOptions: ["banner", "sound"] },
   },
 };
 

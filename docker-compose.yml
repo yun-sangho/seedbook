@@ -19,6 +19,10 @@ services:
       DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set in .env.local (Supabase connection string)}
       CRON_MORNING: ${CRON_MORNING:-0 6 * * 1-5}
       CRON_AFTERNOON: ${CRON_AFTERNOON:-30 16 * * 1-5}
+      # 목표 도달 푸시 알림 (APNs 인증 키). 하나라도 비면 보내지 않는다 (packages/database/src/push/apns.ts).
+      APNS_KEY_ID: ${APNS_KEY_ID:-}
+      APNS_PRIVATE_KEY_BASE64: ${APNS_PRIVATE_KEY_BASE64:-}
+      APPLE_TEAM_ID: ${APPLE_TEAM_ID:-}
       NODE_ENV: production
       # DB 풀 크기. Supabase session pooler 서버 연결 한도 15 를 web 8 + crawler 1 로 나눈다
       # (packages/database/src/client.ts 의 postgresPoolOptions).
