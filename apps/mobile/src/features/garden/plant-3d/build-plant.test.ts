@@ -277,10 +277,31 @@ describe("buildPlant", () => {
       const cloud = new THREE.Box3();
       built.root.traverse((node) => {
         if (!(node instanceof THREE.Mesh) || node instanceof THREE.InstancedMesh) return;
+        // 구름 그늘(땅·흙 위에 눕힌 판)은 구름이 아니다.
+        if (inRain(node) && node.geometry instanceof THREE.PlaneGeometry) return;
         (inRain(node) ? cloud : plantOnly).expandByObject(node);
       });
       expect(cloud.min.y).toBeGreaterThan(plantOnly.max.y);
     }
+  });
+
+  it("casts a darker shade on the ground and soil under a heavier rain", () => {
+    const shade = (rain: number) => {
+      const planes: THREE.Mesh[] = [];
+      plant({ stage: "sapling", rain }).root.traverse((node) => {
+        if (
+          node instanceof THREE.Mesh &&
+          inRain(node) &&
+          node.geometry instanceof THREE.PlaneGeometry
+        )
+          planes.push(node);
+      });
+      return planes;
+    };
+    expect(shade(0.2)).toHaveLength(2);
+    const opacity = (rain: number) =>
+      (shade(rain)[0]?.material as THREE.Material | undefined)?.opacity ?? 0;
+    expect(opacity(1)).toBeGreaterThan(opacity(0.2));
   });
 
   it("releases its geometry and materials on dispose", () => {

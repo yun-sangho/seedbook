@@ -4,14 +4,15 @@ import * as THREE from "three";
  * 비: 식물 위 작은 비구름에서 빗줄기가 떨어진다 (시장 하락, `plantRain`). 많이 내려갈수록 빗줄기가 많고
  * 굵고 빠르고 구름이 짙다. 식물(잎 색·처짐)은 바꾸지 않는다 — 그건 시듦(비중 이탈)이 정한다.
  *
- * 빗줄기는 `InstancedMesh` 하나(지오메트리·재질 하나)로 그리고, 매 프레임 미리 만든 행렬만 고쳐 쓴다
- * (할당 없음). 구름은 공 몇 개가 지오메트리 하나를 같이 쓰고, 재질은 식물 재질 묶음에서 받는다.
+ * 구름은 단순한 도형 셋 (누운 알약 하나 + 공 둘)이고 재질은 식물 재질 묶음(툰)에서 받아 정원 조명·밤을
+ * 그대로 따른다. 구름 아래 땅과 흙에는 그늘이 진다. 빗줄기는 `InstancedMesh` 하나(지오메트리·재질 하나)로
+ * 그리고, 매 프레임 미리 만든 행렬만 고쳐 쓴다 (할당 없음).
  */
 
 export const RAIN_KEY = "rain";
 
 const DROP_COLOR = "#8DB8DE";
-const CLOUD_LIGHT = "#E4E9EE";
+const CLOUD_LIGHT = "#EEF2F5";
 const CLOUD_DARK = "#9AA6B2";
 /** 빗줄기 수 (약한 비 → 센 비). */
 const MIN_DROPS = 5;
@@ -64,24 +65,87 @@ function hash01(seed: number, i: number, salt: number): number {
   return x - Math.floor(x);
 }
 
-/** 구름 공 (x, y, 반지름) — 밑이 평평하고 가운데가 솟은 뭉게구름. */
-const PUFFS: ReadonlyArray<readonly [number, number, number]> = [
-  [-0.36, 0.06, 0.2],
-  [-0.1, 0.14, 0.27],
-  [0.2, 0.1, 0.23],
-  [0.44, 0.04, 0.16],
+/**
+ * 구름 조각 — 단순한 도형만 쓴다. 공: `["ball", x, y, z, 반지름]`, 가로로 누운 알약(캡슐):
+ * `["pill", x, y, z, 반지름, 가운데 길이]` (전체 폭 = 길이 + 반지름 × 2).
+ */
+type CloudPart =
+  | readonly ["ball", number, number, number, number]
+  | readonly ["pill", number, number, number, number, number];
+
+/** 구름: 누운 알약 하나 위에 큰 공(왼쪽)과 작은 공(오른쪽, 큰 공에 붙여 조금 높게). */
+const CLOUD_PARTS: readonly CloudPart[] = [
+  ["pill", 0, 0, 0, 0.15, 0.62],
+  ["ball", -0.08, 0.13, 0, 0.24],
+  ["ball", 0.19, 0.12, 0, 0.16],
 ];
+
+/** 구름 그늘 색 (푸른 회색) — 비가 셀수록 진하다. */
+const CLOUD_SHADOW_RGB = "34,44,64";
+const SHADOW_MIN_OPACITY = 0.6;
+const SHADOW_MAX_OPACITY = 1;
+
+/**
+ * 구름 그늘: 땅(화분 둘레)과 흙 위에 눕힌 둥근 그림자 두 장. 가운데가 진하고 가장자리로 사라지는 텍스처
+ * 하나·재질 하나를 같이 쓴다.
+ */
+function createCloudShade(rain: number, soilY: number) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 64;
+  const c2d = canvas.getContext("2d");
+  if (c2d) {
+    const gradient = c2d.createRadialGradient(32, 32, 2, 32, 32, 32);
+    gradient.addColorStop(0, `rgba(${CLOUD_SHADOW_RGB},0.7)`);
+    gradient.addColorStop(0.55, `rgba(${CLOUD_SHADOW_RGB},0.45)`);
+    gradient.addColorStop(1, `rgba(${CLOUD_SHADOW_RGB},0)`);
+    c2d.fillStyle = gradient;
+    c2d.fillRect(0, 0, 64, 64);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    transparent: true,
+    depthWrite: false,
+    opacity: SHADOW_MIN_OPACITY + (SHADOW_MAX_OPACITY - SHADOW_MIN_OPACITY) * Math.min(1, rain),
+  });
+  const geometry = new THREE.PlaneGeometry(1, 1);
+  const group = new THREE.Group();
+  // 땅: 화분 둘레까지 넓게. 흙: 화분 안 흙 표면만.
+  for (const [y, size] of [
+    [0.006, 1.9],
+    [soilY, 1.0],
+  ] as const) {
+    const plane = new THREE.Mesh(geometry, material);
+    plane.rotation.x = -Math.PI / 2;
+    plane.position.y = y;
+    plane.scale.set(size, size, 1);
+    plane.renderOrder = 1;
+    plane.raycast = () => {};
+    group.add(plane);
+  }
+  return {
+    object: group,
+    dispose() {
+      texture.dispose();
+      material.dispose();
+      geometry.dispose();
+    },
+  };
+}
 
 /**
  * @param rain 0~1. 0 이면 만들지 않는다 (null).
  * @param height 식물 꼭대기 높이 (화분 바닥 기준) — 구름이 그 위에 뜬다.
  * @param cloudMaterial 구름 재질 (식물 재질 묶음이 만들고 치운다).
+ * @param soilY 화분 흙 표면 높이 — 구름 그늘을 흙 위에도 눕힌다.
  */
 export function createRain(
   rain: number,
   height: number,
   seed: number,
-  cloudMaterial: (color: THREE.ColorRepresentation) => THREE.Material
+  cloudMaterial: (color: THREE.ColorRepresentation) => THREE.Material,
+  soilY = 0.6
 ): Rain | null {
   const look = rainLook(rain);
   if (!look) return null;
@@ -89,18 +153,31 @@ export function createRain(
   group.userData[RAIN_KEY] = true;
   const top = height + CLOUD_GAP;
 
-  const puffGeometry = new THREE.SphereGeometry(1, 14, 10);
+  // 공은 지오메트리 하나를 크기만 바꿔 쓰고, 알약은 끝이 찌그러지지 않게 조각마다 만든다.
+  const ballGeometry = new THREE.SphereGeometry(1, 18, 12);
+  const geometries: THREE.BufferGeometry[] = [ballGeometry];
   const cloud = new THREE.Group();
   const material = cloudMaterial(look.cloudColor);
-  for (const [x, y, r] of PUFFS) {
-    const puff = new THREE.Mesh(puffGeometry, material);
-    puff.position.set(x, y, 0);
-    puff.scale.set(r, r * 0.82, r * 0.9);
-    puff.raycast = () => {};
-    cloud.add(puff);
+  for (const part of CLOUD_PARTS) {
+    const [kind, x, y, z, radius] = part;
+    let mesh: THREE.Mesh;
+    if (kind === "ball") {
+      mesh = new THREE.Mesh(ballGeometry, material);
+      mesh.scale.setScalar(radius);
+    } else {
+      const pill = new THREE.CapsuleGeometry(radius, part[5], 8, 18).rotateZ(Math.PI / 2);
+      geometries.push(pill);
+      mesh = new THREE.Mesh(pill, material);
+    }
+    mesh.position.set(x, y, z);
+    mesh.raycast = () => {};
+    cloud.add(mesh);
   }
   cloud.position.set(-0.04, top, 0.1);
   group.add(cloud);
+  // 구름 아래는 그늘이 진다 (땅과 흙 위).
+  const shade = createCloudShade(rain, soilY);
+  group.add(shade.object);
 
   const dropGeometry = new THREE.CylinderGeometry(1, 1, 1, 5, 1);
   const dropMaterial = new THREE.MeshBasicMaterial({
@@ -150,7 +227,8 @@ export function createRain(
       drops.instanceMatrix.needsUpdate = true;
     },
     dispose() {
-      puffGeometry.dispose();
+      for (const geometry of geometries) geometry.dispose();
+      shade.dispose();
       dropGeometry.dispose();
       dropMaterial.dispose();
       drops.dispose();

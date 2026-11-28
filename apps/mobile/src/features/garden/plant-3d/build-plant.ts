@@ -545,7 +545,14 @@ export function buildPlant(options: PlantOptions): BuiltPlant {
   }
 
   // 비는 식물 위에만 내린다 — 식물(잎 색·처짐·흔들림)은 그대로다.
-  const rain = createRain(options.rain, badgeHeight, options.seed, (color) => kit.get(color));
+  const rain = createRain(
+    options.rain,
+    badgeHeight,
+    options.seed,
+    (color) => kit.get(color),
+    // 흙 표면 바로 위 (흙 원판보다 살짝 높게).
+    SOIL_Y - 0.025
+  );
   if (rain) {
     root.add(rain.object);
     disposers.push(rain.dispose);

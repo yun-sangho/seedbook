@@ -66,7 +66,8 @@ export function wiltSag(wilt: number): number {
 export interface PlantOptions {
   stage: PlantStage;
   /**
-   * 비 0 (맑음) ~ 1. 시장 하락 (`plantRain`) — 식물 위 비구름에서 빗줄기가 떨어지고, 셀수록 많고 굵다.
+   * 비 0 (맑음) ~ 1. 시장 하락 (`plantRain`) — 식물 위 비구름에서 빗줄기가 떨어지고 화분에 그늘이 진다.
+   * 셀수록 빗줄기가 많고 굵고 구름·그늘이 짙다.
    * 식물(잎 색·모양·흔들림)은 그대로다.
    */
   rain: number;
