@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   type BiometricLoginDeps,
   type BiometricVault,
+  biometricLoginEnabledFor,
   classifyBiometricError,
   clearSignedOutMark,
   disableBiometricLogin,
   dismissBiometricLoginOffer,
   enrollBiometricLogin,
+  hasBiometricLoginOnDevice,
   isSignedOutMarked,
   markSignedOut,
   readBiometricLoginEnrollment,
@@ -386,5 +388,72 @@ describe("signed-out mark (no automatic prompt after signing out, until signed i
     clearSignedOutMark(session);
 
     expect(isSignedOutMarked(session)).toBe(false);
+  });
+});
+
+describe("biometricLoginEnabledFor (settings status follows the Keychain vault)", () => {
+  it("is on when this user enrolled and the vault still holds the token", async () => {
+    const { deps } = setup();
+    await enrollBiometricLogin(deps, "user-1");
+
+    expect(await biometricLoginEnabledFor(deps, "user-1")).toBe(true);
+  });
+
+  it("is off for another account on the same device", async () => {
+    const { deps } = setup();
+    await enrollBiometricLogin(deps, "user-1");
+
+    expect(await biometricLoginEnabledFor(deps, "user-2")).toBe(false);
+  });
+
+  it("is off and forgets the stale enrollment when the vault item is gone", async () => {
+    // 금고 항목이 없어졌다 (생체 정보 변경, 다른 키로 저장된 옛 항목, 앱 재설치).
+    const { deps, vault, storage } = setup();
+    await enrollBiometricLogin(deps, "user-1");
+    vault.stored = null;
+
+    expect(await biometricLoginEnabledFor(deps, "user-1")).toBe(false);
+    expect(readBiometricLoginEnrollment(storage)).toBeNull();
+  });
+
+  it("is off when the vault holds a token but this device does not know whose it is", async () => {
+    const { deps, vault } = setup();
+    vault.stored = { credentialId: "cred-x", token: "token-x" };
+
+    expect(await biometricLoginEnabledFor(deps, "user-1")).toBe(false);
+  });
+});
+
+describe("hasBiometricLoginOnDevice (login screen button and automatic prompt)", () => {
+  it("is true when the vault holds a token", async () => {
+    const { deps } = setup();
+    await enrollBiometricLogin(deps, "user-1");
+
+    expect(await hasBiometricLoginOnDevice(deps)).toBe(true);
+  });
+
+  it("is false without a vault item, so no prompt opens just to fail", async () => {
+    const { deps, vault, storage } = setup();
+    await enrollBiometricLogin(deps, "user-1");
+    vault.stored = null;
+
+    expect(await hasBiometricLoginOnDevice(deps)).toBe(false);
+    expect(readBiometricLoginEnrollment(storage)).toBeNull();
+  });
+
+  it("is true when the vault holds a token even if this device lost its enrollment note", async () => {
+    const { deps, vault } = setup();
+    vault.stored = { credentialId: "cred-x", token: "token-x" };
+
+    expect(await hasBiometricLoginOnDevice(deps)).toBe(true);
+  });
+
+  it("treats a failing existence check as no vault item", async () => {
+    const { deps } = setup();
+    deps.vault.exists = async () => {
+      throw new Error("keychain unavailable");
+    };
+
+    expect(await hasBiometricLoginOnDevice(deps)).toBe(false);
   });
 });

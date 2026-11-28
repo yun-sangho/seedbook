@@ -7,11 +7,11 @@ import { useBiometryLabel } from "@mobile/hooks/use-biometry-label";
 import { useSession } from "@mobile/lib/auth-client";
 import { BIOMETRY_WITH_RO, type BiometryName } from "@mobile/lib/native/biometric";
 import {
+  biometricLoginEnabledFor,
   disableBiometricLogin,
   dismissBiometricLoginOffer,
   type EnrollResult,
   enrollBiometricLogin,
-  isBiometricLoginEnrolledFor,
   shouldOfferBiometricLogin,
 } from "@mobile/lib/native/biometric-login";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
@@ -137,8 +137,16 @@ export function BiometricLoginSettingItem() {
   const [message, setMessage] = useState<string | null>(null);
 
   const userId = session?.userId;
+  // 기기 저장소의 등록 표시만 믿지 않고 금고(Keychain/Keystore)에 토큰이 남아 있는지 함께 본다.
   useEffect(() => {
-    if (deps && userId) setEnrolled(isBiometricLoginEnrolledFor(deps.storage, userId));
+    if (!deps || !userId) return;
+    let cancelled = false;
+    void biometricLoginEnabledFor(deps, userId).then((value) => {
+      if (!cancelled) setEnrolled(value);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [deps, userId]);
 
   if (!deps || !biometryLabel || !userId) return null;

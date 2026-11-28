@@ -183,6 +183,37 @@ export async function disableBiometricLogin(deps: BiometricLoginDeps): Promise<v
   clearEnrollment(storage);
 }
 
+async function vaultHoldsToken(vault: BiometricVault): Promise<boolean> {
+  try {
+    return await vault.exists();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 이 기기에 생체 인증 로그인 토큰이 있는지 (로그인 화면 버튼·자동 프롬프트). 금고(Keychain/Keystore)
+ * 를 기준으로 본다 — 금고가 비었으면 기기 저장소의 등록 표시도 지운다. 누구의 것인지 표시가 없어도
+ * 금고에 토큰이 있으면 그 토큰으로 로그인할 수 있다.
+ */
+export async function hasBiometricLoginOnDevice(deps: BiometricLoginDeps): Promise<boolean> {
+  if (await vaultHoldsToken(deps.vault)) return true;
+  if (readBiometricLoginEnrollment(deps.storage)) clearEnrollment(deps.storage);
+  return false;
+}
+
+/**
+ * 설정에 보일 상태: 이 계정(`userId`)으로 켰고 금고에 토큰이 남아 있을 때만 켜짐. 금고가 비었으면
+ * 등록 표시를 지운다 (생체 정보가 바뀌었거나, 다른 키로 저장된 옛 항목이거나, 앱을 다시 설치했다).
+ */
+export async function biometricLoginEnabledFor(
+  deps: BiometricLoginDeps,
+  userId: string
+): Promise<boolean> {
+  if (!(await hasBiometricLoginOnDevice(deps))) return false;
+  return isBiometricLoginEnrolledFor(deps.storage, userId);
+}
+
 const OFFER_DISMISSED_STORAGE_KEY = "seedbook.biometric-login.offer-dismissed";
 // 서버는 로그인한 지 freshAge (기본 1일) 가 지난 세션의 등록을 거절한다. 여유를 두고 그보다 짧게.
 const OFFER_SESSION_WINDOW_MS = 23 * 60 * 60 * 1000;
