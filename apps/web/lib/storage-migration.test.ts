@@ -1,12 +1,8 @@
 import { __resetAccountForTests, activateAccount } from "@web/lib/account-storage";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  downloadAllFromCloud,
-  hasAnyLocalData,
-  type MigrationProgress,
-  uploadAllToCloud,
-} from "./storage-migration";
-import { CLOUD_STORE_KEYS } from "./storage-mode";
+import { downloadAllFromCloud, hasAnyLocalData, uploadAllToCloud } from "./storage-migration";
+import { getRecordLayer } from "./sync/record-sync";
+import { SYNC_STATE_KEY } from "./sync/v2/record-layer";
 
 /**
  * 저장소 모드 전환 헬퍼 테스트. `fetch` 를 모킹해 네트워크 왕복을 흉내낸다.
@@ -45,11 +41,102 @@ describe("hasAnyLocalData", () => {
     expect(await hasAnyLocalData()).toBe(false);
   });
 
-  it("아무 cloud key 라도 있으면 true", async () => {
-    window.localStorage.setItem("investment-storage", '{"state":{}}');
+  it("자산이 하나라도 있으면 true", async () => {
+    window.localStorage.setItem(
+      "investment-storage",
+      JSON.stringify({
+        state: {
+          investments: [
+            {
+              id: "11111111-1111-4111-8111-111111111111",
+              accountName: "a",
+              accountType: "일반",
+              currency: "KRW",
+              initialInvestment: 0,
+              currentValue: 0,
+              color: "#000000",
+            },
+          ],
+        },
+        version: 6,
+      })
+    );
     expect(await hasAnyLocalData()).toBe(true);
   });
 });
+
+const LOCAL = "11111111-1111-4111-8111-1111111111aa";
+const CLOUD = "11111111-1111-4111-8111-1111111111bb";
+
+const accountItem = (id: string, accountName: string) => ({
+  id,
+  accountName,
+  accountType: "일반",
+  currency: "KRW",
+  initialInvestment: 0,
+  currentValue: 0,
+  note: "",
+  color: "#000000",
+  records: [],
+  holdings: [],
+  cashItems: [],
+});
+
+const accountFields = (accountName: string) => ({
+  accountName,
+  accountType: "일반",
+  currency: "KRW",
+  initialInvestment: 0,
+  currentValue: 0,
+  note: "",
+  color: "#000000",
+  portfolioId: null,
+});
+
+const serverAccount = (id: string, accountName: string) => ({
+  type: "account",
+  id,
+  parentId: null,
+  version: 1,
+  changeSeq: "1",
+  deletedAt: null,
+  sortKey: "a0",
+  fields: accountFields(accountName),
+});
+
+/** 동기화 v2 서버 흉내: pull 은 가진 레코드를 주고, push 는 받은 op 를 모두 받아들여 레코드에 더한다. */
+function fakeSyncServer(
+  initial: Array<ReturnType<typeof serverAccount>> = [],
+  options: { pushStatus?: number } = {}
+) {
+  const records = [...initial];
+  const pushed: Array<{ type: string; id: string; op: string; fields?: Record<string, unknown> }> =
+    [];
+  const calls = mockFetch((call) => {
+    if (call.url.startsWith("/api/sync/v2/pull")) {
+      return jsonResponse({ protocol: 2, records, cursor: "c", hasMore: false, reset: false });
+    }
+    if (call.url === "/api/sync/v2/push") {
+      if (options.pushStatus) return jsonResponse({}, options.pushStatus);
+      const { ops } = JSON.parse(String(call.init?.body)) as { ops: typeof pushed };
+      pushed.push(...ops);
+      for (const op of ops) {
+        const existing = records.find((r) => r.id === op.id);
+        if (existing) Object.assign(existing.fields, op.fields);
+        else records.push({ ...serverAccount(op.id, ""), fields: { ...op.fields } as never });
+      }
+      return jsonResponse({
+        results: ops.map((_, i) => ({ status: "ok", version: 1, changeSeq: String(i + 2) })),
+      });
+    }
+    if (call.url === "/api/account-snapshots") return jsonResponse({ snapshots: [] });
+    return jsonResponse({ ok: true });
+  });
+  return { calls, pushed };
+}
+
+const investmentEnvelope = (...items: unknown[]) =>
+  JSON.stringify({ state: { investments: items }, version: 6 });
 
 describe("uploadAllToCloud", () => {
   beforeEach(() => window.localStorage.clear());
@@ -58,105 +145,54 @@ describe("uploadAllToCloud", () => {
     delete (globalThis as any).fetch;
   });
 
-  it("로컬에 있는 key 만 순차적으로 PUT 한다", async () => {
+  it("creates the device's records on the server and keeps the cloud-only ones", async () => {
     window.localStorage.setItem(
       "investment-storage",
-      JSON.stringify({ state: { investments: [] }, version: 3 })
+      investmentEnvelope(accountItem(LOCAL, "로컬"))
     );
-    window.localStorage.setItem(
-      "portfolio-storage",
-      JSON.stringify({ state: { portfolios: [] }, version: 3 })
-    );
-
-    const calls = mockFetch(() => jsonResponse({ ok: true }));
-    const progress: MigrationProgress[] = [];
-
-    await uploadAllToCloud((p) => progress.push({ ...p }));
-
-    // 2 개 key 만 PUT 이 나가야 한다
-    const puts = calls.filter((c) => c.init?.method === "PUT");
-    expect(puts).toHaveLength(2);
-    expect(puts[0]!.url).toContain("investment-storage");
-    expect(puts[1]!.url).toContain("portfolio-storage");
-
-    // 나머지 4 개는 skipped phase 를 봤어야 한다
-    const skipped = progress.filter((p) => p.phase === "skipped");
-    expect(skipped).toHaveLength(CLOUD_STORE_KEYS.length - 2);
-  });
-
-  it("PUT 실패 시 에러를 throw 한다", async () => {
-    window.localStorage.setItem(
-      "investment-storage",
-      JSON.stringify({ state: { investments: [] }, version: 3 })
-    );
-    mockFetch(() => jsonResponse({ error: "boom" }, 500));
-
-    await expect(uploadAllToCloud()).rejects.toThrow(/업로드 실패/);
-  });
-
-  it("클라우드에만 있는 항목을 지우지 않고 로컬과 합쳐서 PUT 한다", async () => {
-    window.localStorage.setItem(
-      "investment-storage",
-      JSON.stringify({ state: { investments: [{ id: "local", accountName: "로컬" }] }, version: 3 })
-    );
-    const calls = mockFetch((call) =>
-      call.init?.method === "PUT"
-        ? jsonResponse({ ok: true })
-        : jsonResponse({
-            data: {
-              state: { investments: [{ id: "cloud", accountName: "클라우드" }] },
-              version: 2,
-            },
-          })
-    );
+    const { pushed } = fakeSyncServer([serverAccount(CLOUD, "클라우드")]);
 
     await uploadAllToCloud();
 
-    const put = calls.find((c) => c.init?.method === "PUT" && c.url.includes("investment-storage"));
-    const sent = JSON.parse(String(put!.init!.body)).data;
-    expect(sent.state.investments.map((d: { id: string }) => d.id)).toEqual(["local", "cloud"]);
+    expect(pushed).toEqual([expect.objectContaining({ type: "account", id: LOCAL, op: "create" })]);
+    const records = await getRecordLayer().loadRecords();
+    expect([...records.values()].map((r) => r.id).sort()).toEqual([LOCAL, CLOUD].sort());
   });
 
-  it("로컬에 항목이 없으면 클라우드 데이터를 다시 쓰지 않는다 (새 기기 첫 로그인)", async () => {
+  it("sends only the fields that differ for a record the server already has (local wins)", async () => {
     window.localStorage.setItem(
       "investment-storage",
-      JSON.stringify({ state: { investments: [], holdingsSortOption: "evalDesc" }, version: 6 })
+      investmentEnvelope(accountItem(LOCAL, "새 이름"))
     );
-    const calls = mockFetch(() =>
-      jsonResponse({
-        data: {
-          state: { investments: [{ id: "cloud" }], holdingsSortOption: "nameAsc" },
-          version: 4,
-        },
-      })
-    );
+    const { pushed } = fakeSyncServer([serverAccount(LOCAL, "옛 이름")]);
 
     await uploadAllToCloud();
 
-    expect(calls.filter((c) => c.init?.method === "PUT")).toEqual([]);
+    expect(pushed).toEqual([
+      expect.objectContaining({ op: "patch", fields: { accountName: "새 이름" } }),
+    ]);
   });
 
-  it("전환 뒤 이전 클라우드 세션의 동기화 대기열을 비운다", async () => {
+  it("throws when the server does not take the data", async () => {
+    window.localStorage.setItem(
+      "investment-storage",
+      investmentEnvelope(accountItem(LOCAL, "로컬"))
+    );
+    fakeSyncServer([], { pushStatus: 500 });
+
+    await expect(uploadAllToCloud()).rejects.toThrow(/올리지 못했어요/);
+  });
+
+  it("clears the old v1 sync queue after switching", async () => {
     window.localStorage.setItem(
       "seedbook.sync.rebalancing",
       JSON.stringify({ userId: "u", meta: {} })
     );
-    mockFetch(() => jsonResponse({ ok: true }));
+    fakeSyncServer();
 
     await uploadAllToCloud();
 
     expect(window.localStorage.getItem("seedbook.sync.rebalancing")).toBeNull();
-  });
-
-  it("envelope 가 손상된 key 는 조용히 스킵한다", async () => {
-    window.localStorage.setItem("investment-storage", "not-json");
-    const calls = mockFetch(() => jsonResponse({ ok: true }));
-
-    await uploadAllToCloud();
-
-    // 손상된 key 는 PUT 되지 않는다
-    const puts = calls.filter((c) => c.init?.method === "PUT");
-    expect(puts).toHaveLength(0);
   });
 });
 
@@ -167,69 +203,41 @@ describe("downloadAllFromCloud", () => {
     delete (globalThis as any).fetch;
   });
 
-  it("각 key 에 대해 GET 후 localStorage 에 기록한다", async () => {
-    let counter = 0;
-    mockFetch(() =>
-      jsonResponse({
-        data: { state: { foo: counter++ }, version: 1 },
-        updatedAt: null,
-      })
-    );
-
-    await downloadAllFromCloud();
-
-    for (const key of CLOUD_STORE_KEYS) {
-      const raw = window.localStorage.getItem(key);
-      expect(raw).not.toBeNull();
-      const parsed = JSON.parse(raw!);
-      expect(parsed.state).toBeDefined();
-    }
-  });
-
-  it("클라우드에 데이터가 없어도 로컬 데이터는 지우지 않는다", async () => {
-    const local = JSON.stringify({ state: { investments: [{ id: "a" }] }, version: 6 });
-    window.localStorage.setItem("investment-storage", local);
-    mockFetch(() => jsonResponse({ data: null, updatedAt: null }));
-
-    await downloadAllFromCloud();
-
-    expect(window.localStorage.getItem("investment-storage")).toBe(local);
-  });
-
-  it("로컬에만 있는 항목(아직 못 보낸 변경 포함)을 남기고 클라우드와 합친다", async () => {
+  it("keeps the device records and adds the cloud ones", async () => {
     window.localStorage.setItem(
       "investment-storage",
-      JSON.stringify({
-        state: { investments: [{ id: "unsent", accountName: "방금 입력" }] },
-        version: 3,
-      })
+      investmentEnvelope(accountItem(LOCAL, "로컬"))
     );
-    mockFetch(() =>
-      jsonResponse({ data: { state: { investments: [{ id: "cloud" }] }, version: 2 } })
-    );
+    fakeSyncServer([serverAccount(CLOUD, "클라우드")]);
 
     await downloadAllFromCloud();
 
-    const merged = JSON.parse(window.localStorage.getItem("investment-storage")!);
-    expect(merged.state.investments.map((d: { id: string }) => d.id)).toEqual(["unsent", "cloud"]);
+    const records = await getRecordLayer().loadRecords();
+    expect([...records.values()].map((r) => r.id).sort()).toEqual([LOCAL, CLOUD].sort());
+    expect(window.localStorage.getItem(SYNC_STATE_KEY)).toBeNull();
   });
 
-  it("로컬 모드로 바꾸면 동기화 대기열을 비운다 (다시 켰을 때 옛 변경을 재전송하지 않도록)", async () => {
-    window.localStorage.setItem(
-      "seedbook.sync.rebalancing",
-      JSON.stringify({ userId: "u", meta: {} })
-    );
-    mockFetch(() => jsonResponse({ data: null }));
+  it("refuses to switch while changes cannot be sent", async () => {
+    fakeSyncServer([], { pushStatus: 500 });
+    await getRecordLayer().applySync((_local, state) => ({
+      state: {
+        ...state,
+        outbox: {
+          [`account:${LOCAL}`]: {
+            type: "account",
+            id: LOCAL,
+            op: "patch",
+            parentId: null,
+            fields: { note: "x" },
+            seq: 1,
+          },
+        },
+      },
+      changes: [],
+      result: undefined,
+    }));
 
-    await downloadAllFromCloud();
-
-    expect(window.localStorage.getItem("seedbook.sync.rebalancing")).toBeNull();
-  });
-
-  it("GET 실패 시 에러를 throw 한다", async () => {
-    mockFetch(() => jsonResponse({ error: "nope" }, 500));
-
-    await expect(downloadAllFromCloud()).rejects.toThrow(/다운로드 실패/);
+    await expect(downloadAllFromCloud()).rejects.toThrow(/보내지 못한 변경/);
   });
 });
 
@@ -261,16 +269,14 @@ describe("account value history on a mode switch", () => {
       "account-snapshot-storage",
       JSON.stringify({ state: { snapshots: [snapshot("2026-11-24", 1)] }, version: 1 })
     );
-    const calls = mockFetch(() => jsonResponse({ ok: true }));
+    const { calls } = fakeSyncServer();
 
     await uploadAllToCloud();
 
-    const writes = calls.filter((c) => c.init?.method === "PUT" || c.init?.method === "POST");
-    expect(writes.map((c) => c.url)).toEqual([
-      "/api/storage/investment-storage",
-      "/api/account-snapshots",
-    ]);
-    expect(JSON.parse(String(writes[1]!.init?.body))).toEqual({
+    const writes = calls.filter(
+      (c) => c.url === "/api/account-snapshots" && c.init?.method === "POST"
+    );
+    expect(JSON.parse(String(writes[0]!.init?.body))).toEqual({
       snapshots: [snapshot("2026-11-24", 1)],
     });
   });
@@ -283,7 +289,7 @@ describe("account value history on a mode switch", () => {
     mockFetch((call) =>
       call.url === "/api/account-snapshots"
         ? jsonResponse({ snapshots: [snapshot("2026-11-23", 9), snapshot("2026-11-24", 9)] })
-        : jsonResponse({ data: null })
+        : jsonResponse({ protocol: 2, records: [], cursor: "c", hasMore: false, reset: false })
     );
 
     await downloadAllFromCloud();
@@ -294,7 +300,9 @@ describe("account value history on a mode switch", () => {
 
   it("fails the switch when the snapshots cannot be downloaded", async () => {
     mockFetch((call) =>
-      call.url === "/api/account-snapshots" ? jsonResponse({}, 500) : jsonResponse({ data: null })
+      call.url === "/api/account-snapshots"
+        ? jsonResponse({}, 500)
+        : jsonResponse({ protocol: 2, records: [], cursor: "c", hasMore: false, reset: false })
     );
 
     await expect(downloadAllFromCloud()).rejects.toThrow(/계좌 총액 기록/);

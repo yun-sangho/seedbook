@@ -4,11 +4,11 @@ import { type ReactNode, useEffect, useState } from "react";
 import { AccountValueHistoryRunner } from "@web/components/account-value-history-runner";
 import { sessionStorageOrNull } from "@web/components/biometric-sign-in-button";
 import { ConsentGate } from "@web/components/consent-gate";
-import { EntitySyncRunner } from "@web/components/entity-sync-runner";
 import { LoginScreen } from "@web/components/login-screen";
 import { AppLockOverlay } from "@web/components/mobile/app-lock";
 import { PortfolioPlantGrowthRunner } from "@web/components/portfolio-plant-growth-runner";
 import { PreferencesSync } from "@web/components/preferences-sync";
+import { RecordSyncRunner } from "@web/components/record-sync-runner";
 import { StorageModeSync } from "@web/components/storage-mode-sync";
 import { OnboardingGate } from "@web/features/onboarding/components/onboarding-gate";
 import { useSession } from "@web/lib/auth-client";
@@ -83,7 +83,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
         <OnboardingGate>
           <StorageModeSync />
           <PreferencesSync />
-          <EntitySyncRunner />
+          <RecordSyncRunner />
           <AccountValueHistoryRunner />
           <PortfolioPlantGrowthRunner />
           {children}

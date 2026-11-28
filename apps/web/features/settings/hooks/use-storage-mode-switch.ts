@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { reloadApp } from "@web/lib/device-storage";
 import {
-  CLOUD_STORE_LABELS,
   downloadAllFromCloud,
   hasAnyLocalData,
   type MigrationProgress,
@@ -90,6 +89,6 @@ export function describeSwitchProgress(
       ? "올릴 데이터를 준비하고 있어요"
       : "받을 데이터를 준비하고 있어요";
   }
-  const verb = direction === "to-cloud" ? "올리는 중" : "받는 중";
-  return `${CLOUD_STORE_LABELS[progress.key]} ${verb} (${progress.index + 1}/${progress.total})`;
+  if (progress.step === "history") return "계좌 금액 기록을 맞추고 있어요";
+  return direction === "to-cloud" ? "자산 데이터를 올리는 중 (1/2)" : "자산 데이터를 받는 중 (1/2)";
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import type { SyncStatus } from "@web/lib/sync/v2/engine";
 import { create } from "zustand";
 
 /**
@@ -24,6 +25,13 @@ interface SyncStatusState {
   markOffline: (key: string) => void;
   markError: (key: string, error: string) => void;
   markUnauthenticated: () => void;
+
+  /**
+   * 동기화 v2 상태 (설계 §5.8): 마지막 성공 시각, 멈춘 이유, 보지 않은 격리. 건수·목록은 두지 않는다.
+   * cloud 모드에서 엔진이 채운다.
+   */
+  sync: SyncStatus | null;
+  setSyncStatus: (status: SyncStatus) => void;
 }
 
 /**
@@ -69,4 +77,7 @@ export const useSyncStatusStore = create<SyncStatusState>((set) => ({
     }),
 
   markUnauthenticated: () => set({ state: "unauthenticated", lastError: "session expired" }),
+
+  sync: null,
+  setSyncStatus: (sync) => set({ sync }),
 }));

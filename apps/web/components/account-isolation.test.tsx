@@ -91,27 +91,46 @@ function fakeServer() {
       return json({ data: { state: { investments: [...user.accounts.values()] }, version: 4 } });
     }
     if (url.startsWith("/api/storage/")) return json({ data: null });
-    if (url.startsWith("/api/sync/pull")) {
+    if (url.startsWith("/api/sync/v2/pull")) {
       return json({
-        cursor: "2026-11-25T00:00:00.000Z",
-        changes: {
-          investment: [...user.accounts].map(([id, data]) => ({
+        protocol: 2,
+        records: [...user.accounts].map(([id, data], i) => {
+          const {
+            id: _id,
+            records,
+            holdings,
+            cashItems,
+            sellCostPercent,
+            ...fields
+          } = data as InvestmentItem;
+          return {
+            type: "account",
             id,
+            parentId: null,
             version: 1,
+            changeSeq: String(i + 1),
             deletedAt: null,
-            data,
-          })),
-          portfolio: [],
-          rebalancing: [],
-          listOrder: [],
-        },
+            sortKey: null,
+            fields: { portfolioId: null, ...fields },
+          };
+        }),
+        cursor: "c",
+        hasMore: false,
+        reset: false,
       });
     }
-    if (url.startsWith("/api/sync/mutations")) {
-      for (const m of body.mutations) {
-        if (m.entity === "investment" && m.op === "upsert") user.accounts.set(m.id, m.data);
+    if (url.startsWith("/api/sync/v2/push")) {
+      for (const op of body.ops) {
+        if (op.type !== "account" || op.op === "delete") continue;
+        user.accounts.set(op.id, {
+          id: op.id,
+          ...(user.accounts.get(op.id) as object),
+          ...op.fields,
+        });
       }
-      return json({ results: body.mutations.map(() => ({ status: "ok", version: 2 })) });
+      return json({
+        results: body.ops.map(() => ({ status: "ok", version: 2, changeSeq: "1" })),
+      });
     }
     return json({}, 404);
   };
@@ -184,9 +203,10 @@ async function openPage(initial: SessionState) {
       });
     },
     add: async (name: string) => {
-      act(() =>
-        useInvestmentStore.setState((s) => ({ investments: [...s.investments, account(name)] }))
-      );
+      // 저장(persist)이 비동기라 act 안에서 끝까지 기다린다.
+      await act(async () => {
+        useInvestmentStore.setState((s) => ({ investments: [...s.investments, account(name)] }));
+      });
       await settle();
     },
     focus: async () => {
@@ -435,7 +455,7 @@ describe("switching the storage mode within one account", () => {
 
     const again = await openAs("user-a");
 
-    expect(server.names("user-a")).toEqual(["A의 계좌", "새 계좌"]);
+    expect(server.names("user-a").sort()).toEqual(["A의 계좌", "새 계좌"]);
     expect(again.shown()?.split(",").sort()).toEqual(["A의 계좌", "새 계좌"]);
   });
 });

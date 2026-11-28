@@ -6,6 +6,7 @@ import { Icon } from "@seed-design/react";
 import { useFlow } from "@stackflow/react";
 import { setRootBack } from "@web/app/m/_stack/stack-control";
 import { PriceAsOfBanner } from "@web/components/mobile/price-as-of-banner";
+import { SyncProblemBanner } from "@web/components/mobile/sync-problem-banner";
 import { GardenCanvas } from "@web/features/garden/components/garden-canvas";
 import { gardenLayout, spotsTallestToBack } from "@web/features/garden/plant-3d/garden-layout";
 import type { PlantSlot } from "@web/features/garden/plant-3d/plant-renderer";
@@ -164,6 +165,7 @@ export function HomeMobile() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* 시세 기준은 정원 전체·포커스 모두 앱바 바로 아래에 붙인다. */}
+      <SyncProblemBanner />
       <PriceAsOfBanner prices={prices} />
       <div ref={areaRef} className="garden-sky relative min-h-0 flex-1 overflow-hidden">
         <GardenCanvas
