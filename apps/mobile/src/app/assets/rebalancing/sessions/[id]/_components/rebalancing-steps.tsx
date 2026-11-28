@@ -74,7 +74,6 @@ export function RebalancingSteps({
           key={current.id}
           session={session}
           task={current}
-          position={`${index + 1}/${tasks.length}`}
           // 추천 단계면 그 이유(판 돈으로 산다·돈이 모자라다)를, 아니면 이 매매의 금액만.
           action={current.id === recommendedId ? recommended : null}
           onShowCash={onShowCash}
@@ -169,14 +168,12 @@ function StepProgress({
 function CurrentStep({
   session,
   task,
-  position,
   action,
   onShowCash,
   onDone,
 }: {
   session: RebalancingSession;
   task: RebalancingTask;
-  position: string;
   action: NextRebalancingAction | null;
   onShowCash: (() => void) | null;
   onDone: () => void;
@@ -186,11 +183,7 @@ function CurrentStep({
   return (
     <>
       <section className="flex flex-col px-x4 pt-x2 pb-x3">
-        <p className="t3-regular text-fg-neutral-muted tabular-nums">
-          {position} · {task.action === "매도" ? "팔기" : "사기"}
-          {action && " · 지금 할 일"}
-        </p>
-        <p className="t6-bold mt-x2 break-keep">{taskName(task)}</p>
+        <p className="t6-bold break-keep">{taskName(task)}</p>
         <p className="t9-bold mt-x1 tabular-nums">
           {copy.quantity && <>{copy.quantity} </>}
           <span

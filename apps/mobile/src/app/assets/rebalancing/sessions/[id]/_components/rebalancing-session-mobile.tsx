@@ -223,15 +223,23 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
             {/* 팔 것과 살 것이 다 있을 때만 순서를 안내한다. */}
             {bothSteps && (
               <p className="t3-regular text-fg-neutral-subtle px-x4 pt-x1">
-                판 돈으로 사니까 팔기부터 하면 쉬워요. 꼭 이 순서가 아니어도 돼요.
+                판 돈으로 사니까 팔기부터 하면 좋아요.
               </p>
             )}
 
-            {/* 종목마다 팔기·사기 배지로 구분한다. 파는 종목이 먼저 나오지만 어느 종목이든 눌러서 기록할 수 있다. */}
+            {/* 종목마다 팔기·사기 배지로 구분한다. 어느 종목이든 눌러서 기록할 수 있다. */}
             {stepTasks.sell.length + stepTasks.buy.length > 0 && (
               <div className="pt-x2">
                 <TaskList
-                  tasks={[...stepTasks.sell, ...stepTasks.buy]}
+                  // 목록은 정렬 기준대로만 — 팔기·사기가 섞여 나오고 배지로 구분한다.
+                  tasks={sortRebalancingTasks(
+                    [...steps.sell, ...steps.buy],
+                    sort,
+                    holdingQuantity,
+                    {
+                      sellFirst: false,
+                    }
+                  )}
                   leaving={leavingToDone}
                   ended={completed}
                   showAction
