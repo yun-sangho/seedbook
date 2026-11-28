@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sortKeysAfter } from "./sort-key";
+import { isValidSortKey, sortKeysAfter } from "./sort-key";
 
 describe("sortKeysAfter", () => {
   it("starts a list from the first fractional index key", () => {
@@ -23,5 +23,20 @@ describe("sortKeysAfter", () => {
 
   it("returns nothing for an empty list", () => {
     expect(sortKeysAfter("a0", 0)).toEqual([]);
+  });
+});
+
+describe("isValidSortKey", () => {
+  it("accepts keys made by sortKeysAfter", () => {
+    expect(sortKeysAfter(null, 3).every(isValidSortKey)).toBe(true);
+  });
+
+  it.each([
+    ["", "empty"],
+    ["zz~", "not a fractional index"],
+    [42, "not a string"],
+    ["a".repeat(300), "too long"],
+  ])("rejects %j (%s)", (value, _reason) => {
+    expect(isValidSortKey(value)).toBe(false);
   });
 });
