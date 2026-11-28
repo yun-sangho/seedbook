@@ -5,15 +5,17 @@
  * better-auth 가 그 경로에 `?error=<코드>` 를 붙여 돌려보내고 로그인 화면이 안내로 바꾼다.
  */
 
-export const DEFAULT_RETURN_PATH = "/assets";
+import { APP_HOME, APP_SECTIONS } from "./device";
+
+export const DEFAULT_RETURN_PATH = APP_HOME;
 
 export const LOGIN_ERROR_PARAM = "error";
 
 /**
- * 앱 화면 경로만 허용한다 (`/assets` 아래, 글자·숫자·`_`·`-` 조각). 다른 origin·`..`·인코딩·쿼리는
- * 모두 막아 로그인 뒤 다른 곳으로 보내는 데 쓸 수 없다.
+ * 앱 화면 경로만 허용한다 (앱 구역 `APP_SECTIONS` 아래, 글자·숫자·`_`·`-` 조각). 다른 origin·`..`·인코딩·
+ * 쿼리는 모두 막아 로그인 뒤 다른 곳으로 보내는 데 쓸 수 없다.
  */
-const RETURN_PATH_PATTERN = /^\/assets(?:\/[A-Za-z0-9_-]+)*$/;
+const RETURN_PATH_PATTERN = new RegExp(`^(?:${APP_SECTIONS.join("|")})(?:/[A-Za-z0-9_-]+)*$`);
 
 export function resolveReturnPath(pathname: string): string {
   // 모바일 스택은 주소 끝에 `/` 를 붙여 둔다.

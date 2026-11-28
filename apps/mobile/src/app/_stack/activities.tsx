@@ -9,9 +9,9 @@ import { usePortfolioStore } from "@mobile/features/portfolio/stores/portfolio-s
 import { useRebalancingStore } from "@mobile/features/rebalancing/stores/rebalancing-store";
 import { LEGAL_DOCUMENTS, type LegalDocumentId } from "@mobile/lib/legal-documents";
 import { type StaticActivityComponentType, useFlow, useStepFlow } from "@stackflow/react";
-import { HomeMobile } from "../home/_components/home-mobile";
 import { InvestmentMobile } from "../accounts/_components/investment-mobile";
 import { AccountDetailMobile } from "../accounts/[id]/_components/account-detail-mobile";
+import { HomeMobile } from "../home/_components/home-mobile";
 import { PortfolioListMobile } from "../portfolios/_components/portfolio-list-mobile";
 import { PortfolioDetailMobile } from "../portfolios/[id]/_components/portfolio-detail-mobile";
 import { RebalancingHomeMobile } from "../rebalancing/_components/rebalancing-home-mobile";
@@ -37,9 +37,9 @@ const TAB_SCREENS: Record<TabKey, ReactNode> = {
       <HomeMobile />
     </>
   ),
-  investments: <InvestmentMobile />,
+  accounts: <InvestmentMobile />,
   rebalancing: <RebalancingHomeMobile />,
-  portfolio: <PortfolioListMobile />,
+  portfolios: <PortfolioListMobile />,
 };
 
 /** 정원 홈은 위쪽 정원 창을 고정하고 아래 목록만 스크롤한다. */

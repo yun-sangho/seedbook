@@ -2,35 +2,43 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_RETURN_PATH, loginErrorMessage, resolveReturnPath } from "./login-flow";
 
 describe("resolveReturnPath", () => {
+  it("falls back to the app home", () => {
+    expect(DEFAULT_RETURN_PATH).toBe("/home");
+  });
+
   it.each([
-    "/assets",
-    "/assets/rebalancing",
-    "/assets/investments/f87e0fdc-2e42-4783-bb19-bae7fcb30a3f",
-    "/assets/rebalancing/sessions/s_1/trades/t-2",
+    "/home",
+    "/rebalancing",
+    "/accounts/f87e0fdc-2e42-4783-bb19-bae7fcb30a3f",
+    "/rebalancing/sessions/s_1/trades/t-2",
+    "/portfolios/p-1",
+    "/settings/login-methods",
   ])("returns to the app screen %s", (path) => {
     expect(resolveReturnPath(path)).toBe(path);
   });
 
   it("drops the trailing slash the mobile stack leaves in the address bar", () => {
-    expect(resolveReturnPath("/assets/rebalancing/")).toBe("/assets/rebalancing");
+    expect(resolveReturnPath("/rebalancing/")).toBe("/rebalancing");
   });
 
   it.each([
-    "https://evil.example/assets",
-    "//evil.example/assets",
+    "https://evil.example/home",
+    "//evil.example/home",
     "/\\evil.example",
-    "/assets//evil.example",
-    "/assets/../api/auth/sign-out",
-    "/assets/%2e%2e/api",
-    "/assets/@evil.example",
-    "/assets\\evil.example",
-    "/assets?next=https://evil.example",
-    "/assets/investments\n/x",
-    "/assets\n",
+    "/home//evil.example",
+    "/home/../api/auth/sign-out",
+    "/home/%2e%2e/api",
+    "/home/@evil.example",
+    "/home\\evil.example",
+    "/home?next=https://evil.example",
+    "/accounts\n/x",
+    "/home\n",
     "javascript:alert(1)",
-    "/assetsevil",
+    "/homeevil",
     "/api/auth/error",
-    "/m/assets",
+    "/m/home",
+    "/terms",
+    "/assets",
     "/",
     "",
   ])("falls back to home for %j", (path) => {

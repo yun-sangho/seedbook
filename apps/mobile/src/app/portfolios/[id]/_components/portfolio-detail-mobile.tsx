@@ -91,7 +91,7 @@ function totalToneClass(totalPct: number, hasAllocations: boolean): string {
   return "text-fg-positive";
 }
 
-/** 모바일 포트폴리오 상세 (`/assets/portfolio/[id]`). 계좌 상세와 같은 레이아웃. */
+/** 모바일 포트폴리오 상세 (`/portfolios/[id]`). 계좌 상세와 같은 레이아웃. */
 export function PortfolioDetailMobile({ id }: { id: string }) {
   const portfolio = usePortfolioStore((s) => s.portfolios.find((p) => p.id === id));
   const { pop } = useFlow();

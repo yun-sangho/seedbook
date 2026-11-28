@@ -253,7 +253,7 @@ beforeEach(() => {
   vi.stubGlobal("location", {
     reload,
     href: "",
-    pathname: "/assets",
+    pathname: "/home",
     search: "",
   } as unknown as Location);
 });

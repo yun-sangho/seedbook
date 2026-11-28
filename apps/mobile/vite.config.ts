@@ -13,10 +13,10 @@ import { BUNDLED_APP_API_BASE_URL } from "./src/lib/native/bundled-app-api.ts";
  * (apps/web, Next) 가 맡는다.
  *
  * - 개발: `pnpm dev` 가 이 dev 서버(슬롯 포트 `PORT`)와 Next(`API_PORT`)를 함께 띄운다
- *   (scripts/worktree.mjs). 브라우저는 이 포트 하나만 연다 — 앱 경로(`/assets/...`)는 SPA 를 주고,
+ *   (scripts/worktree.mjs). 브라우저는 이 포트 하나만 연다 — 앱 경로(`/home`·`/accounts/...` 등)는 SPA 를 주고,
  *   그 밖(`/api`, 소개 `/`, 약관, 아이콘·manifest·sw.js 등)은 Next 로 넘긴다. 같은 origin 이라 쿠키
  *   세션·"개발용 빠른 로그인"·카카오 로그인(BETTER_AUTH_URL = 이 포트)이 그대로 된다.
- * - 빌드: `dist/` 에 `index.html` + `_app/` (번들). 앱 경로 `/assets/...` 와 겹치지 않도록 번들
+ * - 빌드: `dist/` 에 `index.html` + `_app/` (번들). 앱 경로와 겹치지 않도록 번들
  *   폴더를 `_app` 으로 둔다. 운영 웹은 이 결과를 Next 가 같이 서빙한다 (apps/web/scripts/copy-app.mjs).
  */
 
@@ -45,7 +45,7 @@ function appRoutes(): Plugin {
           res.setHeader("Location", `${pathname}${url.search}`);
           res.end();
         };
-        // Next 처럼 끝의 `/` 를 떼어 보낸다 (스택이 주소창에 `/assets/investments/` 처럼 적는다).
+        // Next 처럼 끝의 `/` 를 떼어 보낸다 (스택이 주소창에 `/accounts/` 처럼 적는다).
         if (url.pathname.length > 1 && url.pathname.endsWith("/")) {
           return redirect(308, url.pathname.replace(/\/+$/, ""));
         }

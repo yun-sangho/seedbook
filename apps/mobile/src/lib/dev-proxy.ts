@@ -1,6 +1,6 @@
 /**
  * 앱 dev 서버(Vite, `vite.config.ts`)가 Next(apps/web dev)로 넘기는 규칙. 브라우저는 Vite 포트 하나만
- * 열고, Vite 가 직접 답하는 경로(아래 `VITE_PATH`)와 앱 경로(`/assets/...`, SPA) 밖은 모두 Next 로 간다
+ * 열고, Vite 가 직접 답하는 경로(아래 `VITE_PATH`)와 앱 경로(`/home`·`/accounts/...` 등, SPA) 밖은 모두 Next 로 간다
  * — 소개·약관·`/dev/*` 페이지와 그 `/_next/*` 청크, `/api`, 아이콘·manifest 등.
  *
  * 순수 함수만 둔다 (vite.config.ts 와 테스트가 함께 쓴다).

@@ -57,7 +57,7 @@ export function RebalancingListMobile() {
           description="투자 계좌를 추가하고 포트폴리오에 연결하면 계좌별로 리밸런싱할 수 있어요."
           primaryActionProps={{
             children: "계좌 탭으로 이동",
-            onClick: () => switchTab("investments"),
+            onClick: () => switchTab("accounts"),
           }}
         />
       </div>

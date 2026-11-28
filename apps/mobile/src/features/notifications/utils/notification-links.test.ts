@@ -8,7 +8,7 @@ describe("notificationTarget", () => {
   });
   it("opens the rebalancing tab for rebalancing reminders", () => {
     expect(notificationTarget("rebalancing")).toEqual({
-      path: "/assets/rebalancing",
+      path: "/rebalancing",
       tab: "rebalancing",
     });
   });

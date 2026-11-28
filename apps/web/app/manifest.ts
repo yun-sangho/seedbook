@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { APP_HOME } from "@mobile/lib/device";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -41,12 +42,12 @@ export default function manifest(): MetadataRoute.Manifest {
     shortcuts: [
       {
         name: "계좌",
-        url: "/assets/investments",
+        url: "/accounts",
         icons: [{ src: "/maskable-192x192.png", sizes: "192x192", type: "image/png" }],
       },
       {
         name: "포트폴리오",
-        url: "/assets/portfolio",
+        url: "/portfolios",
         icons: [{ src: "/maskable-192x192.png", sizes: "192x192", type: "image/png" }],
       },
     ],
@@ -55,8 +56,9 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: "#ffffff",
     display: "standalone",
     scope: "/",
-    // 설치한 앱은 랜딩 대신 바로 홈(총 평가금액·통계)으로 연다. proxy 가 SEED 홈으로
-    // rewrite 한다 (데스크탑은 앱 화면이 없어 소개 페이지로 돌아간다).
-    start_url: "/assets",
+    // 설치한 앱은 랜딩 대신 바로 앱 홈으로 연다 (웹에서는 `/` 가 소개 페이지라 홈은 `/home`).
+    // 데스크탑은 앱 화면이 없어 소개 페이지로 돌아간다. 옛 start_url `/assets` 로 설치한 PWA 는
+    // proxy 가 `/home` 으로 보낸다 (lib/device.ts).
+    start_url: APP_HOME,
   };
 }

@@ -24,7 +24,7 @@ describe("LoginScreen", () => {
   });
 
   it("marks only the success return with the provider, so a failed login is not remembered", async () => {
-    openAt("/assets");
+    openAt("/home");
     await act(async () => fireEvent.click(kakao()));
     expect(mockSignInSocial).toHaveBeenCalledTimes(1);
     const { callbackURL, errorCallbackURL } = mockSignInSocial.mock.calls[0]?.[0] ?? {};
@@ -33,53 +33,53 @@ describe("LoginScreen", () => {
   });
 
   it("follows Kakao's login button guide: the official label with the speech-bubble symbol", () => {
-    openAt("/assets");
+    openAt("/home");
     expect(kakao()).toHaveTextContent(/^카카오 로그인$/);
     expect(kakao().querySelector("svg")).not.toBeNull();
   });
 
   it("points at the provider this device last signed in with", () => {
     window.localStorage.setItem(LAST_LOGIN_METHOD_KEY, "kakao");
-    openAt("/assets");
+    openAt("/home");
     expect(screen.getByText("최근에 카카오로 로그인했어요")).toBeInTheDocument();
   });
 
   it("shows no hint on a device that has not signed in yet", () => {
-    openAt("/assets");
+    openAt("/home");
     expect(screen.queryByText(/최근에 .+로 로그인했어요/)).not.toBeInTheDocument();
   });
 
   it("returns to the screen that asked for login, on success and on failure", async () => {
-    openAt("/assets/rebalancing/");
+    openAt("/rebalancing/");
     await act(async () => fireEvent.click(kakao()));
     expect(mockSignInSocial).toHaveBeenCalledWith({
       provider: "kakao",
-      callbackURL: "/assets/rebalancing?signedInWith=kakao",
-      errorCallbackURL: "/assets/rebalancing",
+      callbackURL: "/rebalancing?signedInWith=kakao",
+      errorCallbackURL: "/rebalancing",
     });
   });
 
   it("explains a cancelled login and removes the error from the address", () => {
-    openAt("/assets/rebalancing?error=access_denied&error_description=User+denied");
+    openAt("/rebalancing?error=access_denied&error_description=User+denied");
     expect(screen.getByRole("alert")).toHaveTextContent("로그인을 취소했어요");
-    expect(window.location.pathname + window.location.search).toBe("/assets/rebalancing");
+    expect(window.location.pathname + window.location.search).toBe("/rebalancing");
   });
 
   it("does not show text taken from the address", () => {
-    openAt("/assets?error=call+010-0000-0000&error_description=evil");
+    openAt("/home?error=call+010-0000-0000&error_description=evil");
     expect(screen.getByRole("alert")).toHaveTextContent("로그인하지 못했어요");
     expect(screen.queryByText(/010-0000|evil/)).not.toBeInTheDocument();
   });
 
   it("stays busy after the login has started", async () => {
-    openAt("/assets?error=access_denied");
+    openAt("/home?error=access_denied");
     await act(async () => fireEvent.click(kakao()));
     expect(kakao()).toHaveAttribute("data-loading");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("is usable again after coming back from the provider with the back button", async () => {
-    openAt("/assets");
+    openAt("/home");
     await act(async () => fireEvent.click(kakao()));
     act(() => {
       window.dispatchEvent(Object.assign(new Event("pageshow"), { persisted: true }));
@@ -92,26 +92,26 @@ describe("LoginScreen", () => {
     ["the network fails", () => Promise.reject(new TypeError("Failed to fetch"))],
   ])("lets the user retry when %s", async (_, response) => {
     mockSignInSocial.mockImplementation(response);
-    openAt("/assets");
+    openAt("/home");
     await act(async () => fireEvent.click(kakao()));
     expect(screen.getByRole("alert")).toHaveTextContent("로그인하지 못했어요");
     expect(kakao()).not.toHaveAttribute("data-loading");
   });
 
   it("tells the user that nothing from the login provider (name, email, ID) is used", () => {
-    openAt("/assets");
+    openAt("/home");
     expect(
       screen.getByText("이름·이메일·아이디 등 타 서비스의 정보는 활용하지 않아요.")
     ).toBeInTheDocument();
   });
 
   it("opens the privacy policy inside the app, without leaving the login screen", async () => {
-    openAt("/assets");
+    openAt("/home");
     await act(async () =>
       fireEvent.click(screen.getByRole("button", { name: "개인정보처리방침" }))
     );
     expect(screen.getByRole("dialog", { name: "개인정보처리방침" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Seedbook 로그인" })).toBeInTheDocument();
-    expect(window.location.pathname).toBe("/assets");
+    expect(window.location.pathname).toBe("/home");
   });
 });

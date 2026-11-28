@@ -3,18 +3,18 @@ import { createAddressBarHistory } from "./address-bar-history";
 
 describe("createAddressBarHistory", () => {
   beforeEach(() => {
-    window.history.replaceState(null, "", "/assets/investments");
+    window.history.replaceState(null, "", "/accounts");
   });
 
   it("starts at the current browser URL", () => {
     // Arrange
-    window.history.replaceState(null, "", "/assets/portfolio/p1?tab=a");
+    window.history.replaceState(null, "", "/portfolios/p1?tab=a");
 
     // Act
     const history = createAddressBarHistory();
 
     // Assert
-    expect(history.location.pathname).toBe("/assets/portfolio/p1");
+    expect(history.location.pathname).toBe("/portfolios/p1");
     expect(history.location.search).toBe("?tab=a");
   });
 
@@ -22,8 +22,8 @@ describe("createAddressBarHistory", () => {
     const history = createAddressBarHistory();
     const lengthBefore = window.history.length;
 
-    history.push("/assets/investments/a1");
-    history.push("/assets/investments/a1/more");
+    history.push("/accounts/a1");
+    history.push("/accounts/a1/more");
 
     expect(window.history.length).toBe(lengthBefore);
   });
@@ -31,26 +31,26 @@ describe("createAddressBarHistory", () => {
   it("mirrors the stack URL to the address bar so a reload reopens the same screen", () => {
     const history = createAddressBarHistory();
 
-    history.push("/assets/investments/a1");
+    history.push("/accounts/a1");
 
-    expect(window.location.pathname).toBe("/assets/investments/a1");
+    expect(window.location.pathname).toBe("/accounts/a1");
   });
 
   it("mirrors the URL when the stack goes back", () => {
     const history = createAddressBarHistory();
-    history.push("/assets/investments/a1");
+    history.push("/accounts/a1");
 
     history.back();
 
-    expect(window.location.pathname).toBe("/assets/investments");
+    expect(window.location.pathname).toBe("/accounts");
   });
 
   it("does not react to browser popstate (there is no in-app browser history)", () => {
     const history = createAddressBarHistory();
-    history.push("/assets/investments/a1");
+    history.push("/accounts/a1");
 
     window.dispatchEvent(new PopStateEvent("popstate", { state: null }));
 
-    expect(history.location.pathname).toBe("/assets/investments/a1");
+    expect(history.location.pathname).toBe("/accounts/a1");
   });
 });

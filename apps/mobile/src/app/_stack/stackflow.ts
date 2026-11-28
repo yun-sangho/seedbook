@@ -26,13 +26,14 @@ import {
 } from "./activities";
 import { createAddressBarHistory } from "./address-bar-history";
 import { stackControlPlugin } from "./stack-control";
-import { type TabKey, type TabsParams, tabOf, tabParams } from "./tabs";
+import { type TabKey, type TabsParams, tabOf, tabParams, tabPath } from "./tabs";
 
 /**
  * 앱 화면 스택. 하단 탭 4개는 루트 activity `Tabs` 하나에 담아
  * 탭을 옮겨도 화면이 남고(stack-control.ts 의 `switchTab`), 상세 화면은 `push` 로 쌓는다.
  *
- * URL 은 데스크탑과 같은 `/assets/...` 를 그대로 쓴다 (웹 서버가 앱 경로에 앱의 index.html 을 준다).
+ * URL 은 구역별 최상위 경로다 (`/home`·`/accounts/:id`·`/settings/...`, 규칙은 `lib/device.ts`). 웹 서버가
+ * 앱 경로에 앱의 index.html 을 주고, 번들 앱은 `/` 로 시작해 `/home` 으로 옮긴다 (`lib/native/bundled-app.ts`).
  * 스택은 브라우저 history 를 쌓지 않는 단일 페이지로 동작하고, 뒤로가기는 앱바 뒤로 버튼·
  * SEED 스와이프(address-bar-history.ts)와 Android 시스템 뒤로가기(lib/native/system-back.ts)다.
  * 이 모듈은 `window` 를 쓰므로 클라이언트 전용으로만 불러온다 (`mobile-stack.tsx`).
@@ -75,22 +76,22 @@ const config = defineConfig({
   activities: [
     {
       name: "AccountDetail",
-      route: { path: "/assets/investments/:id", defaultHistory: underTab("investments") },
+      route: { path: "/accounts/:id", defaultHistory: underTab("accounts") },
     },
     {
       name: "RebalancingNew",
-      route: { path: "/assets/rebalancing/new", defaultHistory: underTab("rebalancing") },
+      route: { path: "/rebalancing/new", defaultHistory: underTab("rebalancing") },
     },
     {
       // 계좌 리밸런싱 계산. 정적 경로(`new`)가 `:id` 보다 먼저 매칭된다 (history-sync 정렬).
       name: "RebalancingDetail",
-      route: { path: "/assets/rebalancing/:id", defaultHistory: underTab("rebalancing") },
+      route: { path: "/rebalancing/:id", defaultHistory: underTab("rebalancing") },
     },
     {
       // 리밸런싱 2단계(거래 가능 금액·권장 매매). 바로 들어와도 뒤로가기가 1단계(현황)로 간다.
       name: "RebalancingPlan",
       route: {
-        path: "/assets/rebalancing/:id/plan",
+        path: "/rebalancing/:id/plan",
         defaultHistory: (params) => [
           ...underTab("rebalancing")(),
           {
@@ -103,7 +104,7 @@ const config = defineConfig({
     {
       name: "RebalancingSession",
       route: {
-        path: "/assets/rebalancing/sessions/:id",
+        path: "/rebalancing/sessions/:id",
         defaultHistory: underTab("rebalancing"),
       },
     },
@@ -111,7 +112,7 @@ const config = defineConfig({
       // 매매 하나의 체결 수량·가격 입력. 바로 들어와도 뒤로가기가 그 리밸런싱으로 간다.
       name: "RebalancingTrade",
       route: {
-        path: "/assets/rebalancing/sessions/:id/trades/:taskId",
+        path: "/rebalancing/sessions/:id/trades/:taskId",
         defaultHistory: (params) => [
           ...underTab("rebalancing")(),
           {
@@ -123,28 +124,28 @@ const config = defineConfig({
     },
     {
       name: "PortfolioDetail",
-      route: { path: "/assets/portfolio/:id", defaultHistory: underTab("portfolio") },
+      route: { path: "/portfolios/:id", defaultHistory: underTab("portfolios") },
     },
     {
       name: "Settings",
-      route: { path: "/assets/settings", defaultHistory: underTab("home") },
+      route: { path: "/settings", defaultHistory: underTab("home") },
     },
     {
       // 로그인 수단 연결은 제공자 화면을 다녀와 이 주소로 돌아온다 (`lib/login-methods.ts`).
       name: "LoginMethods",
-      route: { path: "/assets/settings/login-methods", defaultHistory: underSettings },
+      route: { path: "/settings/login-methods", defaultHistory: underSettings },
     },
     {
       name: "Profile",
-      route: { path: "/assets/settings/profile", defaultHistory: underSettings },
+      route: { path: "/settings/profile", defaultHistory: underSettings },
     },
     {
       name: "StorageMode",
-      route: { path: "/assets/settings/storage", defaultHistory: underSettings },
+      route: { path: "/settings/storage", defaultHistory: underSettings },
     },
     {
       name: "DataBackup",
-      route: { path: "/assets/settings/data", defaultHistory: underSettings },
+      route: { path: "/settings/data", defaultHistory: underSettings },
     },
     {
       name: "Notifications",
@@ -152,22 +153,26 @@ const config = defineConfig({
     },
     {
       name: "DeleteAccount",
-      route: { path: "/assets/settings/delete-account", defaultHistory: underSettings },
+      route: { path: "/settings/delete-account", defaultHistory: underSettings },
     },
     {
       // 이용약관·개인정보처리방침 (버전을 붙이면 그 버전). 사이트 `/terms`·`/privacy` 와 같은 본문.
       name: "Terms",
-      route: { path: "/assets/settings/terms(/:version)", defaultHistory: underSettings },
+      route: { path: "/settings/terms(/:version)", defaultHistory: underSettings },
     },
     {
       name: "Privacy",
-      route: { path: "/assets/settings/privacy(/:version)", defaultHistory: underSettings },
+      route: { path: "/settings/privacy(/:version)", defaultHistory: underSettings },
     },
     {
-      // `/assets` 와 `/assets/<탭>`. 같은 모양의 다른 경로(settings)보다 뒤에 둬야 그쪽이 먼저
-      // 매칭된다. 모르는 탭은 홈으로 연다.
+      // `/<탭>`. 정적 경로(`/settings`)가 먼저 매칭된다 (history-sync 정렬). 모르는 탭은 홈으로 연다.
       name: "Tabs",
-      route: { path: "/assets(/:tab)", decode: (params) => tabParams(tabOf(params)) },
+      route: {
+        path: "/:tab",
+        decode: (params) => tabParams(tabOf(params)),
+        // history-sync 의 encode 타입은 모든 화면의 params 합이라 Tabs 의 params 로 좁힌다.
+        encode: (params) => tabPath(params as TabsParams),
+      },
     },
   ],
   transitionDuration: 350,

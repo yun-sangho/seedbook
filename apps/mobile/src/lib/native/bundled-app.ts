@@ -36,7 +36,7 @@ export function isBundledApp(): boolean {
  */
 export function bundledAppPath(pathname: string): string {
   let current = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
-  // 리다이렉트는 많아야 두 번 이어진다 (`/m` → `/` → `/assets`).
+  // 리다이렉트는 많아야 두 번 이어진다 (`/m/assets` → `/assets` → `/home`).
   for (let hop = 0; hop < 3; hop++) {
     const decision = decideMobileRoute(current, "mobile", { nativeApp: true });
     if (decision.type === "rewrite") return current;

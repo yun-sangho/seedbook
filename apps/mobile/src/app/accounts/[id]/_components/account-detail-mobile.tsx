@@ -83,7 +83,7 @@ const HOLDING_DIVIDER_STYLE: CSSProperties = {
   marginRight: "var(--seed-dimension-x4)",
 };
 
-/** 모바일 계좌 상세 (`/assets/investments/[id]`). */
+/** 모바일 계좌 상세 (`/accounts/[id]`). */
 export function AccountDetailMobile({ id }: { id: string }) {
   const item = useInvestmentStore((s) => s.investments.find((inv) => inv.id === id));
   const { pop } = useFlow();

@@ -1,6 +1,7 @@
 "use client";
 
 import { IconMobileLine } from "@karrotmarket/react-monochrome-icon";
+import { APP_HOME } from "@mobile/lib/device";
 import { ActionButton } from "@mobile/seed-design/ui/action-button";
 import { Callout } from "@mobile/seed-design/ui/callout";
 import { VStack } from "@seed-design/react";
@@ -27,7 +28,7 @@ export function LandingMobileOnly({ host }: { host: string }) {
         size="large"
         onClick={() => {
           setViewOverride("mobile");
-          window.location.href = "/assets";
+          window.location.href = APP_HOME;
         }}
       >
         이 브라우저에서 모바일 화면으로 열기

@@ -56,7 +56,7 @@ describe("isVitePath", () => {
   it("Vite 모듈·번들 경로를 가른다", () => {
     expect(isVitePath("/@react-refresh")).toBe(true);
     expect(isVitePath("/_app/index.js")).toBe(true);
-    expect(isVitePath("/assets/investments")).toBe(false);
+    expect(isVitePath("/accounts")).toBe(false);
     expect(isVitePath("/_next/hmr")).toBe(false);
   });
 });

@@ -165,7 +165,7 @@ describe("OnboardingGate", () => {
       fireEvent.click(screen.getByRole("radio", { name: /이 기기에만 저장/ }));
       await click("이대로 시작하기");
       expect(app()).toBeInTheDocument();
-      expect(window.location.pathname).toBe("/assets");
+      expect(window.location.pathname).toBe("/home");
     });
 
     it("leaves an empty pot when the goal is put off, and remembers to resume after it", async () => {
