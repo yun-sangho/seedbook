@@ -93,15 +93,34 @@ async function appIdentity(): Promise<{ appId: string; environment: "production"
   return { appId: id, environment: id.endsWith(".dev") ? "sandbox" : "production" };
 }
 
+/** 서버에 등록한 이 기기의 토큰을 지운다 (없으면 아무것도 하지 않는다). */
+async function forgetPushDevice(): Promise<void> {
+  const storage = getDeviceStorage();
+  const token = storage.getItem(PUSH_TOKEN_KEY);
+  if (!token) return;
+  const response = await accountFetch("/api/me/push-devices", {
+    method: "DELETE",
+    credentials: "include",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+  if (response.ok) storage.removeItem(PUSH_TOKEN_KEY);
+}
+
 /**
- * 이 기기를 원격 푸시에 등록한다 — 서버가 보내는 종류 중 켠 것(`kinds`)과 함께. 권한이 없거나 원격 푸시를 못
- * 받는 플랫폼이면 아무것도 하지 않는다. 실패는 다음 실행 때 다시 한다.
+ * 이 기기를 원격 푸시에 등록한다 — 서버가 보내는 종류 중 켠 것(`kinds`)과 함께. 켠 종류가 없거나 알림 권한이
+ * 없으면 서버의 등록을 지운다 (개인정보처리방침: 알림을 끄면 토큰을 지운다). 원격 푸시를 못 받는 플랫폼이면
+ * 아무것도 하지 않는다. 실패는 다음 실행 때 다시 한다.
  */
 export async function registerPushDevice(kinds: ServerNotificationKind[]): Promise<boolean> {
   try {
     const plugins = await native();
     if (!plugins?.remote) return false;
-    if ((await plugins.push.checkPermissions()).receive !== "granted") return false;
+    const granted = (await plugins.push.checkPermissions()).receive === "granted";
+    if (!granted || kinds.length === 0) {
+      await forgetPushDevice();
+      return false;
+    }
     const token = await deviceToken(plugins.push);
     if (!token) return false;
     const response = await accountFetch("/api/me/push-devices", {
@@ -172,17 +191,9 @@ export async function stopNotificationsOnSignOut(): Promise<void> {
   try {
     const plugins = await native();
     if (!plugins) return;
-    const storage = getDeviceStorage();
-    const token = storage.getItem(PUSH_TOKEN_KEY);
-    if (token) {
-      await accountFetch("/api/me/push-devices", {
-        method: "DELETE",
-        credentials: "include",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ token }),
-      }).catch(() => undefined);
-      storage.removeItem(PUSH_TOKEN_KEY);
-    }
+    await forgetPushDevice().catch(() => undefined);
+    // 서버에 닿지 못했어도 세션이 끝나면 서버가 지운다 — 이 기기의 기록은 비운다.
+    getDeviceStorage().removeItem(PUSH_TOKEN_KEY);
     if (plugins.remote) await plugins.push.unregister().catch(() => undefined);
     await scheduleReminders([]);
   } catch {

@@ -116,8 +116,11 @@ export function NotificationRunner() {
         reschedule();
       }),
     ];
+    // 기기 설정에서 알림을 끄고 돌아오면 서버 등록을 지운다 (켜고 돌아오면 다시 등록).
     const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") reschedule();
+      if (document.visibilityState !== "visible") return;
+      register();
+      reschedule();
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
     const onChanged = () => {
