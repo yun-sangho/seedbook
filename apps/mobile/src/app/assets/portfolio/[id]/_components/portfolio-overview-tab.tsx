@@ -172,7 +172,7 @@ function RebalancingBadge({ status }: { status: LinkedPortfolioStatus | null }) 
   if (status?.state === "needs-rebalancing") {
     return (
       <Badge tone="warning" variant="solid" className="shrink-0">
-        리밸런싱 필요
+        이격 초과
       </Badge>
     );
   }

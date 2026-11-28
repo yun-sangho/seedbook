@@ -84,7 +84,7 @@ function DriftStatusBadge({ summary }: { summary: PortfolioDriftSummary }) {
   if (summary.breachedCount > 0) {
     return (
       <Badge tone="warning" variant="weak" className="shrink-0">
-        리밸런싱 필요 {summary.breachedCount}
+        이격 초과 {summary.breachedCount}
       </Badge>
     );
   }
