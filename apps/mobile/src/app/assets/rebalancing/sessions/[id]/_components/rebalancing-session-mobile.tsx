@@ -143,10 +143,17 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
   const remaining = total - done;
   const canComplete = canCompleteRebalancing(session);
   const readyToComplete = canComplete && remaining === 0;
+  // 다 끝냈으면 완료가 주된 다음 행동 — 하단 고정 줄 맨 위에 둔다.
+  const completeButton = (
+    <ActionButton size="large" className="w-full" onClick={() => setCompleting(true)}>
+      리밸런싱 완료하기
+    </ActionButton>
+  );
   const stopped = isRebalancingStopped(session);
 
   return (
-    <div ref={topRef} className="pb-x4">
+    // 단계 화면은 한 화면에 다 들어가야 해서 아래 여백을 두지 않는다 (내비게이션이 아래에 고정된다).
+    <div ref={topRef} className={cn(!completed && view === "steps" ? "pb-0" : "pb-x4")}>
       {/* 진행 중에는 매매 하나씩 — 추천 단계부터 열고, 기록하면 다음 추천 단계로 넘어간다. */}
       {!completed && view === "steps" && (
         <RebalancingSteps
@@ -161,6 +168,7 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
             setView("list");
             topRef.current?.scrollIntoView();
           }}
+          footerTop={readyToComplete && completeButton}
         />
       )}
       {completed &&
@@ -280,11 +288,19 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
         </>
       )}
 
-      {/* 다 끝냈으면 완료가 주된 다음 행동 — 하단에 고정한다. 남았으면 종료는 보조 행동이다. */}
-      {readyToComplete && (
-        <BottomAction>
-          <ActionButton size="large" className="w-full" onClick={() => setCompleting(true)}>
-            리밸런싱 완료하기
+      {/* 목록도 아래 고정 줄에서 하나씩 보기로 돌아간다. 다 끝냈으면 완료 버튼이 위에 붙는다. */}
+      {!completed && view === "list" && (
+        <BottomAction compact>
+          {readyToComplete && completeButton}
+          <ActionButton
+            variant="ghost"
+            size="medium"
+            onClick={() => {
+              setView("steps");
+              topRef.current?.scrollIntoView();
+            }}
+          >
+            하나씩 보기
           </ActionButton>
         </BottomAction>
       )}
@@ -327,19 +343,6 @@ export function RebalancingSessionMobile({ id }: { id: string }) {
       />
 
       <HeaderAction>
-        {/* 목록에서 단계로 돌아가는 버튼. 단계 화면에서는 아래 "목록" 으로 연다. */}
-        {!completed && view === "list" && (
-          <ActionButton
-            variant="ghost"
-            size="small"
-            onClick={() => {
-              setView("steps");
-              topRef.current?.scrollIntoView();
-            }}
-          >
-            하나씩 보기
-          </ActionButton>
-        )}
         <ActionButton
           variant="ghost"
           size="small"

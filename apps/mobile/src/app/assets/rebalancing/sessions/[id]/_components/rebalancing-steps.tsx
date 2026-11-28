@@ -1,6 +1,8 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { IconChevronLeftLine, IconChevronRightLine } from "@karrotmarket/react-monochrome-icon";
+import { BottomAction } from "@mobile/components/mobile/bottom-action";
 import type { RebalancingSession, RebalancingTask } from "@mobile/features/rebalancing/types/types";
 import {
   type NextRebalancingAction,
@@ -34,6 +36,7 @@ export function RebalancingSteps({
   onSelect,
   onShowCash,
   onShowList,
+  footerTop,
 }: {
   session: RebalancingSession;
   tasks: RebalancingTask[];
@@ -44,6 +47,8 @@ export function RebalancingSteps({
   onShowCash: (() => void) | null;
   /** 팔기·사기 전체 목록으로. */
   onShowList: () => void;
+  /** 내비게이션 위에 함께 고정할 버튼 (다 끝냈을 때 "리밸런싱 완료하기"). */
+  footerTop?: ReactNode;
 }) {
   const recommended = nextRebalancingAction(tasks, available);
   const recommendedId = recommended.kind === "done" ? null : recommended.task.id;
@@ -77,31 +82,34 @@ export function RebalancingSteps({
           onDone={() => onSelect(null)}
         />
       )}
-      {/* 이전 · 목록 · 다음 — 단계를 옮기거나 전체 목록을 연다. */}
-      <div className="flex items-center justify-between px-x2 pb-x1">
-        <ActionButton
-          variant="ghost"
-          size="medium"
-          // 다 끝낸 화면에서는 마지막 거래로 돌아가 기록을 볼 수 있다.
-          disabled={index === 0 || tasks.length === 0}
-          onClick={() => onSelect(tasks[(index < 0 ? tasks.length : index) - 1]?.id ?? null)}
-        >
-          <PrefixIcon svg={<IconChevronLeftLine />} />
-          이전
-        </ActionButton>
-        <ActionButton variant="ghost" size="medium" onClick={onShowList}>
-          목록
-        </ActionButton>
-        <ActionButton
-          variant="ghost"
-          size="medium"
-          disabled={index < 0 || index >= tasks.length - 1}
-          onClick={() => onSelect(tasks[index + 1]?.id ?? null)}
-        >
-          다음
-          <SuffixIcon svg={<IconChevronRightLine />} />
-        </ActionButton>
-      </div>
+      {/* 이전 · 목록 · 다음 — 항상 아래에 고정한다. 다 끝냈으면 완료 버튼이 그 위에 붙는다. */}
+      <BottomAction compact>
+        {footerTop}
+        <div className="flex items-center justify-between">
+          <ActionButton
+            variant="ghost"
+            size="medium"
+            // 다 끝낸 화면에서는 마지막 거래로 돌아가 기록을 볼 수 있다.
+            disabled={index === 0 || tasks.length === 0}
+            onClick={() => onSelect(tasks[(index < 0 ? tasks.length : index) - 1]?.id ?? null)}
+          >
+            <PrefixIcon svg={<IconChevronLeftLine />} />
+            이전
+          </ActionButton>
+          <ActionButton variant="ghost" size="medium" onClick={onShowList}>
+            목록
+          </ActionButton>
+          <ActionButton
+            variant="ghost"
+            size="medium"
+            disabled={index < 0 || index >= tasks.length - 1}
+            onClick={() => onSelect(tasks[index + 1]?.id ?? null)}
+          >
+            다음
+            <SuffixIcon svg={<IconChevronRightLine />} />
+          </ActionButton>
+        </div>
+      </BottomAction>
     </div>
   );
 }

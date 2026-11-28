@@ -107,9 +107,9 @@ export function RebalancingSessionActivity({ params }: DetailActivityProps) {
     session ? s.investments.find((inv) => inv.id === session.accountId) : undefined
   );
   return (
+    // 작업 화면에서는 포트폴리오 이름 없이 계좌만 — 할 일에 집중한다.
     <DetailScreen
       title={account?.accountName || session?.accountName || "리밸런싱"}
-      subtitle={session?.portfolioName}
       dotColor={account?.color}
     >
       <RebalancingSessionMobile id={params.id} />

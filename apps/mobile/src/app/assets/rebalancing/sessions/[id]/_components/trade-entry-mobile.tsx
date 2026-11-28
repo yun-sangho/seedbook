@@ -251,7 +251,7 @@ export function TradeEntryForm({
       {!embedded && priceAsOf && status !== "filled" && (
         <SnapshotPriceBanner summary={priceAsOf} live />
       )}
-      <div className={cn("flex flex-col px-x4", embedded ? "gap-x3 pb-x2" : "gap-x6 pt-x4 pb-x6")}>
+      <div className={cn("flex flex-col px-x4", embedded ? "gap-x3 pb-x1" : "gap-x6 pt-x4 pb-x6")}>
         {!embedded && (
           <p className="t4-regular text-fg-neutral-muted tabular-nums">{headline(task)}</p>
         )}
