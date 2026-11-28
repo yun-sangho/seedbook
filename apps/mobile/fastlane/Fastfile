@@ -94,6 +94,27 @@ platform :ios do
     sh("xcrun", "devicectl", "device", "process", "launch", "--terminate-existing", "--device", device, DEV_APP_ID)
   end
 
+  # scripts/dev-app.mjs 가 이 세션 전용 시뮬레이터(seedbook-<워크트리>)를 켜 두고 부른다
+  # (`pnpm --filter @seedbook/mobile dev:ios-sim`). 앱 QA 는 이것으로 한다.
+  desc "Seedbook Dev 를 켜 둔 시뮬레이터에 빌드·설치·실행 (SEEDBOOK_IOS_SIMULATOR)"
+  lane :dev_sim do
+    simulator = required_env("SEEDBOOK_IOS_SIMULATOR")
+    derived_data = File.join(OUTPUT_DIR, "dev-sim-derived-data")
+    # 시뮬레이터는 로컬 서명이라 Apple 계정이 필요 없다.
+    sh(
+      "xcodebuild", "build",
+      "-project", IOS_PROJECT,
+      "-scheme", "App",
+      "-configuration", "Dev",
+      "-destination", "id=#{simulator}",
+      "-derivedDataPath", derived_data,
+      *ios_build_settings,
+    )
+    app = File.join(derived_data, "Build/Products/Dev-iphonesimulator/App.app")
+    sh("xcrun", "simctl", "install", simulator, app)
+    sh("xcrun", "simctl", "launch", "--terminate-running-process", simulator, DEV_APP_ID)
+  end
+
   desc "App Store 서명 .ipa 를 만들어 TestFlight 에 올린다 (내부 테스트)"
   lane :beta do
     team_id = required_env("APPLE_TEAM_ID")

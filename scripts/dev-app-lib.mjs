@@ -84,3 +84,63 @@ export function readEnvValue(text, key) {
   }
   return value ? value : null;
 }
+
+/** 이 세션 전용 iOS 시뮬레이터 이름: `seedbook-<워크트리 폴더 이름>` (메인 체크아웃은 `seedbook-seedbook`). */
+export function simulatorName(checkoutDir) {
+  const base = checkoutDir.replace(/\/+$/, "").split("/").pop() ?? "";
+  return `seedbook-${base}`;
+}
+
+/** `xcrun simctl list devices --json` 에서 이름이 같은 시뮬레이터 { udid, state }. 없으면 null. */
+export function findSimulator(devicesJson, name) {
+  for (const devices of Object.values(devicesJson?.devices ?? {})) {
+    for (const device of devices) {
+      if (device.name === name && device.isAvailable !== false) {
+        return { udid: device.udid, state: device.state };
+      }
+    }
+  }
+  return null;
+}
+
+function versionKey(version) {
+  return String(version)
+    .split(".")
+    .map((part) => Number(part) || 0);
+}
+
+function compareVersions(a, b) {
+  const [x, y] = [versionKey(a), versionKey(b)];
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) - (y[i] ?? 0);
+  }
+  return 0;
+}
+
+/**
+ * 새 시뮬레이터를 만들 런타임·기종 (`xcrun simctl list runtimes --json`). 가장 새 iOS 런타임 가운데 기종이
+ * 가장 많은 것(특정 기종 전용 런타임은 뺀다), 기종은 가장 새 `iPhone-<n>-Pro`, 없으면 마지막 iPhone.
+ */
+export function pickSimulatorTarget(runtimesJson) {
+  const runtimes = (runtimesJson?.runtimes ?? []).filter(
+    (runtime) => runtime.platform === "iOS" && runtime.isAvailable
+  );
+  runtimes.sort(
+    (a, b) =>
+      compareVersions(b.version, a.version) ||
+      (b.supportedDeviceTypes?.length ?? 0) - (a.supportedDeviceTypes?.length ?? 0)
+  );
+  const runtime = runtimes[0];
+  if (!runtime)
+    throw new Error("설치된 iOS 시뮬레이터 런타임이 없다 — xcodebuild -downloadPlatform iOS");
+  const iphones = (runtime.supportedDeviceTypes ?? [])
+    .map((type) => type.identifier)
+    .filter((id) => /SimDeviceType\.iPhone-/.test(id));
+  const pros = iphones
+    .map((id) => ({ id, generation: Number(/iPhone-(\d+)-Pro$/.exec(id)?.[1] ?? Number.NaN) }))
+    .filter((entry) => !Number.isNaN(entry.generation))
+    .sort((a, b) => b.generation - a.generation);
+  const deviceType = pros[0]?.id ?? iphones.at(-1);
+  if (!deviceType) throw new Error(`${runtime.identifier} 에 iPhone 기종이 없다`);
+  return { runtime: runtime.identifier, deviceType };
+}

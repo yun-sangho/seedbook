@@ -56,21 +56,29 @@ pnpm --filter @seedbook/mobile open:android
 
 ## Seedbook Dev (개발용 앱, 앱 QA 는 이것으로)
 
-출시 앱과 **나란히 설치되는** 개발용 앱이다. 운영이 아니라 이 맥의 dev 서버(같은 Wi-Fi, `http://<맥 LAN IP>:<슬롯 web 포트>`,
-슬롯 DB)에 붙어 실제 데이터와 완전히 나뉜다. 앱 QA 는 Seedbook Dev 를 사용자 아이폰에 깔아서 한다 — 시뮬레이터·에뮬레이터는
-띄우지 않는다 (리소스 절약).
+출시 앱과 **나란히 설치되는** 개발용 앱이다. 운영이 아니라 이 체크아웃의 dev 서버(슬롯 web 포트, 슬롯 DB)에 붙어 실제
+데이터와 완전히 나뉜다. **앱 QA 는 세션마다 전용 iOS 시뮬레이터에 Seedbook Dev 를 깔아서 한다** — 여러 세션이 한 아이폰에
+번갈아 깔면 서로 덮어쓴다. Android 에뮬레이터는 띄우지 않는다.
 
 ```bash
 pnpm dev                                            # 이 체크아웃의 dev 서버 (먼저)
-pnpm --filter @seedbook/mobile dev:ios-device       # 빌드 → 연결된 아이폰에 설치·실행
+pnpm --filter @seedbook/mobile dev:ios-sim          # 이 세션 전용 시뮬레이터에 빌드·설치·실행 (QA 는 이것으로)
+pnpm --filter @seedbook/mobile dev:ios-sim:stop     # QA 가 끝나면 시뮬레이터를 끈다
+pnpm --filter @seedbook/mobile dev:ios-device       # 연결된 아이폰 (같은 Wi-Fi, 기기에서만 볼 것이 있을 때)
 pnpm --filter @seedbook/mobile dev:android-device   # adb 로 연결된 Android 기기 (dev 빌드 타입)
 ```
 
-루트 `scripts/dev-app.mjs` 가 슬롯 web 포트(`pnpm wt:info`)와 맥 LAN IP(en0)를 찾아 dev 서버가 응답하는지 보고,
-`vite build --mode development` (`SEEDBOOK_API_BASE_URL` = 그 주소, "개발용 빠른 로그인" 이 보인다) → `cap sync`
-(`SEEDBOOK_DEV_APP=1`) → fastlane `dev` lane (xcodebuild `-configuration Dev -destination id=<아이폰>` + `devicectl install`)
-을 돌린다. 기기·팀 ID 는 자동으로 찾고 `SEEDBOOK_IOS_DEVICE`·`APPLE_TEAM_ID`·`SEEDBOOK_DEV_HOST` 로 바꿀 수 있다.
-처음에는 아이폰에 "로컬 네트워크" 권한을 허용한다. 출시 빌드용 번들로 되돌릴 때는 env 없이 `pnpm sync` 한다.
+루트 `scripts/dev-app.mjs` 가 슬롯 web 포트(`pnpm wt:info`)와 주소(시뮬레이터는 맥과 네트워크를 같이 써서 `localhost`,
+기기는 맥 LAN IP(en0))를 정해 dev 서버가 응답하는지 보고, `vite build --mode development` (`SEEDBOOK_API_BASE_URL` = 그 주소,
+"개발용 빠른 로그인" 이 보인다) → `cap sync` (`SEEDBOOK_DEV_APP=1`) → fastlane lane 을 돌린다.
+
+- 시뮬레이터 (`ios dev_sim`): 이름 `seedbook-<워크트리 폴더>` 하나를 세션이 쓴다 — 없으면 가장 새 런타임의 iPhone Pro 로
+  만들고 켠 뒤 `-configuration Dev` 로 빌드해 `simctl install/launch` 한다. 다른 세션의 시뮬레이터는 건드리지 않는다.
+  로컬 서명이라 Apple 계정이 필요 없다.
+- 아이폰 (`ios dev`): xcodebuild `-destination id=<아이폰>` 개발 서명 + `devicectl install`. 기기·팀 ID 는 자동으로 찾고
+  `SEEDBOOK_IOS_DEVICE`·`APPLE_TEAM_ID`·`SEEDBOOK_DEV_HOST` 로 바꿀 수 있다. 처음에는 "로컬 네트워크" 권한을 허용한다.
+
+출시 빌드용 번들로 되돌릴 때는 env 없이 `pnpm sync` 한다.
 
 |             | 출시 앱                | Seedbook Dev                                                                                   |
 | ----------- | ---------------------- | ---------------------------------------------------------------------------------------------- |
@@ -78,7 +86,7 @@ pnpm --filter @seedbook/mobile dev:android-device   # adb 로 연결된 Android 
 | 구성        | iOS Debug·Release      | iOS `Dev` 빌드 구성 (`Info-Dev.plist`, `AppIconDev`), Android `dev` 빌드 타입 (`src/dev`)      |
 | 이름·아이콘 | Seedbook               | Seedbook Dev, 아이콘에 DEV (`pnpm brand:icons` 가 같이 만든다)                                 |
 | API 서버    | 운영                   | 맥 dev 서버 (http) — ATS `NSAllowsLocalNetworking`·Android cleartext·mixed content 는 Dev 에만 |
-| 서명        | 배포 (fastlane `beta`) | 개발 서명 (iOS 자동 서명, Android 디버그 키)                                                   |
+| 서명        | 배포 (fastlane `beta`) | 시뮬레이터 로컬 서명, 기기는 개발 서명 (iOS 자동 서명, Android 디버그 키)                      |
 
 `src/lib/native/dev-app-config.test.ts` 가 Dev 의 예외가 출시 구성에 새지 않고 `Info-Dev.plist` 가 `Info.plist` 와
 이름·Dev 블록 말고는 같은지 확인한다 — `Info.plist` 를 고치면 `Info-Dev.plist` 도 같이 고친다.

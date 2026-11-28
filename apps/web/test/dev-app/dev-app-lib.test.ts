@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   devAppApiBaseUrl,
+  findSimulator,
   parseWebPort,
   pickIosDevice,
   pickLanAddress,
+  pickSimulatorTarget,
   readEnvValue,
+  simulatorName,
   teamIdFromCertificateSubject,
 } from "../../../../scripts/dev-app-lib.mjs";
 
@@ -116,5 +119,64 @@ describe("readEnvValue", () => {
   it("returns null for a missing or empty value", () => {
     expect(readEnvValue("KAKAO_NATIVE_APP_KEY=\n", "KAKAO_NATIVE_APP_KEY")).toBeNull();
     expect(readEnvValue("OTHER=1", "KAKAO_NATIVE_APP_KEY")).toBeNull();
+  });
+});
+
+describe("simulatorName", () => {
+  it("names the session simulator after the worktree folder", () => {
+    expect(simulatorName("/Users/me/.herdr/worktrees/seedbook/feat-mobile-dev-app")).toBe(
+      "seedbook-feat-mobile-dev-app"
+    );
+  });
+});
+
+describe("findSimulator", () => {
+  const list = {
+    devices: {
+      "com.apple.CoreSimulator.SimRuntime.iOS-27-2": [
+        { name: "seedbook-other", udid: "OTHER", state: "Booted", isAvailable: true },
+        { name: "seedbook-feat-x", udid: "MINE", state: "Shutdown", isAvailable: true },
+      ],
+    },
+  };
+
+  it("finds this session's simulator by exact name", () => {
+    expect(findSimulator(list, "seedbook-feat-x")).toEqual({ udid: "MINE", state: "Shutdown" });
+  });
+
+  it("returns null when it does not exist yet", () => {
+    expect(findSimulator(list, "seedbook-feat-y")).toBeNull();
+  });
+});
+
+describe("pickSimulatorTarget", () => {
+  const type = (name: string) => ({ identifier: `com.apple.CoreSimulator.SimDeviceType.${name}` });
+  const runtime = (identifier: string, version: string, types: string[]) => ({
+    identifier,
+    version,
+    platform: "iOS",
+    isAvailable: true,
+    supportedDeviceTypes: types.map(type),
+  });
+
+  it("uses the newest general iOS runtime and the newest Pro iPhone", () => {
+    expect(
+      pickSimulatorTarget({
+        runtimes: [
+          runtime("iOS-26-0", "26.0", ["iPhone-17-Pro"]),
+          runtime("iOS-27-2-iPhone19-4", "27.2", ["iPhone-Duo"]),
+          runtime("iOS-27-2", "27.2", [
+            "iPhone-17-Pro",
+            "iPhone-18-Pro",
+            "iPhone-18-Pro-Max",
+            "iPad-Air",
+          ]),
+        ],
+      })
+    ).toEqual({ runtime: "iOS-27-2", deviceType: type("iPhone-18-Pro").identifier });
+  });
+
+  it("throws when no iOS runtime is installed", () => {
+    expect(() => pickSimulatorTarget({ runtimes: [] })).toThrow(/런타임/);
   });
 });
