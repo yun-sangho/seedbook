@@ -246,8 +246,8 @@ const wonLabel = (won: number) => numberToKorean(won) || `${formatWithCommas(Mat
 const taskName = (task: RebalancingTask) => task.name || task.ticker || "(미선택)";
 
 /**
- * 리밸런싱을 모르는 사람도 따라 할 수 있게 쉬운 말로 — 매도·매수·체결 대신 팔기·사기·거래.
- * `quantity`·`verb` 가 가장 크게 보인다 ("111주 파세요").
+ * 단계의 큰 글씨 — 종목 수량과 쉬운 말 동사 ("111주 파세요"). 설명 문장은 두지 않고, 돈이 모자랄
+ * 때만 경고 한 줄을 붙인다 (금액은 "금액 자세히" 에 있다).
  */
 function stepCopy(
   task: RebalancingTask,
@@ -260,44 +260,24 @@ function stepCopy(
       return {
         quantity: quantity === null ? null : `${formatWithCommas(quantity)}주`,
         verb: sell ? "팔았어요" : "샀어요",
-        note: "거래를 기록했어요. 잘못 적었으면 아래에서 고칠 수 있어요.",
+        note: null,
       };
     }
     case "ordered":
       return {
         quantity: `${formatWithCommas(remainingOrderQuantity(task))}주`,
         verb: sell ? "파는 중" : "사는 중",
-        // 주문 내용은 아래 주문 카드가 보여 준다 — 돈을 기다리는 이유만 알린다.
-        note:
-          action?.kind === "wait" && action.reason === "proceeds"
-            ? "팔린 돈이 들어와야 다음 종목을 살 수 있어요."
-            : null,
+        note: null,
       };
     case "pending": {
       const quantity = task.quantity === null ? null : `${formatWithCommas(task.quantity)}주`;
-      const amount =
-        task.quantity !== null && task.price !== null ? task.quantity * task.price : task.amount;
-      if (action?.kind === "buy" && action.shortfall > 0) {
-        return {
-          quantity,
-          verb: "사세요",
-          note: `돈이 ${wonLabel(action.shortfall)} 모자라요 · 살 수 있는 만큼만 사세요`,
-          critical: true,
-        };
-      }
-      if (action?.kind === "buy" && action.available !== null) {
-        return {
-          quantity,
-          verb: "사세요",
-          note: `약 ${wonLabel(amount)} 필요 · 지금 쓸 수 있는 돈 ${wonLabel(action.available)}`,
-        };
-      }
+      const shortfall = action?.kind === "buy" ? action.shortfall : 0;
       return {
         quantity,
         verb: sell ? "파세요" : "사세요",
-        note: sell
-          ? `판 돈 약 ${wonLabel(amount)}으로 다른 종목을 사요`
-          : `약 ${wonLabel(amount)} 필요해요`,
+        note:
+          shortfall > 0 ? `돈이 ${wonLabel(shortfall)} 모자라요 · 살 수 있는 만큼만 사세요` : null,
+        critical: shortfall > 0,
       };
     }
   }
