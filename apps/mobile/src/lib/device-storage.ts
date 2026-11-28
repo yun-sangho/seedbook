@@ -545,6 +545,15 @@ export async function reloadApp(): Promise<void> {
 }
 
 /**
+ * `reloadApp()` 처럼 저장을 기다린 뒤 `path` 에서 앱을 새로 시작한다. 지금 history 항목을 바꿔 써서
+ * 뒤로가기로 떠난 화면에 돌아가지 않는다 (로그아웃 — 앞 계정의 화면을 남기지 않는다).
+ */
+export async function restartAppAt(path: string): Promise<void> {
+  await flushDeviceStorage();
+  window.location.replace(path);
+}
+
+/**
  * SQLite 기기 저장소를 쓰는지 — 앱, 또는 개발용 브라우저 SQLite (예전 브라우저 데이터 업그레이드
  * 같은 localStorage 전용 작업을 건너뛸 때).
  */
