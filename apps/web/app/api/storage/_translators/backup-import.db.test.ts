@@ -20,7 +20,7 @@ afterAll(close);
 /** 원래 계정이 클라우드에 올려 둔 데이터 (테스트마다 새 id). */
 function newAccountData(): BackupSections {
   const fixture = readFileSync(
-    resolve(__dirname, "../../../../public/seed-data/user-data.json"),
+    resolve(__dirname, "../../../../../../packages/database/seed-data/user-data.json"),
     "utf8"
   );
   const ids = new Map<string, string>();
